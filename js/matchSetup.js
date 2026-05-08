@@ -98,10 +98,12 @@ function onRoomListUpdate(rooms) {
   rooms.forEach(room => {
     const item = document.createElement("div");
     item.className = "roomItem";
+    // ルームリストは表示専用（クリック即参加禁止）
+    // クリック時は入力欄にルーム名をセットするだけに留める
     item.innerHTML = `
       <span class="room-name">${room.name}</span>
       <span class="room-players">${room.playerCount}/${room.maxPlayers} 人</span>
-      <button class="room-join-btn" onclick="joinRoom('${room.name}')">参加</button>
+      <button class="room-join-btn" onclick="document.getElementById('roomCodeInput').value='${room.name}'">選択</button>
     `;
     container.appendChild(item);
   });

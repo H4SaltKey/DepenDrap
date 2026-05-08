@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DepenDrap</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=2">
+<style>
+  body {
+    overflow: hidden;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  
+  /* デッキ画面用の追加文字色 */
+  .selectPage {
+    color: #e0d0a0;
+  }
+
+  /* ===== 全体レイアウト ===== */
+  .selectPage {
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 14px 20px 14px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 12px;
+  }
+
+  .selectPage h2 {
+    margin: 0;
+  }
+
+  /* ===== メインエリア（左: グリッド / 右: 詳細） ===== */
+  .selectMain {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* ===== デッキグリッド ===== */
+  .deckGridWrap {
+    background: rgba(10, 8, 20, 0.75);
+    border: 1px solid #5a4b27;
+    padding: 10px;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .deckGridWrap header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .deckGridWrap header h3 {
+    margin: 0;
+  }
+
+  .deckGridScroll {
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .deckGrid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    padding: 4px 2px;
+  }
+
+  /* ===== デッキサムネイル ===== */
+  .deckThumb {
+    aspect-ratio: 210 / 297;
+    border: 2px solid #5a4b27;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .deckThumb:hover {
+    border-color: #2f80ed;
+    box-shadow: 0 0 0 2px #2f80ed44;
+  }
+
+  .deckThumb.selected {
+    border-color: #2f80ed;
+    box-shadow: 0 0 0 3px #2f80ed66;
+  }
+
+  .deckThumb.addNew {
+    border: 2px dashed #5a4b27;
+    color: #887a55;
+    font-size: 28px;
+    cursor: pointer;
+  }
+
+  .deckThumb.addNew:hover {
+    border-color: #c7b377;
+    color: #c7b377;
+  }
+
+  /* サムネイル内のミニカード積み重ね表示 */
+  .deckThumbCards {
+    position: relative;
+    width: 60%;
+    aspect-ratio: 210 / 297;
+    flex-shrink: 0;
+  }
+
+  .deckThumbCard {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1px solid #999;
+    border-radius: 2px;
+    background: white;
+    overflow: hidden;
+  }
+
+  .deckThumbCard img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .deckThumbName {
+    font-size: 11px;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.3;
+    color: #e0d0a0;
+    width: 100%;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  .deckDetail {
+    background: rgba(10, 8, 20, 0.75);
+    border: 1px solid #5a4b27;
+    padding: 14px;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .deckDetailEmpty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-size: 14px;
+    grid-row: 1 / -1;
+  }
+
+  /* 詳細上部: 拡大カード + デッキ名 */
+  .deckDetailTop {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .deckDetailCover {
+    width: 100px;
+    aspect-ratio: 210 / 297;
+    border: 1px solid #5a4b27;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .deckDetailCover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .deckDetailInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .deckDetailInfo input[type="text"] {
+    font-size: 15px;
+    font-weight: bold;
+    border: 1px solid #5a4b27;
+    background: rgba(0,0,0,0.5);
+    color: #e0d0a0;
+    padding: 4px 6px;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .deckDetailCode {
+    font-size: 11px;
+    color: #888;
+    word-break: break-all;
+  }
+
+  /* 詳細中部: カード一覧 */
+  .deckDetailCards {
+    overflow-y: auto;
+    min-height: 0;
+    border: 1px solid #5a4b27;
+    background: rgba(0,0,0,0.3);
+    padding: 6px;
+    border-radius: 4px;
+  }
+
+  .deckDetailCardList {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+
+  .deckDetailCardItem {
+    position: relative;
+    aspect-ratio: 210 / 297;
+    border: 1px solid #5a4b27;
+    background: #000;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .deckDetailCardItem img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .deckDetailCardCount {
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    background: #111;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+
+  /* 詳細下部: ボタン */
+  .deckDetailActions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .deckDetailActions button {
+    padding: 8px 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .btnEdit {
+    background: transparent;
+    color: #e0d0a0;
+    border: 1px solid #c7b377;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .btnEdit:hover {
+    background: rgba(199, 179, 119, 0.2);
+    box-shadow: 0 0 5px rgba(199, 179, 119, 0.4);
+  }
+
+  .btnDelete {
+    background: transparent;
+    color: #ff6b6b;
+    border: 1px solid #ff3377;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .btnDelete:hover {
+    background: rgba(255, 51, 119, 0.2);
+    box-shadow: 0 0 5px rgba(255, 51, 119, 0.4);
+  }
+
+  .btnBack {
+    background: white;
+    color: #333;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+
+  .btnBack:hover {
+    background: #f0f0f0;
+  }
+</style>
+</head>
+<body>
+<button class="back-btn" onclick="location.href='index.html'">戻る</button>
+
+<div class="title-bg"></div>
+<div class="title-overlay"></div>
+
+<div class="selectPage">
+  <h2 style="text-transform:uppercase; letter-spacing:2px;">デッキ構築</h2>
+
+  <div class="selectMain">
+
+    <!-- デッキグリッド -->
+    <div class="deckGridWrap">
+      <header>
+        <h3 style="letter-spacing:1px;">デッキ一覧</h3>
+        <button id="btnImportDeck" class="btnEdit" style="font-size:12px;padding:6px 12px;cursor:pointer;">コードから作成</button>
+      </header>
+      <div class="deckGridScroll">
+        <div class="deckGrid" id="deckGrid"></div>
+      </div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div class="deckDetail" id="deckDetail">
+      <div class="deckDetailEmpty" id="deckDetailEmpty">デッキを選択してください</div>
+
+      <div id="deckDetailContent" class="hidden" style="display:contents;">
+        <div class="deckDetailTop">
+          <div class="deckDetailCover" id="detailCover">
+            <img id="detailCoverImg" src="" alt="">
+          </div>
+          <div class="deckDetailInfo">
+            <input type="text" id="detailName" placeholder="デッキ名">
+            <div class="deckDetailCode" id="detailCode"></div>
+          </div>
+        </div>
+
+        <div class="deckDetailCards" id="detailCardsWrap">
+          <div class="deckDetailCardList" id="detailCardList"></div>
+        </div>
+
+        <div class="deckDetailActions">
+          <button class="btnDelete" id="btnDelete">削除</button>
+          <button class="btnEdit" id="btnEdit">このデッキを編集</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/cardData.js"></script>
+<script src="js/deckCode.js"></script>
+
+<!-- コードインポートモーダル -->
+<div id="importModal" class="hidden" style="
+  position:fixed;inset:0;background:rgba(0,0,0,0.8);
+  display:flex;align-items:center;justify-content:center;z-index:10000;
+  backdrop-filter: blur(4px);">
+  <div style="background:rgba(20, 18, 32, 0.95);padding:24px;border:1px solid #c7b377;border-radius:8px;width:360px;display:flex;flex-direction:column;gap:12px;color:#e0d0a0;box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);">
+    <h3 style="margin:0;letter-spacing:1px;border-bottom:1px solid rgba(199, 179, 119, 0.3);padding-bottom:10px;">デッキコードから作成</h3>
+    <p style="margin:0;font-size:13px;color:#b0a070;">デッキコードを入力してください。</p>
+    <input type="text" id="importCodeInput" placeholder="例: 2-30" style="font-size:15px;padding:8px 10px;background:rgba(0,0,0,0.5);border:1px solid #5a4b27;color:white;border-radius:4px;">
+    <div id="importError" style="font-size:12px;color:#ff6b6b;min-height:16px;"></div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button id="importCancel" class="btnDelete" style="padding:8px 20px;">キャンセル</button>
+      <button id="importConfirm" class="btnEdit" style="padding:8px 20px;">作成</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/deckSelect.js"></script>
+<script src="js/menu.js?v=5"></script>
+
+</body>
+</html>

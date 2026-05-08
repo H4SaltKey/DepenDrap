@@ -1,0 +1,3 @@
+# GitHub Pages 設定
+# Jekyll を無効化（純粋な静的サイトとして配信）
+plugins: []

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DepenDrap Online</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body {
+    margin: 0; padding: 0; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #08060f;
+  }
+  .title-bg {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: url('assets/title_bg.png') center/cover no-repeat; z-index: -2;
+  }
+  .title-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: linear-gradient(180deg, rgba(8,6,15,0.4) 0%, rgba(8,6,15,0.85) 100%); z-index: -1;
+  }
+  #userProfile {
+    position: absolute; top: 20px; left: 20px;
+    color: #e0d0a0; font-size: 15px; z-index: 10000;
+    background: rgba(10,8,20,0.7); padding: 10px 15px;
+    border: 1px solid #5a4b27; border-radius: 6px; backdrop-filter: blur(4px);
+  }
+  #usernameDisplay { font-weight: bold; letter-spacing: 1px; }
+  #photonStatusBadge {
+    display: inline-block; font-size: 11px; margin-top: 4px;
+    padding: 2px 8px; border-radius: 10px;
+    background: rgba(0,0,0,0.4); color: #888; border: 1px solid #444;
+  }
+  #photonStatusBadge.connected { color: #70c070; border-color: #70c070; }
+  .logout-btn {
+    background: transparent; border: 1px solid #c7b377; color: #e0d0a0;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+    margin-top: 8px; transition: all 0.2s; display: block;
+  }
+  .logout-btn:hover { background: rgba(199,179,119,0.2); }
+  .title-content {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100vh; text-align: center;
+  }
+  .title-logo {
+    font-size: 64px; font-weight: 300; letter-spacing: 6px; color: #e0d0a0;
+    text-transform: uppercase;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.9), 0 0 10px rgba(199,179,119,0.3);
+    margin-bottom: 50px; border-bottom: 2px solid rgba(199,179,119,0.4); padding-bottom: 10px;
+  }
+  .title-menu { display: flex; flex-direction: column; gap: 20px; width: 280px; }
+  .title-btn { padding: 15px 20px; font-size: 18px; font-weight: bold; letter-spacing: 2px; }
+  .lorBtn {
+    background: linear-gradient(to bottom, rgba(199,179,119,0.15), rgba(199,179,119,0.05));
+    border: 1px solid rgba(199,179,119,0.5); color: #e0d0a0; border-radius: 4px;
+    cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .lorBtn:hover { background: rgba(199,179,119,0.25); border-color: #c7b377; }
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,18,32,0.9); color: #ff6b6b; border: 1px solid #ff3377;
+    padding: 12px 24px; border-radius: 4px; font-size: 14px; z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: opacity 0.5s;
+  }
+  .toast.hidden { display: none; }
+  .toast.fadeOut { opacity: 0; }
+</style>
+</head>
+<body>
+
+<div class="title-bg"></div>
+<div class="title-overlay"></div>
+
+<div id="userProfile">
+  <span id="usernameDisplay">Loading...</span>
+  <span id="photonStatusBadge">● 未接続</span>
+  <button onclick="logout()" class="logout-btn">ログアウト</button>
+</div>
+
+<div class="title-content">
+  <div class="title-logo">DepenDrap</div>
+  <div class="title-menu">
+    <button class="lorBtn title-btn" onclick="goGame()">対戦開始</button>
+    <button class="lorBtn title-btn" onclick="goDeck()">デッキ構築</button>
+    <button class="lorBtn title-btn" onclick="enterDev()">開発者モード</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- Photon SDK -->
+<script src="js/photon-sdk.js"></script>
+<script src="js/photon-sync.js"></script>
+
+<script>
+  // 未ログインなら login へ
+  const username = localStorage.getItem("username");
+  if (!username) { window.location.href = "login.html"; }
+  else { document.getElementById("usernameDisplay").textContent = "▶ " + username; }
+
+  function showToast(text) {
+    const toast = document.getElementById("toast");
+    toast.innerText = text;
+    toast.classList.remove("hidden", "fadeOut");
+    setTimeout(() => toast.classList.add("fadeOut"), 1200);
+    setTimeout(() => { toast.classList.add("hidden"); toast.classList.remove("fadeOut"); }, 1700);
+  }
+
+  function logout() {
+    if (!confirm("ログアウトしますか？")) return;
+    localStorage.removeItem("username");
+    localStorage.removeItem("matchSetup");
+    window.location.href = "login.html";
+  }
+
+  function enterDev() {
+    const pass = prompt("パスワードを入力にゃん");
+    if (pass === "ねこ") { localStorage.setItem("dev","true"); location.href = "dev.html"; }
+    else showToast("パスワードが違います。");
+  }
+
+  function goGame() { location.href = "matchSetup.html"; }
+  function goDeck()  { location.href = "deckSelect.html"; }
+
+  // Photon 接続状態をバッジに反映
+  const badge = document.getElementById("photonStatusBadge");
+  function updateBadge(text, connected) {
+    badge.textContent = "● " + text;
+    badge.classList.toggle("connected", connected);
+  }
+
+  // タイトル画面でも Photon に接続しておく（matchSetup で即使えるように）
+  window.myUsername = username;
+  PhotonSync.init({
+    onStateChange: (s) => {
+      const map = {
+        "ConnectingToMasterserver": ["接続中...", false],
+        "Connected":                ["接続済み",  true],
+        "JoinedLobby":              ["ロビー待機", true],
+        "Disconnected":             ["未接続",     false],
+      };
+      const [label, ok] = map[s] || ["...", false];
+      updateBadge(label, ok);
+    }
+  });
+</script>
+
+</body>
+</html>

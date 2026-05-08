@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DepenDrap</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body {
+    overflow: auto;
+    background: #f4f4f4;
+  }
+
+  .devLayout {
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 14px 20px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .devLayout h2 {
+    margin: 0;
+  }
+
+  .devCardGrid {
+    background: white;
+    border: 1px solid #aaa;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .devCardGrid header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .devCardGrid header h3 {
+    margin: 0;
+  }
+
+  .pagedRow {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .cardRow {
+    min-width: 0;
+    min-height: 200px;
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 10px;
+    align-items: flex-start;
+    justify-items: center;
+  }
+
+  /* 編集パネル */
+  .devEditPanel {
+    background: white;
+    border: 1px solid #aaa;
+    padding: 20px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .devEditPanel.hidden {
+    display: none !important;
+  }
+
+  .devPreview {
+    width: 100px;
+    aspect-ratio: 210 / 297;
+    border: 1px solid #333;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .devPreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .devEditFields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .devEditFields label {
+    font-size: 13px;
+    color: #555;
+  }
+
+  .devEditFields input[type="text"] {
+    width: 100%;
+    font-size: 14px;
+    padding: 4px 6px;
+    box-sizing: border-box;
+    border: 1px solid #aaa;
+  }
+
+  .devEditFields input[type="text"]:read-only {
+    background: #f0f0f0;
+    color: #888;
+  }
+
+  .selectImageBtn {
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .devEditMessage {
+    font-size: 12px;
+    color: #c00;
+    min-height: 16px;
+  }
+
+  /* 完了ボタン */
+  .devFooter {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.95);
+    border-top: 1px solid #ccc;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    z-index: 100;
+  }
+
+  .devFooter button {
+    padding: 8px 22px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .btnDone {
+    background: #2f80ed;
+    color: white;
+    border: none;
+    border-radius: 4px;
+  }
+
+  .btnDone:hover {
+    background: #1a6fd4;
+  }
+
+  /* カード選択中のハイライト */
+  .deckCard.selected {
+    outline: 3px solid #2f80ed;
+  }
+  /* ステータス設定 */
+  .devStatTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  .devStatTable th {
+    background: #f8f9fa;
+    color: #444;
+    font-weight: 600;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    font-size: 13px;
+  }
+  .devStatTable td {
+    border: 1px solid #dee2e6;
+    padding: 0;
+  }
+  .devStatInput {
+    width: 100%;
+    height: 40px;
+    border: none;
+    padding: 0 10px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 15px;
+    outline: none;
+    background: transparent;
+  }
+  .devStatInput:focus {
+    background: #f0f7ff;
+    box-shadow: inset 0 0 0 2px #2f80ed;
+  }
+</style>
+</head>
+<body>
+<button class="back-btn" onclick="location.href='index.html'">戻る</button>
+
+<script>
+if(localStorage.getItem("dev") !== "true"){
+  alert("権限がないにゃん");
+  location.href = "index.html";
+}
+</script>
+
+<div class="devLayout">
+  <h2>開発者モード</h2>
+
+  <!-- カード一覧 -->
+  <section class="devCardGrid">
+    <header>
+      <h3>カード一覧</h3>
+      <button id="addCardBtn">＋ カード追加</button>
+    </header>
+    <div class="pagedRow">
+      <button class="pageButton" id="devPrev" type="button">‹</button>
+      <div id="devCards" class="cardRow"></div>
+      <button class="pageButton" id="devNext" type="button">›</button>
+    </div>
+  </section>
+
+  <!-- 編集パネル -->
+  <section class="devEditPanel hidden" id="editPanel">
+    <div class="devPreview" id="previewBox">
+      <span id="previewPlaceholder" style="font-size:12px;color:#aaa;">画像なし</span>
+      <img id="previewImg" style="display:none;" alt="プレビュー">
+    </div>
+    <div class="devEditFields">
+      <div>
+        <label>カード名</label><br>
+        <input type="text" id="editName" placeholder="カード名（任意）">
+      </div>
+      <div>
+        <label>カードID</label><br>
+        <input type="text" id="editId" readonly>
+      </div>
+      <div>
+        <label>画像ファイル名</label><br>
+        <input type="text" id="editImageName" readonly placeholder="画像を選択してください">
+      </div>
+      <button class="selectImageBtn" id="selectImageBtn">📁 画像を選択（PNG）</button>
+      <input type="file" id="imageFileInput" accept="image/png" style="display:none;">
+      <div class="devEditMessage" id="editMessage"></div>
+      
+      <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
+        <button class="btnDone" id="doneBtn" style="width:100%;">✓ カード情報の保存 (cards.json)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- レベル別ステータス編集 -->
+  <section style="background:white; border:1px solid #aaa; padding:20px; margin-bottom:100px;">
+    <h3 style="margin:0 0 16px; border-bottom:2px solid #2f80ed; display:inline-block; padding-bottom:4px;">レベル別ステータス設定</h3>
+    <p style="font-size:12px; color:#666; margin-bottom:12px;">※ 各レベルごとの基礎ステータスを編集できます。保存するとサーバーの levelStats.json が更新されます。</p>
+    <table id="levelStatsTable" class="devStatTable">
+      <thead>
+        <tr>
+          <th style="width:80px;">レベル</th>
+          <th>基礎攻撃力 (ATK)</th>
+          <th>基礎防御力 (DEF)</th>
+          <th>瞬間防御力 (IDEF)</th>
+        </tr>
+      </thead>
+      <tbody id="levelStatsBody"></tbody>
+    </table>
+    <div style="margin-top:16px;display:flex;gap:12px;">
+      <button id="saveLevelStats" style="padding:10px 24px;background:#2f80ed;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">✓ ステータスを保存 (levelStats.json)</button>
+      <button id="resetLevelStats" style="padding:10px 24px;background:#f8f9fa;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:14px;">デフォルトに戻す</button>
+      <span id="levelStatsMsg" style="font-size:14px;color:#2f80ed;align-self:center;font-weight:bold;"></span>
+    </div>
+  </section>
+</div>
+
+<!-- フッター（完了ボタン削除済み） -->
+<div class="devFooter" style="display:none;"></div>
+
+<script src="js/cardData.js"></script>
+<script src="js/deckCode.js"></script>
+<script src="js/core.js"></script>
+<script src="js/dev.js"></script>
+<script src="js/menu.js?v=5"></script>
+
+</body>
+</html>

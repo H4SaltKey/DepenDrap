@@ -34,7 +34,7 @@ function initMatchSetup() {
 // ===== Firebase コールバック =====
 
 function onFirebaseStateChange(stateName) {
-  const el = document.getElementById("photonStatus");
+  const el = document.getElementById("firebaseStatus");
   const map = {
     "connected":      ["Firebase 接続済み ✓", true, "lobby"],
     "disconnected":   ["Firebase 切断", false, "disconnected"],

@@ -41,12 +41,12 @@
     border: 1px solid #5a4b27; border-radius: 6px; backdrop-filter: blur(4px);
   }
   #usernameDisplay { font-weight: bold; letter-spacing: 1px; }
-  #photonStatusBadge {
+  #firebaseStatusBadge {
     display: inline-block; font-size: 11px; margin-top: 4px;
     padding: 2px 8px; border-radius: 10px;
     background: rgba(0,0,0,0.4); color: #888; border: 1px solid #444;
   }
-  #photonStatusBadge.connected { color: #70c070; border-color: #70c070; }
+  #firebaseStatusBadge.connected { color: #70c070; border-color: #70c070; }
   .logout-btn {
     background: transparent; border: 1px solid #c7b377; color: #e0d0a0;
     padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
@@ -88,7 +88,7 @@
 
 <div id="userProfile">
   <span id="usernameDisplay">Loading...</span>
-  <span id="photonStatusBadge">● 未接続</span>
+  <span id="firebaseStatusBadge">● 未接続</span>
   <button onclick="logout()" class="logout-btn">ログアウト</button>
 </div>
 
@@ -149,8 +149,8 @@
   function goGame() { location.href = "matchSetup.html"; }
   function goDeck()  { location.href = "deckSelect.html"; }
 
-  // Photon 接続状態をバッジに反映
-  const badge = document.getElementById("photonStatusBadge");
+  // Firebase 接続状態をバッジに反映
+  const badge = document.getElementById("firebaseStatusBadge");
   function updateBadge(text, connected) {
     badge.textContent = "● " + text;
     badge.classList.toggle("connected", connected);

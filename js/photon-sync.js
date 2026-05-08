@@ -27,6 +27,8 @@ const EV = {
 // ==========================================
 // 1. Photon 初期設定
 // ==========================================
+// NOTE: AppID は Photon Dashboard から取得してください
+// https://dashboard.photonengine.com/
 const PHOTON_APP_ID      = "50e5751a-bf8b-41db-8059-dd637bbe0076";
 const PHOTON_APP_VERSION = "1.0";
 const PHOTON_REGION      = "jp"; // jp / eu / us / asia
@@ -159,7 +161,10 @@ function initPhoton(callbacks = {}) {
 // ===== ルーム操作 =====
 
 function photonCreateRoom(roomName) {
-  if (!_client) return;
+  if (!_client) {
+    console.error("[Photon] Client not initialized");
+    return;
+  }
   if (!_client.isConnectedToMaster()) {
     console.error("[Photon] Cannot create room: Not connected to master.");
     return;
@@ -173,16 +178,24 @@ function photonCreateRoom(roomName) {
   };
   // 部屋名が空の場合はクライアント側で確実に生成して渡す（SDKのGUID同期バグ回避のため）
   const finalRoomName = roomName || _genRoomName();
+  console.log("[Photon] Creating room with name:", finalRoomName);
   _client.createRoom(finalRoomName, opts);
 }
 
 function photonJoinRoom(roomName) {
-  if (!_client) return;
+  if (!_client) {
+    console.error("[Photon] Client not initialized");
+    return;
+  }
   if (!_client.isConnectedToMaster()) {
     console.error("[Photon] Cannot join room: Not connected to master.");
     return;
   }
-  console.log("[Photon] joining room...");
+  if (!roomName || roomName.trim() === "") {
+    console.error("[Photon] Room name is empty");
+    return;
+  }
+  console.log("[Photon] joining room:", roomName);
   _client.joinRoom(roomName);
 }
 
@@ -548,7 +561,10 @@ function _setRoomProp(key, value) {
 }
 
 function _genRoomName() {
-  return Math.random().toString(36).substr(2, 6).toUpperCase();
+  // より確実なルーム名生成（タイムスタンプ + ランダム）
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substr(2, 4).toUpperCase();
+  return `ROOM_${timestamp}_${random}`;
 }
 
 // ===== 公開 API =====

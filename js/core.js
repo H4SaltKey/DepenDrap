@@ -115,20 +115,9 @@ function saveAllImmediate(customFieldCards = null) {
   if (typeof lastLocalFieldSaveAt !== "undefined") window.lastLocalFieldSaveAt = Date.now();
   const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : []);
 
-  // Photon 接続中は Photon 経由で送信
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) {
-    PhotonSync.sendPlayerState();
-    PhotonSync.sendMatchData();
-    PhotonSync.sendFieldCards(fieldData);
-    return Promise.resolve();
-  }
-
-  // HTTP フォールバック
-  return fetch("/api/state", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameState: state, fieldCards: fieldData })
-  }).catch(() => {});
+  // Firebase 経由で同期（自動）
+  // ローカルストレージに保存すれば、Firebase が自動的に同期
+  return Promise.resolve();
 }
 
 // localStorage のみ（UI更新用、サーバーには送らない）
@@ -143,21 +132,11 @@ function save() {
 }
 
 // 実際の送信（自分のデータのみ送る、timeLeft は除外）
-// Socket.io 接続中は SocketSync を使う
+// Firebase 接続中は Firebase 経由で送信
 function _pushMyState() {
-  // Socket.io 接続中は Socket.io 経由で送信
-  if (typeof SocketSync !== "undefined" && SocketSync.isInRoom()) {
-    SocketSync.sendPlayerState();
-    SocketSync.sendMatchData();
-    return Promise.resolve();
-  }
-
   // ローカルストレージにのみ保存
   localStorage.setItem("gameState", JSON.stringify(state));
   return Promise.resolve();
-}
-    })
-  }).catch(() => {});
 }
 
 window.saveImmediate    = saveImmediate;
@@ -189,153 +168,30 @@ function load() {
 }
 
 // ===== サーバー同期ループ =====
-// Photon 接続中は PhotonSync を使う。未接続時は HTTP ポーリングにフォールバック。
+// Firebase 経由で同期（自動）
 let isPolling = false;
 let lastLocalLogSentAt = 0;
 
 async function syncLoop() {
-  // Photon 接続中はポーリング不要
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) return;
+  // Firebase 接続中はポーリング不要
+  // ローカルストレージのみで同期
 
   if (isPolling) return;
   isPolling = true;
   try {
-    // ユーザー名未取得なら whoami
-    if (!window.myUsername) {
+    // ローカルストレージから状態を読み込む
+    const s = localStorage.getItem("gameState");
+    if (s) {
       try {
-        const r = await fetch("/api/whoami");
-        if (r.status === 401) { window.location.href = "/login.html"; return; }
-        if (r.ok) { const d = await r.json(); window.myUsername = d.role; }
+        const loaded = JSON.parse(s);
+        Object.keys(loaded).forEach(k => { if (state[k] !== undefined) state[k] = loaded[k]; });
       } catch {}
     }
-
-    const res = await fetch("/api/state");
-    if (res.status === 401) { window.location.href = "/login.html"; return; }
-    if (!res.ok) return;
-
-    const data = await res.json();
 
     // levelStats 初回ロード
     if (!window._levelStatsLoaded) {
       await loadLevelStats();
       window._levelStatsLoaded = true;
-    }
-
-    const gs = data.gameState;
-    if (!gs || Object.keys(gs).length === 0) {
-      normalizeState();
-      saveImmediate(); // 自分の初期状態を送る
-      return;
-    }
-
-    // 初期状態スナップショット（リセット用）
-    if (!window.serverInitialState) {
-      window.serverInitialState = JSON.parse(JSON.stringify(gs));
-    }
-
-    // ロール確定（サーバーのデータから自分のロールを特定）
-    if (window.myUsername) {
-      if (gs.player1?.username === window.myUsername)      window.myRole = "player1";
-      else if (gs.player2?.username === window.myUsername) window.myRole = "player2";
-      if (window.myRole) { document.body.dataset.role = window.myRole; applyRotationVars(); }
-    }
-
-    const myRole = window.myRole;
-    const opRole = myRole === "player1" ? "player2" : "player1";
-
-    if (myRole) {
-      // ===== 相手のプレイヤーデータを受け取る（timeLeft は除外） =====
-      if (gs[opRole]) {
-        const { timeLeft: _t, ...opData } = gs[opRole];
-        state[opRole] = { ...state[opRole], ...opData };
-      }
-
-      // ===== 自分のプレイヤーデータ：username など未設定分のみ補完 =====
-      if (gs[myRole] && !state[myRole].username && gs[myRole].username) {
-        state[myRole].username = gs[myRole].username;
-      }
-
-      // ===== matchData の同期（timeLeft 系は GameTimer が管理） =====
-      if (gs.matchData) {
-        const md = gs.matchData;
-        const iAmTurnPlayer = (md.turnPlayer === myRole);
-
-        // 非タイマーフィールドのみ更新
-        state.matchData = {
-          ...state.matchData,
-          round:       md.round,
-          turn:        md.turn,
-          turnPlayer:  md.turnPlayer,
-          status:      md.status,
-          dice:        md.dice,
-          winner:      md.winner,
-          firstPlayer: md.firstPlayer,
-          diceTimeLeft:   md.diceTimeLeft,
-          choiceTimeLeft: md.choiceTimeLeft,
-          player1_endTimestamp: md.player1_endTimestamp,
-          player1_timerSeq:     md.player1_timerSeq,
-          player2_endTimestamp: md.player2_endTimestamp,
-          player2_timerSeq:     md.player2_timerSeq,
-        };
-
-        // 相手のターン → endTimestamp を GameTimer に適用
-        if (!iAmTurnPlayer && typeof GameTimer !== "undefined") {
-          const tp    = md.turnPlayer;
-          const endTs = md[tp + '_endTimestamp'];
-          const seq   = md[tp + '_timerSeq'] || 0;
-          if (endTs) GameTimer.applyFromServer(tp, endTs, seq, false, null);
-        }
-        // 自分のターン → GameTimer はすでに自分が start() しているので触らない
-        // ただし再接続直後（GameTimer 未設定）の場合は endTimestamp から復元
-        if (iAmTurnPlayer && typeof GameTimer !== "undefined") {
-          const endTs = md[myRole + '_endTimestamp'];
-          const seq   = md[myRole + '_timerSeq'] || 0;
-          if (endTs && !GameTimer.serialize(myRole)) {
-            // GameTimer が未設定 = 再接続後 → 復元
-            GameTimer.applyFromServer(myRole, endTs, seq, false, null);
-          }
-        }
-      }
-    } else {
-      // ロール未確定（再接続直後）→ timeLeft 以外の全データを受け取って復元
-      if (gs.player1) { const { timeLeft: _, ...d } = gs.player1; state.player1 = { ...state.player1, ...d }; }
-      if (gs.player2) { const { timeLeft: _, ...d } = gs.player2; state.player2 = { ...state.player2, ...d }; }
-      if (gs.matchData) {
-        state.matchData = gs.matchData;
-        // 再接続時：endTimestamp から GameTimer を復元
-        if (typeof GameTimer !== "undefined") {
-          ["player1", "player2"].forEach(tp => {
-            const endTs = gs.matchData[tp + '_endTimestamp'];
-            const seq   = gs.matchData[tp + '_timerSeq'] || 0;
-            if (endTs) GameTimer.applyFromServer(tp, endTs, seq, false, null);
-          });
-        }
-      }
-    }
-
-    // ===== logs の同期 =====
-    // 自分が最後に送ってから1.5秒以上経過していれば受け取る
-    if (gs.logs && Date.now() - lastLocalLogSentAt > 1500) {
-      state.logs = gs.logs;
-    }
-
-    // ===== fieldCards の同期 =====
-    if (data.fieldCards && typeof applyFieldCardsFromServer === "function") {
-      applyFieldCardsFromServer(data.fieldCards);
-    }
-
-    // ロール未確定なら自動割り当て
-    if (window.myUsername && !window.myRole) {
-      if (!state.player1.username) {
-        state.player1.username = window.myUsername;
-        window.myRole = "player1";
-        saveImmediate();
-      } else if (!state.player2.username) {
-        state.player2.username = window.myUsername;
-        window.myRole = "player2";
-        saveImmediate();
-      }
-      if (window.myRole) { document.body.dataset.role = window.myRole; applyRotationVars(); }
     }
 
     normalizeState();
@@ -449,11 +305,7 @@ function addGameLog(msg) {
   if (state.logs.length > 50) state.logs.shift();
   lastLocalLogSentAt = Date.now();
 
-  // Photon 接続中は Photon 経由で送信
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) {
-    PhotonSync.sendGameLog(entry);
-    return;
-  }
+  // Firebase 経由で同期（自動）
   saveDebounced();
 }
 window.addGameLog = addGameLog;

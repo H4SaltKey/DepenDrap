@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Firebase 設定テンプレート</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #f5f5f5;
+    color: #333;
+  }
+  .container {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  h1 { color: #1a73e8; margin-top: 0; }
+  h2 { color: #1a73e8; margin-top: 30px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+  .step { margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #1a73e8; }
+  .step strong { color: #1a73e8; }
+  code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+  }
+  .code-block {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 15px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .code-block .key { color: #9cdcfe; }
+  .code-block .string { color: #ce9178; }
+  .code-block .number { color: #b5cea8; }
+  .warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 15px 0;
+    color: #856404;
+  }
+  .success {
+    background: #d4edda;
+    border: 1px solid #28a745;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 15px 0;
+    color: #155724;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+  }
+  th {
+    background: #f0f0f0;
+    font-weight: bold;
+  }
+  .files {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+  }
+  .files li { margin: 8px 0; }
+  .copy-btn {
+    background: #1a73e8;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  .copy-btn:hover { background: #1557b0; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🔥 Firebase 設定テンプレート</h1>
+  
+  <div class="success">
+    <strong>✓ このテンプレートを使用して、DepenDrap Online を Firebase で動作させます。</strong>
+  </div>
+
+  <h2>1️⃣ Firebase Console から設定を取得</h2>
+  
+  <div class="step">
+    <strong>手順：</strong>
+    <ol>
+      <li><a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> にアクセス</li>
+      <li>プロジェクトを選択</li>
+      <li>左上の歯車アイコン（⚙️）→ 「プロジェクト設定」</li>
+      <li>「アプリ」セクションで、ウェブアプリ（`</>`）の設定をコピー</li>
+    </ol>
+  </div>
+
+  <h2>2️⃣ 設定値をコピー</h2>
+  
+  <p>Firebase Console から以下の値をコピーしてください：</p>
+  
+  <table>
+    <tr>
+      <th>設定項目</th>
+      <th>Firebase Console での名前</th>
+      <th>例</th>
+    </tr>
+    <tr>
+      <td><code>apiKey</code></td>
+      <td><code>apiKey</code></td>
+      <td><code>AIzaSyD1234567890...</code></td>
+    </tr>
+    <tr>
+      <td><code>authDomain</code></td>
+      <td><code>authDomain</code></td>
+      <td><code>dependrap-online.firebaseapp.com</code></td>
+    </tr>
+    <tr>
+      <td><code>databaseURL</code></td>
+      <td><code>databaseURL</code></td>
+      <td><code>https://dependrap-online-default-rtdb.asia-northeast1.firebasedatabase.app</code></td>
+    </tr>
+    <tr>
+      <td><code>projectId</code></td>
+      <td><code>projectId</code></td>
+      <td><code>dependrap-online</code></td>
+    </tr>
+    <tr>
+      <td><code>storageBucket</code></td>
+      <td><code>storageBucket</code></td>
+      <td><code>dependrap-online.appspot.com</code></td>
+    </tr>
+    <tr>
+      <td><code>messagingSenderId</code></td>
+      <td><code>messagingSenderId</code></td>
+      <td><code>123456789012</code></td>
+    </tr>
+    <tr>
+      <td><code>appId</code></td>
+      <td><code>appId</code></td>
+      <td><code>1:123456789012:web:abcdef1234567890</code></td>
+    </tr>
+  </table>
+
+  <h2>3️⃣ HTML ファイルに追加</h2>
+  
+  <p>以下の 3 つのファイルの <code>&lt;head&gt;</code> セクション内に、このコードを追加してください：</p>
+  
+  <div class="files">
+    <ul>
+      <li><code>index.html</code></li>
+      <li><code>matchSetup.html</code></li>
+      <li><code>game.html</code></li>
+    </ul>
+  </div>
+
+  <div class="code-block">
+&lt;script&gt;
+  window.FIREBASE_CONFIG = {
+    <span class="key">apiKey</span>: <span class="string">"YOUR_API_KEY"</span>,
+    <span class="key">authDomain</span>: <span class="string">"YOUR_PROJECT_ID.firebaseapp.com"</span>,
+    <span class="key">databaseURL</span>: <span class="string">"https://YOUR_PROJECT_ID-default-rtdb.asia-northeast1.firebasedatabase.app"</span>,
+    <span class="key">projectId</span>: <span class="string">"YOUR_PROJECT_ID"</span>,
+    <span class="key">storageBucket</span>: <span class="string">"YOUR_PROJECT_ID.appspot.com"</span>,
+    <span class="key">messagingSenderId</span>: <span class="string">"YOUR_MESSAGING_SENDER_ID"</span>,
+    <span class="key">appId</span>: <span class="string">"YOUR_APP_ID"</span>
+  };
+&lt;/script&gt;
+  </div>
+
+  <h2>4️⃣ 実際の例</h2>
+  
+  <p>Firebase Console から以下の設定を取得した場合：</p>
+  
+  <div class="code-block">
+const firebaseConfig = {
+  <span class="key">apiKey</span>: <span class="string">"AIzaSyD1234567890abcdefghijklmnopqrst"</span>,
+  <span class="key">authDomain</span>: <span class="string">"dependrap-online.firebaseapp.com"</span>,
+  <span class="key">databaseURL</span>: <span class="string">"https://dependrap-online-default-rtdb.asia-northeast1.firebasedatabase.app"</span>,
+  <span class="key">projectId</span>: <span class="string">"dependrap-online"</span>,
+  <span class="key">storageBucket</span>: <span class="string">"dependrap-online.appspot.com"</span>,
+  <span class="key">messagingSenderId</span>: <span class="string">"123456789012"</span>,
+  <span class="key">appId</span>: <span class="string">"1:123456789012:web:abcdef1234567890"</span>
+};
+  </div>
+
+  <p>HTML ファイルに追加するコードは：</p>
+  
+  <div class="code-block">
+&lt;script&gt;
+  window.FIREBASE_CONFIG = {
+    <span class="key">apiKey</span>: <span class="string">"AIzaSyD1234567890abcdefghijklmnopqrst"</span>,
+    <span class="key">authDomain</span>: <span class="string">"dependrap-online.firebaseapp.com"</span>,
+    <span class="key">databaseURL</span>: <span class="string">"https://dependrap-online-default-rtdb.asia-northeast1.firebasedatabase.app"</span>,
+    <span class="key">projectId</span>: <span class="string">"dependrap-online"</span>,
+    <span class="key">storageBucket</span>: <span class="string">"dependrap-online.appspot.com"</span>,
+    <span class="key">messagingSenderId</span>: <span class="string">"123456789012"</span>,
+    <span class="key">appId</span>: <span class="string">"1:123456789012:web:abcdef1234567890"</span>
+  };
+&lt;/script&gt;
+  </div>
+
+  <h2>5️⃣ テスト</h2>
+  
+  <div class="step">
+    <strong>ローカルでテスト：</strong>
+    <div class="code-block">python3 -m http.server 8000</div>
+    <p>ブラウザで <code>http://localhost:8000</code> にアクセス</p>
+  </div>
+
+  <div class="step">
+    <strong>ブラウザコンソールで確認：</strong>
+    <ol>
+      <li>F12 キーを押してコンソールを開く</li>
+      <li>「Firebase 接続済み ✓」と表示されるか確認</li>
+      <li>エラーが表示されないか確認</li>
+    </ol>
+  </div>
+
+  <h2>⚠️ セキュリティに関する注意</h2>
+  
+  <div class="warning">
+    <strong>⚠️ 重要：</strong> Firebase 設定（特に <code>apiKey</code>）はクライアント側に含まれます。これは仕様です。本番環境では、Firebase のセキュリティルールで適切にアクセス制御してください。
+  </div>
+
+  <h2>📚 詳細ガイド</h2>
+  
+  <p>詳しい手順は <a href="FIREBASE_SETUP.md">FIREBASE_SETUP.md</a> を参照してください。</p>
+
+</div>
+
+</body>
+</html>

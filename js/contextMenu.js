@@ -705,8 +705,8 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
 
   let logType = `${typeLabels[targetOwner] || typeLabels[type]}${subLabels[subType] ? " (" + subLabels[subType] + ")" : ""}`;
   
-  // 同期ロックをかける（サーバーからの古いデータで上書きされるのを防ぐ）
-  // ※ Socket.io 版では即時送信される
+  // 同期ロックをかける（ローカルストレージから古いデータで上書きされるのを防ぐ）
+  // ※ Firebase 版では自動同期される
 
   // ダメージを1ずつ処理する（途中でリバウンドが発生する可能性があるため）
   for (let i = 0; i < amount; i++) {

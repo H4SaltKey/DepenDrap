@@ -7,6 +7,19 @@
 <title>DepenDrap - 対戦設定</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css?v=2">
+
+<!-- Firebase Configuration -->
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-northeast1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+</script>
 <style>
   body {
     margin:0; min-height:100vh;
@@ -179,9 +192,10 @@
   </div>
 </main>
 
-<!-- Socket.io Client -->
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="js/socket-sync.js?v=1"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+<script src="js/firebase-sync.js"></script>
 <script src="js/cardData.js?v=8"></script>
 <script src="js/deckCode.js?v=8"></script>
 <script src="js/matchSetup.js?v=8"></script>

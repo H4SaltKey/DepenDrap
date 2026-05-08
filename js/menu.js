@@ -175,7 +175,7 @@
   }
 
   async function deleteAccount(){
-    // Socket.io 版：ローカルストレージのユーザー名を削除
+    // Firebase 版：ローカルストレージのユーザー名を削除
     localStorage.removeItem("username");
     localStorage.removeItem("matchSetup");
     localStorage.removeItem("deckList");

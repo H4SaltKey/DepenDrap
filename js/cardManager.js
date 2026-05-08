@@ -612,12 +612,6 @@ function saveFieldCards(){
   lastLocalFieldSaveAt = Date.now();
   const data = window.getFieldData();
   localStorage.setItem("fieldCards", JSON.stringify(data));
-
-  // Socket.io 接続中は Socket.io 経由で送信
-  if (typeof SocketSync !== "undefined" && SocketSync.isInRoom()) {
-    SocketSync.sendFieldCards(data);
-    return;
-  }
 }
     body: JSON.stringify({ fieldCards: data })
   }).catch(()=>{});

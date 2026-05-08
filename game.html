@@ -6,6 +6,19 @@
 <title>DepenDrap</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css?v=2">
+
+<!-- Firebase Configuration -->
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.asia-northeast1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+</script>
 </head>
 <body>
 
@@ -33,9 +46,10 @@
   </div>
 </div>
 
-<!-- Socket.io Client -->
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="js/socket-sync.js?v=1"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+<script src="js/firebase-sync.js?v=1"></script>
 
 <script src="js/cardData.js?v=6"></script>
 <script src="js/deckCode.js?v=6"></script>
@@ -58,12 +72,12 @@
 <script>
   initCards();
 
-  // ゲーム画面で Socket.io に接続（matchSetup から引き継ぎ）
+  // ゲーム画面で Firebase に接続（matchSetup から引き継ぎ）
   window.myUsername = localStorage.getItem("username") || "Player";
-  SocketSync.init({
+  FirebaseSync.init({
     onJoinedRoom: (roomName, role) => {
-      console.log("[Game] Socket joined:", roomName, role);
-      document.dispatchEvent(new Event("socketJoined"));
+      console.log("[Game] Firebase joined:", roomName, role);
+      document.dispatchEvent(new Event("firebaseJoined"));
     },
     onOpponentJoined: (actor) => {
       console.log("[Game] Opponent joined:", actor.name);
@@ -71,27 +85,13 @@
     onOpponentLeft: (actor) => {
       console.log("[Game] Opponent left");
       addGameLog && addGameLog(`[SYSTEM] 対戦相手が切断しました。`);
-    },
-    onReceiveGameState: (data) => {
-      console.log("[Game] Received game state:", data.type);
-      // ゲーム状態を処理
-      if (typeof handleRemoteGameState === "function") {
-        handleRemoteGameState(data);
-      }
-    },
-    onReceiveAction: (data) => {
-      console.log("[Game] Received action:", data.type);
-      // アクションを処理
-      if (typeof handleRemoteAction === "function") {
-        handleRemoteAction(data);
-      }
     }
   });
 
   // matchSetup で決定したルームに再参加
   const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
   if (setup && setup.roomName) {
-    SocketSync.joinRoom(setup.roomName);
+    FirebaseSync.joinRoom(setup.roomName);
   }
 </script>
 

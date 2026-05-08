@@ -1,6 +1,6 @@
 /**
- * matchSetup.js v2.0 — Socket.io 版
- * Socket.io を使用したマッチング
+ * matchSetup.js v3.0 — Firebase 版
+ * Firebase Realtime Database を使用したマッチング
  */
 
 let currentUser   = "";
@@ -8,6 +8,8 @@ let appState      = "disconnected"; // disconnected, connecting, lobby, inRoom, 
 let myReady       = false;
 let opponentReady = false;
 let startingMatch = false;
+let currentRoomRef = null;
+let roomUnsubscribe = null;
 
 // ===== 初期化 =====
 
@@ -17,9 +19,9 @@ function initMatchSetup() {
 
   renderDeckGallery();
 
-  // Socket.io 初期化
-  SocketSync.init({
-    onStateChange:    onSocketStateChange,
+  // Firebase 初期化
+  FirebaseSync.init({
+    onStateChange:    onFirebaseStateChange,
     onJoinedRoom:     onJoinedRoom,
     onOpponentJoined: onOpponentJoined,
     onOpponentLeft:   onOpponentLeft,
@@ -29,13 +31,13 @@ function initMatchSetup() {
   });
 }
 
-// ===== Socket.io コールバック =====
+// ===== Firebase コールバック =====
 
-function onSocketStateChange(stateName) {
+function onFirebaseStateChange(stateName) {
   const el = document.getElementById("photonStatus");
   const map = {
-    "connected":      ["サーバー接続済み ✓", true, "lobby"],
-    "disconnected":   ["サーバー切断", false, "disconnected"],
+    "connected":      ["Firebase 接続済み ✓", true, "lobby"],
+    "disconnected":   ["Firebase 切断", false, "disconnected"],
     "error":          ["接続エラー", false, "disconnected"],
   };
   const [label, ok, mappedState] = map[stateName] || [stateName, false, "disconnected"];
@@ -89,9 +91,9 @@ function onRoomListUpdate(rooms) {
     const item = document.createElement("div");
     item.className = "roomItem";
     item.innerHTML = `
-      <span class="room-name">${room.room_name}</span>
-      <span class="room-players">${room.player_count}/${room.max_players} 人</span>
-      <button class="room-join-btn" onclick="document.getElementById('roomCodeInput').value='${room.room_name}'">選択</button>
+      <span class="room-name">${room.name}</span>
+      <span class="room-players">${room.playerCount}/${room.maxPlayers} 人</span>
+      <button class="room-join-btn" onclick="document.getElementById('roomCodeInput').value='${room.name}'">選択</button>
     `;
     container.appendChild(item);
   });
@@ -170,7 +172,7 @@ function createRoom() {
   const name = code || undefined; // 空なら自動生成
   console.log("[MatchSetup] Creating room with name:", name || "auto-generated");
   setAppState("connecting"); // 連打防止
-  SocketSync.createRoom(name);
+  FirebaseSync.createRoom(name);
 }
 
 function joinRoom(roomName) {
@@ -182,11 +184,11 @@ function joinRoom(roomName) {
     return;
   }
   setAppState("connecting"); // 連打防止
-  SocketSync.joinRoom(code);
+  FirebaseSync.joinRoom(code);
 }
 
 function leaveRoom() {
-  SocketSync.leaveRoom();
+  FirebaseSync.leaveRoom();
   myReady       = false;
   opponentReady = false;
   updateReadyUI();
@@ -216,7 +218,7 @@ function markReady() {
   }
 
   updateReadyUI();
-  SocketSync.markReady(myReady);
+  FirebaseSync.markReady(myReady);
   checkBothReady();
 }
 
@@ -373,8 +375,8 @@ document.getElementById("cancelBtn").addEventListener("click",     leaveRoom);
 
 // ページ離脱時
 window.addEventListener("beforeunload", () => {
-  if (SocketSync.isInRoom()) {
-    SocketSync.leaveRoom();
+  if (FirebaseSync.isInRoom()) {
+    FirebaseSync.leaveRoom();
   }
 });
 

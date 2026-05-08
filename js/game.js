@@ -143,21 +143,9 @@ async function resetField() {
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   // アトミック保存（gameState完全上書き + フィールドクリア）
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) {
-    // Photon 経由でリセットを通知
-    PhotonSync.sendReset(state);
-    PhotonSync.sendFieldCards([]);
-  } else {
-    // HTTP フォールバック
-    await fetch("/api/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        gameState: state,
-        replaceGameState: true,
-        fieldCards: []
-      })
-    }).catch(() => {});
+  // Firebase 経由で自動同期
+  localStorage.setItem("gameState", JSON.stringify(state));
+  localStorage.removeItem("fieldCards");
   }
 
   createDeckObject(true);

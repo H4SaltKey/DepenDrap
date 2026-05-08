@@ -272,9 +272,9 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // 初回 clock sync
-// Photon 接続中は Photon.ServerTime を使うので NTP は不要
-// Photon 未接続時のみ NTP を実行
-if (typeof PhotonSync === "undefined" || !PhotonSync.isConnected()) {
+// Firebase 接続中は自動同期されるので NTP は不要
+// ローカルストレージのみで同期
+if (typeof ClockSync !== "undefined") {
   ClockSync.sync(3).then(() => {
     console.log("[TimerSync] Initial clock sync complete");
     startTimerLoop();
@@ -287,13 +287,7 @@ if (typeof PhotonSync === "undefined" || !PhotonSync.isConnected()) {
   startTimerLoop();
 }
 
-// Photon 接続後に ClockSync を上書き
-document.addEventListener("photonJoined", () => {
-  if (typeof PhotonSync !== "undefined") {
-    PhotonSync.overrideClockSync();
-    console.log("[TimerSync] ClockSync overridden with Photon.ServerTime");
-  }
-});
-
 // 定期的な clock sync（5分ごと、drift 蓄積を防ぐ）
-setInterval(() => ClockSync.sync(3), 5 * 60 * 1000);
+if (typeof ClockSync !== "undefined") {
+  setInterval(() => ClockSync.sync(3), 5 * 60 * 1000);
+}

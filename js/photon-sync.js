@@ -160,14 +160,16 @@ function initPhoton(callbacks = {}) {
 
 function photonCreateRoom(roomName) {
   if (!_client) return;
+  if (!_client.isConnectedToMaster()) {
+    console.error("[Photon] Cannot create room: Not connected to master.");
+    return;
+  }
   console.log("[Photon] creating room...");
   
   const opts = {
     maxPlayers: 2,
     isVisible: true,
-    isOpen: true,
-    customGameProperties: { created: Date.now() },
-    propsListedInLobby: ["created"]
+    isOpen: true
   };
   
   _client.createRoom(roomName || _genRoomName(), opts);
@@ -175,6 +177,10 @@ function photonCreateRoom(roomName) {
 
 function photonJoinRoom(roomName) {
   if (!_client) return;
+  if (!_client.isConnectedToMaster()) {
+    console.error("[Photon] Cannot join room: Not connected to master.");
+    return;
+  }
   console.log("[Photon] joining room...");
   _client.joinRoom(roomName);
 }

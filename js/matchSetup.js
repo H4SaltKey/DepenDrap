@@ -34,7 +34,7 @@ function onPhotonStateChange(stateName) {
   const el = document.getElementById("photonStatus");
   const map = {
     "ConnectingToMasterserver": ["Photon 接続中...", false],
-    "Connected":                ["Photon 接続済み ✓", true],
+    "ConnectedToMaster":        ["Photon 接続済み ✓", true],
     "JoinedLobby":              ["ロビー待機中 ✓", true],
     "Joining":                  ["入室中...", false],
     "Joined":                   ["ルーム参加中 ✓", true],
@@ -45,9 +45,13 @@ function onPhotonStateChange(stateName) {
   el.className   = ok ? "ok" : "";
 
   // 接続完了したらボタンを有効化
-  if (stateName === "JoinedLobby" || stateName === "Connected") {
+  if (stateName === "JoinedLobby" || stateName === "ConnectedToMaster") {
     document.getElementById("createRoomBtn").disabled = false;
     document.getElementById("joinRoomBtn").disabled   = false;
+  } else {
+    // 接続中や未接続、入室中などはボタンを無効化
+    document.getElementById("createRoomBtn").disabled = true;
+    document.getElementById("joinRoomBtn").disabled   = true;
   }
 }
 

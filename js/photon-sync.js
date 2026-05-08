@@ -171,8 +171,9 @@ function photonCreateRoom(roomName) {
     isVisible: true,
     isOpen: true
   };
-  // roomNameが空の場合は "" を渡し、マスターサーバーにGUIDを発行させる
-  _client.createRoom(roomName ? roomName : "", opts);
+  // 部屋名が空の場合はクライアント側で確実に生成して渡す（SDKのGUID同期バグ回避のため）
+  const finalRoomName = roomName || _genRoomName();
+  _client.createRoom(finalRoomName, opts);
 }
 
 function photonJoinRoom(roomName) {

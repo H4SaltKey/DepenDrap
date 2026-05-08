@@ -24,10 +24,10 @@ const EV = {
   FULL_STATE:      10, // 全状態送信（入室直後・再接続）
 };
 
-// ===== Photon 設定 =====
-// ★ Photon Dashboard で取得した App ID を入れる
-// https://dashboard.photonengine.com/
-const PHOTON_APP_ID      = "4b429129-6606-4291-8e42-efe1c765d445";
+// ==========================================
+// 1. Photon 初期設定
+// ==========================================
+const PHOTON_APP_ID      = "50e5751a-bf8b-41db-8059-dd637bbe0076";
 const PHOTON_APP_VERSION = "1.0";
 const PHOTON_REGION      = "jp"; // jp / eu / us / asia
 

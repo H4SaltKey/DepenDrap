@@ -36,7 +36,19 @@ function initFirebase(callbacks = {}) {
   
   if (!firebaseConfig) {
     console.error("[Firebase] Firebase config が設定されていません。");
-    console.error("[Firebase] window.FIREBASE_CONFIG を設定してください。");
+    console.error("[Firebase] window.FIREBASE_CONFIG を <head> セクションに設定してください。");
+    console.error("[Firebase] 例:");
+    console.error("[Firebase] <script>");
+    console.error("[Firebase]   window.FIREBASE_CONFIG = {");
+    console.error("[Firebase]     apiKey: 'YOUR_API_KEY',");
+    console.error("[Firebase]     authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',");
+    console.error("[Firebase]     databaseURL: 'https://YOUR_PROJECT_ID-default-rtdb.asia-northeast1.firebasedatabase.app',");
+    console.error("[Firebase]     projectId: 'YOUR_PROJECT_ID',");
+    console.error("[Firebase]     storageBucket: 'YOUR_PROJECT_ID.appspot.com',");
+    console.error("[Firebase]     messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',");
+    console.error("[Firebase]     appId: 'YOUR_APP_ID'");
+    console.error("[Firebase]   };");
+    console.error("[Firebase] </script>");
     if (_callbacks.onStateChange) _callbacks.onStateChange("error");
     return;
   }
@@ -47,7 +59,8 @@ function initFirebase(callbacks = {}) {
     _isConnected = true;
     _mySessionId = Math.random().toString(36).substr(2, 9);
     
-    console.log("[Firebase] Initialized with config:", firebaseConfig.projectId);
+    console.log("[Firebase] ✅ Initialized successfully");
+    console.log("[Firebase] Project ID:", firebaseConfig.projectId);
     if (_callbacks.onStateChange) _callbacks.onStateChange("connected");
     
     // オンライン状態を設定
@@ -56,7 +69,8 @@ function initFirebase(callbacks = {}) {
     // ルーム一覧を監視
     watchRoomList();
   } catch (e) {
-    console.error("[Firebase] Initialization error:", e);
+    console.error("[Firebase] ❌ Initialization error:", e);
+    console.error("[Firebase] Error details:", e.message);
     if (_callbacks.onStateChange) _callbacks.onStateChange("error");
   }
 }

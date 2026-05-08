@@ -31,8 +31,16 @@ function initSocket(callbacks = {}) {
     return;
   }
 
+  // サーバーURL を決定
+  let serverUrl = window.location.origin;
+  
+  // GitHub Pages の場合はローカルサーバーに接続
+  if (window.location.hostname.includes("github.io")) {
+    serverUrl = "http://localhost:5000";
+    console.warn("[Socket] GitHub Pages detected. Connecting to local server:", serverUrl);
+  }
+
   // Socket.io に接続
-  const serverUrl = window.location.origin;
   _socket = io(serverUrl, {
     reconnection: true,
     reconnectionDelay: 1000,

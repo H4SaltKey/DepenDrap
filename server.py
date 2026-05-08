@@ -328,4 +328,5 @@ def on_leave_room():
 if __name__ == '__main__':
     os.makedirs('logs', exist_ok=True)
     logger.info("Starting DepenDrap Online Server...")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)

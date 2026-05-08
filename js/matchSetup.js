@@ -5,7 +5,7 @@
  */
 
 let currentUser   = "";
-let inRoom        = false;
+let appState      = "disconnected"; // disconnected, connecting, lobby, inRoom, ready
 let myReady       = false;
 let opponentReady = false;
 let startingMatch = false;
@@ -30,47 +30,88 @@ function initMatchSetup() {
 
 // ===== Photon コールバック =====
 
+// ===== アプリケーション状態管理 =====
+
+function setAppState(newState) {
+  if (startingMatch) return; // 試合開始直前は状態をロック
+  console.log(`[App] State changed: ${appState} -> ${newState}`);
+  appState = newState;
+
+  const createBtn = document.getElementById("createRoomBtn");
+  const joinBtn   = document.getElementById("joinRoomBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const startBtn  = document.getElementById("startBtn");
+
+  switch (appState) {
+    case "disconnected":
+    case "connecting":
+      createBtn.disabled = true;
+      joinBtn.disabled   = true;
+      cancelBtn.style.display = "none";
+      startBtn.disabled  = true;
+      break;
+
+    case "lobby":
+      createBtn.disabled = false;
+      joinBtn.disabled   = false;
+      cancelBtn.style.display = "none";
+      startBtn.disabled  = true;
+      break;
+
+    case "inRoom":
+      createBtn.disabled = true;
+      joinBtn.disabled   = true;
+      cancelBtn.style.display = "block";
+      startBtn.disabled  = false;
+      startBtn.textContent = "READY";
+      break;
+
+    case "ready":
+      createBtn.disabled = true;
+      joinBtn.disabled   = true;
+      cancelBtn.style.display = "block";
+      startBtn.disabled  = false;
+      startBtn.textContent = "CANCEL READY";
+      break;
+  }
+}
+
+// ===== Photon コールバック =====
+
 function onPhotonStateChange(stateName) {
   const el = document.getElementById("photonStatus");
   const map = {
-    "ConnectingToMasterserver":      ["Photon 接続中...", false],
-    "ConnectedToMaster":             ["Photon 接続済み ✓", true],
-    "JoinedLobby":                   ["ロビー待機中 ✓", true],
-    "DisconnectingFromMasterserver": ["ゲームサーバーへ移行中...", false],
-    "ConnectingToGameserver":        ["ゲームサーバーへ接続中...", false],
-    "ConnectedToGameserver":         ["ゲームサーバー接続完了 ✓", true],
-    "Joining":                       ["入室中...", false],
-    "Joined":                        ["ルーム参加中 ✓", true],
-    "Disconnected":                  ["切断されました", false],
+    "ConnectingToMasterserver":      ["Photon 接続中...", false, "connecting"],
+    "ConnectedToMaster":             ["Photon 接続済み ✓", true, "connecting"],
+    "JoinedLobby":                   ["ロビー待機中 ✓", true, "lobby"],
+    "DisconnectingFromMasterserver": ["ゲームサーバーへ移行中...", false, "connecting"],
+    "ConnectingToGameserver":        ["ゲームサーバーへ接続中...", false, "connecting"],
+    "ConnectedToGameserver":         ["ゲームサーバー接続完了 ✓", true, "connecting"],
+    "Joining":                       ["入室中...", false, "connecting"],
+    "Joined":                        ["ルーム参加中 ✓", true, "inRoom"],
+    "Disconnected":                  ["切断されました", false, "disconnected"],
   };
-  const [label, ok] = map[stateName] || [stateName, false];
+  const [label, ok, mappedState] = map[stateName] || [stateName, false, "disconnected"];
   el.textContent = label;
   el.className   = ok ? "ok" : "";
 
-  // 接続完了したらボタンを有効化
-  if (stateName === "JoinedLobby" || stateName === "ConnectedToMaster") {
-    document.getElementById("createRoomBtn").disabled = false;
-    document.getElementById("joinRoomBtn").disabled   = false;
-  } else {
-    // 接続中や未接続、入室中などはボタンを無効化
-    document.getElementById("createRoomBtn").disabled = true;
-    document.getElementById("joinRoomBtn").disabled   = true;
+  if (mappedState && appState !== "ready") {
+    // ユーザーがReady状態の時はPhotonのJoinedなどの裏ステート更新でinRoomに戻らないよう保護
+    if (appState !== mappedState) {
+      setAppState(mappedState);
+    }
   }
 }
 
 function onJoinedRoom(roomName, role) {
-  inRoom = true;
   window._currentRoomName = roomName;
   showMsg(`ルーム「${roomName}」に参加しました。あなたは ${role === "player1" ? "先攻" : "後攻"} です。`);
-  document.getElementById("cancelBtn").style.display = "block";
-  document.getElementById("startBtn").disabled = false;
-  document.getElementById("createRoomBtn").disabled = true;
-  document.getElementById("joinRoomBtn").disabled   = true;
-
+  
   // 自分の Ready 状態をリセット
   myReady       = false;
   opponentReady = false;
   updateReadyUI();
+  setAppState("inRoom");
 }
 
 function onOpponentJoined(actor) {
@@ -115,12 +156,14 @@ function onRoomListUpdate(rooms) {
 // ===== ルーム操作 =====
 
 function createRoom() {
+  if (appState !== "lobby") return;
   const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
   const name = code || undefined; // 空なら自動生成
   PhotonSync.createRoom(name);
 }
 
 function joinRoom(roomName) {
+  if (appState !== "lobby") return;
   const code = roomName || document.getElementById("roomCodeInput").value.trim().toUpperCase();
   if (!code) { showMsg("ルームコードを入力してください。"); return; }
   PhotonSync.joinRoom(code);
@@ -128,21 +171,21 @@ function joinRoom(roomName) {
 
 function leaveRoom() {
   PhotonSync.leaveRoom();
-  inRoom        = false;
   myReady       = false;
   opponentReady = false;
-  document.getElementById("cancelBtn").style.display = "none";
-  document.getElementById("startBtn").disabled = true;
-  document.getElementById("createRoomBtn").disabled = false;
-  document.getElementById("joinRoomBtn").disabled   = false;
   updateReadyUI();
   showMsg("");
+  // 退出後はロビーに戻ることを想定（PhotonがJoinedLobbyイベントを発火する）
+  // 状態の強制上書きはせず onPhotonStateChange に任せるのが安全
 }
 
 // ===== Ready 処理 =====
 
 function markReady() {
-  if (!inRoom) { showMsg("先にルームに参加してください。"); return; }
+  if (appState !== "inRoom" && appState !== "ready") { 
+    showMsg("先にルームに参加してください。"); 
+    return; 
+  }
 
   const deck = selectedDeck();
   if (!deck) { showMsg("使用するデッキを選択してください。"); return; }
@@ -150,10 +193,10 @@ function markReady() {
   myReady = !myReady; // トグル
 
   if (myReady) {
-    document.getElementById("startBtn").textContent = "CANCEL READY";
+    setAppState("ready");
     showMsg("準備完了！相手を待っています...");
   } else {
-    document.getElementById("startBtn").textContent = "READY";
+    setAppState("inRoom");
     showMsg("");
   }
 

@@ -95,9 +95,23 @@
     background:rgba(199,179,119,0.15); border:1px solid rgba(199,179,119,0.5); color:#e0d0a0;
   }
   .lorBtn:hover { background:rgba(199,179,119,0.3); }
-  #startBtn { background:linear-gradient(to bottom, #c7b377, #a88e4a); color:#1a172c; border:none; }
-  #startBtn:disabled { opacity:0.5; cursor:wait; }
-  #cancelBtn { background:#4a1a1a; border:1px solid #ff6b6b; color:#ff6b6b; }
+  #startBtn { 
+    background:linear-gradient(to bottom, #c7b377, #a88e4a); 
+    color:#1a172c; 
+    border:none; 
+    width: 80%;
+    min-height: 60px;
+    font-size: 22px;
+    letter-spacing: 2px;
+    box-shadow: 0 5px 15px rgba(199,179,119,0.4);
+    margin: 10px auto;
+  }
+  #startBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(199,179,119,0.6);
+  }
+  #startBtn:disabled { opacity:0.5; cursor:not-allowed; box-shadow: none; }
+  #cancelBtn { background:#4a1a1a; border:1px solid #ff6b6b; color:#ff6b6b; min-height: 50px; }
   /* 接続状態 */
   #photonStatus {
     text-align:center; font-size:12px; color:#888; letter-spacing:1px;
@@ -159,8 +173,8 @@
 
   <div id="setupMsg" style="text-align:center; font-weight:bold; min-height:24px;"></div>
 
-  <div class="setupActions">
-    <button class="lorBtn" id="cancelBtn" type="button" style="display:none;">LEAVE ROOM</button>
+  <div class="setupActions" style="flex-wrap: wrap;">
+    <button class="lorBtn" id="cancelBtn" type="button" style="display:none; width:80%; margin: 0 auto;">LEAVE ROOM</button>
     <button class="lorBtn" id="startBtn"  type="button" disabled>READY</button>
   </div>
 </main>

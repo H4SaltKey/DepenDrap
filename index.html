@@ -106,13 +106,39 @@
 <!-- Firebase SDK (Compat version for global firebase object) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/firebase-sync.js?v=3"></script>
+<script src="js/firebase-sync.js?v=4"></script>
 
 <script>
   // 未ログインなら login へ
   const username = localStorage.getItem("username");
-  if (!username) { window.location.href = "login.html"; }
-  else { document.getElementById("usernameDisplay").textContent = "▶ " + username; }
+  if (!username) { 
+    window.location.href = "login.html"; 
+  } else { 
+    document.getElementById("usernameDisplay").textContent = "▶ " + username;
+    
+    // Firebase 初期化
+    if (typeof FirebaseSync !== "undefined") {
+      console.log("[Index] Firebase 初期化中...");
+      FirebaseSync.init({
+        onStateChange: (state) => {
+          console.log("[Index] Firebase 状態:", state);
+          const badge = document.getElementById("firebaseStatusBadge");
+          if (badge) {
+            if (state === "connected") {
+              badge.textContent = "● オンライン";
+              badge.classList.add("connected");
+            } else if (state === "disconnected") {
+              badge.textContent = "● 接続中...";
+              badge.classList.remove("connected");
+            } else {
+              badge.textContent = "● オフライン";
+              badge.classList.remove("connected");
+            }
+          }
+        }
+      });
+    }
+  }
 
   function showToast(text) {
     const toast = document.getElementById("toast");

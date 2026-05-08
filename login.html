@@ -186,37 +186,25 @@
   // Firebase 初期化
   if (firebaseConfig) {
     try {
-      // Check if firebase object exists
       if (typeof firebase === 'undefined') {
-        console.error("[Login] Firebase SDK not loaded. Waiting for SDK...");
-        // Wait for Firebase to load
-        setTimeout(() => {
-          if (typeof firebase !== 'undefined') {
-            const app = firebase.initializeApp(firebaseConfig);
-            db = firebase.database(app);
-            firebaseInitialized = true;
-            console.log("[Login] Firebase initialized successfully (delayed)");
-            console.log("[Login] Project ID:", firebaseConfig.projectId);
-          } else {
-            console.error("[Login] Firebase SDK failed to load after waiting");
-            firebaseInitialized = false;
-          }
-        }, 1000);
+        console.error("[Login] ❌ Firebase SDK が読み込まれていません");
+        console.error("[Login] firebase-app-compat.js と firebase-database-compat.js を確認してください");
+        firebaseInitialized = false;
       } else {
         const app = firebase.initializeApp(firebaseConfig);
         db = firebase.database(app);
         firebaseInitialized = true;
-        console.log("[Login] Firebase initialized successfully");
+        console.log("[Login] ✅ Firebase 初期化成功");
         console.log("[Login] Project ID:", firebaseConfig.projectId);
+        console.log("[Login] Database URL:", firebaseConfig.databaseURL);
       }
     } catch (e) {
-      console.error("[Login] Firebase initialization error:", e);
-      console.error("[Login] Error message:", e.message);
+      console.error("[Login] ❌ Firebase 初期化エラー:", e.message);
       firebaseInitialized = false;
     }
   } else {
-    console.error("[Login] FIREBASE_CONFIG is not set in window");
-    console.error("[Login] Please add window.FIREBASE_CONFIG to <head> section");
+    console.error("[Login] ❌ FIREBASE_CONFIG が設定されていません");
+    console.error("[Login] <head> セクションに window.FIREBASE_CONFIG を設定してください");
   }
 
   const nicknameIn = document.getElementById("nickname");

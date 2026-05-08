@@ -147,13 +147,23 @@ function initPhoton(callbacks = {}) {
   };
 
   _client.onError = (errorCode, errorMsg) => {
-    console.error("[Photon] operation error:", errorCode, errorMsg);
-    // 状態（state）とエラーは同一扱いしないため、ここで onStateChange を呼ばない
+    console.error("[Photon] Error:", errorCode, errorMsg);
+    console.error("[Photon] Current state:", _client ? _client.state : "no client");
+    console.error("[Photon] Is connected to master:", _client ? _client.isConnectedToMaster() : false);
+    console.error("[Photon] Is joined to room:", _client ? _client.isJoinedToRoom() : false);
   };
 
   _client.onOperationResponse = (errorCode, errorMsg, code, content) => {
     if (errorCode !== 0) {
-      console.error("[Photon] operation error:", errorCode, errorMsg, "Code:", code);
+      console.error("[Photon] Operation error:", {
+        errorCode,
+        errorMsg,
+        operationCode: code,
+        content,
+        isConnectedToMaster: _client.isConnectedToMaster(),
+        isJoinedToRoom: _client.isJoinedToRoom(),
+        state: _client.state
+      });
     }
   };
 

@@ -186,14 +186,20 @@ function photonCreateRoom(roomName) {
     console.error("[Photon] Client not initialized");
     return;
   }
+  
+  // マスターサーバーへの接続を確認
   if (!_client.isConnectedToMaster()) {
     console.error("[Photon] Cannot create room: Not connected to master.");
+    console.error("[Photon] Current state:", _client.state);
+    // 接続待機中なら、接続完了後に再試行
+    setTimeout(() => photonCreateRoom(roomName), 1000);
     return;
   }
   
   // ルーム名を確実に生成
   const finalRoomName = (roomName && roomName.trim() !== "") ? roomName : _genRoomName();
   console.log("[Photon] Creating room with name:", finalRoomName);
+  console.log("[Photon] AppID:", PHOTON_APP_ID.substring(0, 8) + "...");
   
   const opts = {
     maxPlayers: 2,
@@ -206,8 +212,9 @@ function photonCreateRoom(roomName) {
   
   try {
     _client.createRoom(finalRoomName, opts);
+    console.log("[Photon] createRoom() called successfully");
   } catch (e) {
-    console.error("[Photon] Error creating room:", e);
+    console.error("[Photon] Error calling createRoom():", e);
   }
 }
 
@@ -218,14 +225,24 @@ function photonJoinRoom(roomName) {
   }
   if (!_client.isConnectedToMaster()) {
     console.error("[Photon] Cannot join room: Not connected to master.");
+    console.error("[Photon] Current state:", _client.state);
+    // 接続待機中なら、接続完了後に再試行
+    setTimeout(() => photonJoinRoom(roomName), 1000);
     return;
   }
   if (!roomName || roomName.trim() === "") {
     console.error("[Photon] Room name is empty");
     return;
   }
-  console.log("[Photon] joining room:", roomName);
-  _client.joinRoom(roomName);
+  console.log("[Photon] Joining room:", roomName);
+  console.log("[Photon] AppID:", PHOTON_APP_ID.substring(0, 8) + "...");
+  
+  try {
+    _client.joinRoom(roomName);
+    console.log("[Photon] joinRoom() called successfully");
+  } catch (e) {
+    console.error("[Photon] Error calling joinRoom():", e);
+  }
 }
 
 function photonLeaveRoom() {

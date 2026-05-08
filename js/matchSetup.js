@@ -33,12 +33,15 @@ function initMatchSetup() {
 function onPhotonStateChange(stateName) {
   const el = document.getElementById("photonStatus");
   const map = {
-    "ConnectingToMasterserver": ["Photon 接続中...", false],
-    "ConnectedToMaster":        ["Photon 接続済み ✓", true],
-    "JoinedLobby":              ["ロビー待機中 ✓", true],
-    "Joining":                  ["入室中...", false],
-    "Joined":                   ["ルーム参加中 ✓", true],
-    "Disconnected":             ["切断されました", false],
+    "ConnectingToMasterserver":      ["Photon 接続中...", false],
+    "ConnectedToMaster":             ["Photon 接続済み ✓", true],
+    "JoinedLobby":                   ["ロビー待機中 ✓", true],
+    "DisconnectingFromMasterserver": ["ゲームサーバーへ移行中...", false],
+    "ConnectingToGameserver":        ["ゲームサーバーへ接続中...", false],
+    "ConnectedToGameserver":         ["ゲームサーバー接続完了 ✓", true],
+    "Joining":                       ["入室中...", false],
+    "Joined":                        ["ルーム参加中 ✓", true],
+    "Disconnected":                  ["切断されました", false],
   };
   const [label, ok] = map[stateName] || [stateName, false];
   el.textContent = label;

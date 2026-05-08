@@ -135,7 +135,7 @@ function initPhoton(callbacks = {}) {
 
   _client.onError = (errorCode, errorMsg) => {
     console.error("[Photon] operation error:", errorCode, errorMsg);
-    if (_callbacks.onStateChange) _callbacks.onStateChange("Error: " + errorMsg);
+    // 状態（state）とエラーは同一扱いしないため、ここで onStateChange を呼ばない
   };
 
   _client.onOperationResponse = (errorCode, errorMsg, code, content) => {

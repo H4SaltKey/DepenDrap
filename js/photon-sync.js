@@ -29,7 +29,7 @@ const EV = {
 // ==========================================
 // NOTE: AppID は Photon Dashboard から取得してください
 // https://dashboard.photonengine.com/
-const PHOTON_APP_ID      = "50e5751a-bf8b-41db-8059-dd637bbe0076";
+const PHOTON_APP_ID      = "88c3c446-34d6-4bec-a51b-b4603e449ecd";
 const PHOTON_APP_VERSION = "1.0";
 const PHOTON_REGION      = "jp"; // jp / eu / us / asia
 

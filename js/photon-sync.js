@@ -77,6 +77,8 @@ function initPhoton(callbacks = {}) {
   _client.onStateChange = (stateCode) => {
     const name = Photon.Realtime.LoadBalancingClient.StateToName(stateCode);
     console.log("[Photon] State:", name);
+    if (name === "ConnectingToMasterserver") console.log("[Photon] connecting...");
+    if (name === "ConnectedToMaster") console.log("[Photon] connected");
     if (_callbacks.onStateChange) _callbacks.onStateChange(name);
   };
 
@@ -100,6 +102,10 @@ function initPhoton(callbacks = {}) {
     window.myRole     = _isHost ? "player1" : "player2";
     window.myUsername = _client.myActor().name || localStorage.getItem("username") || "Player";
 
+    if (_isHost) {
+      console.log("[Photon] room created");
+    }
+    console.log("[Photon] joined room");
     console.log(`[Photon] Joined: ${room.name}, role: ${window.myRole}, host: ${_isHost}`);
 
     if (typeof applyRotationVars === "function") applyRotationVars();
@@ -128,13 +134,13 @@ function initPhoton(callbacks = {}) {
   };
 
   _client.onError = (errorCode, errorMsg) => {
-    console.error("[Photon] Error:", errorCode, errorMsg);
+    console.error("[Photon] operation error:", errorCode, errorMsg);
     if (_callbacks.onStateChange) _callbacks.onStateChange("Error: " + errorMsg);
   };
 
   _client.onOperationResponse = (errorCode, errorMsg, code, content) => {
     if (errorCode !== 0) {
-      console.error("[Photon] Op Error:", errorCode, errorMsg, "Code:", code);
+      console.error("[Photon] operation error:", errorCode, errorMsg, "Code:", code);
     }
   };
 
@@ -145,6 +151,7 @@ function initPhoton(callbacks = {}) {
   }
 
   // Photon Cloud に接続
+  console.log("[Photon] connecting...");
   console.log("[Photon] Connecting to region:", PHOTON_REGION);
   _client.connectToRegionMaster(PHOTON_REGION);
 }
@@ -153,17 +160,22 @@ function initPhoton(callbacks = {}) {
 
 function photonCreateRoom(roomName) {
   if (!_client) return;
-  const opts = new Photon.Realtime.RoomOptions();
-  opts.maxPlayers  = 2;
-  opts.isVisible   = true;
-  opts.isOpen      = true;
-  opts.customRoomProperties          = { created: Date.now() };
-  opts.customRoomPropertiesForLobby  = ["created"];
+  console.log("[Photon] creating room...");
+  
+  const opts = {
+    maxPlayers: 2,
+    isVisible: true,
+    isOpen: true,
+    customGameProperties: { created: Date.now() },
+    propsListedInLobby: ["created"]
+  };
+  
   _client.createRoom(roomName || _genRoomName(), opts);
 }
 
 function photonJoinRoom(roomName) {
   if (!_client) return;
+  console.log("[Photon] joining room...");
   _client.joinRoom(roomName);
 }
 
@@ -517,8 +529,7 @@ function overrideClockSyncWithPhoton() {
 
 function _raise(code, content) {
   if (!_client || !_client.isJoinedToRoom()) return;
-  const opts = new Photon.Realtime.RaiseEventOptions();
-  opts.receivers = Photon.Realtime.ReceiverGroup.Others;
+  const opts = { receivers: 0 }; // 0 = Others
   _client.raiseEvent(code, content, opts);
 }
 

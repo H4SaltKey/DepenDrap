@@ -1,7 +1,6 @@
 /**
- * matchSetup.js  v2.0 — Photon Realtime 版
- * serve_secure.py への依存を完全廃止。
- * Photon Room でマッチングし、両者 READY で game.html へ遷移。
+ * matchSetup.js v2.0 — Socket.io 版
+ * Socket.io を使用したマッチング
  */
 
 let currentUser   = "";
@@ -18,17 +17,97 @@ function initMatchSetup() {
 
   renderDeckGallery();
 
-  // Photon 初期化
-  PhotonSync.init({
-    onStateChange:    onPhotonStateChange,
+  // Socket.io 初期化
+  SocketSync.init({
+    onStateChange:    onSocketStateChange,
     onJoinedRoom:     onJoinedRoom,
     onOpponentJoined: onOpponentJoined,
     onOpponentLeft:   onOpponentLeft,
     onRoomList:       onRoomListUpdate,
+    onPlayerReady:    onPlayerReadyStatus,
+    onBothReady:      onBothReady,
   });
 }
 
-// ===== Photon コールバック =====
+// ===== Socket.io コールバック =====
+
+function onSocketStateChange(stateName) {
+  const el = document.getElementById("photonStatus");
+  const map = {
+    "connected":      ["サーバー接続済み ✓", true, "lobby"],
+    "disconnected":   ["サーバー切断", false, "disconnected"],
+    "error":          ["接続エラー", false, "disconnected"],
+  };
+  const [label, ok, mappedState] = map[stateName] || [stateName, false, "disconnected"];
+  el.textContent = label;
+  el.className   = ok ? "ok" : "";
+
+  if (mappedState && appState !== "ready") {
+    if (appState !== mappedState) {
+      setAppState(mappedState);
+    }
+  }
+}
+
+function onJoinedRoom(roomName, role) {
+  window._currentRoomName = roomName;
+  showMsg(`ルーム「${roomName}」に参加しました。あなたは ${role === "player1" ? "先攻" : "後攻"} です。`);
+  
+  // 自分の Ready 状態をリセット
+  myReady       = false;
+  opponentReady = false;
+  updateReadyUI();
+  setAppState("inRoom");
+}
+
+function onOpponentJoined(actor) {
+  showMsg(`対戦相手「${actor.name}」が入室しました。`);
+  updateOpponentUI(actor.name, false);
+}
+
+function onOpponentLeft(actor) {
+  opponentReady = false;
+  updateOpponentUI("WAITING", false);
+  showMsg("対戦相手が退室しました。");
+  // 試合開始前なら Ready をリセット
+  if (!startingMatch) {
+    myReady = false;
+    updateReadyUI();
+    document.getElementById("startBtn").textContent = "READY";
+    document.getElementById("startBtn").disabled    = false;
+  }
+}
+
+function onRoomListUpdate(rooms) {
+  const container = document.getElementById("roomList");
+  if (!rooms || rooms.length === 0) {
+    container.innerHTML = '<div style="color:#666;font-size:13px;padding:10px;">公開ルームがありません。作成してください。</div>';
+    return;
+  }
+  container.innerHTML = "";
+  rooms.forEach(room => {
+    const item = document.createElement("div");
+    item.className = "roomItem";
+    item.innerHTML = `
+      <span class="room-name">${room.room_name}</span>
+      <span class="room-players">${room.player_count}/${room.max_players} 人</span>
+      <button class="room-join-btn" onclick="document.getElementById('roomCodeInput').value='${room.room_name}'">選択</button>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function onPlayerReadyStatus(data) {
+  if (data.role !== window.myRole) {
+    opponentReady = data.ready;
+    updateOpponentUI(opponentReady ? "OPPONENT: READY" : "OPPONENT: NOT READY", opponentReady);
+    checkBothReady();
+  }
+}
+
+function onBothReady(data) {
+  checkBothReady();
+}
 
 // ===== アプリケーション状態管理 =====
 
@@ -76,83 +155,6 @@ function setAppState(newState) {
   }
 }
 
-// ===== Photon コールバック =====
-
-function onPhotonStateChange(stateName) {
-  const el = document.getElementById("photonStatus");
-  const map = {
-    "ConnectingToMasterserver":      ["Photon 接続中...", false, "connecting"],
-    "ConnectedToMaster":             ["Photon 接続済み ✓", true, "connecting"],
-    "JoinedLobby":                   ["ロビー待機中 ✓", true, "lobby"],
-    "DisconnectingFromMasterserver": ["ゲームサーバーへ移行中...", false, "connecting"],
-    "ConnectingToGameserver":        ["ゲームサーバーへ接続中...", false, "connecting"],
-    "ConnectedToGameserver":         ["ゲームサーバー接続完了 ✓", true, "connecting"],
-    "Joining":                       ["入室中...", false, "connecting"],
-    "Joined":                        ["ルーム参加中 ✓", true, "inRoom"],
-    "Disconnected":                  ["切断されました", false, "disconnected"],
-  };
-  const [label, ok, mappedState] = map[stateName] || [stateName, false, "disconnected"];
-  el.textContent = label;
-  el.className   = ok ? "ok" : "";
-
-  if (mappedState && appState !== "ready") {
-    // ユーザーがReady状態の時はPhotonのJoinedなどの裏ステート更新でinRoomに戻らないよう保護
-    if (appState !== mappedState) {
-      setAppState(mappedState);
-    }
-  }
-}
-
-function onJoinedRoom(roomName, role) {
-  window._currentRoomName = roomName;
-  showMsg(`ルーム「${roomName}」に参加しました。あなたは ${role === "player1" ? "先攻" : "後攻"} です。`);
-  
-  // 自分の Ready 状態をリセット
-  myReady       = false;
-  opponentReady = false;
-  updateReadyUI();
-  setAppState("inRoom");
-}
-
-function onOpponentJoined(actor) {
-  showMsg(`対戦相手「${actor.name}」が入室しました。`);
-  updateOpponentUI(actor.name, false);
-}
-
-function onOpponentLeft(actor) {
-  opponentReady = false;
-  updateOpponentUI("WAITING", false);
-  showMsg("対戦相手が退室しました。");
-  // 試合開始前なら Ready をリセット
-  if (!startingMatch) {
-    myReady = false;
-    updateReadyUI();
-    document.getElementById("startBtn").textContent = "READY";
-    document.getElementById("startBtn").disabled    = false;
-  }
-}
-
-function onRoomListUpdate(rooms) {
-  const container = document.getElementById("roomList");
-  if (!rooms || rooms.length === 0) {
-    container.innerHTML = '<div style="color:#666;font-size:13px;padding:10px;">公開ルームがありません。作成してください。</div>';
-    return;
-  }
-  container.innerHTML = "";
-  rooms.forEach(room => {
-    const item = document.createElement("div");
-    item.className = "roomItem";
-    // ルームリストは表示専用（クリック即参加禁止）
-    // クリック時は入力欄にルーム名をセットするだけに留める
-    item.innerHTML = `
-      <span class="room-name">${room.name}</span>
-      <span class="room-players">${room.playerCount}/${room.maxPlayers} 人</span>
-      <button class="room-join-btn" onclick="document.getElementById('roomCodeInput').value='${room.name}'">選択</button>
-    `;
-    container.appendChild(item);
-  });
-}
-
 // ===== ルーム操作 =====
 
 function createRoom() {
@@ -168,7 +170,7 @@ function createRoom() {
   const name = code || undefined; // 空なら自動生成
   console.log("[MatchSetup] Creating room with name:", name || "auto-generated");
   setAppState("connecting"); // 連打防止
-  PhotonSync.createRoom(name);
+  SocketSync.createRoom(name);
 }
 
 function joinRoom(roomName) {
@@ -180,17 +182,16 @@ function joinRoom(roomName) {
     return;
   }
   setAppState("connecting"); // 連打防止
-  PhotonSync.joinRoom(code);
+  SocketSync.joinRoom(code);
 }
 
 function leaveRoom() {
-  PhotonSync.leaveRoom();
+  SocketSync.leaveRoom();
   myReady       = false;
   opponentReady = false;
   updateReadyUI();
   showMsg("");
-  // 退出後はロビーに戻ることを想定（PhotonがJoinedLobbyイベントを発火する）
-  // 状態の強制上書きはせず onPhotonStateChange に任せるのが安全
+  setAppState("lobby");
 }
 
 // ===== Ready 処理 =====
@@ -215,56 +216,8 @@ function markReady() {
   }
 
   updateReadyUI();
-
-  // 自分の Ready 状態を matchData として送信
-  // matchData の代わりに CustomProperties を使う
-  if (PhotonSync.isConnected()) {
-    const props = {};
-    props[`ready_${window.myRole}`] = myReady ? "1" : "0";
-    // Photon Room CustomProperties に書き込む
-    // 相手は onRoomPropertiesChange で受け取る（SDK が自動で通知）
-    _setReadyProp(myReady);
-  }
-
+  SocketSync.markReady(myReady);
   checkBothReady();
-}
-
-function _setReadyProp(isReady) {
-  if (!PhotonSync.isConnected()) return;
-  const myRole = window.myRole;
-  if (!myRole) return;
-
-  const deck = selectedDeck();
-  const readyPayload = {
-    username: currentUser,
-    _ready:    isReady,
-    _deckCode: deck?.code || "empty",
-    ...(typeof state !== "undefined" ? state[myRole] : {})
-  };
-
-  // photon-sync.js の引数付き sendPlayerState を呼び出す
-  PhotonSync.sendPlayerState(readyPayload);
-}
-
-// PLAYER_STATE 受信時に相手の ready を検出
-// photon-sync.js の EV.PLAYER_STATE ハンドラが state[role] を更新するので、
-// state[opRole]._ready を監視する
-function checkOpponentReady() {
-  const opRole = window.myRole === "player1" ? "player2" : "player1";
-  
-  // core.js がロードされていない lobby 画面では window._photonPlayerData を参照
-  const opData = (typeof state !== "undefined" && state[opRole]) 
-               ? state[opRole] 
-               : (window._photonPlayerData ? window._photonPlayerData[opRole] : null);
-
-  if (opData) {
-    const wasReady = opponentReady;
-    opponentReady  = !!opData._ready;
-    if (opponentReady !== wasReady) {
-      updateOpponentUI(opData.username || "Opponent", opponentReady);
-      checkBothReady();
-    }
-  }
 }
 
 function checkBothReady() {
@@ -277,16 +230,15 @@ function checkBothReady() {
   const deck    = selectedDeck();
   const myRole  = window.myRole;
   const opRole  = myRole === "player1" ? "player2" : "player1";
-  const opDeck  = typeof state !== "undefined" ? (state[opRole]?._deckCode || "empty") : "empty";
 
-  const matchState = buildMatchState(myRole, deck?.code || "empty", opRole, opDeck);
+  const matchState = buildMatchState(myRole, deck?.code || "empty", opRole, "empty");
 
   localStorage.setItem("matchSetup", JSON.stringify({
     role:     myRole,
     self:     currentUser,
     deckCode: deck?.code || "empty",
     deckId:   deck?.id   || "",
-    roomName: PhotonSync.isConnected() ? (window._currentRoomName || "") : "",
+    roomName: window._currentRoomName || "",
   }));
   localStorage.setItem("deckCode",   deck?.code || "empty");
   localStorage.setItem("gameState",  JSON.stringify(matchState));
@@ -315,13 +267,13 @@ function buildMatchState(role1, deckCode1, role2, deckCode2) {
     p1.username = currentUser;
     p1.deck     = (deckCode1 && deckCode1 !== "empty") ? tryDecode(deckCode1) : [];
     p1.backImage = selectedDeck()?.backImage || null;
-    p2.username = typeof state !== "undefined" ? (state.player2?.username || "Opponent") : "Opponent";
+    p2.username = "Opponent";
     p2.deck     = (deckCode2 && deckCode2 !== "empty") ? tryDecode(deckCode2) : [];
   } else {
     p2.username = currentUser;
     p2.deck     = (deckCode1 && deckCode1 !== "empty") ? tryDecode(deckCode1) : [];
     p2.backImage = selectedDeck()?.backImage || null;
-    p1.username = typeof state !== "undefined" ? (state.player1?.username || "Opponent") : "Opponent";
+    p1.username = "Opponent";
     p1.deck     = (deckCode2 && deckCode2 !== "empty") ? tryDecode(deckCode2) : [];
   }
 
@@ -413,30 +365,18 @@ function renderDeckGallery() {
   });
 }
 
-// ===== 定期的に相手の Ready 状態をチェック（matchSetup 画面のみ） =====
-let _readyCheckInterval = null;
-
-function startReadyCheck() {
-  if (_readyCheckInterval) return;
-  _readyCheckInterval = setInterval(checkOpponentReady, 500);
-}
-
-function stopReadyCheck() {
-  if (_readyCheckInterval) {
-    clearInterval(_readyCheckInterval);
-    _readyCheckInterval = null;
-  }
-}
-
 // ===== イベントリスナー =====
 document.getElementById("createRoomBtn").addEventListener("click", createRoom);
 document.getElementById("joinRoomBtn").addEventListener("click",   () => joinRoom());
 document.getElementById("startBtn").addEventListener("click",      markReady);
 document.getElementById("cancelBtn").addEventListener("click",     leaveRoom);
 
-// ページ離脱時にインターバルを停止
-window.addEventListener("beforeunload", stopReadyCheck);
+// ページ離脱時
+window.addEventListener("beforeunload", () => {
+  if (SocketSync.isInRoom()) {
+    SocketSync.leaveRoom();
+  }
+});
 
 // ===== 起動 =====
 initMatchSetup();
-startReadyCheck();

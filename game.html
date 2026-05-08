@@ -33,9 +33,9 @@
   </div>
 </div>
 
-<!-- Photon SDK（core.js より前に読み込む） -->
-<script src="js/photon-sdk.js"></script>
-<script src="js/photon-sync.js?v=6"></script>
+<!-- Socket.io Client -->
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="js/socket-sync.js?v=1"></script>
 
 <script src="js/cardData.js?v=6"></script>
 <script src="js/deckCode.js?v=6"></script>
@@ -58,29 +58,40 @@
 <script>
   initCards();
 
-  // ゲーム画面で Photon に接続（matchSetup から引き継ぎ）
+  // ゲーム画面で Socket.io に接続（matchSetup から引き継ぎ）
   window.myUsername = localStorage.getItem("username") || "Player";
-  PhotonSync.init({
+  SocketSync.init({
     onJoinedRoom: (roomName, role) => {
-      console.log("[Game] Photon joined:", roomName, role);
-      // ClockSync を Photon.ServerTime に切り替え
-      PhotonSync.overrideClockSync();
-      document.dispatchEvent(new Event("photonJoined"));
+      console.log("[Game] Socket joined:", roomName, role);
+      document.dispatchEvent(new Event("socketJoined"));
     },
     onOpponentJoined: (actor) => {
       console.log("[Game] Opponent joined:", actor.name);
-      // 相手が入室したら自分の全状態を送る（photon-sync.js が自動で送る）
     },
     onOpponentLeft: (actor) => {
       console.log("[Game] Opponent left");
       addGameLog && addGameLog(`[SYSTEM] 対戦相手が切断しました。`);
     },
+    onReceiveGameState: (data) => {
+      console.log("[Game] Received game state:", data.type);
+      // ゲーム状態を処理
+      if (typeof handleRemoteGameState === "function") {
+        handleRemoteGameState(data);
+      }
+    },
+    onReceiveAction: (data) => {
+      console.log("[Game] Received action:", data.type);
+      // アクションを処理
+      if (typeof handleRemoteAction === "function") {
+        handleRemoteAction(data);
+      }
+    }
   });
 
   // matchSetup で決定したルームに再参加
   const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
   if (setup && setup.roomName) {
-    PhotonSync.joinRoom(setup.roomName);
+    SocketSync.joinRoom(setup.roomName);
   }
 </script>
 

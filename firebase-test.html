@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase SDK Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    .test-box {
+      background: white;
+      padding: 20px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border-left: 4px solid #ccc;
+    }
+    .test-box.pass {
+      border-left-color: #4CAF50;
+      background: #f1f8f4;
+    }
+    .test-box.fail {
+      border-left-color: #f44336;
+      background: #fef5f5;
+    }
+    .test-box h3 {
+      margin: 0 0 10px 0;
+    }
+    .test-box p {
+      margin: 5px 0;
+      font-family: monospace;
+    }
+    .status {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .pass .status { color: #4CAF50; }
+    .fail .status { color: #f44336; }
+  </style>
+</head>
+<body>
+
+<h1>🧪 Firebase SDK テスト</h1>
+
+<div id="results"></div>
+
+<!-- Firebase SDK (Compat version) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  const results = document.getElementById('results');
+  
+  function addTest(name, passed, details) {
+    const div = document.createElement('div');
+    div.className = `test-box ${passed ? 'pass' : 'fail'}`;
+    div.innerHTML = `
+      <h3>${passed ? '✅' : '❌'} ${name}</h3>
+      <p class="status">${passed ? 'PASS' : 'FAIL'}</p>
+      <p>${details}</p>
+    `;
+    results.appendChild(div);
+  }
+  
+  // Test 1: Firebase SDK loaded
+  const firebaseLoaded = typeof firebase !== 'undefined';
+  addTest(
+    'Firebase SDK 読み込み',
+    firebaseLoaded,
+    firebaseLoaded 
+      ? 'firebase オブジェクトが正常に読み込まれました'
+      : 'firebase オブジェクトが見つかりません'
+  );
+  
+  // Test 2: Firebase app
+  const hasApp = firebaseLoaded && firebase.apps && firebase.apps.length > 0;
+  addTest(
+    'Firebase アプリ初期化',
+    hasApp,
+    hasApp
+      ? `Firebase アプリが初期化されています (${firebase.apps.length}個)`
+      : 'Firebase アプリが初期化されていません'
+  );
+  
+  // Test 3: Database
+  let hasDatabase = false;
+  let dbError = '';
+  try {
+    if (firebaseLoaded && firebase.apps.length > 0) {
+      const db = firebase.database();
+      hasDatabase = db !== null && db !== undefined;
+    }
+  } catch (e) {
+    dbError = e.message;
+  }
+  addTest(
+    'Firebase Database',
+    hasDatabase,
+    hasDatabase
+      ? 'Firebase Database が利用可能です'
+      : `Firebase Database が利用できません: ${dbError}`
+  );
+  
+  // Test 4: FIREBASE_CONFIG
+  const hasConfig = typeof window.FIREBASE_CONFIG !== 'undefined';
+  addTest(
+    'FIREBASE_CONFIG 設定',
+    hasConfig,
+    hasConfig
+      ? `FIREBASE_CONFIG が設定されています (projectId: ${window.FIREBASE_CONFIG?.projectId || 'N/A'})`
+      : 'FIREBASE_CONFIG が設定されていません'
+  );
+  
+  // Summary
+  const allPassed = firebaseLoaded && hasDatabase;
+  const summaryDiv = document.createElement('div');
+  summaryDiv.className = `test-box ${allPassed ? 'pass' : 'fail'}`;
+  summaryDiv.innerHTML = `
+    <h2>${allPassed ? '✅ すべてのテストに合格しました' : '❌ いくつかのテストが失敗しました'}</h2>
+    <p>
+      ${allPassed 
+        ? 'Firebase SDK は正常に読み込まれています。FIREBASE_CONFIG を設定してください。'
+        : 'Firebase SDK の読み込みに問題があります。ブラウザコンソールを確認してください。'
+      }
+    </p>
+  `;
+  results.insertBefore(summaryDiv, results.firstChild);
+  
+  // Console output
+  console.log('=== Firebase SDK Test ===');
+  console.log('firebase:', typeof firebase);
+  console.log('firebase.apps:', firebase?.apps?.length || 0);
+  console.log('FIREBASE_CONFIG:', window.FIREBASE_CONFIG);
+</script>
+
+</body>
+</html>

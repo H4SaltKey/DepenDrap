@@ -53,6 +53,13 @@ function initFirebase(callbacks = {}) {
     return;
   }
 
+  // Check if firebase SDK is loaded
+  if (typeof firebase === 'undefined') {
+    console.error("[Firebase] Firebase SDK not loaded. Make sure firebase-app-compat.js and firebase-database-compat.js are loaded.");
+    if (_callbacks.onStateChange) _callbacks.onStateChange("error");
+    return;
+  }
+
   try {
     const app = firebase.initializeApp(firebaseConfig);
     _db = firebase.database(app);

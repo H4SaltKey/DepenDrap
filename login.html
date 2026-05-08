@@ -172,8 +172,8 @@
 </div>
 
 <!-- Firebase SDK (Compat version for global firebase object) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
 <script>
   // Firebase 設定
@@ -186,13 +186,32 @@
   // Firebase 初期化
   if (firebaseConfig) {
     try {
-      const app = firebase.initializeApp(firebaseConfig);
-      db = firebase.database(app);
-      firebaseInitialized = true;
-      console.log("[Login] Firebase initialized successfully");
-      console.log("[Login] Project ID:", firebaseConfig.projectId);
+      // Check if firebase object exists
+      if (typeof firebase === 'undefined') {
+        console.error("[Login] Firebase SDK not loaded. Waiting for SDK...");
+        // Wait for Firebase to load
+        setTimeout(() => {
+          if (typeof firebase !== 'undefined') {
+            const app = firebase.initializeApp(firebaseConfig);
+            db = firebase.database(app);
+            firebaseInitialized = true;
+            console.log("[Login] Firebase initialized successfully (delayed)");
+            console.log("[Login] Project ID:", firebaseConfig.projectId);
+          } else {
+            console.error("[Login] Firebase SDK failed to load after waiting");
+            firebaseInitialized = false;
+          }
+        }, 1000);
+      } else {
+        const app = firebase.initializeApp(firebaseConfig);
+        db = firebase.database(app);
+        firebaseInitialized = true;
+        console.log("[Login] Firebase initialized successfully");
+        console.log("[Login] Project ID:", firebaseConfig.projectId);
+      }
     } catch (e) {
       console.error("[Login] Firebase initialization error:", e);
+      console.error("[Login] Error message:", e.message);
       firebaseInitialized = false;
     }
   } else {

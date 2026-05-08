@@ -124,8 +124,19 @@
 
   function logout() {
     if (!confirm("ログアウトしますか？")) return;
-    localStorage.removeItem("username");
+    
+    // オンライン状態をオフラインに設定
+    if (typeof FirebaseSync !== "undefined") {
+      FirebaseSync.setOnlineStatus(false);
+    }
+    
+    // ゲーム状態のみ削除
     localStorage.removeItem("matchSetup");
+    localStorage.removeItem("gameState");
+    localStorage.removeItem("fieldCards");
+    localStorage.removeItem("gameStarted");
+    localStorage.setItem("isOnline", "false");
+    
     window.location.href = "login.html";
   }
 

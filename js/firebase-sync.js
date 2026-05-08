@@ -14,6 +14,8 @@ let _roomId = null;
 let _roomName = null;
 let _mySessionId = null;
 let _roomUnsubscribe = null;
+let _onlineStatusRef = null;
+let _username = null;
 
 /**
  * @param {Object} callbacks
@@ -27,6 +29,7 @@ let _roomUnsubscribe = null;
  */
 function initFirebase(callbacks = {}) {
   _callbacks = callbacks;
+  _username = localStorage.getItem("username") || "Player";
 
   // Firebase 設定（ユーザーが設定する必要があります）
   const firebaseConfig = window.FIREBASE_CONFIG;
@@ -46,6 +49,9 @@ function initFirebase(callbacks = {}) {
     
     console.log("[Firebase] Initialized with config:", firebaseConfig.projectId);
     if (_callbacks.onStateChange) _callbacks.onStateChange("connected");
+    
+    // オンライン状態を設定
+    setOnlineStatus(true);
     
     // ルーム一覧を監視
     watchRoomList();
@@ -317,6 +323,26 @@ function generateRoomName() {
   return `ROOM_${timestamp}_${random}`;
 }
 
+function setOnlineStatus(isOnline) {
+  if (!_db || !_username) return;
+  
+  const statusRef = _db.ref(`players/${_username}/status`);
+  const statusData = {
+    isOnline: isOnline,
+    lastSeen: firebase.database.ServerValue.TIMESTAMP,
+    sessionId: _mySessionId
+  };
+  
+  statusRef.set(statusData, (error) => {
+    if (error) {
+      console.error("[Firebase] Error setting online status:", error);
+    } else {
+      console.log("[Firebase] Online status set to:", isOnline);
+      localStorage.setItem("isOnline", isOnline ? "true" : "false");
+    }
+  });
+}
+
 function isConnected() {
   return _isConnected;
 }
@@ -338,5 +364,6 @@ window.FirebaseSync = {
   markReady:   markReady,
   isConnected: isConnected,
   isInRoom:    isInRoom,
-  isHost:      isHost
+  isHost:      isHost,
+  setOnlineStatus: setOnlineStatus
 };

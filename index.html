@@ -131,15 +131,14 @@
     badge.classList.toggle("connected", connected);
   }
 
-  // タイトル画面でも Photon に接続しておく（matchSetup で即使えるように）
+  // タイトル画面でも Socket.io に接続しておく（matchSetup で即使えるように）
   window.myUsername = username;
-  PhotonSync.init({
+  SocketSync.init({
     onStateChange: (s) => {
       const map = {
-        "ConnectingToMasterserver": ["接続中...", false],
-        "Connected":                ["接続済み",  true],
-        "JoinedLobby":              ["ロビー待機", true],
-        "Disconnected":             ["未接続",     false],
+        "connected":      ["接続済み",  true],
+        "disconnected":   ["未接続",     false],
+        "error":          ["エラー",     false],
       };
       const [label, ok] = map[s] || ["...", false];
       updateBadge(label, ok);

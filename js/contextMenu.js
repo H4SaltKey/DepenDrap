@@ -706,7 +706,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
   let logType = `${typeLabels[targetOwner] || typeLabels[type]}${subLabels[subType] ? " (" + subLabels[subType] + ")" : ""}`;
   
   // 同期ロックをかける（サーバーからの古いデータで上書きされるのを防ぐ）
-  // ※ Photon 版では _lockSyncUntil は廃止済み。saveImmediate で即時送信する。
+  // ※ Socket.io 版では即時送信される
 
   // ダメージを1ずつ処理する（途中でリバウンドが発生する可能性があるため）
   for (let i = 0; i < amount; i++) {

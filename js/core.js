@@ -95,13 +95,13 @@ window.resetPlayerState = resetPlayerState;
 
 let saveTimeout = null;
 
-// 自分のデータをサーバーにキャッシュ（200msデバウンス）
+// 自分のデータをサーバーに送信（200msデバウンス）
 function saveDebounced() {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => _pushMyState(), 200);
 }
 
-// 自分のデータをサーバーに即時キャッシュ（await可能）
+// 自分のデータをサーバーに即時送信（await可能）
 function saveImmediate() {
   if (saveTimeout) clearTimeout(saveTimeout);
   localStorage.setItem("gameState", JSON.stringify(state));
@@ -143,41 +143,19 @@ function save() {
 }
 
 // 実際の送信（自分のデータのみ送る、timeLeft は除外）
-// Photon 接続中は PhotonSync を使う
+// Socket.io 接続中は SocketSync を使う
 function _pushMyState() {
-  // Photon 接続中は Photon 経由で送信
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) {
-    PhotonSync.sendPlayerState();
-    PhotonSync.sendMatchData();
+  // Socket.io 接続中は Socket.io 経由で送信
+  if (typeof SocketSync !== "undefined" && SocketSync.isInRoom()) {
+    SocketSync.sendPlayerState();
+    SocketSync.sendMatchData();
     return Promise.resolve();
   }
 
-  // HTTP フォールバック
-  const myRole = window.myRole;
-
-  if (!myRole) {
-    // ロール未確定時は全体を送る（timeLeft は除外）
-    const { timeLeft: _t1, ...p1 } = state.player1;
-    const { timeLeft: _t2, ...p2 } = state.player2;
-    return fetch("/api/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameState: { player1: p1, player2: p2, matchData: state.matchData, logs: state.logs } })
-    }).catch(() => {});
-  }
-
-  // 自分のプレイヤーデータ（timeLeft は表示キャッシュなので送らない）
-  const { timeLeft: _ignored, ...myData } = state[myRole];
-
-  return fetch("/api/state", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      gameState: {
-        [myRole]: myData,
-        matchData: state.matchData,
-        logs: state.logs
-      }
+  // ローカルストレージにのみ保存
+  localStorage.setItem("gameState", JSON.stringify(state));
+  return Promise.resolve();
+}
     })
   }).catch(() => {});
 }

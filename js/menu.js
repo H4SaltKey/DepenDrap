@@ -175,7 +175,7 @@
   }
 
   async function deleteAccount(){
-    // Photon 版：サーバー不要。localStorage のユーザー名を削除するだけ。
+    // Socket.io 版：ローカルストレージのユーザー名を削除
     localStorage.removeItem("username");
     localStorage.removeItem("matchSetup");
     localStorage.removeItem("deckList");

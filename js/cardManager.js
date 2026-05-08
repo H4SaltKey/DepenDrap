@@ -613,16 +613,12 @@ function saveFieldCards(){
   const data = window.getFieldData();
   localStorage.setItem("fieldCards", JSON.stringify(data));
 
-  // Photon 接続中は Photon 経由で送信
-  if (typeof PhotonSync !== "undefined" && PhotonSync.isConnected()) {
-    PhotonSync.sendFieldCards(data);
+  // Socket.io 接続中は Socket.io 経由で送信
+  if (typeof SocketSync !== "undefined" && SocketSync.isInRoom()) {
+    SocketSync.sendFieldCards(data);
     return;
   }
-
-  // HTTP フォールバック
-  fetch("/api/state", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+}
     body: JSON.stringify({ fieldCards: data })
   }).catch(()=>{});
 }

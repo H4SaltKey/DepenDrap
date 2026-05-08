@@ -1,52 +1,60 @@
 # DepenDrap Online
 
-Photon Realtime + GitHub Pages によるオンラインカードゲーム。
+Socket.io によるオンラインカードゲーム。
 
 ## セットアップ手順
 
-### 1. Photon App ID を取得
+### 1. 依存関係をインストール
 
-1. [Photon Dashboard](https://dashboard.photonengine.com/) にアクセス
-2. 「CREATE A NEW APP」→ 「Realtime」を選択
-3. App Name を入力して作成
-4. 表示された **App ID** をコピー
-
-### 2. App ID を設定
-
-`js/photon-sync.js` の先頭を編集：
-
-```javascript
-const PHOTON_APP_ID = "ここに App ID を貼り付ける";
+```bash
+pip install -r requirements.txt
 ```
 
-### 3. GitHub Pages で公開
+### 2. サーバーを起動
 
-1. このリポジトリを GitHub に push
-2. Settings → Pages → Source: `main` ブランチ、`/ (root)` を選択
-3. 数分後に `https://[username].github.io/[repo]/login.html` でアクセス可能
+```bash
+python3 server.py
+```
+
+または
+
+```bash
+./start_server.sh
+```
+
+サーバーは `http://localhost:5000` で起動します。
+
+### 3. ブラウザでアクセス
+
+`http://localhost:5000` にアクセスして、`login.html` からゲームを開始します。
 
 ### 4. 遊び方
 
 1. `login.html` でプレイヤー名を入力
 2. `matchSetup.html` でルームを作成 or 参加
 3. 両者が READY になると `game.html` へ自動遷移
+4. ゲームをプレイ
 
 ## ファイル構成
 
 ```
+server.py           Socket.io サーバー（Python/Flask）
+requirements.txt    Python 依存関係
+start_server.sh     サーバー起動スクリプト
+
 index.html          タイトル画面
-login.html          プレイヤー名入力（パスワード不要）
+login.html          プレイヤー名入力
 matchSetup.html     ルーム作成・参加・デッキ選択
 game.html           ゲーム画面
 deckSelect.html     デッキ一覧
 deck.html           デッキ構築
 
 js/
-  photon-sync.js    Photon 接続・イベント管理（メイン）
+  socket-sync.js    Socket.io 接続・イベント管理（メイン）
   core.js           ゲーム状態管理
   game.js           ゲームUI・ロジック
   cardManager.js    カード・フィールド管理
-  timerSync.js      タイマー同期（Photon.ServerTime ベース）
+  timerSync.js      タイマー同期
   matchSetup.js     マッチング処理
   menu.js           メニューUI
 ```
@@ -55,15 +63,46 @@ js/
 
 | データ | 同期方法 |
 |--------|---------|
-| プレイヤーステータス（HP/EXP等） | RaiseEvent EV.PLAYER_STATE |
-| matchData（ターン/ダイス等） | RaiseEvent EV.MATCH_DATA |
-| フィールドカード | RaiseEvent EV.FIELD_CARDS |
-| カード移動（高頻度） | RaiseEvent EV.CARD_MOVE |
-| タイマー | RaiseEvent EV.TIMER_START（endTimestamp方式） |
-| 再接続復元 | Room CustomProperties |
+| プレイヤーステータス（HP/EXP等） | Socket.io emit: send_game_state |
+| matchData（ターン/ダイス等） | Socket.io emit: send_game_state |
+| フィールドカード | Socket.io emit: send_game_state |
+| カード移動（高頻度） | Socket.io emit: send_action |
+| タイマー | Socket.io emit: send_action |
+| ルーム管理 | Socket.io emit: create_room / join_room |
+
+## サーバー機能
+
+- **ルーム管理** - ルーム作成・参加・削除
+- **プレイヤーマッチング** - 2人プレイヤーの自動割り当て
+- **ゲーム状態同期** - リアルタイムデータ送受信
+- **接続管理** - 自動再接続・切断検出
 
 ## 注意事項
 
-- Photon Free プランは **20 CCU**（同時接続ユーザー数）まで無料
-- `serve_secure.py` は不要（GitHub Pages では動かない）
 - デッキデータは `localStorage` に保存（ブラウザ間で共有不可）
+- サーバーはローカルマシンで実行（LAN内での共有可能）
+- 複数のサーバーインスタンスを起動する場合は、ポート番号を変更してください
+
+## トラブルシューティング
+
+### サーバーが起動しない
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+python3 server.py
+```
+
+### ポート 5000 が既に使用されている
+
+`server.py` の最後の行を編集：
+
+```python
+socketio.run(app, host='0.0.0.0', port=5001, debug=False)  # ポート番号を変更
+```
+
+### クライアントが接続できない
+
+- ファイアウォール設定を確認
+- サーバーが起動しているか確認
+- ブラウザコンソールでエラーを確認

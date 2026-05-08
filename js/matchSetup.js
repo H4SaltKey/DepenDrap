@@ -156,13 +156,17 @@ function onRoomListUpdate(rooms) {
 // ===== ルーム操作 =====
 
 function createRoom() {
-  if (appState !== "lobby") return;
+  if (appState !== "lobby") {
+    showMsg("ロビーに接続してください。");
+    return;
+  }
   const code = document.getElementById("roomCodeInput").value.trim().toUpperCase();
   if (code && !/^[A-Z0-9_]+$/.test(code)) {
     showMsg("ルームコードは英数字とアンダースコアのみ使用可能です。");
     return;
   }
   const name = code || undefined; // 空なら自動生成
+  console.log("[MatchSetup] Creating room with name:", name || "auto-generated");
   setAppState("connecting"); // 連打防止
   PhotonSync.createRoom(name);
 }

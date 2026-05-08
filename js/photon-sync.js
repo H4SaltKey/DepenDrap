@@ -84,6 +84,17 @@ function initPhoton(callbacks = {}) {
     if (_callbacks.onStateChange) _callbacks.onStateChange(name);
   };
 
+  // ハンドラ登録（古いSDK対応）
+  _client.addPeerStatusListener("connecting", () => {
+    console.log("[Photon] Peer connecting");
+  });
+  _client.addPeerStatusListener("connect", () => {
+    console.log("[Photon] Peer connected");
+  });
+  _client.addPeerStatusListener("disconnect", () => {
+    console.log("[Photon] Peer disconnected");
+  });
+
   _client.onConnectedToMaster = () => {
     console.log("[Photon] Connected to Master");
     // ロビーに参加してルーム一覧を取得
@@ -169,17 +180,25 @@ function photonCreateRoom(roomName) {
     console.error("[Photon] Cannot create room: Not connected to master.");
     return;
   }
-  console.log("[Photon] creating room...");
+  
+  // ルーム名を確実に生成
+  const finalRoomName = (roomName && roomName.trim() !== "") ? roomName : _genRoomName();
+  console.log("[Photon] Creating room with name:", finalRoomName);
   
   const opts = {
     maxPlayers: 2,
     isVisible: true,
-    isOpen: true
+    isOpen: true,
+    customProperties: {
+      gameVersion: "1.0"
+    }
   };
-  // 部屋名が空の場合はクライアント側で確実に生成して渡す（SDKのGUID同期バグ回避のため）
-  const finalRoomName = roomName || _genRoomName();
-  console.log("[Photon] Creating room with name:", finalRoomName);
-  _client.createRoom(finalRoomName, opts);
+  
+  try {
+    _client.createRoom(finalRoomName, opts);
+  } catch (e) {
+    console.error("[Photon] Error creating room:", e);
+  }
 }
 
 function photonJoinRoom(roomName) {

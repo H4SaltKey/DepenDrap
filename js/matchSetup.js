@@ -366,16 +366,20 @@ function selectDeck(index) {
 
 // ===== ゲーム開始 =====
 
+let isStartingGame = false; // ゲーム開始フラグ（beforeunload での退出を防ぐ）
+
 function startGame() {
   console.log("[MatchSetup] ゲーム開始");
+  isStartingGame = true; // ゲーム開始中フラグを立てる
+
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
   localStorage.setItem("gameStarted",   "true");
 
   // core.js が window.myRole / window.myUsername を読むための matchSetup キーを書く
   localStorage.setItem("matchSetup", JSON.stringify({
-    role:     currentPlayerKey,          // "player1" or "player2"
-    self:     currentUser,               // 自分のユーザー名
+    role:     currentPlayerKey,
+    self:     currentUser,
     username: currentUser
   }));
 
@@ -413,8 +417,8 @@ window.addEventListener("load", () => {
 window.addEventListener("beforeunload", async () => {
   console.log("[MatchSetup] ページを離れます");
   
-  // ルームから退出
-  if (currentRoom && currentPlayerKey) {
+  // ゲーム開始中はルームから退出しない（game.html に引き継ぐため）
+  if (!isStartingGame && currentRoom && currentPlayerKey) {
     console.log("[MatchSetup] ルームから自動退出:", currentRoom);
     await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
   }

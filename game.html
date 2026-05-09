@@ -49,7 +49,7 @@
 <!-- Firebase SDK (Compat version for global firebase object) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/firebase-client.js?v=3"></script>
+<script src="js/firebase-client.js?v=4"></script>
 
 <script src="js/cardData.js?v=8"></script>
 <script src="js/deckCode.js?v=8"></script>
@@ -95,7 +95,6 @@
             const roomSnap = await firebaseClient.db.ref(`rooms/${gameRoomName}/players`).once('value');
             if (roomSnap.exists()) {
               const players = roomSnap.val();
-              // player1/player2 それぞれの username を state に設定
               if (players.player1 && players.player1.username) {
                 if (typeof state !== "undefined" && state.player1) {
                   state.player1.username = players.player1.username;
@@ -121,6 +120,9 @@
             console.warn("[Game] プレイヤー名取得エラー:", e);
           }
 
+          // 切断時に自動退出するよう onDisconnect を設定
+          await firebaseClient.setupOnDisconnect(gameRoomName, gamePlayerKey);
+
           document.dispatchEvent(new Event("firebaseJoined"));
         }
       } else {
@@ -128,15 +130,25 @@
       }
     });
 
-    // ページを離れるときにルームから退出
+    // ページを離れるときにルームから退出（リロード時は退出しない）
     window.addEventListener("beforeunload", async () => {
       console.log("[Game] ページを離れます");
-      
-      if (gameRoomName && gamePlayerKey) {
+
+      // リロード検出: sessionStorage にフラグを立て、次回ロード時に確認
+      // リロードの場合は sessionStorage が引き継がれるため、退出しない
+      const isReload = sessionStorage.getItem("gameReloading") === "1";
+      sessionStorage.setItem("gameReloading", "1");
+
+      if (!isReload && gameRoomName && gamePlayerKey) {
         console.log("[Game] ルームから自動退出:", gameRoomName);
         await firebaseClient.leaveRoom(gameRoomName, gamePlayerKey);
       }
     });
+
+    // ページロード完了時にリロードフラグをクリア
+    window.addEventListener("load", () => {
+      sessionStorage.removeItem("gameReloading");
+    }, { once: true });
   })();
 </script>
 

@@ -290,6 +290,35 @@ class FirebaseClient {
   }
 
   /**
+   * 切断時に自動退出するよう onDisconnect を設定
+   * （ブラウザを閉じた時・ネットワーク切断時に Firebase サーバーが自動実行）
+   */
+  async setupOnDisconnect(roomName, playerKey) {
+    if (!this.db) return;
+    try {
+      const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
+      await playerRef.onDisconnect().remove();
+      console.log("[FirebaseClient] ✅ onDisconnect 設定完了:", roomName, playerKey);
+    } catch (e) {
+      console.warn("[FirebaseClient] onDisconnect 設定エラー:", e.message);
+    }
+  }
+
+  /**
+   * onDisconnect をキャンセル（リロード前に呼ぶ）
+   */
+  async cancelOnDisconnect(roomName, playerKey) {
+    if (!this.db) return;
+    try {
+      const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
+      await playerRef.onDisconnect().cancel();
+      console.log("[FirebaseClient] ✅ onDisconnect キャンセル完了");
+    } catch (e) {
+      console.warn("[FirebaseClient] onDisconnect キャンセルエラー:", e.message);
+    }
+  }
+
+  /**
    * ルームが空になったら削除
    */
   async checkAndDeleteEmptyRoom(roomName) {

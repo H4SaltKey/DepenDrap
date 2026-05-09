@@ -279,6 +279,8 @@ function watchRoom(roomName) {
     // 自分のready状態をFirebaseから同期
     const wasReady = myReady;
     myReady = !!myData.ready;
+    
+    // ready状態が変わった場合のみUIを更新（ログは toggleReady で表示済み）
     if (wasReady !== myReady) {
       updateReadyUI();
     }
@@ -320,11 +322,19 @@ function watchRoomList() {
 async function toggleReady() {
   if (!currentRoom || !currentPlayerKey) { addLog("system", "先にルームに参加してください。"); return; }
   if (!selectedDeck()) { addLog("system", "デッキを選択してください。"); return; }
-  myReady = !myReady;
-  const ok = await firebaseClient.setReady(currentRoom, currentPlayerKey, myReady);
-  if (!ok) { myReady = !myReady; return; }
-  updateReadyUI();
-  addLog("system", myReady ? "準備完了にしました。" : "準備をキャンセルしました。");
+  
+  const newReady = !myReady;
+  const ok = await firebaseClient.setReady(currentRoom, currentPlayerKey, newReady);
+  if (!ok) { 
+    addLog("system", "準備状態の変更に失敗しました。"); 
+    return; 
+  }
+  
+  // ログメッセージを表示（watchRoom で myReady が更新される前に表示）
+  addLog("system", newReady ? "準備完了にしました。" : "準備をキャンセルしました。");
+  
+  // myReady の更新と UI 更新は watchRoom の監視に任せる
+  // （Firebaseから同期されるまで待つ）
 }
 
 // ===== UI 更新 =====

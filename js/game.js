@@ -696,9 +696,11 @@ const ICON_IDEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" x
   <polygon points="11,4 8,10.5 10.5,10.5 9,17 13,9.5 10.5,9.5" fill="#f0d080"/>
 </svg>`;
 
-function update() {
-  const oldState = JSON.parse(lastStateJson || "{}");
-  checkAndLogStateChanges(oldState, state);
+function update(skipLogCheck = false) {
+  if (!skipLogCheck) {
+    const oldState = JSON.parse(lastStateJson || "{}");
+    checkAndLogStateChanges(oldState, state);
+  }
   lastStateJson = JSON.stringify(state);
 
   const playerEl = document.getElementById("gameUiPlayerInner");
@@ -2029,7 +2031,7 @@ function setupRoomWatcher() {
     if (!snap || !snap.val()) {
       // ログがクリアされた場合
       state.logs = [];
-      update();
+      update(true); // skipLogCheck = true
       return;
     }
     const logsObj = snap.val();
@@ -2047,7 +2049,7 @@ function setupRoomWatcher() {
       state.logs = state.logs.slice(-50);
     }
     
-    update();
+    update(true); // skipLogCheck = true（ログ監視からの更新なので、checkAndLogStateChanges をスキップ）
   });
 
   // ── 5. 相手のフィールドカード監視 ────────────────────────────────

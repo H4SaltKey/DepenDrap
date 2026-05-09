@@ -288,6 +288,12 @@ function applyLevelStats(owner, force = false) {
 // ===== ログ =====
 function addGameLog(msg) {
   const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  
+  // 既に同じログが存在する場合は追加しない（重複防止）
+  if (state.logs.includes(entry)) {
+    return;
+  }
+  
   state.logs.push(entry);
   if (state.logs.length > 50) state.logs.shift();
   lastLocalLogSentAt = Date.now();

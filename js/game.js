@@ -898,6 +898,9 @@ function showNotification(text, color) {
 function checkGameResult() {
   if (!state.matchData) return;
 
+  // 閉じるボタンが押された後は判定しない
+  if (window._resultDismissed) return;
+
   // ゲームが開始されていない場合はスキップ
   if (!gameReady) {
     if (state.matchData.winner) console.warn("[Result] SKIP: gameReady=false, winner=", state.matchData.winner);
@@ -948,9 +951,10 @@ function checkGameResult() {
   if (!me || !Array.isArray(me.deck)) return;
   if (!op || !Array.isArray(op.deck)) return;
 
-  // デッキが両方とも0枚の場合、ゲーム開始直後の可能性があるためスキップ
-  if (me.deck.length === 0 && op.deck.length === 0) {
-    console.log("[Result] SKIP: both decks empty (likely init)");
+  // 自分または相手のデッキが空の場合、ゲーム開始直後の可能性があるためスキップ
+  // （デッキは createDeckObject() が完了するまで空のまま）
+  if (me.deck.length === 0 || op.deck.length === 0) {
+    console.log("[Result] SKIP: deck not ready (me:", me.deck.length, "op:", op.deck.length, ")");
     return;
   }
 
@@ -976,7 +980,7 @@ function checkGameResult() {
     }
 
     state.matchData.winner      = winner;
-    state.matchData.winnerSetAt = Date.now();  // いつ決まったか記録
+    state.matchData.winnerSetAt = Date.now();
 
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && firebaseClient?.db) {
@@ -1041,6 +1045,19 @@ function closeResultScreen() {
   }
   const overlay = document.getElementById('gameResultOverlay');
   if (overlay) overlay.remove();
+
+  // winner を state と Firebase からクリア（再流入防止）
+  if (state?.matchData) {
+    state.matchData.winner = null;
+    state.matchData.winnerSetAt = null;
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && firebaseClient?.db) {
+      firebaseClient.writeMatchData(gameRoom, state.matchData);
+    }
+  }
+
+  // 閉じた後は再度 winner 判定を行わない（executeReset / handleChooseOrder まで維持）
+  window._resultDismissed = true;
 }
 
 // ===== 再戦合意システム =====
@@ -1109,7 +1126,7 @@ function watchRematchRequest() {
 
 async function executeReset() {
   lastResetAt = Date.now();
-  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || window.myRole} が再戦リセットを実行しました。`);
+  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole} が再戦リセットを実行しました。`);
 
   ["player1", "player2"].forEach(owner => {
     const s = state[owner];
@@ -1142,6 +1159,7 @@ async function executeReset() {
   state.player2.diceValue = -1;
   window._gameStartInitiated = false;
   window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
+  window._resultDismissed = false;  // 再戦時は判定を再開
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");
@@ -1396,7 +1414,7 @@ async function handleDiceRoll() {
 
   const roll = Math.floor(Math.random() * 100) + 1;
   console.log("[handleDiceRoll] ロール結果:", roll);
-  addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
+  addGameLog(`[DICE] ${window.myUsername || state[playerKey]?.username || playerKey} がダイスを振りました: ${roll}`);
 
   // ローカルに即反映
   state[playerKey].diceValue = roll;
@@ -1433,7 +1451,9 @@ async function handleChooseOrder(goFirst) {
   state.matchData.winnerSetAt = null;   // タイムスタンプもクリア
 
   // ゲーム開始時刻を記録（古い winner を無視するため）
-  window._gameStartedAt = Date.now();
+  // 3秒の猶予を持たせて、Firebase から古い winner が流れてきても無視できるようにする
+  window._gameStartedAt = Date.now() + 3000;
+  window._resultDismissed = false;  // 新しいゲーム開始時は判定を有効化
 
   const firstPlayerName = state.matchData.turnPlayer === "player1"
     ? (state.player1.username || "P1")
@@ -1472,7 +1492,10 @@ async function handleTurnEnd() {
     }
   }
 
-  addGameLog(`[TURN] ${window.myUsername || me} がターンを終了。次: ${m.turnPlayer}`);
+  const nextPlayerName = m.turnPlayer === "player1"
+    ? (state.player1.username || "プレイヤー1")
+    : (state.player2.username || "プレイヤー2");
+  addGameLog(`[TURN] ${window.myUsername || state[me]?.username || me} がターンを終了。次: ${nextPlayerName}`);
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
@@ -1650,7 +1673,7 @@ function checkAndLogStateChanges(oldState, newState) {
     if (latest.includes("[PROTOCOL:RESET]")) {
       // 自分が実行者でない場合のみ、追従リセットを行う
       const initiator = latest.match(/\[PROTOCOL:RESET\] (.*?) が/);
-      if (initiator && initiator[1] !== (window.myUsername || window.myRole)) {
+      if (initiator && initiator[1] !== (window.myUsername || state[window.myRole || "player1"]?.username || window.myRole)) {
         console.log("Remote Reset Detected. Re-initializing local deck...");
         initDeckFromCode();
         shuffleDeck();
@@ -1663,7 +1686,7 @@ function checkAndLogStateChanges(oldState, newState) {
     if (!oldState[owner]) return;
     const s1 = oldState[owner];
     const s2 = newState[owner];
-    const name = s2.username || owner;
+    const name = s2.username || (owner === "player1" ? "プレイヤー1" : "プレイヤー2");
 
     if (s1.level < s2.level) {
       addGameLog(`${name} レベルアップ!!!【レベル:${s2.level}】`);
@@ -1681,7 +1704,7 @@ function handleChatSend() {
   const input = document.getElementById("chatInput");
   const val = input.value.trim();
   if (!val) return;
-  addGameLog(`${window.myUsername || window.myRole}: ${val}`);
+  addGameLog(`${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole}: ${val}`);
   input.value = "";
 }
 
@@ -1722,7 +1745,7 @@ async function initGame() {
 
       markGameStarted();
       save();
-      addGameLog(`${window.myUsername || window.myRole} が入室しました。`);
+      addGameLog(`${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole} が入室しました。`);
     }
 
     const currentRoom = localStorage.getItem("gameRoom");
@@ -1737,6 +1760,9 @@ async function initGame() {
         const matchSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/matchData`).once('value');
         if (matchSnap.exists()) {
           state.matchData = { ...state.matchData, ...matchSnap.val() };
+          // 前回ゲームの winner が残っている可能性があるため、ここでクリア
+          state.matchData.winner = null;
+          state.matchData.winnerSetAt = null;
           console.log("[initGame] matchData 復元:", state.matchData.status);
         }
 
@@ -1797,6 +1823,13 @@ async function initGame() {
     window._lastGameRoom = currentRoom;
     // リロード検出用にセッションにルーム名を記録
     if (currentRoom) sessionStorage.setItem("wasInGame", currentRoom);
+
+    // gameReady=true の前に古い winner を必ずクリア（前回ゲームの残滓を防ぐ）
+    state.matchData.winner = null;
+    state.matchData.winnerSetAt = null;
+    // _gameStartedAt を設定（checkGameResult の stale 判定に使用）
+    // 3秒の猶予を持たせて、Firebase から古い winner が流れてきても無視できるようにする
+    window._gameStartedAt = Date.now() + 3000;
 
     console.log("[initGame] step7: gameReady = true, calling update()");
     gameReady = true;
@@ -1892,6 +1925,26 @@ function setupRoomWatcher() {
   const matchDataListener = matchDataRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
     const incoming = snap.val();
+
+    // winner が含まれている場合、stale チェックを行う
+    if (incoming.winner) {
+      const winnerSetAt = incoming.winnerSetAt || 0;
+      const gameStartedAt = window._gameStartedAt || 0;
+      const isStale = winnerSetAt < gameStartedAt;
+      const isDismissed = !!window._resultDismissed;
+
+      if (isStale || isDismissed) {
+        if (isStale) console.warn("[matchDataWatcher] stale winner を無視:", incoming.winner,
+          "winnerSetAt=", winnerSetAt, "< gameStartedAt=", gameStartedAt);
+        if (isDismissed) console.log("[matchDataWatcher] dismissed winner を無視:", incoming.winner);
+        // winner だけ除いて適用
+        const { winner: _w, winnerSetAt: _ws, ...rest } = incoming;
+        state.matchData = { ...state.matchData, ...rest };
+        update();
+        return;
+      }
+    }
+
     // matchData は丸ごと上書き（ターン権を持つプレイヤーが書いた値が正）
     state.matchData = { ...state.matchData, ...incoming };
     update();
@@ -2036,10 +2089,12 @@ function setupPlayerDiceWatcher(gameRoom) {
     // ステータスメッセージも更新
     const statusMsg = document.getElementById("dice-status-msg");
     if (statusMsg) {
+      const p1Name = state.player1.username || "Player1";
+      const p2Name = state.player2.username || "Player2";
       if (p1 >= 0 && p2 < 0) {
-        statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">プレイヤー2がダイスを振るのを待っています...</span>`;
+        statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">${p2Name} がダイスを振るのを待っています...</span>`;
       } else if (p2 >= 0 && p1 < 0) {
-        statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">プレイヤー1がダイスを振るのを待っています...</span>`;
+        statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">${p1Name} がダイスを振るのを待っています...</span>`;
       }
     }
 

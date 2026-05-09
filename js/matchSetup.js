@@ -373,8 +373,8 @@ function updateReadyUI() {
     btn.innerHTML = `READY ✓<span class="btn-sub" id="startBtnSub">準備完了 — クリックでキャンセル</span>`;
     btn.classList.add("isReady");
   } else {
-    const sub = opponentName ? "クリックで準備完了" : "相手を待っています...";
-    btn.innerHTML = `READY<span class="btn-sub" id="startBtnSub">${sub}</span>`;
+    // 相手がいなくても準備完了できるように変更
+    btn.innerHTML = `READY<span class="btn-sub" id="startBtnSub">クリックで準備完了</span>`;
     btn.classList.remove("isReady");
   }
 }

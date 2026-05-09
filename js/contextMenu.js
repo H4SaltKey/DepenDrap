@@ -787,7 +787,8 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
     }
   }
 
-  if (typeof update === "function") update();
+  // ダメージ処理からの更新なので、ログチェックをスキップ（既にログは出力済み）
+  if (typeof update === "function") update(true);
 };
 document.addEventListener("contextmenu", (e) => {
   const card = e.target.closest(".card:not(.deckObject)");

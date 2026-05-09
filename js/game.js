@@ -106,14 +106,15 @@ function createDeckObject(forceResetPos = false) {
     wrapper.dataset.instanceId = "deckObject_" + owner;
     wrapper.dataset.owner = owner;
 
-    const backImage = state[owner].backImage;
+    // 相手のデッキ画像も表示（backImageが設定されていない場合はデフォルト画像）
+    const backImage = state[owner]?.backImage || "assets/favicon.png";
     const img = document.createElement("img");
     img.draggable = false;
     setSafeSrc(img, backImage);
 
     const countLabel = document.createElement("div");
     countLabel.classList.add("deckObjectCount");
-    countLabel.textContent = state[owner].deck.length;
+    countLabel.textContent = state[owner]?.deck?.length || 0;
 
     wrapper.appendChild(img);
     wrapper.appendChild(countLabel);
@@ -185,8 +186,10 @@ function updateDeckObject() {
     if (countLabel) countLabel.textContent = s.deck.length;
 
     const img = obj.querySelector("img");
-    if (img && s.backImage) {
-      img.src = s.backImage;
+    if (img) {
+      // backImageが設定されている場合は使用、なければデフォルト画像
+      const backImage = s.backImage || "assets/favicon.png";
+      setSafeSrc(img, backImage);
       img.style.display = "block";
     }
   });

@@ -128,10 +128,10 @@
   function logout() {
     if (!confirm("ログアウトしますか？")) return;
     
-    // オンライン状態をオフラインに設定
-    if (window.firebaseClient) {
-      firebaseClient.setOnlineStatus(false);
-    }
+    // オンライン状態をオフラインに設定（ネットワーク接続がある場合のみ）
+    // if (window.firebaseClient) {
+    //   firebaseClient.setOnlineStatus(false);
+    // }
     
     // ゲーム状態のみ削除
     localStorage.removeItem("matchSetup");
@@ -164,8 +164,8 @@
       badge.textContent = "● オンライン";
       badge.classList.add("connected");
       
-      // オンライン状態を設定
-      firebaseClient.setOnlineStatus(true);
+      // オンライン状態を設定（ネットワーク接続がある場合のみ）
+      // firebaseClient.setOnlineStatus(true);
     } else {
       console.warn("[Index] ⚠️ Firebase 初期化失敗");
       badge.textContent = "● オフライン";

@@ -279,9 +279,15 @@ function applyLevelStats(owner, force = false) {
   const lv = s.level || 1;
   if (!force && s._lastAppliedLv === lv) return;
   const idx = Math.min(lv - 1, LEVEL_MAX - 1);
+  const prevDef = Number(s.def) || 0;
   s.atk        = BASE_INITIAL_STATE.atk        + (LEVEL_STATS.atk[idx]        || 0);
   s.def        = BASE_INITIAL_STATE.def        + (LEVEL_STATS.def[idx]        || 0);
   s.instantDef = BASE_INITIAL_STATE.instantDef + (LEVEL_STATS.instantDef[idx] || 0);
+  const defIncrease = (Number(s.def) || 0) - prevDef;
+  if (defIncrease > 0) {
+    s.defstack = (Number(s.defstack) || 0) + defIncrease;
+  }
+  s.defstackMax = Number(s.def) || 0;
   s._lastAppliedLv = lv;
 }
 

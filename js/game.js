@@ -1153,8 +1153,16 @@ async function handleDiceRoll() {
   }
 
   const gameRoom = localStorage.getItem("gameRoom");
-  if (!gameRoom || !firebaseClient?.db) {
-    console.warn("[handleDiceRoll] gameRoom または Firebase が未準備");
+  if (!gameRoom) {
+    console.warn("[handleDiceRoll] gameRoom が null です。localStorage:", {
+      gameRoom: localStorage.getItem("gameRoom"),
+      gamePlayerKey: localStorage.getItem("gamePlayerKey"),
+      gameStarted: localStorage.getItem("gameStarted")
+    });
+    return;
+  }
+  if (!firebaseClient?.db) {
+    console.warn("[handleDiceRoll] firebaseClient.db が null です。isConnected:", firebaseClient?.isConnected);
     return;
   }
 

@@ -167,66 +167,7 @@ async function resetField() {
   const ok = confirm("盤面全体のリセットプロトコルを実行しますか？（自分と相手の両方のステータスが初期化されます）");
   if (!ok) return;
 
-  lastResetAt = now;
-  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || window.myRole} がリセットを実行しました。`);
-
-  // ステップ1: 全プレイヤーのステータス初期化
-  ["player1", "player2"].forEach(owner => {
-    const s = state[owner];
-    if (!s) return;
-    s.hp = 20; s.hpMax = 20;
-    s.shield = 0; s.barrier = 0; s.def = 0;
-    s.level = 1; s.exp = 0;
-    if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
-  });
-
-  // ステップ2: 自分のデッキのみ再構築
-  initDeckFromCode();
-  if (typeof getMyState === "function") {
-    getMyState().backImage = getBackImage();
-  }
-  shuffleDeck();
-
-  // ステップ3: 場のカードをすべて削除
-  const content = getFieldContent();
-  if (content) {
-    content.querySelectorAll(".card:not(.deckObject)").forEach(el => el.remove());
-  }
-
-  // ブラウザのローカルキャッシュをクリーンアップ
-  localStorage.removeItem("fieldCards");
-  localStorage.removeItem("gameStarted");
-
-  // マッチデータの初期化
-  state.matchData = {
-    round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
-    winner: null, firstPlayer: null
-  };
-  // ダイス値をリセット
-  state.player1.diceValue = -1;
-  state.player2.diceValue = -1;
-  window._gameStartInitiated = false;
-  window.serverInitialState = JSON.parse(JSON.stringify(state));
-
-  // Firebase の playerDice と matchData もリセット
-  const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient?.db) {
-    firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
-    firebaseClient.writeMatchData(gameRoom, state.matchData);
-  }
-
-  // アトミック保存（gameState完全上書き + フィールドクリア）
-  // Firebase 経由で自動同期
-  localStorage.setItem("gameState", JSON.stringify(state));
-  localStorage.removeItem("fieldCards");
-
-  createDeckObject(true);
-
-  if (typeof syncLoop === "function") {
-    await syncLoop();
-  }
-
-  if (typeof update === "function") update();
+  await executeReset();
 }
 
 window.resetField = resetField;
@@ -959,6 +900,7 @@ function showNotification(text, color) {
 
 function checkGameResult() {
   if (!state.matchData) return;
+  // ダイスフェーズ・勝者決定済みの場合はスキップ
   if (state.matchData.status !== "playing") return;
   if (state.matchData.winner) {
     showResultScreen(state.matchData.winner);
@@ -971,9 +913,17 @@ function checkGameResult() {
   const me = state[myRole];
   const op = state[opRole];
 
+  // デッキが未初期化（空配列ではなく undefined/null）の場合は判定しない
+  if (!me || !Array.isArray(me.deck)) return;
+  if (!op || !Array.isArray(op.deck)) return;
+
+  // デッキが両方とも0枚の場合、ゲーム開始直後の可能性があるためスキップ
+  // （ゲーム開始直後はデッキが相手分まだ同期されていない）
+  if (me.deck.length === 0 && op.deck.length === 0) return;
+
   // 自分が敗北条件を満たした場合のみ宣言（二重書き込み防止）
-  const myLost = me && (me.hp <= 0 || me.deck.length === 0);
-  const opLost = op && (op.hp <= 0 || op.deck.length === 0);
+  const myLost = me.hp <= 0 || me.deck.length === 0;
+  const opLost = op.hp <= 0 || op.deck.length === 0;
 
   if (myLost || opLost) {
     let winner;
@@ -1023,17 +973,144 @@ function showResultScreen(winner) {
         <h1 class="result-title" style="color: ${color}; text-shadow: 0 0 30px ${color}66;">${title}</h1>
       </div>
       <p class="result-subtext">${subText}</p>
+      <div id="rematchStatus" style="min-height:28px;margin-bottom:10px;font-size:13px;color:#aaa;letter-spacing:1px;"></div>
       <div class="result-actions">
-        <button class="result-btn" onclick="window.resetField()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
-          再戦 / リセット
+        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
+          再戦を申し込む
         </button>
         <button class="result-btn secondary" onclick="location.href='index.html'">
           退室
+        </button>
+        <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
+          閉じる
         </button>
       </div>
     </div>
   `;
   document.body.appendChild(div);
+
+  // 相手からの再戦リクエストを監視
+  watchRematchRequest();
+}
+
+function closeResultScreen() {
+  const overlay = document.getElementById('gameResultOverlay');
+  if (overlay) overlay.remove();
+}
+
+// ===== 再戦合意システム =====
+
+let _rematchWatcher = null;
+
+function requestRematch() {
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (!gameRoom || !firebaseClient?.db) return;
+
+  const btn = document.getElementById("rematchBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "申し込み中..."; }
+
+  const statusEl = document.getElementById("rematchStatus");
+  if (statusEl) statusEl.textContent = "相手の承諾を待っています...";
+
+  // Firebase に再戦リクエストを書き込む
+  firebaseClient.db.ref(`rooms/${gameRoom}/rematch/${me}`).set({
+    requested: true,
+    ts: firebase.database.ServerValue.TIMESTAMP
+  });
+}
+
+function watchRematchRequest() {
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  const op = me === "player1" ? "player2" : "player1";
+  if (!gameRoom || !firebaseClient?.db) return;
+
+  if (_rematchWatcher) { _rematchWatcher.off(); _rematchWatcher = null; }
+
+  _rematchWatcher = firebaseClient.db.ref(`rooms/${gameRoom}/rematch`);
+  _rematchWatcher.on("value", snap => {
+    const data = snap.val() || {};
+    const myReq = data[me]?.requested;
+    const opReq = data[op]?.requested;
+
+    const statusEl = document.getElementById("rematchStatus");
+    const btn = document.getElementById("rematchBtn");
+
+    if (opReq && !myReq) {
+      // 相手が申し込んできた
+      if (statusEl) statusEl.textContent = "相手が再戦を申し込んでいます！";
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "承諾して再戦";
+        btn.style.animation = "resultTextGlow 0.8s ease-in-out infinite alternate";
+      }
+    } else if (myReq && !opReq) {
+      if (statusEl) statusEl.textContent = "相手の承諾を待っています...";
+    } else if (myReq && opReq) {
+      // 両者合意 → リセット実行
+      if (statusEl) statusEl.textContent = "再戦が成立しました！";
+      if (_rematchWatcher) { _rematchWatcher.off(); _rematchWatcher = null; }
+
+      // Firebase の rematch フラグをクリア
+      firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove();
+
+      // 結果画面を閉じてリセット
+      closeResultScreen();
+      setTimeout(() => executeReset(), 300);
+    }
+  });
+}
+
+async function executeReset() {
+  lastResetAt = Date.now();
+  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || window.myRole} が再戦リセットを実行しました。`);
+
+  ["player1", "player2"].forEach(owner => {
+    const s = state[owner];
+    if (!s) return;
+    s.hp = 20; s.hpMax = 20;
+    s.shield = 0; s.barrier = 0; s.def = 0;
+    s.level = 1; s.exp = 0;
+    if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
+  });
+
+  initDeckFromCode();
+  if (typeof getMyState === "function") {
+    getMyState().backImage = getBackImage();
+  }
+  shuffleDeck();
+
+  const content = getFieldContent();
+  if (content) {
+    content.querySelectorAll(".card:not(.deckObject)").forEach(el => el.remove());
+  }
+
+  localStorage.removeItem("fieldCards");
+  localStorage.removeItem("gameStarted");
+
+  state.matchData = {
+    round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
+    winner: null, firstPlayer: null
+  };
+  state.player1.diceValue = -1;
+  state.player2.diceValue = -1;
+  window._gameStartInitiated = false;
+  window.serverInitialState = JSON.parse(JSON.stringify(state));
+
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
+    firebaseClient.writeMatchData(gameRoom, state.matchData);
+  }
+
+  localStorage.setItem("gameState", JSON.stringify(state));
+  localStorage.removeItem("fieldCards");
+
+  createDeckObject(true);
+
+  if (typeof syncLoop === "function") await syncLoop();
+  if (typeof update === "function") update();
 }
 
 
@@ -1095,11 +1172,12 @@ function updateDicePhaseUI() {
 
     } else if (p1Dice < p2Dice) {
       // プレイヤー1が勝利 → 選択権あり
-      p1Color = "#4fc3f7"; p2Color = "#fff";
-      const p1Name = state.player1.username || "プレイヤー1";
       const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
       const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
-      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p1Label} 勝利！</h2>`;
+      const winnerIsMe = (playerKey === "player1");
+      const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
+      p1Color = winnerIsMe ? "#4fc3f7" : "#e24a4a"; p2Color = "#fff";
+      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p1Label} 勝利！</h2>`;
       if (playerKey === "player1") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
@@ -1113,11 +1191,12 @@ function updateDicePhaseUI() {
 
     } else {
       // プレイヤー2が勝利 → 選択権あり
-      p1Color = "#fff"; p2Color = "#4fc3f7";
-      const p2Name = state.player2.username || "プレイヤー2";
       const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
       const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
-      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p2Label} 勝利！</h2>`;
+      const winnerIsMe = (playerKey === "player2");
+      const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
+      p1Color = "#fff"; p2Color = winnerIsMe ? "#4fc3f7" : "#e24a4a";
+      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p2Label} 勝利！</h2>`;
       if (playerKey === "player2") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>

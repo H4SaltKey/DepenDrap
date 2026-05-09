@@ -793,11 +793,8 @@ function updateMatchUI() {
     infoWrap.dataset.lastHtml = html;
   }
 
-  // 勝敗チェック
+  // 勝敗チェック（checkGameResult 内で showResultScreen も呼ぶ）
   checkGameResult();
-  if (state.matchData?.winner) {
-    showResultScreen(state.matchData.winner);
-  }
 
   // 2. ターンエンドボタン
   let endBtn = document.getElementById("turnEndBtn");
@@ -900,13 +897,28 @@ function showNotification(text, color) {
 
 function checkGameResult() {
   if (!state.matchData) return;
+
   // ゲームが開始されていない場合はスキップ
-  if (!gameReady) return;
+  if (!gameReady) {
+    if (state.matchData.winner) console.warn("[Result] SKIP: gameReady=false, winner=", state.matchData.winner);
+    return;
+  }
   // ダイスフェーズ・勝者決定済みの場合はスキップ
-  if (state.matchData.status !== "playing") return;
+  if (state.matchData.status !== "playing") {
+    if (state.matchData.winner) console.warn("[Result] SKIP: status=", state.matchData.status, "winner=", state.matchData.winner);
+    return;
+  }
   // 1ラウンド目が始まる前はスキップ（ラウンド1・ターン1以降のみ判定）
-  if ((state.matchData.round || 0) < 1 || (state.matchData.turn || 0) < 1) return;
+  if ((state.matchData.round || 0) < 1 || (state.matchData.turn || 0) < 1) {
+    if (state.matchData.winner) console.warn("[Result] SKIP: round=", state.matchData.round, "turn=", state.matchData.turn, "winner=", state.matchData.winner);
+    return;
+  }
+
+  // Firebase から winner が同期されてきた場合（相手が書き込んだ）
   if (state.matchData.winner) {
+    console.log("[Result] winner synced from Firebase:", state.matchData.winner,
+      "| round=", state.matchData.round, "turn=", state.matchData.turn,
+      "| gameReady=", gameReady, "status=", state.matchData.status);
     showResultScreen(state.matchData.winner);
     return;
   }
@@ -922,14 +934,23 @@ function checkGameResult() {
   if (!op || !Array.isArray(op.deck)) return;
 
   // デッキが両方とも0枚の場合、ゲーム開始直後の可能性があるためスキップ
-  // （ゲーム開始直後はデッキが相手分まだ同期されていない）
-  if (me.deck.length === 0 && op.deck.length === 0) return;
+  if (me.deck.length === 0 && op.deck.length === 0) {
+    console.log("[Result] SKIP: both decks empty (likely init)");
+    return;
+  }
 
-  // 自分が敗北条件を満たした場合のみ宣言（二重書き込み防止）
   const myLost = me.hp <= 0 || me.deck.length === 0;
   const opLost = op.hp <= 0 || op.deck.length === 0;
 
   if (myLost || opLost) {
+    console.log("[Result] TRIGGER:",
+      "myRole=", myRole,
+      "| me.hp=", me.hp, "me.deck=", me.deck.length,
+      "| op.hp=", op.hp, "op.deck=", op.deck.length,
+      "| myLost=", myLost, "opLost=", opLost,
+      "| round=", state.matchData.round, "turn=", state.matchData.turn
+    );
+
     let winner;
     if (myLost && opLost) {
       winner = 'draw';
@@ -941,7 +962,6 @@ function checkGameResult() {
 
     state.matchData.winner = winner;
 
-    // Firebase に書き込んで相手にも通知
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && firebaseClient?.db) {
       firebaseClient.writeMatchData(gameRoom, state.matchData);

@@ -900,6 +900,8 @@ function showNotification(text, color) {
 
 function checkGameResult() {
   if (!state.matchData) return;
+  // ゲームが開始されていない場合はスキップ
+  if (!gameReady) return;
   // ダイスフェーズ・勝者決定済みの場合はスキップ
   if (state.matchData.status !== "playing") return;
   if (state.matchData.winner) {
@@ -975,14 +977,14 @@ function showResultScreen(winner) {
       <p class="result-subtext">${subText}</p>
       <div id="rematchStatus" style="min-height:28px;margin-bottom:10px;font-size:13px;color:#aaa;letter-spacing:1px;"></div>
       <div class="result-actions">
-        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
-          再戦を申し込む
+        <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
+          閉じる
         </button>
         <button class="result-btn secondary" onclick="location.href='index.html'">
           退室
         </button>
-        <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
-          閉じる
+        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
+          再戦を申し込む
         </button>
       </div>
     </div>
@@ -994,6 +996,11 @@ function showResultScreen(winner) {
 }
 
 function closeResultScreen() {
+  // リスナーを解除してから閉じる
+  if (_rematchWatcher) {
+    _rematchWatcher.off();
+    _rematchWatcher = null;
+  }
   const overlay = document.getElementById('gameResultOverlay');
   if (overlay) overlay.remove();
 }

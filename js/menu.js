@@ -10,6 +10,7 @@
 
     <div id="menuPanel" class="hidden">
       <div class="menuItem" id="backBtn">タイトルへ戻る</div>
+      <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
       <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
       <div class="menuItem" id="optBtn">オプション</div>
     </div>
@@ -181,17 +182,39 @@
 
   button.onclick = ()=>{
     panel.classList.toggle("hidden");
-    // ゲーム画面以外ではリセットボタンを非表示にする
+    // ゲーム画面以外ではリセット・降参ボタンを非表示にする
+    const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
     const resetBtn = document.getElementById("resetFieldBtn");
-    if (resetBtn) {
-      const isGamePage = window.location.pathname.endsWith("game.html") || document.getElementById("field");
-      resetBtn.style.display = isGamePage ? "block" : "none";
+    const surrenderBtn = document.getElementById("surrenderBtn");
+    if (resetBtn) resetBtn.style.display = isGamePage ? "block" : "none";
+    if (surrenderBtn) {
+      // playing 状態かつゲーム画面のみ表示
+      const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing" && !state?.matchData?.winner;
+      surrenderBtn.style.display = (isGamePage && isPlaying) ? "block" : "none";
     }
   };
 
   document.getElementById("backBtn").onclick = ()=>{
     openConfirm("タイトルに戻りますか？", ()=>{
       location.href = "index.html";
+    });
+  };
+
+  document.getElementById("surrenderBtn").onclick = ()=>{
+    panel.classList.add("hidden");
+    openConfirm("降参しますか？相手の勝利となります。", ()=>{
+      // 降参: 相手を勝者として Firebase に書き込む
+      if (typeof state !== "undefined" && typeof firebaseClient !== "undefined") {
+        const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+        const op = me === "player1" ? "player2" : "player1";
+        if (state.matchData) {
+          state.matchData.winner = op;
+          const gameRoom = localStorage.getItem("gameRoom");
+          if (gameRoom && firebaseClient?.db) {
+            firebaseClient.writeMatchData(gameRoom, state.matchData);
+          }
+        }
+      }
     });
   };
   

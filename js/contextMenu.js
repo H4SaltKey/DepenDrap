@@ -867,8 +867,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   }
 
   // 継続の道: 1以上のダメージを与える度に1ダメージ（3回目は1貫通ダメージ）
-  const meRole = window.myRole || "player1";
-  const myState2 = state[meRole];
+  const myState2 = state[window.myRole || "player1"];
   if (!isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
     const lv = myState2.level || 1;
     let idx = 0;

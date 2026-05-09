@@ -442,6 +442,7 @@ function drawMultiple(count, faceDown){
 
   const handY = 1600; // 手札エリアのY座標
   const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
   
   for(let i = 0; i < actual; i++){
     let rawId = dState.deck.pop();

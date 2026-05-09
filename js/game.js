@@ -1659,6 +1659,9 @@ async function handleDiceRoll() {
 
   // Firebase: playerDice パスにのみ書く（相手のパスは触らない）
   await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
+  
+  // 初回ゲーム時のデッキ枚数同期漏れを防ぐため、ダイスロール直後に自分の状態を同期する
+  await firebaseClient.writeMyState(gameRoom, playerKey, _getMyStateForSync());
 }
 
 function showDiceRollingAnimation() {

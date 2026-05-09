@@ -13,6 +13,7 @@ function resetAllGameVariables() {
   gameReady = false;
   lastResetAt = 0;
   lastTurnPlayer = null;
+  window._lastRound = undefined; // ラウンド通知用の記憶もリセット
   cardsReadyFired = false;
   lastStateJson = "";
   sliderActive = false;
@@ -1264,6 +1265,8 @@ function watchRematchRequest() {
 
 async function executeReset() {
   lastResetAt = Date.now();
+  lastTurnPlayer = null; // ターン通知用の記憶をリセット
+  window._lastRound = undefined; // ラウンド通知用の記憶をリセット
   addGameLog(`[PROTOCOL:RESET] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole} が再戦リセットを実行しました。`);
 
   ["player1", "player2"].forEach(owner => {

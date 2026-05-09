@@ -280,7 +280,7 @@ function watchRoom(roomName) {
     const wasReady = myReady;
     myReady = !!myData.ready;
     
-    // ready状態が変わった場合のみUIを更新（ログは toggleReady で表示済み）
+    // ready状態が変わった場合、または初回同期時は必ずUIを更新
     if (wasReady !== myReady) {
       updateReadyUI();
     }
@@ -295,11 +295,12 @@ function watchRoom(roomName) {
       firebaseClient.db.ref(`rooms/${roomName}/players/${opRole}/hasJoined`).set(true);
     }
     if (!opData) {
-      addLog("system", "対戦相手が退出しました。");
+      if (opponentName) {
+        addLog("system", "対戦相手が退出しました。");
+      }
       opponentName = null;
       updateOpponentUI(null, false, false, null);
-      myReady = false;
-      updateReadyUI();
+      // 相手が退出しても自分の準備状態は維持（1人でも緑のまま）
     }
     if (opData) {
       opponentReady = !!opData.ready;

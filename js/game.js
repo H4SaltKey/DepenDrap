@@ -988,25 +988,39 @@ function updateDicePhaseUI() {
                    <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444;color:#fff;margin-top:30px;">振り直し</button>`;
       p1Color = "#ff4444"; p2Color = "#ff4444";
     } else if (p1Dice < p2Dice) {
-      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 先攻！</h2>`;
-      resultMsg = `<p class="dice-subtitle" style="color:#00ffcc;margin-top:40px;font-size:20px;font-weight:900;">プレイヤー1が先攻です</p>
-                   <div style="margin-top:30px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">試合を開始しています...</div>`;
+      // プレイヤー1が選択権を持つ
+      const me = window.myRole || "player1";
+      const iAmChooser = (me === "player1");
+      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
+      if (iAmChooser) {
+        resultMsg = `
+          <p class="dice-subtitle" style="color:#00ffcc;margin-top:40px;font-size:18px;font-weight:900;">あなたが選択権を持っています</p>
+          <div style="display:flex;gap:20px;justify-content:center;margin-top:30px;">
+            <button class="dice-roll-btn" onclick="handleChooseOrder(true)" style="padding:15px 40px;font-size:16px;">先攻</button>
+            <button class="dice-roll-btn" onclick="handleChooseOrder(false)" style="padding:15px 40px;font-size:16px;background:#444;color:#fff;">後攻</button>
+          </div>`;
+      } else {
+        resultMsg = `<p class="dice-subtitle" style="color:#888;margin-top:40px;font-size:16px;">相手が先攻・後攻を選択しています...</p>
+                     <div style="margin-top:20px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">● 待機中</div>`;
+      }
       p1Color = "#00ffcc"; p2Color = "#888";
-      const me = window.myRole || "player1";
-      if (me === "player1" && !window._gameStartInitiated) {
-        window._gameStartInitiated = true;
-        setTimeout(async () => { await handleChooseOrder(true); }, 2500);
-      }
     } else {
-      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 先攻！</h2>`;
-      resultMsg = `<p class="dice-subtitle" style="color:#e24a4a;margin-top:40px;font-size:20px;font-weight:900;">プレイヤー2が先攻です</p>
-                   <div style="margin-top:30px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">試合を開始しています...</div>`;
-      p1Color = "#888"; p2Color = "#e24a4a";
+      // プレイヤー2が選択権を持つ
       const me = window.myRole || "player1";
-      if (me === "player1" && !window._gameStartInitiated) {
-        window._gameStartInitiated = true;
-        setTimeout(async () => { await handleChooseOrder(false); }, 2500);
+      const iAmChooser = (me === "player2");
+      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
+      if (iAmChooser) {
+        resultMsg = `
+          <p class="dice-subtitle" style="color:#e24a4a;margin-top:40px;font-size:18px;font-weight:900;">あなたが選択権を持っています</p>
+          <div style="display:flex;gap:20px;justify-content:center;margin-top:30px;">
+            <button class="dice-roll-btn" onclick="handleChooseOrder(true)" style="padding:15px 40px;font-size:16px;">先攻</button>
+            <button class="dice-roll-btn" onclick="handleChooseOrder(false)" style="padding:15px 40px;font-size:16px;background:#444;color:#fff;">後攻</button>
+          </div>`;
+      } else {
+        resultMsg = `<p class="dice-subtitle" style="color:#888;margin-top:40px;font-size:16px;">相手が先攻・後攻を選択しています...</p>
+                     <div style="margin-top:20px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">● 待機中</div>`;
       }
+      p1Color = "#888"; p2Color = "#e24a4a";
     }
 
     const newHtml = `
@@ -1207,14 +1221,19 @@ async function handleChooseOrder(goFirst) {
   const me = window.myRole || "player1";
   const op = me === "player1" ? "player2" : "player1";
 
+  // 選択権を持つプレイヤーが「先攻」を選んだ場合は自分が先攻、「後攻」なら相手が先攻
   state.matchData.turnPlayer = goFirst ? me : op;
   state.matchData.firstPlayer = state.matchData.turnPlayer;
   state.matchData.status = "playing";
   state.matchData.round = 1;
   state.matchData.turn = 1;
 
-  console.log("[handleChooseOrder] ゲーム開始。先攻:", state.matchData.turnPlayer, "ステータス:", state.matchData.status);
-  addGameLog(`[MATCH] 試合開始！先攻: ${state.matchData.turnPlayer === "player1" ? (state.player1.username || "P1") : (state.player2.username || "P2")}`);
+  const firstPlayerName = state.matchData.turnPlayer === "player1"
+    ? (state.player1.username || "P1")
+    : (state.player2.username || "P2");
+
+  console.log("[handleChooseOrder] ゲーム開始。先攻:", state.matchData.turnPlayer);
+  addGameLog(`[MATCH] 試合開始！先攻: ${firstPlayerName}`);
   
   // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();

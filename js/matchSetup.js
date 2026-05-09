@@ -215,6 +215,7 @@ async function createRoom() {
   // ルーム作成成功：作成者として参加
   currentRoom = result;
   currentPlayerKey = "player1";
+  myReady = false; // 初期状態は準備未完了
   addLog("system", `ルーム「${result}」を作成しました。`);
   
   // ルーム監視を開始
@@ -234,6 +235,7 @@ async function joinRoom() {
   // ルーム参加成功
   currentRoom = result.roomName;
   currentPlayerKey = result.playerKey;
+  myReady = false; // 初期状態は準備未完了
   addLog("system", `ルーム「${result.roomName}」に参加しました。`);
   
   // ルーム監視を開始
@@ -265,6 +267,13 @@ function watchRoom(roomName) {
     const players = roomData.players || {};
     const myData  = players[currentPlayerKey];
     if (!myData) { addLog("system", "ルームから削除されました。"); resetRoom(); return; }
+
+    // 自分のready状態をFirebaseから同期
+    const wasReady = myReady;
+    myReady = !!myData.ready;
+    if (wasReady !== myReady) {
+      updateReadyUI();
+    }
 
     const opRole = currentPlayerKey === "player1" ? "player2" : "player1";
     const opData = players[opRole];

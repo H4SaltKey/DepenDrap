@@ -1494,10 +1494,17 @@ async function initGame() {
     if (currentRoom && currentRoom !== lastRoom) {
       console.log("[initGame] 新しいルームに入りました。ダイスロールをリセット");
       state.matchData.status = "setup_dice";
-      state.matchData.dice = { player1: null, player2: null };
+      state.player1.diceValue = -1;
+      state.player2.diceValue = -1;
       window._lastGameRoom = currentRoom;
       window._gameStartInitiated = false;
       save();
+
+      // Firebase の playerDice もリセット（前回の値が残っていると誤検知する）
+      if (firebaseClient && firebaseClient.db) {
+        console.log("[initGame] Firebase playerDice をリセット:", currentRoom);
+        firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).remove();
+      }
     }
 
     console.log("[initGame] step7: gameReady = true, calling update()");
@@ -1620,14 +1627,24 @@ function setupPlayerDiceWatcher(gameRoom) {
     const allDice = snapshot.val() || {};
     console.log("[Game] プレイヤーダイス更新を受信:", allDice);
 
+    // ダイスフェーズ以外では無視
+    if (state.matchData.status !== "setup_dice") {
+      console.log("[Game] ダイスフェーズ以外のため無視");
+      return;
+    }
+
+    // 片方でも値が届いたら state に反映（UI更新のため）
+    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0) {
+      state.player1.diceValue = allDice.player1;
+    }
+    if (allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
+      state.player2.diceValue = allDice.player2;
+    }
+
     // 両プレイヤーのダイス値が決定したか確認
     if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0 &&
         allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
       console.log("[Game] 両プレイヤーのダイス値が決定:", allDice);
-      
-      // state に保存
-      state.player1.diceValue = allDice.player1;
-      state.player2.diceValue = allDice.player2;
       
       // localStorage に保存
       localStorage.setItem("gameState", JSON.stringify(state));

@@ -1056,12 +1056,15 @@ function updateDicePhaseUI() {
   }
 
   // ===== フェーズ: ローリング（まだ振っていない or 片方だけ） =====
-  // レイアウトが存在しない場合のみ再構築
-  if (phase !== prevPhase || !overlay.querySelector("#dice-val-player1")) {
+  // レイアウトが存在しない場合、またはプレイヤー名が変わった場合に再構築
+  const p1Name = state.player1.username || "プレイヤー1";
+  const p2Name = state.player2.username || "プレイヤー2";
+  const nameKey = `${p1Name}|${p2Name}`;
+
+  if (phase !== prevPhase || !overlay.querySelector("#dice-val-player1") || overlay.dataset.nameKey !== nameKey) {
     overlay.dataset.phase = "rolling";
     overlay.dataset.renderKey = "";
-    const p1Name = state.player1.username || "プレイヤー1";
-    const p2Name = state.player2.username || "プレイヤー2";
+    overlay.dataset.nameKey = nameKey;
     overlay.innerHTML = `
       <div class="dice-container" style="max-width:900px;width:90%;">
         <h2 class="dice-title" style="margin-bottom:60px;">ダイスロール</h2>

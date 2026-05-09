@@ -324,17 +324,25 @@ async function toggleReady() {
   if (!selectedDeck()) { addLog("system", "デッキを選択してください。"); return; }
   
   const newReady = !myReady;
+  
+  // 即座にローカル状態を更新してUIを反映（レスポンス向上）
+  myReady = newReady;
+  updateReadyUI();
+  
+  // ログメッセージを表示
+  addLog("system", newReady ? "準備完了にしました。" : "準備をキャンセルしました。");
+  
+  // Firebaseに送信
   const ok = await firebaseClient.setReady(currentRoom, currentPlayerKey, newReady);
   if (!ok) { 
+    // 失敗した場合は元に戻す
+    myReady = !newReady;
+    updateReadyUI();
     addLog("system", "準備状態の変更に失敗しました。"); 
     return; 
   }
   
-  // ログメッセージを表示（watchRoom で myReady が更新される前に表示）
-  addLog("system", newReady ? "準備完了にしました。" : "準備をキャンセルしました。");
-  
-  // myReady の更新と UI 更新は watchRoom の監視に任せる
-  // （Firebaseから同期されるまで待つ）
+  // watchRoom での同期は引き続き行われる（整合性のため）
 }
 
 // ===== UI 更新 =====

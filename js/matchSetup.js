@@ -211,11 +211,18 @@ async function createRoom() {
   const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase() || undefined;
   const result = await firebaseClient.createRoom(roomName);
   if (!result) { addLog("system", "ルーム作成に失敗しました。"); return; }
+  
+  // ルーム作成成功：作成者として参加
   currentRoom = result;
   currentPlayerKey = "player1";
   addLog("system", `ルーム「${result}」を作成しました。`);
+  
+  // ルーム監視を開始
   watchRoom(result);
   updateUIForRoom();
+  
+  // ルーム一覧を即座に更新して「参加済み」表示を反映
+  watchRoomList();
 }
 
 async function joinRoom() {
@@ -223,11 +230,18 @@ async function joinRoom() {
   if (!roomName) { addLog("system", "ルーム名を入力してください。"); return; }
   const result = await firebaseClient.joinRoom(roomName);
   if (!result) { addLog("system", `ルーム「${roomName}」が見つかりません。`); return; }
+  
+  // ルーム参加成功
   currentRoom = result.roomName;
   currentPlayerKey = result.playerKey;
   addLog("system", `ルーム「${result.roomName}」に参加しました。`);
+  
+  // ルーム監視を開始
   watchRoom(result.roomName);
   updateUIForRoom();
+  
+  // ルーム一覧を即座に更新して「参加済み」表示を反映
+  watchRoomList();
 }
 
 async function leaveRoom() {

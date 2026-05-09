@@ -1137,11 +1137,32 @@ function updateDicePhaseUI() {
 async function handleDiceRoll() {
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
 
+  console.log("[handleDiceRoll] 開始 playerKey:", playerKey,
+    "diceValue:", state[playerKey]?.diceValue,
+    "gameRoom:", localStorage.getItem("gameRoom"),
+    "firebase connected:", firebaseClient?.isConnected);
+
+  // state[playerKey] が存在しない場合は無視
+  if (!state[playerKey]) {
+    console.warn("[handleDiceRoll] state[playerKey] が存在しません:", playerKey);
+    return;
+  }
+
   // 既に振っていたら無視（-1 = 未入力、それ以外は入力済み）
-  if (state[playerKey].diceValue !== -1) return;
+  if (state[playerKey].diceValue !== -1) {
+    console.log("[handleDiceRoll] 既に振っています:", state[playerKey].diceValue);
+    return;
+  }
 
   const gameRoom = localStorage.getItem("gameRoom");
-  if (!gameRoom || !firebaseClient) return;
+  if (!gameRoom) {
+    console.warn("[handleDiceRoll] gameRoom が取得できません");
+    return;
+  }
+  if (!firebaseClient || !firebaseClient.db) {
+    console.warn("[handleDiceRoll] Firebase が初期化されていません");
+    return;
+  }
 
   // アニメーション開始（自分の欄のみ）
   showDiceRollingAnimation();
@@ -1150,6 +1171,7 @@ async function handleDiceRoll() {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const roll = Math.floor(Math.random() * 100) + 1;
+  console.log("[handleDiceRoll] ロール結果:", roll);
   addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
 
   // ローカル state に即座に反映（watcher 受信前に update() が呼ばれても正しく表示されるよう）
@@ -1157,7 +1179,8 @@ async function handleDiceRoll() {
   update();
 
   // Firebase に書き込む → setupPlayerDiceWatcher が受信して相手側も更新
-  await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
+  const ok = await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
+  console.log("[handleDiceRoll] Firebase 書き込み結果:", ok);
 }
 
 function showDiceRollingAnimation() {

@@ -788,11 +788,13 @@ function updateMatchUI() {
     showRoundNotification(m.round);
     window._lastRound = m.round;
     
+    // lastTurnPlayerを即座に更新（2重表示を防ぐ）
+    lastTurnPlayer = m.turnPlayer;
+    
     // ラウンド通知の後、2秒後にターン通知を表示
     setTimeout(() => {
       const isMe = m.turnPlayer === window.myRole;
       showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
-      lastTurnPlayer = m.turnPlayer;
     }, 2000);
   } else {
     // ラウンド変更がない場合、またはターン1以外の場合は通常のターン通知のみ

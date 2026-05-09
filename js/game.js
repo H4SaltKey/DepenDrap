@@ -1119,67 +1119,36 @@ function updateDicePhaseUI() {
   }
 }
 
+// ===== ダイスフェーズ =====
+// 設計原則:
+//   - Firebase の rooms/{room}/playerDice が唯一の真実の源
+//   - setupPlayerDiceWatcher だけが state を更新し update() を呼ぶ
+//   - handleDiceRoll は自分の値を Firebase に書くだけ
+//   - handleChooseOrder は勝者だけが呼ぶ
+
 async function handleDiceRoll() {
-  const me = window.myRole || "player1";
-  const playerKey = localStorage.getItem("gamePlayerKey") || me;
+  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
 
   // 既に振っていたら無視
   if (state[playerKey].diceValue >= 0) return;
 
-  console.log("[handleDiceRoll] ダイスロール開始:", playerKey);
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (!gameRoom || !firebaseClient) return;
 
-  // ボタンを無効化してアニメーション開始
-  const btn = document.getElementById(`dice-btn-${playerKey}`);
-  if (btn) { btn.disabled = true; btn.textContent = "振り中..."; }
+  // アニメーション開始（自分の欄のみ）
   showDiceRollingAnimation();
 
   // 1秒後に値を決定
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const roll = Math.floor(Math.random() * 100) + 1;
-  console.log("[handleDiceRoll] ダイスロール結果:", playerKey, "=", roll);
   addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
 
-  // アニメーション停止して値を表示
-  const diceEl = document.getElementById(`dice-val-${playerKey}`);
-  if (diceEl) {
-    diceEl.style.animation = "diceResultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
-    diceEl.textContent = roll;
-  }
-  if (btn) { btn.style.display = "none"; }
-
-  // state に保存
-  state[playerKey].diceValue = roll;
-
-  // Firebase にプレイヤーのダイス値を保存
-  const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient) {
-    await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
-
-    // 両プレイヤーのダイス値を取得して比較
-    const allDice = await firebaseClient.getAllPlayerDice(gameRoom);
-    console.log("[handleDiceRoll] すべてのダイス値:", allDice);
-
-    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0 &&
-        allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
-      // 両プレイヤーのダイス値が決定
-      state.player1.diceValue = allDice.player1;
-      state.player2.diceValue = allDice.player2;
-      if (typeof saveImmediate === "function") await saveImmediate();
-      await firebaseClient.updateRoomGameState(gameRoom, JSON.parse(JSON.stringify(state)));
-    }
-  }
-
-  if (typeof saveImmediate === "function") await saveImmediate();
-  if (typeof syncLoop === "function") syncLoop();
-  update();
+  // Firebase に書き込む → setupPlayerDiceWatcher が受信して state/UI を更新
+  await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
 }
 
-/**
- * ダイスロールアニメーションを表示（自分のダイス欄のみ更新）
- */
 function showDiceRollingAnimation() {
-  // 自分のプレイヤーキーを取得
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
   const diceEl = document.getElementById(`dice-val-${playerKey}`);
   if (!diceEl) return;
@@ -1188,35 +1157,17 @@ function showDiceRollingAnimation() {
 }
 
 async function handleResetDice() {
-  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
-  
-  console.log("[handleResetDice] ダイスをリセット:", playerKey);
-  
-  // Firebase からプレイヤーのダイス値をリセット
   const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient) {
-    console.log("[handleResetDice] Firebase からプレイヤーダイス値をリセット");
-    await firebaseClient.setPlayerDice(gameRoom, playerKey, null);
-  }
-  
-  // ローカルの state もリセット
-  state.player1.diceValue = -1;
-  state.player2.diceValue = -1;
-  
-  // ローカルに保存
-  if (typeof saveImmediate === "function") await saveImmediate();
-  
-  if (typeof syncLoop === "function") syncLoop();
-  update();
+  if (!gameRoom || !firebaseClient) return;
+
+  // Firebase の playerDice を全削除 → watcher が受信して state/UI をリセット
+  await firebaseClient.resetPlayerDice(gameRoom);
 }
 
 async function handleChooseOrder(goFirst) {
-  console.log("[handleChooseOrder] ゲーム開始処理開始。goFirst:", goFirst);
-  
   const me = window.myRole || "player1";
   const op = me === "player1" ? "player2" : "player1";
 
-  // 選択権を持つプレイヤーが「先攻」を選んだ場合は自分が先攻、「後攻」なら相手が先攻
   state.matchData.turnPlayer = goFirst ? me : op;
   state.matchData.firstPlayer = state.matchData.turnPlayer;
   state.matchData.status = "playing";
@@ -1227,19 +1178,15 @@ async function handleChooseOrder(goFirst) {
     ? (state.player1.username || "P1")
     : (state.player2.username || "P2");
 
-  console.log("[handleChooseOrder] ゲーム開始。先攻:", state.matchData.turnPlayer);
   addGameLog(`[MATCH] 試合開始！先攻: ${firstPlayerName}`);
-  
-  // ローカルに保存
+
   if (typeof saveImmediate === "function") await saveImmediate();
-  
-  // Firebase に保存
+
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
-    console.log("[handleChooseOrder] Firebase にゲーム状態を保存");
     await firebaseClient.updateRoomGameState(gameRoom, state);
   }
-  
+
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
@@ -1626,49 +1573,42 @@ function setupRoomWatcher() {
 }
 
 /**
- * プレイヤーダイス値の変更を監視
+ * playerDice の変更を監視する唯一の場所。
+ * ここだけが state.player*.diceValue を更新し update() を呼ぶ。
+ *
+ * 手順:
+ *   1. 片方の値が届く → state に反映 → update() → UI に値表示
+ *   2. 両方の値が届く → state に反映 → update() → 結果画面表示
+ *      （勝者は選択ボタン、敗者は待機メッセージ）
+ *   3. 値が消える（引き分け振り直し）→ state をリセット → update()
  */
 function setupPlayerDiceWatcher(gameRoom) {
   if (!gameRoom || !firebaseClient || !firebaseClient.db) {
-    console.warn("[Game] プレイヤーダイス監視を開始できません");
+    console.warn("[DiceWatcher] 開始できません");
     return;
   }
 
-  console.log("[Game] プレイヤーダイス監視開始:", gameRoom);
+  console.log("[DiceWatcher] 監視開始:", gameRoom);
 
   const diceRef = firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`);
   playerDiceWatcherUnsubscribe = diceRef.on('value', (snapshot) => {
-    const allDice = snapshot.val() || {};
-    console.log("[Game] プレイヤーダイス更新を受信:", allDice);
+    // ダイスフェーズ以外は無視
+    if (state.matchData.status !== "setup_dice") return;
 
-    // ダイスフェーズ以外では無視
-    if (state.matchData.status !== "setup_dice") {
-      console.log("[Game] ダイスフェーズ以外のため無視");
-      return;
-    }
+    const raw = snapshot.val() || {};
+    const p1 = (raw.player1 !== null && raw.player1 !== undefined && raw.player1 >= 0)
+      ? raw.player1 : -1;
+    const p2 = (raw.player2 !== null && raw.player2 !== undefined && raw.player2 >= 0)
+      ? raw.player2 : -1;
 
-    // 片方でも値が届いたら state に反映（UI更新のため）
-    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0) {
-      state.player1.diceValue = allDice.player1;
-    }
-    if (allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
-      state.player2.diceValue = allDice.player2;
-    }
+    console.log("[DiceWatcher] 受信 p1:", p1, "p2:", p2);
 
-    // 両プレイヤーのダイス値が決定したか確認
-    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0 &&
-        allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
-      console.log("[Game] 両プレイヤーのダイス値が決定:", allDice);
-      
-      // localStorage に保存
-      localStorage.setItem("gameState", JSON.stringify(state));
-      
-      // UI を更新
-      if (typeof update === "function") {
-        console.log("[Game] update() を呼び出し（ダイス値更新）");
-        update();
-      }
-    }
+    // state に反映
+    state.player1.diceValue = p1;
+    state.player2.diceValue = p2;
+
+    // UI を更新（updateDicePhaseUI は update() 内から呼ばれる）
+    update();
   });
 }
 

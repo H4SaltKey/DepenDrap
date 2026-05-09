@@ -442,6 +442,9 @@ class FirebaseClient {
       return false;
     }
   }
+
+  /**
+   * ステータス変更リクエストを送信
    * 相手のステータスを変更したい時に使う
    */
   async sendChangeRequest(roomName, fromKey, target, key, type, value) {

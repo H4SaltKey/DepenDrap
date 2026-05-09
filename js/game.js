@@ -1554,25 +1554,78 @@ async function initGame() {
       addGameLog(`${window.myUsername || window.myRole} が入室しました。`);
     }
 
-    // 新しいルームに入った場合、ダイスロールフェーズをリセット
-    // （前のルームのダイスデータが残っていないようにする）
     const currentRoom = localStorage.getItem("gameRoom");
+    const myKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+    const opKey = myKey === "player1" ? "player2" : "player1";
+
+    // Firebase から最新状態を復元（リロード対応）
+    if (currentRoom && firebaseClient?.db) {
+      console.log("[initGame] Firebase から状態を復元中...");
+      try {
+        // matchData を復元
+        const matchSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/matchData`).once('value');
+        if (matchSnap.exists()) {
+          state.matchData = { ...state.matchData, ...matchSnap.val() };
+          console.log("[initGame] matchData 復元:", state.matchData.status);
+        }
+
+        // 相手の playerState を復元
+        const opSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${opKey}`).once('value');
+        if (opSnap.exists()) {
+          const opData = opSnap.val();
+          const { diceValue: _d, username: _u, deck: _deck, ...rest } = opData;
+          Object.assign(state[opKey], rest);
+          console.log("[initGame] 相手の状態を復元:", opKey);
+        }
+
+        // 自分の playerState を復元（念のため）
+        const mySnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${myKey}`).once('value');
+        if (mySnap.exists()) {
+          const myData = mySnap.val();
+          const { diceValue: _d, username: _u, deck: _deck, ...rest } = myData;
+          Object.assign(state[myKey], rest);
+          console.log("[initGame] 自分の状態を復元:", myKey);
+        }
+
+        normalizeState();
+        applyLevelStats("player1");
+        applyLevelStats("player2");
+      } catch (e) {
+        console.warn("[initGame] Firebase 復元エラー:", e);
+      }
+    }
+
+    // 新しいルームに入った場合のみダイスリセット（リロード時はスキップ）
+    const isReload = sessionStorage.getItem("wasInGame") === currentRoom;
     const lastRoom = window._lastGameRoom;
-    if (currentRoom && currentRoom !== lastRoom) {
+
+    if (currentRoom && currentRoom !== lastRoom && !isReload) {
       console.log("[initGame] 新しいルームに入りました。ダイスロールをリセット");
       state.matchData.status = "setup_dice";
       state.player1.diceValue = -1;
       state.player2.diceValue = -1;
-      window._lastGameRoom = currentRoom;
       window._gameStartInitiated = false;
       save();
 
-      // Firebase の playerDice もリセット（前回の値が残っていると誤検知する）
-      if (firebaseClient && firebaseClient.db) {
-        console.log("[initGame] Firebase playerDice をリセット:", currentRoom);
+      if (firebaseClient?.db) {
         firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).remove();
       }
+    } else if (isReload) {
+      console.log("[initGame] リロード検出 - ゲーム状態を維持");
+      // ダイス値も Firebase から復元
+      if (currentRoom && firebaseClient?.db) {
+        const diceSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).once('value');
+        if (diceSnap.exists()) {
+          const diceData = diceSnap.val() || {};
+          if (diceData.player1 >= 0) state.player1.diceValue = diceData.player1;
+          if (diceData.player2 >= 0) state.player2.diceValue = diceData.player2;
+        }
+      }
     }
+
+    window._lastGameRoom = currentRoom;
+    // リロード検出用にセッションにルーム名を記録
+    if (currentRoom) sessionStorage.setItem("wasInGame", currentRoom);
 
     console.log("[initGame] step7: gameReady = true, calling update()");
     gameReady = true;

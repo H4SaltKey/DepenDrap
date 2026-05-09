@@ -220,9 +220,10 @@ function drawFromDeckObject() {
 
   const s = state[currentRole];
   if (!s || !s.deck || s.deck.length === 0) {
-    // デッキが空の場合、敗北判定
+    // デッキが空の状態でドローしようとした場合、敗北判定
     console.warn("[Draw] デッキが空です。敗北判定を実行します。");
-    checkGameResult();
+    addGameLog(`[DEFEAT] ${window.myUsername || state[currentRole]?.username || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
+    setTimeout(() => checkGameResult(), 100);
     return;
   }
 
@@ -1280,6 +1281,7 @@ async function executeReset() {
     s.hp = 20; s.hpMax = 20;
     s.shield = 0; s.barrier = 0; s.def = 0;
     s.level = 1; s.exp = 0;
+    s.diceValue = -1; // ダイス値を確実にリセット
     if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
   });
 
@@ -1311,8 +1313,12 @@ async function executeReset() {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
-    firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
-    firebaseClient.writeMatchData(gameRoom, state.matchData);
+    // playerDice を完全に削除してダイス値をリセット
+    await firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
+    // 各プレイヤーの diceValue もリセット
+    await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1);
+    await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1);
+    await firebaseClient.writeMatchData(gameRoom, state.matchData);
   }
 
   localStorage.setItem("gameState", JSON.stringify(state));
@@ -1555,6 +1561,14 @@ async function handleDiceRoll() {
     console.warn("[handleDiceRoll] firebaseClient.db が null です。isConnected:", firebaseClient?.isConnected);
     return;
   }
+
+  // ボタンを非表示にする（押した直後）
+  const btn1 = document.getElementById("dice-btn-player1");
+  const btn2 = document.getElementById("dice-btn-player2");
+  const btnCenter = document.getElementById("dice-btn-center");
+  if (btn1) btn1.style.display = "none";
+  if (btn2) btn2.style.display = "none";
+  if (btnCenter) btnCenter.style.display = "none";
 
   showDiceRollingAnimation();
   await new Promise(resolve => setTimeout(resolve, 1000));

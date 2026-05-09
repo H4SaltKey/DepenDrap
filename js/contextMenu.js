@@ -425,14 +425,31 @@ function drawMultiple(count, faceDown){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
-  // デッキが0枚の場合、敗北判定を実行
+  // デッキが0枚の状態でドローしようとした場合、敗北判定を実行
   if (dState.deck.length === 0) {
     console.warn("[drawMultiple] デッキが空です。敗北判定を実行します。");
-    if (typeof checkGameResult === "function") checkGameResult();
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
+    }
+    if (typeof checkGameResult === "function") {
+      setTimeout(() => checkGameResult(), 100);
+    }
     return;
   }
   
-  const actual = Math.min(count, dState.deck.length);
+  // ドローしようとした枚数がデッキ枚数を超える場合も敗北（オーバードロー）
+  if (count > dState.deck.length) {
+    console.warn(`[drawMultiple] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > ${dState.deck.length}枚）。敗北です。`);
+    }
+    if (typeof checkGameResult === "function") {
+      setTimeout(() => checkGameResult(), 100);
+    }
+    return;
+  }
+  
+  const actual = count; // オーバードローチェック済みなので、要求枚数をそのまま使用
   const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
@@ -482,14 +499,6 @@ function drawMultiple(count, faceDown){
 
   if(typeof updateDeckObject === "function") updateDeckObject();
   if(typeof update === "function") update();
-  
-  // ドロー後にデッキが0枚以下になった場合、敗北判定
-  if (dState.deck.length <= 0) {
-    console.warn("[drawMultiple] ドロー後、デッキが空になりました。敗北判定を実行します。");
-    if (typeof checkGameResult === "function") {
-      setTimeout(() => checkGameResult(), 100); // 少し遅延させて状態を確定
-    }
-  }
 }
 
 function collectAllToDeck(){

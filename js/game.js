@@ -16,6 +16,7 @@ function resetAllGameVariables() {
   cardsReadyFired = false;
   lastStateJson = "";
   sliderActive = false;
+  window._gameStartInitiated = false;
   
   // state をリセット
   state = {
@@ -1020,8 +1021,13 @@ function updateDicePhaseUI() {
             <div style="margin-top: 30px; font-size: 14px; color: #aaa;">試合を開始しています...</div>
           </div>
         `;
-        // 自動的に先攻を選択
-        setTimeout(() => handleChooseOrder(true), 1500);
+        // 自動的に先攻を選択（player1のみが実行）
+        if (me === "player1" && !window._gameStartInitiated) {
+          window._gameStartInitiated = true;
+          setTimeout(async () => {
+            await handleChooseOrder(true);
+          }, 1500);
+        }
       } else {
         newHtml = `
           <div class="dice-container">
@@ -1034,8 +1040,13 @@ function updateDicePhaseUI() {
             <p class="dice-wait-msg">相手が先攻です。試合を開始しています...</p>
           </div>
         `;
-        // 相手が先攻に決定（自動）
-        setTimeout(() => handleChooseOrder(false), 1500);
+        // 相手が先攻に決定（player1のみが実行）
+        if (me === "player1" && !window._gameStartInitiated) {
+          window._gameStartInitiated = true;
+          setTimeout(async () => {
+            await handleChooseOrder(false);
+          }, 1500);
+        }
       }
     }
   }
@@ -1332,6 +1343,7 @@ async function initGame() {
       state.matchData.status = "setup_dice";
       state.matchData.dice = { player1: null, player2: null };
       window._lastGameRoom = currentRoom;
+      window._gameStartInitiated = false;
       save();
     }
 

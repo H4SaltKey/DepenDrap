@@ -38,7 +38,7 @@ function toLocalY(serverY){
 const CARD_GRID_SIZE = 20;
 const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.05;
-const FIELD_ZOOM_MAX = 1.0;
+const FIELD_ZOOM_MAX = 0.9;
 const FIELD_W = 3000;
 const FIELD_H = 2000;
 
@@ -476,6 +476,9 @@ function enablePointerDrag(el){
       el.style.top  = fieldY + "px";
       el.dataset.x  = fieldX;
       el.dataset.y  = fieldY;
+      
+      if (typeof window.organizeHands === "function") window.organizeHands();
+      
       saveFieldCards();
 
     } else {
@@ -550,11 +553,26 @@ async function initCards(){
   content.style.height = FIELD_H + "px";
 
   // 最小ズームをウィンドウサイズから計算
-  FIELD_ZOOM_MIN = 0.2;
+  FIELD_ZOOM_MIN = 0.6;
   const slider = document.getElementById("zoomSlider");
   if(slider) {
     slider.min = FIELD_ZOOM_MIN;
     slider.max = FIELD_ZOOM_MAX;
+  }
+
+  // 手札エリアの描画
+  if(!document.getElementById("myHandZoneBg")) {
+    const myHandBg = document.createElement("div");
+    myHandBg.id = "myHandZoneBg";
+    myHandBg.style.cssText = "position:absolute; bottom:0; left:0; width:100%; height:500px; background:rgba(0,0,0,0.15); border-top:2px dashed rgba(200,150,50,0.3); pointer-events:none; z-index:0;";
+    myHandBg.innerHTML = '<div style="position:absolute; top:20px; left:30px; font-size:24px; color:rgba(200,150,50,0.5); font-weight:bold;">手札エリア (ドロップで自動整列)</div>';
+    content.appendChild(myHandBg);
+
+    const opHandBg = document.createElement("div");
+    opHandBg.id = "opHandZoneBg";
+    opHandBg.style.cssText = "position:absolute; top:0; left:0; width:100%; height:500px; background:rgba(0,0,0,0.15); border-bottom:2px dashed rgba(200,150,50,0.3); pointer-events:none; z-index:0;";
+    opHandBg.innerHTML = '<div style="position:absolute; bottom:20px; right:30px; font-size:24px; color:rgba(200,150,50,0.5); font-weight:bold; transform: rotate(180deg);">相手の手札エリア</div>';
+    content.appendChild(opHandBg);
   }
 
   applyFieldView();
@@ -608,6 +626,44 @@ window.getFieldData = function() {
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
+};
+
+window.prevMyHandCount = -1;
+
+window.organizeHands = function() {
+  const content = getFieldContent();
+  if(!content) return;
+  const myRole = window.myRole || "player1";
+  
+  const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+  const myHandCards = cards.filter(c => c.dataset.owner === myRole && Number(c.dataset.y) >= 1500);
+  
+  if (myHandCards.length > 0) {
+    myHandCards.sort((a, b) => Number(a.dataset.x) - Number(b.dataset.x));
+    
+    const spacing = 40;
+    const totalW = myHandCards.length * CARD_W + (myHandCards.length - 1) * spacing;
+    let startX = (FIELD_W - totalW) / 2;
+    const handY = FIELD_H - CARD_H - 20;
+
+    myHandCards.forEach((c) => {
+      if (c === draggingCard) return; // ドラッグ中は動かさない
+      c.style.left = startX + "px";
+      c.style.top = handY + "px";
+      c.dataset.x = startX;
+      c.dataset.y = handY;
+      c.style.zIndex = ++cardZCounter;
+      startX += CARD_W + spacing;
+    });
+  }
+
+  // 手札枚数の変更をチャットに記録
+  if (window.prevMyHandCount !== -1 && window.prevMyHandCount !== myHandCards.length) {
+    if (typeof addGameLog === "function") {
+      addGameLog(`[SYSTEM] ${window.myUsername || state[myRole]?.username || myRole} の手札が ${myHandCards.length} 枚になりました。`);
+    }
+  }
+  window.prevMyHandCount = myHandCards.length;
 };
 
 function saveFieldCards(){

@@ -547,6 +547,7 @@ function renderOwnerUI(owner) {
   const atMinExp = s.level <= 1 && s.exp <= 0;
 
   return `
+  <div style="display:flex; align-items:flex-end; gap:12px; ${isMine ? '' : 'flex-direction:row-reverse;'}">
   <div class="lorPanel" data-owner="${owner}">
 
     <!-- 左: レベル・経験値 -->
@@ -571,17 +572,18 @@ function renderOwnerUI(owner) {
           </div>
         </div>
       </div>
-      <div class="lorExpRow">
+      <div class="lorExpRow" style="margin-bottom: 4px;">
         ${(atMinExp || !isMine)
       ? `<span class="lorSmBtnPlaceholder"></span>`
       : `<button class="lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="-1">−</button>`
     }
-        <span class="lorExpVal">${s.exp}/${expMax}</span>
-        ${(atMaxLv || !isMine)
-      ? `<span class="lorSmBtnPlaceholder"></span>`
-      : `<button class="lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="1">＋</button>`
-    }
+        <span class="lorExpVal">EXP ${s.exp}/${expMax}</span>
+        <span class="lorSmBtnPlaceholder"></span>
       </div>
+      ${(!atMaxLv && isMine)
+        ? `<button class="lorExpAddBtn statBtn" data-owner="${owner}" data-key="exp" data-delta="1" style="width: 100%; padding: 4px 0; font-size: 11px; margin-top: 4px; background: rgba(50,40,30,0.8); border: 1px solid #7a6a40; border-radius: 4px; color: #f0d080; cursor: pointer; transition: all 0.2s;">＋ EXP追加</button>`
+        : `<div style="height:24px;"></div>`
+      }
     </div>
 
     <!-- 中央: HP・シールド -->
@@ -602,7 +604,7 @@ function renderOwnerUI(owner) {
         </div>
       </div>
       <div class="lorStatRow">
-        <span class="lorIcon">${ICON_HP}</span>
+        <span class="lorIcon" title="HP">${ICON_HP}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
         </div>
@@ -617,7 +619,7 @@ function renderOwnerUI(owner) {
         </div>
       </div>
       <div class="lorStatRow" style="position: relative;">
-        <span class="lorIcon" title="合計防御力">${ICON_SLD}</span>
+        <span class="lorIcon" title="防御力">${ICON_SLD}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorSldFill" style="width:${sldPct}%"></div>
         </div>
@@ -635,9 +637,9 @@ function renderOwnerUI(owner) {
 
     <!-- 右: ATK/DEF/IDEF -->
     <div class="lorRight">
-      ${lorStatChip(ICON_ATK, s.atk, owner, "atk")}
-      ${lorStatChip(ICON_DEF, s.def, owner, "def")}
-      ${lorStatChip(ICON_IDEF, s.instantDef, owner, "instantDef")}
+      ${lorStatChip(ICON_ATK, s.atk, owner, "atk", "基礎攻撃力")}
+      ${lorStatChip(ICON_DEF, s.def, owner, "def", "基礎防御力")}
+      ${lorStatChip(ICON_IDEF, s.instantDef, owner, "instantDef", "瞬間防御力")}
       ${isMine ? `
         <div class="lorActionGroup">
           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button">瞬間防御</button>
@@ -646,13 +648,27 @@ function renderOwnerUI(owner) {
       ` : ""}
     </div>
 
+  </div>
+  
+  ${s.evolutionPath ? `
+  <div class="evoPanel" style="
+    background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
+    padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    cursor: help;
+  " title="【進化の道】 ${s.evolutionPath}\n（現在システムは未適応です）">
+    <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+    <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
+  </div>
+  ` : ""}
+  
   </div>`;
 }
 
-function lorStatChip(icon, val, owner, key) {
+function lorStatChip(icon, val, owner, key, title = "") {
   const isEditable = window.devMode;
   return `
-  <div class="lorChip">
+  <div class="lorChip" title="${title}">
     <span class="lorChipIcon">${icon}</span>
     ${isEditable ? `
       <input class="lorChipInput" type="number" value="${val}"
@@ -1117,6 +1133,8 @@ function checkGameResult() {
     return;
   }
 
+  if (state.matchData.winner) return;
+
   // 敗北条件: HP <= 0
   const myLost = me.hp <= 0;
   const opLost = op.hp <= 0;
@@ -1133,10 +1151,17 @@ function checkGameResult() {
     let winner;
     if (myLost && opLost) {
       winner = 'draw';
+      if (myRole === "player1" && typeof addGameLog === "function") {
+        addGameLog(`[RESULT] 両プレイヤーのHPが0になりました。引き分けです。`);
+      }
     } else if (myLost) {
       winner = opRole;
+      if (typeof addGameLog === "function") {
+        addGameLog(`[DEFEAT] ${me.username || "プレイヤー"} のHPが0になりました。${op.username || "相手"} の勝利です！`);
+      }
     } else {
       winner = myRole;
+      // opLost is true, the opponent client will log their own defeat.
     }
 
     state.matchData.winner      = winner;
@@ -1488,7 +1513,7 @@ function updateEvolutionPhaseUI() {
           <!-- 忍耐の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('忍耐の道')">
             <div class="evo-path-title">忍耐の道</div>
-            <div class="evo-path-desc">手札の枚数上限が1枚増加し、最大レベル時は1ではなく2枚になる。<br>また、ラウンド開始時、手札をx枚増やす。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに経験値を最大2まで獲得する。<br><span class="evo-path-val">x=[0/1/3/4]</span></div>
+            <div class="evo-path-desc">手札の枚数上限が2枚増加し、最大レベル時は2ではなく3枚になる。<br>また、ラウンド開始時、手札をx枚増やす。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに経験値を最大2まで獲得する。<br><span class="evo-path-val">x=[0/1/3/4]</span></div>
           </button>
 
           <!-- 継続の道 -->

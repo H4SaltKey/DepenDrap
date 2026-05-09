@@ -425,37 +425,21 @@ function drawMultiple(count, faceDown){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
-  // デッキが0枚の状態でドローしようとした場合、敗北判定を実行
-  if (dState.deck.length === 0) {
-    console.warn("[drawMultiple] デッキが空です。敗北判定を実行します。");
-    if (typeof addGameLog === "function") {
-      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
-    }
-    // オーバードロー敗北判定を呼び出し
-    if (typeof triggerOverdrawDefeat === "function") {
-      setTimeout(() => triggerOverdrawDefeat(), 100);
-    }
-    return;
-  }
-  
-  // ドローしようとした枚数がデッキ枚数を超える場合も敗北（オーバードロー）
-  if (count > dState.deck.length) {
-    console.warn(`[drawMultiple] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
-    if (typeof addGameLog === "function") {
-      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > ${dState.deck.length}枚）。敗北です。`);
-    }
-    // オーバードロー敗北判定を呼び出し
-    if (typeof triggerOverdrawDefeat === "function") {
-      setTimeout(() => triggerOverdrawDefeat(), 100);
-    }
-    return;
-  }
-  
-  const actual = count; // オーバードローチェック済みなので、要求枚数をそのまま使用
   const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
+  
+  let isOverdraw = false;
+  let actual = count;
+  if (count > dState.deck.length) {
+    console.warn(`[drawMultiple] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    actual = dState.deck.length;
+    isOverdraw = true;
+  }
 
+  const handY = 1600; // 手札エリアのY座標
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  
   for(let i = 0; i < actual; i++){
     let rawId = dState.deck.pop();
     if(!rawId) continue;
@@ -465,10 +449,6 @@ function drawMultiple(count, faceDown){
       isTemp = true;
       rawId = rawId.replace("TEMP:", "");
     }
-
-    const deckX = deckObj ? Number(deckObj.dataset.x) : -320;
-    const deckY = deckObj ? Number(deckObj.dataset.y) : 200;
-    const drawX = deckX + 340;
 
     const card = (typeof createCard === "function") ? createCard(rawId) : null;
     if(!card) continue;
@@ -481,13 +461,30 @@ function drawMultiple(count, faceDown){
 
     card.classList.toggle("visibilitySelf", vis === "self");
     card.classList.toggle("visibilityNone",  vis === "none");
+    card.classList.add("card-draw-anim"); // アニメーション追加
+    
+    // アニメーション終了後にクラスを消す
+    setTimeout(() => card.classList.remove("card-draw-anim"), 500);
+
     const lbl = card.querySelector(".cardVisibilityLabel");
     if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
     if(typeof applyCardFace === "function") applyCardFace(card, vis);
 
     if(typeof placeCard === "function"){
       if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
-      placeCard(document.getElementById("field"), card, { x: drawX, y: deckY });
+      // まずデッキ付近に生成してから、organizeHandsで整列する位置に一時置き
+      placeCard(document.getElementById("field"), card, { x: deckX, y: handY });
+    }
+  }
+
+  if (typeof window.organizeHands === "function") window.organizeHands();
+
+  if (isOverdraw) {
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > 引けた枚数${actual}枚）。敗北です。`);
+    }
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 500);
     }
   }
 

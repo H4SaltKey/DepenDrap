@@ -992,3 +992,12 @@ h3{
   color: rgba(200, 155, 60, 0.6);
   margin-right: 4px;
 }
+
+@keyframes drawCardAnim {
+  0% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-draw-anim {
+  animation: drawCardAnim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}

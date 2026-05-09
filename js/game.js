@@ -904,6 +904,8 @@ function checkGameResult() {
   if (!gameReady) return;
   // ダイスフェーズ・勝者決定済みの場合はスキップ
   if (state.matchData.status !== "playing") return;
+  // 1ラウンド目が始まる前はスキップ（ラウンド1・ターン1以降のみ判定）
+  if ((state.matchData.round || 0) < 1 || (state.matchData.turn || 0) < 1) return;
   if (state.matchData.winner) {
     showResultScreen(state.matchData.winner);
     return;

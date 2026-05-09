@@ -951,7 +951,6 @@ function updateDicePhaseUI() {
   let overlay = document.getElementById("dicePhaseOverlay");
 
   if (m.status !== "setup_dice") {
-    console.log("[updateDicePhaseUI] ダイスフェーズ終了。ステータス:", m.status);
     if (overlay) {
       overlay.style.opacity = "0";
       setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
@@ -979,40 +978,36 @@ function updateDicePhaseUI() {
   const p2Dice = state.player2.diceValue;
   const bothRolled = (p1Dice >= 0 && p2Dice >= 0);
 
-  // 両プレイヤーが揃ったら結果画面に切り替え
-  if (bothRolled) {
-    // 前の状態（ローリング画面）から必ず切り替わるよう lastHtml をリセット
-    if (overlay.dataset.lastHtml === "__layout__" || !overlay.dataset.lastHtml) {
-      overlay.dataset.lastHtml = "";
-    }
+  // ===== フェーズ判定 =====
+  // phase: "rolling" | "result"
+  const phase = bothRolled ? "result" : "rolling";
+  const prevPhase = overlay.dataset.phase || "";
+
+  // ===== フェーズ: 結果表示（両プレイヤーが振り終えた） =====
+  if (phase === "result") {
+    // フェーズが変わった時 or 選択状態が変わった時（勝者が選択後に敗者側も更新）は再描画
+    const chooserKey = p1Dice < p2Dice ? "player1" : (p2Dice < p1Dice ? "player2" : "");
+    const renderKey = `result_${p1Dice}_${p2Dice}_${playerKey}`;
+    if (overlay.dataset.renderKey === renderKey) return; // 同じ内容なら何もしない
+    overlay.dataset.phase = "result";
+    overlay.dataset.renderKey = renderKey;
+
     let resultTitle, resultMsg, p1Color, p2Color;
+
     if (p1Dice === p2Dice) {
+      // 引き分け
       resultTitle = `<h2 class="dice-title" style="color:#ff4444;">引き分け</h2>`;
-      resultMsg = `<p class="dice-subtitle" style="color:#ff4444; margin-top:40px;">同じ値です。もう一度振ります...</p>
-                   <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444;color:#fff;margin-top:30px;">振り直し</button>`;
+      resultMsg = `
+        <p class="dice-subtitle" style="color:#ff4444;margin-top:40px;">同じ値です。もう一度振ります...</p>
+        <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444;color:#fff;margin-top:30px;">振り直し</button>`;
       p1Color = "#ff4444"; p2Color = "#ff4444";
+
     } else if (p1Dice < p2Dice) {
-      // プレイヤー1が選択権を持つ
-      const me = window.myRole || "player1";
-      const iAmChooser = (me === "player1");
-      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
-      if (iAmChooser) {
-        resultMsg = `
-          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
-          <div class="dice-choice-group">
-            <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
-            <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
-          </div>`;
-      } else {
-        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
-      }
+      // プレイヤー1が勝利 → 選択権あり
       p1Color = "#00ffcc"; p2Color = "#888";
-    } else {
-      // プレイヤー2が選択権を持つ
-      const me = window.myRole || "player1";
-      const iAmChooser = (me === "player2");
-      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
-      if (iAmChooser) {
+      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
+      if (playerKey === "player1") {
+        // 勝者: 選択ボタン表示
         resultMsg = `
           <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
           <div class="dice-choice-group">
@@ -1020,12 +1015,29 @@ function updateDicePhaseUI() {
             <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
           </div>`;
       } else {
+        // 敗者: 待機
         resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
       }
+
+    } else {
+      // プレイヤー2が勝利 → 選択権あり
       p1Color = "#888"; p2Color = "#e24a4a";
+      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
+      if (playerKey === "player2") {
+        // 勝者: 選択ボタン表示
+        resultMsg = `
+          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
+          <div class="dice-choice-group">
+            <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
+            <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
+          </div>`;
+      } else {
+        // 敗者: 待機
+        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
+      }
     }
 
-    const newHtml = `
+    overlay.innerHTML = `
       <div class="dice-container" style="max-width:900px;width:90%;">
         ${resultTitle}
         <div style="display:flex;justify-content:center;gap:100px;align-items:center;margin:50px 0;">
@@ -1042,41 +1054,33 @@ function updateDicePhaseUI() {
         ${resultMsg}
       </div>
     `;
-    // bothRolled になった瞬間は必ず再描画（lastHtml が __layout__ のままの場合も含む）
-    if (overlay.dataset.lastHtml !== newHtml) {
-      overlay.innerHTML = newHtml;
-      overlay.dataset.lastHtml = newHtml;
-    }
     return;
   }
 
-  // 初期状態 or 片方だけ振った状態 → 常に両プレイヤーを左右に表示
-  // ちらつき防止: 既に正しいレイアウトが表示されていれば DOM を再構築しない
-  if (!overlay.querySelector("#dice-val-player1")) {
+  // ===== フェーズ: ローリング（まだ振っていない or 片方だけ） =====
+  // レイアウトが存在しない場合のみ再構築
+  if (phase !== prevPhase || !overlay.querySelector("#dice-val-player1")) {
+    overlay.dataset.phase = "rolling";
+    overlay.dataset.renderKey = "";
     overlay.innerHTML = `
       <div class="dice-container" style="max-width:900px;width:90%;">
         <h2 class="dice-title" style="margin-bottom:60px;">ダイスロール</h2>
         <div style="display:flex;justify-content:center;gap:100px;align-items:flex-start;">
-
           <div style="text-align:center;">
             <div style="font-size:18px;color:#00ffcc;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー1</div>
             <div id="dice-val-player1" class="dice-value-large" style="color:#00ffcc;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
             <button id="dice-btn-player1" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
           </div>
-
           <div style="font-size:32px;color:#444;font-weight:900;margin-top:90px;">VS</div>
-
           <div style="text-align:center;">
             <div style="font-size:18px;color:#e24a4a;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー2</div>
             <div id="dice-val-player2" class="dice-value-large" style="color:#e24a4a;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
             <button id="dice-btn-player2" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
           </div>
-
         </div>
         <div id="dice-status-msg" style="margin-top:50px;font-size:13px;color:#888;letter-spacing:2px;min-height:20px;"></div>
       </div>
     `;
-    overlay.dataset.lastHtml = "__layout__";
   }
 
   // 各プレイヤーの欄を個別に更新（DOM再構築なし）
@@ -1089,7 +1093,7 @@ function updateDicePhaseUI() {
   if (p1El && p1Dice >= 0 && p1El.textContent !== String(p1Dice)) {
     p1El.style.animation = "none";
     p1El.textContent = p1Dice;
-    void p1El.offsetWidth; // reflow
+    void p1El.offsetWidth;
     p1El.style.animation = "diceResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
   }
   if (p2El && p2Dice >= 0 && p2El.textContent !== String(p2Dice)) {
@@ -1099,21 +1103,9 @@ function updateDicePhaseUI() {
     p2El.style.animation = "diceResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
   }
 
-  // 自分のボタンだけ有効、相手のボタンは非表示
-  if (p1Btn) {
-    if (playerKey === "player1") {
-      p1Btn.style.display = p1Dice >= 0 ? "none" : "inline-block";
-    } else {
-      p1Btn.style.display = "none";
-    }
-  }
-  if (p2Btn) {
-    if (playerKey === "player2") {
-      p2Btn.style.display = p2Dice >= 0 ? "none" : "inline-block";
-    } else {
-      p2Btn.style.display = "none";
-    }
-  }
+  // 自分のボタンだけ表示、相手のボタンは非表示
+  if (p1Btn) p1Btn.style.display = (playerKey === "player1" && p1Dice < 0) ? "inline-block" : "none";
+  if (p2Btn) p2Btn.style.display = (playerKey === "player2" && p2Dice < 0) ? "inline-block" : "none";
 
   // ステータスメッセージ
   if (statusMsg) {

@@ -1600,7 +1600,8 @@ function setupPlayerDiceWatcher(gameRoom) {
   console.log("[DiceWatcher] 監視開始:", gameRoom);
 
   const diceRef = firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`);
-  playerDiceWatcherUnsubscribe = diceRef.on('value', (snapshot) => {
+
+  const listener = (snapshot) => {
     // ダイスフェーズ以外は無視
     if (state.matchData.status !== "setup_dice") return;
 
@@ -1643,9 +1644,17 @@ function setupPlayerDiceWatcher(gameRoom) {
       }
     }
 
-    // UI を更新（updateDicePhaseUI は update() 内から呼ばれる）
+    // UI を更新
     update();
-  });
+  };
+
+  diceRef.on('value', listener);
+
+  // クリーンアップ関数を返す（roomWatcherUnsubscribe と同じパターン）
+  playerDiceWatcherUnsubscribe = () => {
+    diceRef.off('value', listener);
+    playerDiceWatcherUnsubscribe = null;
+  };
 }
 
 

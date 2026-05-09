@@ -813,12 +813,19 @@ const ICON_IDEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" x
 </svg>`;
 
 function update(skipLogCheck = false) {
+  const currentStateStr = JSON.stringify(state);
+  
+  // 状態が変わっていないならDOMの再構築をスキップ（フォーカス外れやホバーの点滅を防ぐ）
+  if (lastStateJson === currentStateStr) {
+    return;
+  }
+
   // 初回呼び出し（lastStateJsonが空）の場合は、ログチェックをスキップ
   if (!skipLogCheck && lastStateJson) {
     const oldState = JSON.parse(lastStateJson);
     checkAndLogStateChanges(oldState, state);
   }
-  lastStateJson = JSON.stringify(state);
+  lastStateJson = currentStateStr;
 
   const playerEl = document.getElementById("gameUiPlayerInner");
   const enemyEl = document.getElementById("gameUiEnemy");

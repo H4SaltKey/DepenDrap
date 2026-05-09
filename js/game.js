@@ -1512,36 +1512,34 @@ function setupGameStateWatcher(gameRoom) {
     return;
   }
 
-  if (!firebaseClient.isConnected) {
-    console.warn("[setupGameStateWatcher] Firebase に接続していません。接続状態:", firebaseClient.isConnected);
-  }
-
   console.log("[setupGameStateWatcher] firebaseClient.watchGameState を呼び出し");
   
   gameStateWatcherUnsubscribe = firebaseClient.watchGameState(gameRoom, (remoteState) => {
-    console.log("[setupGameStateWatcher] コールバック実行。リモートゲーム状態:", remoteState);
+    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState);
     
     if (!remoteState) {
       console.log("[setupGameStateWatcher] リモートゲーム状態がありません");
       return;
     }
 
-    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState.matchData);
-
     // リモート状態をローカルに反映
-    if (remoteState.matchData) {
-      console.log("[setupGameStateWatcher] matchData を更新。ダイス:", remoteState.matchData.dice);
-      state.matchData = remoteState.matchData;
-      
-      // UI を更新
-      if (typeof update === "function") {
-        console.log("[setupGameStateWatcher] update() を呼び出し");
-        update();
-      }
+    console.log("[setupGameStateWatcher] ローカル状態を更新");
+    state.player1 = remoteState.player1 || state.player1;
+    state.player2 = remoteState.player2 || state.player2;
+    state.matchData = remoteState.matchData || state.matchData;
+    state.logs = remoteState.logs || state.logs;
+    
+    // localStorage に保存
+    localStorage.setItem("gameState", JSON.stringify(state));
+    
+    // UI を更新
+    if (typeof update === "function") {
+      console.log("[setupGameStateWatcher] update() を呼び出し");
+      update();
     }
   });
   
-  console.log("[setupGameStateWatcher] ✅ ゲーム状態監視設定完了。unsubscribe関数:", typeof gameStateWatcherUnsubscribe);
+  console.log("[setupGameStateWatcher] ✅ ゲーム状態監視設定完了");
 }
 
 

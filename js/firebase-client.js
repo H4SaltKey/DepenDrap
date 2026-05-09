@@ -341,7 +341,7 @@ class FirebaseClient {
   }
 
   /**
-   * ゲーム状態を更新
+   * ゲーム状態を更新（ルームデータの一部として保存）
    */
   async updateGameState(roomName, gameState) {
     if (!this.db) {
@@ -351,6 +351,7 @@ class FirebaseClient {
 
     try {
       console.log("[FirebaseClient] ゲーム状態を更新:", roomName, gameState.matchData);
+      // ルームの gameState フィールドに保存
       const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
       await stateRef.set(gameState);
       console.log("[FirebaseClient] ✅ ゲーム状態更新完了");
@@ -362,7 +363,7 @@ class FirebaseClient {
   }
 
   /**
-   * ゲーム状態を監視
+   * ゲーム状態を監視（ルームデータから取得）
    */
   watchGameState(roomName, callback) {
     if (!this.db) {
@@ -372,10 +373,12 @@ class FirebaseClient {
 
     console.log("[FirebaseClient] ゲーム状態監視開始:", roomName);
 
+    // ルームの gameState を監視
     const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
     const listener = stateRef.on('value', (snapshot) => {
-      console.log("[FirebaseClient] ゲーム状態変更を検知:", snapshot.val());
-      callback(snapshot.val());
+      const data = snapshot.val();
+      console.log("[FirebaseClient] ゲーム状態変更を検知:", data);
+      callback(data);
     });
 
     this.listeners.set(`gameState:${roomName}`, { ref: stateRef, listener });

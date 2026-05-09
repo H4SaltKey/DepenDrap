@@ -700,8 +700,9 @@ const ICON_IDEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" x
 </svg>`;
 
 function update(skipLogCheck = false) {
-  if (!skipLogCheck) {
-    const oldState = JSON.parse(lastStateJson || "{}");
+  // 初回呼び出し（lastStateJsonが空）の場合は、ログチェックをスキップ
+  if (!skipLogCheck && lastStateJson) {
+    const oldState = JSON.parse(lastStateJson);
     checkAndLogStateChanges(oldState, state);
   }
   lastStateJson = JSON.stringify(state);
@@ -1733,20 +1734,26 @@ function checkAndLogStateChanges(oldState, newState) {
   }
 
   ["player1", "player2"].forEach(owner => {
-    if (!oldState[owner]) return;
+    // oldState[owner]が存在しない場合はスキップ（初期化前）
+    if (!oldState[owner] || !newState[owner]) return;
+    
     const s1 = oldState[owner];
     const s2 = newState[owner];
     const name = s2.username || (owner === "player1" ? "プレイヤー1" : "プレイヤー2");
 
+    // レベルアップのみログ出力（HPやEXPの細かい変更はログに出さない）
     if (s1.level < s2.level) {
       addGameLog(`${name} レベルアップ!!!【レベル:${s2.level}】`);
-    } else {
-      if (s1.hp !== s2.hp) addGameLog(`${name} HP:${s1.hp}→${s2.hp}`);
-      if (s1.exp !== s2.exp) addGameLog(`${name} EXP:${s1.exp}→${s2.exp}`);
-      if (s1.shield !== s2.shield || s1.shieldMax !== s2.shieldMax) {
-        if (s2.shield !== s1.shield) addGameLog(`${name} 防御力:${s2.shield}/${s2.shieldMax}`);
-      }
     }
+    // HP/EXP/防御力の変更ログは出力しない（ログが多すぎるため）
+    // 必要に応じてコメントアウトを外す
+    // else {
+    //   if (s1.hp !== s2.hp) addGameLog(`${name} HP:${s1.hp}→${s2.hp}`);
+    //   if (s1.exp !== s2.exp) addGameLog(`${name} EXP:${s1.exp}→${s2.exp}`);
+    //   if (s1.shield !== s2.shield || s1.shieldMax !== s2.shieldMax) {
+    //     if (s2.shield !== s1.shield) addGameLog(`${name} 防御力:${s2.shield}/${s2.shieldMax}`);
+    //   }
+    // }
   });
 }
 

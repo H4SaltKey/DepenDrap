@@ -569,8 +569,10 @@ async function initCards(){
   }
 
   document.addEventListener("wheel", (e)=>{
+    // チャットや各種UI上ではブラウザデフォルトのスクロールを許可する
+    if(e.target.closest("#gameUiPlayer, #gameUiEnemy, #chatArea, #chatLogs, #menuButton, #menuPanel, #optionsModal, #confirmModal, #zoomControls, .modal, .modal-content, #devModal, .scrollable")) return;
+    
     e.preventDefault();
-    if(e.target.closest("#gameUiPlayer, #gameUiEnemy, #chatArea, #menuButton, #menuPanel, #optionsModal, #confirmModal, #zoomControls")) return;
     const field = document.getElementById("field");
     const rect = field ? field.getBoundingClientRect() : { left:0, top:0 };
     

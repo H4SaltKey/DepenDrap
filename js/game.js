@@ -982,7 +982,14 @@ function showRoundNotification(round) {
     animation: roundFadeIn 0.6s ease-out forwards, roundFadeOut 0.6s 2.4s ease-in forwards;
   `;
   
-  const subtitle = round === 1 ? "戦いが始まる" : "新たな戦いが始まる";
+  const subtitleHtml = round === 1 ? `
+      <div style="
+        margin-top: 30px; font-size: 20px; font-weight: 600; color: #e0d0a0;
+        letter-spacing: 4px; opacity: 0.8;
+        animation: roundSubtitleSlide 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        transform: translateY(-30px); opacity: 0;
+      ">新たな戦いが始まる</div>
+  ` : "";
   
   div.innerHTML = `
     <div style="text-align: center; animation: roundContentScale 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
@@ -999,13 +1006,7 @@ function showRoundNotification(round) {
                      0 10px 30px rgba(0,0,0,0.8);
         animation: roundNumberPulse 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         transform: scale(0.5); opacity: 0;
-      ">${round}</div>
-      <div style="
-        margin-top: 30px; font-size: 20px; font-weight: 600; color: #e0d0a0;
-        letter-spacing: 4px; opacity: 0.8;
-        animation: roundSubtitleSlide 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        transform: translateY(-30px); opacity: 0;
-      ">${subtitle}</div>
+      ">${round}</div>${subtitleHtml}
     </div>
   `;
   

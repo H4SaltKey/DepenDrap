@@ -350,8 +350,10 @@ class FirebaseClient {
     }
 
     try {
+      console.log("[FirebaseClient] ゲーム状態を更新:", roomName, gameState.matchData);
       const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
       await stateRef.set(gameState);
+      console.log("[FirebaseClient] ✅ ゲーム状態更新完了");
       return true;
     } catch (error) {
       console.error("[FirebaseClient] ゲーム状態更新エラー:", error.message);
@@ -368,14 +370,18 @@ class FirebaseClient {
       return null;
     }
 
+    console.log("[FirebaseClient] ゲーム状態監視開始:", roomName);
+
     const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
     const listener = stateRef.on('value', (snapshot) => {
+      console.log("[FirebaseClient] ゲーム状態変更を検知:", snapshot.val());
       callback(snapshot.val());
     });
 
     this.listeners.set(`gameState:${roomName}`, { ref: stateRef, listener });
 
     return () => {
+      console.log("[FirebaseClient] ゲーム状態監視停止:", roomName);
       stateRef.off('value', listener);
       this.listeners.delete(`gameState:${roomName}`);
     };

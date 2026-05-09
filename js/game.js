@@ -1633,10 +1633,10 @@ async function initGame() {
     console.log("[initGame] step8: update() done");
 
     if (cardsReadyFired) {
-      createDeckObject();
+      createDeckObject(!isReload); // リロード時は位置保持、新規入室時はリセット
     } else {
       window.addEventListener("cardsReady", () => {
-        createDeckObject();
+        createDeckObject(!isReload);
       }, { once: true });
     }
 

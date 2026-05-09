@@ -981,6 +981,10 @@ function updateDicePhaseUI() {
 
   // 両プレイヤーが揃ったら結果画面に切り替え
   if (bothRolled) {
+    // 前の状態（ローリング画面）から必ず切り替わるよう lastHtml をリセット
+    if (overlay.dataset.lastHtml === "__layout__" || !overlay.dataset.lastHtml) {
+      overlay.dataset.lastHtml = "";
+    }
     let resultTitle, resultMsg, p1Color, p2Color;
     if (p1Dice === p2Dice) {
       resultTitle = `<h2 class="dice-title" style="color:#ff4444;">引き分け</h2>`;
@@ -1038,6 +1042,7 @@ function updateDicePhaseUI() {
         ${resultMsg}
       </div>
     `;
+    // bothRolled になった瞬間は必ず再描画（lastHtml が __layout__ のままの場合も含む）
     if (overlay.dataset.lastHtml !== newHtml) {
       overlay.innerHTML = newHtml;
       overlay.dataset.lastHtml = newHtml;

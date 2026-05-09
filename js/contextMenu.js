@@ -770,7 +770,8 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
       window.firebaseClient.sendChangeRequest(gameRoom, me, targetOwner, "_bulk", "set", {
         hp: s.hp,
         barrier: s.barrier,
-        shield: s.shield
+        shield: s.shield,
+        shieldOverMax: s.shieldOverMax || false
       });
     }
   }

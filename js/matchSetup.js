@@ -1,238 +1,338 @@
 /**
- * matchSetup.js v4.0 — Firebase Client 版
- * firebase-client.js を使用したマッチング
+ * matchSetup.js v5.0 — 横向きレイアウト版
  */
 
+// ===== 状態 =====
 let currentUser = "";
 let currentRoom = null;
 let currentPlayerKey = null;
 let myReady = false;
 let opponentReady = false;
+let opponentName = null;
 let roomUnsubscribe = null;
 let roomListUnsubscribe = null;
+let isStartingGame = false;
+
+// デッキ選択
+let selectedDeckId = null;       // 現在使用中のデッキID
+let popupSelectedDeckId = null;  // ポップアップ内で選択中のデッキID
 
 // ===== 初期化 =====
 
 async function initMatchSetup() {
   currentUser = localStorage.getItem("username") || "Player";
-  document.getElementById("myPlayer").value = currentUser;
+  document.getElementById("myPlayerDisplay").textContent = currentUser;
 
-  renderDeckGallery();
+  // 前回選択したデッキを復元
+  selectedDeckId = localStorage.getItem("selectedDeckId") || null;
+  if (!selectedDeckId) {
+    const decks = getDeckList();
+    if (decks.length > 0) selectedDeckId = decks[0].id;
+  }
+  renderCurrentDeck();
 
-  // Firebase を初期化
+  // チャット送信
+  document.getElementById("chatSendBtn").addEventListener("click", sendChat);
+  document.getElementById("chatInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") sendChat();
+  });
+
+  // Firebase 初期化
   console.log("[MatchSetup] Firebase 初期化中...");
   const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
 
   if (success) {
-    console.log("[MatchSetup] ✅ Firebase 初期化成功");
     updateFirebaseStatus("Firebase 接続済み ✓", true);
-    
-    // ルーム一覧を監視開始
     watchRoomList();
+    addLog("system", "Firebase に接続しました。");
   } else {
-    console.warn("[MatchSetup] ⚠️ Firebase 初期化失敗");
     updateFirebaseStatus("Firebase 接続エラー", false);
+    addLog("system", "Firebase への接続に失敗しました。");
   }
 
-  // 接続状態の変化を監視
-  firebaseClient.on('connected', () => {
-    console.log("[MatchSetup] Firebase 接続");
-    updateFirebaseStatus("Firebase 接続済み ✓", true);
-  });
+  firebaseClient.on("connected",    () => { updateFirebaseStatus("Firebase 接続済み ✓", true);  addLog("system", "再接続しました。"); });
+  firebaseClient.on("disconnected", () => { updateFirebaseStatus("Firebase 切断", false); addLog("system", "接続が切断されました。"); });
+}
 
-  firebaseClient.on('disconnected', () => {
-    console.log("[MatchSetup] Firebase 切断");
-    updateFirebaseStatus("Firebase 切断", false);
+// ===== デッキ関連 =====
+
+function getDeckList() {
+  try { return JSON.parse(localStorage.getItem("deckList")) || []; } catch { return []; }
+}
+
+function getDeckById(id) {
+  return getDeckList().find(d => d.id === id) || null;
+}
+
+function renderCurrentDeck() {
+  const deck = getDeckById(selectedDeckId);
+  const thumb = document.getElementById("msDeckThumb");
+  const nameEl = document.getElementById("msDeckName");
+  const countEl = document.getElementById("msDeckCount");
+
+  if (!deck) {
+    thumb.src = "assets/favicon.png";
+    nameEl.textContent = "デッキ未選択";
+    countEl.textContent = "-- 枚";
+    return;
+  }
+
+  thumb.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
+  thumb.onerror = () => { thumb.src = "assets/favicon.png"; };
+  nameEl.textContent = deck.name || "名称未設定";
+
+  // デッキ枚数を計算
+  try {
+    const cards = decodeDeck(deck.code || "empty");
+    countEl.textContent = `${cards.length} 枚`;
+  } catch {
+    countEl.textContent = "-- 枚";
+  }
+}
+
+// ===== デッキ内容ポップアップ =====
+
+async function openDeckView(deckId) {
+  if (!deckId) return;
+  const deck = getDeckById(deckId);
+  if (!deck) return;
+
+  // カードデータが未ロードなら読み込む
+  if (typeof CARD_DB === "undefined" || CARD_DB.length === 0) {
+    if (typeof loadCardData === "function") await loadCardData();
+  }
+
+  document.getElementById("deckViewTitle").textContent = deck.name || "デッキ内容";
+
+  let cards = [];
+  try { cards = decodeDeck(deck.code || "empty"); } catch { cards = []; }
+
+  // 同じカードをまとめる
+  const counts = {};
+  cards.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+
+  const container = document.getElementById("deckViewCards");
+  container.innerHTML = "";
+
+  if (Object.keys(counts).length === 0) {
+    container.innerHTML = '<div style="color:#666;padding:20px;">カードがありません。</div>';
+  } else {
+    Object.entries(counts).forEach(([id, count]) => {
+      const cardInfo = (typeof getCardData === "function") ? getCardData(id) : null;
+      const div = document.createElement("div");
+      div.className = "deckViewCard";
+
+      const img = document.createElement("img");
+      img.src = cardInfo ? cardInfo.image : "assets/cards/cd0000.png";
+      img.onerror = () => { img.src = "assets/cards/cd0000.png"; };
+      img.alt = id;
+
+      const badge = document.createElement("div");
+      badge.className = "card-count";
+      badge.textContent = count > 1 ? `×${count}` : "";
+
+      div.appendChild(img);
+      if (count > 1) div.appendChild(badge);
+      container.appendChild(div);
+    });
+  }
+
+  document.getElementById("deckViewPopup").classList.remove("hidden");
+}
+
+function closeDeckView() {
+  document.getElementById("deckViewPopup").classList.add("hidden");
+}
+
+// ===== デッキ選択ポップアップ =====
+
+function openDeckSelectPopup() {
+  popupSelectedDeckId = selectedDeckId;
+  renderDeckSelectList();
+  document.getElementById("deckSelectPopup").classList.remove("hidden");
+}
+
+function closeDeckSelectPopup() {
+  document.getElementById("deckSelectPopup").classList.add("hidden");
+}
+
+function renderDeckSelectList() {
+  const container = document.getElementById("deckSelectList");
+  container.innerHTML = "";
+  const decks = getDeckList();
+
+  if (decks.length === 0) {
+    container.innerHTML = '<div style="color:#666;padding:20px;">デッキがありません。デッキ構築画面で作成してください。</div>';
+    return;
+  }
+
+  decks.forEach(deck => {
+    const div = document.createElement("div");
+    div.className = "deckSelectCard" + (deck.id === popupSelectedDeckId ? " selected" : "");
+    div.dataset.id = deck.id;
+
+    const img = document.createElement("img");
+    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
+    img.onerror = () => { img.src = "assets/favicon.png"; };
+
+    const name = document.createElement("div");
+    name.className = "ds-name";
+    name.textContent = deck.name || "名称未設定";
+
+    const viewBtn = document.createElement("button");
+    viewBtn.className = "ds-view-btn";
+    viewBtn.textContent = "確認";
+    viewBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      openDeckView(deck.id);
+    });
+
+    div.appendChild(img);
+    div.appendChild(name);
+    div.appendChild(viewBtn);
+
+    div.addEventListener("click", () => {
+      popupSelectedDeckId = deck.id;
+      container.querySelectorAll(".deckSelectCard").forEach(c => c.classList.remove("selected"));
+      div.classList.add("selected");
+    });
+
+    container.appendChild(div);
   });
 }
 
-// ===== Firebase ステータス =====
+function confirmDeckSelect() {
+  if (!popupSelectedDeckId) return;
+  selectedDeckId = popupSelectedDeckId;
+  localStorage.setItem("selectedDeckId", selectedDeckId);
+  renderCurrentDeck();
+  closeDeckSelectPopup();
+  addLog("system", `デッキ「${getDeckById(selectedDeckId)?.name || selectedDeckId}」を選択しました。`);
+}
 
-function updateFirebaseStatus(label, isConnected) {
-  const el = document.getElementById("firebaseStatus");
-  if (el) {
-    el.textContent = label;
-    el.className = isConnected ? "ok" : "";
-  }
+function selectedDeck() {
+  return getDeckById(selectedDeckId) || getDeckList()[0] || null;
 }
 
 // ===== ルーム操作 =====
 
 async function createRoom() {
-  const roomCode = document.getElementById("roomCodeInput").value.trim();
-  const roomName = roomCode || undefined;
-
-  console.log("[MatchSetup] ルーム作成:", roomName || "自動生成");
-
+  const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase() || undefined;
   const result = await firebaseClient.createRoom(roomName);
-  if (!result) {
-    showMsg("ルーム作成に失敗しました。");
-    return;
-  }
+  if (!result) { addLog("system", "ルーム作成に失敗しました。"); return; }
 
   currentRoom = result;
   currentPlayerKey = "player1";
-  showMsg(`ルーム「${result}」を作成しました。`);
-  
-  // ルームを監視
+  addLog("system", `ルーム「${result}」を作成しました。`);
   watchRoom(result);
   updateUIForRoom();
 }
 
 async function joinRoom() {
-  const roomCode = document.getElementById("roomCodeInput").value.trim();
+  const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase();
+  if (!roomName) { addLog("system", "ルーム名を入力してください。"); return; }
 
-  if (!roomCode) {
-    showMsg("ルームコードを入力してください。");
-    return;
-  }
-
-  console.log("[MatchSetup] ルーム参加:", roomCode);
-
-  const result = await firebaseClient.joinRoom(roomCode);
-  if (!result) {
-    showMsg("ルームが見つかりません。");
-    return;
-  }
+  const result = await firebaseClient.joinRoom(roomName);
+  if (!result) { addLog("system", `ルーム「${roomName}」が見つかりません。`); return; }
 
   currentRoom = result.roomName;
   currentPlayerKey = result.playerKey;
-  showMsg(`ルーム「${result.roomName}」に参加しました。`);
-  
-  // ルームを監視
+  addLog("system", `ルーム「${result.roomName}」に参加しました。`);
   watchRoom(result.roomName);
   updateUIForRoom();
 }
 
 async function leaveRoom() {
-  if (!currentRoom || !currentPlayerKey) {
-    showMsg("ルームに参加していません。");
-    return;
-  }
-
-  console.log("[MatchSetup] ルーム退出:", currentRoom);
-
-  const success = await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
-  if (success) {
-    showMsg("ルームから退出しました。");
-    resetRoom();
-  } else {
-    showMsg("ルーム退出に失敗しました。");
-  }
+  if (!currentRoom || !currentPlayerKey) return;
+  await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
+  addLog("system", "ルームから退出しました。");
+  resetRoom();
 }
 
 // ===== ルーム監視 =====
 
 function watchRoom(roomName) {
-  if (roomUnsubscribe) {
-    roomUnsubscribe();
-  }
+  if (roomUnsubscribe) roomUnsubscribe();
 
   roomUnsubscribe = firebaseClient.watchRoom(roomName, (roomData) => {
     if (!roomData) {
-      console.log("[MatchSetup] ルームが削除されました");
-      showMsg("ルームが削除されました。");
+      addLog("system", "ルームが削除されました。");
       resetRoom();
       return;
     }
-
-    console.log("[MatchSetup] ルーム更新:", roomData);
 
     const players = roomData.players || {};
-    const myPlayerData = players[currentPlayerKey];
+    const myData  = players[currentPlayerKey];
+    if (!myData) { addLog("system", "ルームから削除されました。"); resetRoom(); return; }
 
-    if (!myPlayerData) {
-      console.log("[MatchSetup] ルームから削除されました");
-      showMsg("ルームから削除されました。");
-      resetRoom();
-      return;
-    }
-
-    // 相手の状態を確認
     const opRole = currentPlayerKey === "player1" ? "player2" : "player1";
-    const opPlayerData = players[opRole];
+    const opData = players[opRole];
 
-    // 相手が参加したか確認
-    if (opPlayerData && !opPlayerData.hasJoined) {
-      console.log("[MatchSetup] 相手が参加:", opPlayerData.username);
-      showMsg(`対戦相手「${opPlayerData.username}」が入室しました。`);
-      updateOpponentUI(opPlayerData.username, false);
-      
-      // hasJoined フラグを立てる
+    // 相手の入室
+    if (opData && !opData.hasJoined) {
+      opponentName = opData.username;
+      addLog("system", `「${opponentName}」が入室しました。`);
+      updateOpponentUI(opponentName, false, true);
       firebaseClient.db.ref(`rooms/${roomName}/players/${opRole}/hasJoined`).set(true);
     }
 
-    // 相手が退出したか確認
-    if (!opPlayerData && opPlayerData !== undefined) {
-      console.log("[MatchSetup] 相手が退出");
-      showMsg("対戦相手が退出しました。");
-      updateOpponentUI("WAITING", false);
+    // 相手の退出
+    if (!opData) {
+      addLog("system", "対戦相手が退出しました。");
+      opponentName = null;
+      updateOpponentUI(null, false, false);
       myReady = false;
       updateReadyUI();
-      
-      // ルームが空になったため削除
-      firebaseClient.checkAndDeleteEmptyRoom(currentRoom);
     }
 
-    // Ready 状態を確認
-    if (opPlayerData && opPlayerData.ready !== undefined) {
-      opponentReady = opPlayerData.ready;
-      console.log("[MatchSetup] 相手の Ready 状態:", opponentReady);
-      updateOpponentUI(opPlayerData.username, opponentReady);
+    // 相手の Ready 状態
+    if (opData) {
+      opponentReady = !!opData.ready;
+      updateOpponentUI(opData.username, opponentReady, true);
     }
 
-    // 両者が Ready か確認
-    if (myPlayerData.ready && opPlayerData && opPlayerData.ready) {
-      console.log("[MatchSetup] 両者が Ready になりました");
-      showMsg("両者が Ready になりました。ゲーム開始します...");
+    // 両者 Ready → ゲーム開始
+    if (myData.ready && opData && opData.ready && !isStartingGame) {
+      addLog("system", "両者が準備完了！ゲームを開始します...");
       startGame();
     }
   });
 }
 
 function watchRoomList() {
-  if (roomListUnsubscribe) {
-    roomListUnsubscribe();
-  }
-
-  roomListUnsubscribe = firebaseClient.watchRoomList((rooms) => {
-    console.log("[MatchSetup] ルーム一覧更新:", rooms.length, "個");
-    renderRoomList(rooms);
-  });
+  if (roomListUnsubscribe) roomListUnsubscribe();
+  roomListUnsubscribe = firebaseClient.watchRoomList(renderRoomList);
 }
 
-// ===== Ready 状態 =====
+// ===== Ready =====
 
 async function toggleReady() {
   if (!currentRoom || !currentPlayerKey) {
-    showMsg("ルームに参加していません。");
+    addLog("system", "先にルームに参加してください。");
+    return;
+  }
+  if (!selectedDeck()) {
+    addLog("system", "デッキを選択してください。");
     return;
   }
 
   myReady = !myReady;
-  console.log("[MatchSetup] Ready 状態:", myReady);
+  const ok = await firebaseClient.setReady(currentRoom, currentPlayerKey, myReady);
+  if (!ok) { myReady = !myReady; return; }
 
-  const success = await firebaseClient.setReady(currentRoom, currentPlayerKey, myReady);
-  if (success) {
-    updateReadyUI();
-  } else {
-    showMsg("Ready 状態の更新に失敗しました。");
-    myReady = !myReady; // ロールバック
-  }
+  updateReadyUI();
+  addLog("system", myReady ? "準備完了にしました。" : "準備をキャンセルしました。");
 }
 
 // ===== UI 更新 =====
 
 function updateUIForRoom() {
-  const createBtn = document.getElementById("createRoomBtn");
-  const joinBtn = document.getElementById("joinRoomBtn");
-  const cancelBtn = document.getElementById("cancelBtn");
-  const startBtn = document.getElementById("startBtn");
-
-  if (createBtn) createBtn.style.display = "none";
-  if (joinBtn) joinBtn.style.display = "none";
-  if (cancelBtn) cancelBtn.style.display = "block";
-  if (startBtn) startBtn.disabled = false;
+  document.getElementById("createRoomBtn").disabled = true;
+  document.getElementById("joinRoomBtn").disabled   = true;
+  document.getElementById("cancelBtn").style.display = "block";
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("startBtnSub").textContent = "クリックで準備完了";
+  document.getElementById("roomNameInput").value = currentRoom || "";
 }
 
 function resetRoom() {
@@ -240,171 +340,151 @@ function resetRoom() {
   currentPlayerKey = null;
   myReady = false;
   opponentReady = false;
+  opponentName = null;
 
-  const createBtn = document.getElementById("createRoomBtn");
-  const joinBtn = document.getElementById("joinRoomBtn");
-  const cancelBtn = document.getElementById("cancelBtn");
-  const startBtn = document.getElementById("startBtn");
+  document.getElementById("createRoomBtn").disabled = false;
+  document.getElementById("joinRoomBtn").disabled   = false;
+  document.getElementById("cancelBtn").style.display = "none";
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("startBtn").classList.remove("isReady");
+  document.getElementById("startBtnSub").textContent = "ルームに参加してください";
 
-  if (createBtn) createBtn.style.display = "block";
-  if (joinBtn) joinBtn.style.display = "block";
-  if (cancelBtn) cancelBtn.style.display = "none";
-  if (startBtn) startBtn.disabled = true;
-
-  updateReadyUI();
-  updateOpponentUI("WAITING", false);
-
-  if (roomUnsubscribe) {
-    roomUnsubscribe();
-    roomUnsubscribe = null;
-  }
+  updateOpponentUI(null, false, false);
+  if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
 }
 
 function updateReadyUI() {
-  const myReadyStatus = document.getElementById("myReadyStatus");
-  if (myReadyStatus) {
-    myReadyStatus.className = myReady ? "readyPill ready" : "readyPill";
-    myReadyStatus.innerHTML = `
-      <span>あなた: ${myReady ? "準備完了" : "未準備"}</span>
-      <div class="readyIndicator"></div>
-    `;
+  const btn = document.getElementById("startBtn");
+  const sub = document.getElementById("startBtnSub");
+  if (myReady) {
+    btn.textContent = "READY";
+    btn.classList.add("isReady");
+    sub.textContent = "準備完了 — クリックでキャンセル";
+  } else {
+    btn.textContent = "READY";
+    btn.classList.remove("isReady");
+    sub.textContent = opponentName ? "クリックで準備完了" : "相手を待っています...";
   }
-
-  const startBtn = document.getElementById("startBtn");
-  if (startBtn) {
-    startBtn.textContent = myReady ? "キャンセル" : "準備完了";
-  }
+  // btn-sub を再追加（textContent で消えるため）
+  btn.innerHTML = `${myReady ? "READY ✓" : "READY"}<span class="btn-sub" id="startBtnSub">${sub.textContent}</span>`;
 }
 
-function updateOpponentUI(name, isReady) {
-  const opReadyStatus = document.getElementById("opponentReadyStatus");
-  if (opReadyStatus) {
-    opReadyStatus.className = isReady ? "readyPill ready" : "readyPill";
-    opReadyStatus.innerHTML = `
-      <span>相手: ${isReady ? "準備完了" : "待機中"}</span>
-      <div class="readyIndicator"></div>
-    `;
+function updateOpponentUI(name, isReady, isOnline) {
+  const dot    = document.getElementById("opponentDot");
+  const nameEl = document.getElementById("opponentName");
+  const status = document.getElementById("opponentStatus");
+
+  if (!isOnline || !name) {
+    dot.className = "";
+    nameEl.textContent = "待機中...";
+    nameEl.className = "";
+    status.textContent = "未接続";
+    status.className = "";
+    return;
+  }
+
+  nameEl.textContent = name;
+  nameEl.className = "active";
+
+  if (isReady) {
+    dot.className = "ready";
+    status.textContent = "準備完了";
+    status.className = "ready";
+  } else {
+    dot.className = "online";
+    status.textContent = "接続中";
+    status.className = "";
   }
 }
 
 function renderRoomList(rooms) {
   const container = document.getElementById("roomList");
-  if (!container) return;
-
   if (!rooms || rooms.length === 0) {
-    container.innerHTML = '<div style="color:#666;font-size:13px;padding:10px;">公開ルームがありません。</div>';
+    container.innerHTML = '<div style="color:#555;font-size:12px;padding:8px;">公開ルームがありません。</div>';
     return;
   }
-
   container.innerHTML = "";
   rooms.forEach(room => {
     const item = document.createElement("div");
     item.className = "roomItem";
-    item.style.cursor = "pointer";
     item.innerHTML = `
       <span class="room-name">${room.name}</span>
-      <span class="room-players">${room.playerCount}/${2} 人</span>
-      <button class="room-join-btn" type="button">接続</button>
+      <span class="room-players">${room.playerCount}/2 人</span>
+      <button class="room-join-btn" type="button">参加</button>
     `;
-    // 行全体クリック → コードを入力するだけ
-    item.addEventListener("click", (e) => {
-      // 接続ボタン自体のクリックは除外
+    item.addEventListener("click", e => {
       if (e.target.classList.contains("room-join-btn")) return;
-      document.getElementById("roomCodeInput").value = room.name;
+      document.getElementById("roomNameInput").value = room.name;
     });
-    // 接続ボタンクリック → コードで参加と同じ挙動
-    item.querySelector(".room-join-btn").addEventListener("click", (e) => {
+    item.querySelector(".room-join-btn").addEventListener("click", e => {
       e.stopPropagation();
-      joinRoomByName(room.name);
+      document.getElementById("roomNameInput").value = room.name;
+      joinRoom();
     });
     container.appendChild(item);
   });
 }
 
-async function joinRoomByName(roomName) {
-  document.getElementById("roomCodeInput").value = roomName;
-  await joinRoom();
+function updateFirebaseStatus(label, ok) {
+  const el = document.getElementById("firebaseStatus");
+  if (!el) return;
+  el.textContent = label;
+  el.className = ok ? "ok" : "";
 }
 
-function renderDeckGallery() {
-  const gallery = document.getElementById("deckGallery");
-  const select  = document.getElementById("deckSelect");
-  if (!gallery) return;
+// ===== チャット =====
 
-  // localStorage の deckList からデッキ情報を取得
-  let decks = [];
-  try { decks = JSON.parse(localStorage.getItem("deckList")) || []; } catch {}
+function addLog(type, text) {
+  const log = document.getElementById("chatLog");
+  if (!log) return;
+  const line = document.createElement("div");
+  line.className = `chatLine ${type}`;
+  const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  line.textContent = `[${time}] ${text}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
 
-  gallery.innerHTML = "";
-  if (select) select.innerHTML = "";
+function sendChat() {
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
 
-  if (decks.length === 0) {
-    gallery.innerHTML = "<div style='color:#b0a070;font-size:13px;padding:20px;text-align:center;width:100%;'>デッキがありません。デッキ構築画面で作成してください。</div>";
-    return;
-  }
-
-  decks.forEach((deck, index) => {
-    if (select) {
-      const option = document.createElement("option");
-      option.value = deck.id;
-      option.textContent = deck.name || "名称未設定";
-      select.appendChild(option);
-    }
-
-    const card = document.createElement("div");
-    card.className = "deckCard" + (index === 0 ? " selected" : "");
-    card.dataset.id = deck.id;
-
-    const img = document.createElement("img");
-    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
-    img.onerror = () => { img.src = "assets/favicon.png"; };
-
-    const name = document.createElement("div");
-    name.className = "deckCardName";
-    name.textContent = deck.name || "名称未設定";
-
-    card.appendChild(img);
-    card.appendChild(name);
-    card.addEventListener("click", () => {
-      document.querySelectorAll(".deckCard").forEach(c => c.classList.remove("selected"));
-      card.classList.add("selected");
-      if (select) select.value = deck.id;
-      localStorage.setItem("selectedDeckId", deck.id);
+  // Firebase チャット送信（ルーム内のみ）
+  if (currentRoom && firebaseClient.db) {
+    const chatRef = firebaseClient.db.ref(`rooms/${currentRoom}/chat`);
+    chatRef.push({
+      user: currentUser,
+      text: text,
+      ts: firebase.database.ServerValue.TIMESTAMP
     });
-    gallery.appendChild(card);
-  });
-
-  // 最初のデッキを選択状態にする
-  if (decks.length > 0) {
-    if (select) select.value = decks[0].id;
-    localStorage.setItem("selectedDeckId", decks[0].id);
   }
+  addLog("mine", `${currentUser}: ${text}`);
 }
 
-function selectedDeck() {
-  const deckId = localStorage.getItem("selectedDeckId");
-  try {
-    const list = JSON.parse(localStorage.getItem("deckList")) || [];
-    return list.find(d => d.id === deckId) || list[0] || null;
-  } catch { return null; }
+// チャット受信（ルーム監視内で呼ぶ）
+function watchChat(roomName) {
+  if (!firebaseClient.db) return;
+  const chatRef = firebaseClient.db.ref(`rooms/${roomName}/chat`);
+  chatRef.limitToLast(50).on("child_added", snap => {
+    const d = snap.val();
+    if (!d) return;
+    if (d.user === currentUser) return; // 自分の発言は addLog("mine") 済み
+    addLog("other", `${d.user}: ${d.text}`);
+  });
 }
 
 // ===== ゲーム開始 =====
 
-let isStartingGame = false; // ゲーム開始フラグ（beforeunload での退出を防ぐ）
-
 function startGame() {
-  console.log("[MatchSetup] ゲーム開始");
   isStartingGame = true;
-
   const deck = selectedDeck();
 
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
   localStorage.setItem("gameStarted",   "true");
-  if (deck) {
-    localStorage.setItem("deckCode", deck.code || "empty");
-  }
+  if (deck) localStorage.setItem("deckCode", deck.code || "empty");
 
   localStorage.setItem("matchSetup", JSON.stringify({
     role:     currentPlayerKey,
@@ -414,46 +494,22 @@ function startGame() {
     deckId:   deck?.id   || ""
   }));
 
-  setTimeout(() => {
-    location.href = "game.html";
-  }, 1000);
-}
-
-// ===== ユーティリティ =====
-
-function showMsg(text) {
-  const msgEl = document.getElementById("setupMsg");
-  if (msgEl) {
-    msgEl.textContent = text;
-  }
+  setTimeout(() => { location.href = "game.html"; }, 1000);
 }
 
 // ===== イベントリスナー =====
 
 window.addEventListener("load", () => {
   initMatchSetup();
-
-  const createBtn = document.getElementById("createRoomBtn");
-  const joinBtn = document.getElementById("joinRoomBtn");
-  const cancelBtn = document.getElementById("cancelBtn");
-  const startBtn = document.getElementById("startBtn");
-
-  if (createBtn) createBtn.addEventListener("click", createRoom);
-  if (joinBtn) joinBtn.addEventListener("click", joinRoom);
-  if (cancelBtn) cancelBtn.addEventListener("click", leaveRoom);
-  if (startBtn) startBtn.addEventListener("click", toggleReady);
+  document.getElementById("createRoomBtn").addEventListener("click", createRoom);
+  document.getElementById("joinRoomBtn").addEventListener("click",   joinRoom);
+  document.getElementById("startBtn").addEventListener("click",      toggleReady);
 });
 
-// ページを離れるときにリスナーをクリーンアップ
 window.addEventListener("beforeunload", async () => {
-  console.log("[MatchSetup] ページを離れます");
-  
-  // ゲーム開始中はルームから退出しない（game.html に引き継ぐため）
   if (!isStartingGame && currentRoom && currentPlayerKey) {
-    console.log("[MatchSetup] ルームから自動退出:", currentRoom);
     await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
   }
-  
-  if (roomUnsubscribe) roomUnsubscribe();
+  if (roomUnsubscribe)     roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
 });

@@ -731,17 +731,17 @@ function getEvolutionPathHTML(owner) {
     tableHTML = `t = [Lv1~2: 1, Lv3~4: 2, Lv5: 3, Lv6: 4]`;
   }
   
-  return \`
+  return `
     <div style="font-size:14px; font-weight:bold; color:#f0d080; margin-bottom:8px; border-bottom:1px solid #5a4b27; padding-bottom:4px; text-align:center;">
-      【\${s.evolutionPath}】
+      【${s.evolutionPath}】
     </div>
     <div style="font-size:12px; color:#ddd; line-height:1.6; text-align:left;">
-      \${desc}
+      ${desc}
     </div>
     <div style="margin-top:12px; text-align:right; font-size:11px; color:#999; font-family:monospace;">
-      \${tableHTML}
+      ${tableHTML}
     </div>
-  \`;
+  `;
 }
 
 function lorStatChip(icon, val, owner, key, title = "") {

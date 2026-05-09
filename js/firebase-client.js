@@ -69,10 +69,13 @@ class FirebaseClient {
         this.isConnected = true;
         this.emit('connected');
       } else {
-        console.warn("[FirebaseClient] ⚠️ サーバーから切断");
+        // 切断時はログを出さない（ネットワーク問題の場合、大量のログが出るため）
         this.isConnected = false;
         this.emit('disconnected');
       }
+    }, (error) => {
+      // 接続エラーは無視（ネットワーク問題の場合、自動的にリトライされる）
+      console.debug("[FirebaseClient] 接続監視エラー（無視）:", error.code);
     });
   }
 

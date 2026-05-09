@@ -507,7 +507,9 @@
 
   // 初期化
   window.addEventListener("load", () => {
-    initializeFirebase();
+    // ページ読み込み時は Firebase を初期化しない
+    // ログイン/アカウント作成時のみ初期化する
+    console.log("[Login] ページ読み込み完了");
   });
 </script>
 

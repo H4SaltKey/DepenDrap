@@ -980,11 +980,11 @@ function showResultScreen(winner) {
         <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
           再戦を申し込む
         </button>
-        <button class="result-btn secondary" onclick="location.href='index.html'">
-          退室
-        </button>
         <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
           閉じる
+        </button>
+        <button class="result-btn secondary" onclick="location.href='index.html'">
+          退室
         </button>
       </div>
     </div>

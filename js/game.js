@@ -1722,7 +1722,7 @@ async function handleTurnEnd() {
   } else {
     m.turnPlayer = firstPlayer;
     m.turn += 1;
-    if (m.turn > 10) {
+    if (m.turn > 5) {
       m.turn = 1;
       m.round += 1;
       addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);

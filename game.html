@@ -130,25 +130,8 @@
       }
     });
 
-    // ページを離れるときにルームから退出（リロード時は退出しない）
-    window.addEventListener("beforeunload", async () => {
-      console.log("[Game] ページを離れます");
-
-      // リロード検出: sessionStorage にフラグを立て、次回ロード時に確認
-      // リロードの場合は sessionStorage が引き継がれるため、退出しない
-      const isReload = sessionStorage.getItem("gameReloading") === "1";
-      sessionStorage.setItem("gameReloading", "1");
-
-      if (!isReload && gameRoomName && gamePlayerKey) {
-        console.log("[Game] ルームから自動退出:", gameRoomName);
-        await firebaseClient.leaveRoom(gameRoomName, gamePlayerKey);
-      }
-    });
-
-    // ページロード完了時にリロードフラグをクリア
-    window.addEventListener("load", () => {
-      sessionStorage.removeItem("gameReloading");
-    }, { once: true });
+    // beforeunload では退出しない（リロード時に接続を維持するため）
+    // 離脱判定は Firebase onDisconnect に委譲する
   })();
 </script>
 

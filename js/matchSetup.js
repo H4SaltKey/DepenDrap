@@ -634,9 +634,7 @@ window.addEventListener("load", () => {
 });
 
 window.addEventListener("beforeunload", async () => {
-  if (!isStartingGame && currentRoom && currentPlayerKey) {
-    await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
-  }
+  // リロード時の接続維持のため、自動退出はしない（onDisconnectに委譲）
   if (roomUnsubscribe)     roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
   if (_chatListenerRef)    _chatListenerRef.off();

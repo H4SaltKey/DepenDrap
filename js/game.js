@@ -244,7 +244,7 @@ function drawFromDeckObject() {
   const deckObj = getFieldContent().querySelector(".deckObject[data-owner='" + currentRole + "']");
   const deckX = deckObj ? Number(deckObj.dataset.x) : -320;
   const deckY = deckObj ? Number(deckObj.dataset.y) : 200;
-  const drawX = deckX + 340;
+  const handY = 1600;
 
   const card = createCard(rawId);
   if (card) {
@@ -257,7 +257,15 @@ function drawFromDeckObject() {
     const label = card.querySelector(".cardVisibilityLabel");
     if (label) label.textContent = "自分のみ";
     card.style.zIndex = ++cardZCounter;
-    placeCard(document.getElementById("field"), card, { x: drawX, y: deckY });
+    placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
+    if (typeof window.organizeHands === "function") window.organizeHands();
+    const destX = parseFloat(card.style.left) || deckX;
+    const destY = parseFloat(card.style.top) || handY;
+    card.animate([
+      { transform: `translate(${deckX - destX}px, ${deckY - destY}px) scale(0.55)`, opacity: 0.2 },
+      { transform: "translate(0, 0) scale(1.08)", opacity: 1, offset: 0.8 },
+      { transform: "translate(0, 0) scale(1)", opacity: 1 }
+    ], { duration: 420, easing: "cubic-bezier(0.175, 0.885, 0.32, 1.275)" });
   }
 
   // 即時保存
@@ -1797,13 +1805,15 @@ function updateDicePhaseUI() {
         <h2 class="dice-title" style="margin-bottom:60px;">ダイスロール</h2>
         <div style="display:flex;justify-content:center;gap:100px;align-items:flex-start;">
           <div style="text-align:center;">
-            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:30px;font-weight:900;">${p1Name}</div>
+            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:8px;font-weight:900;">${myRole === "player1" ? "あなた" : "あいて"}</div>
+            <div style="font-size:14px;color:#c7b377;letter-spacing:1px;margin-bottom:22px;font-weight:700;">${p1Name}</div>
             <div id="dice-val-player1" class="dice-value-large" style="color:#fff;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
             <button id="dice-btn-player1" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;display:none;">ダイスを振る</button>
           </div>
           <div style="font-size:32px;color:#444;font-weight:900;margin-top:90px;">VS</div>
           <div style="text-align:center;">
-            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:30px;font-weight:900;">${p2Name}</div>
+            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:8px;font-weight:900;">${myRole === "player2" ? "あなた" : "あいて"}</div>
+            <div style="font-size:14px;color:#c7b377;letter-spacing:1px;margin-bottom:22px;font-weight:700;">${p2Name}</div>
             <div id="dice-val-player2" class="dice-value-large" style="color:#fff;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
             <button id="dice-btn-player2" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;display:none;">ダイスを振る</button>
           </div>

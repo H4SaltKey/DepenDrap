@@ -84,6 +84,9 @@ function buildMenu(items, x, y, el){
 
     if(!item.disabled){
       if(item.sub){
+        row.addEventListener("pointerleave", () => {
+          if(currentSub){ currentSub.remove(); currentSub = null; }
+        });
         row.addEventListener("pointerenter", (e) => {
           if(currentSub){ currentSub.remove(); currentSub = null; }
           const sub = document.createElement("div");
@@ -440,9 +443,8 @@ function drawMultiple(count, faceDown){
     isOverdraw = true;
   }
 
-  const handY = 1600; // 手札エリアのY座標
-  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
-  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+    const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+    const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
   
   for(let i = 0; i < actual; i++){
     let rawId = dState.deck.pop();
@@ -472,15 +474,14 @@ function drawMultiple(count, faceDown){
 
     if(typeof placeCard === "function"){
       if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
-      // アニメーション用にいったんデッキ位置に置く
+      // デッキ位置から手札へ移動する演出
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
-      card.dataset.y = 1600; // organizeHandsの対象になるようにフェイク設定
-      placeCard(document.getElementById("field"), card, { x: deckX, y: 1600 });
+      placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
     }
   }
 
-  // ここで整理して目的地のleft/topをセット
+  // ドロー直後に自動で手札整列
   if (typeof window.organizeHands === "function") window.organizeHands();
 
   // 目的地の座標を取得してアニメーション
@@ -488,7 +489,7 @@ function drawMultiple(count, faceDown){
   if (field) {
     const cards = Array.from(field.querySelectorAll(".card:not(.deckObject)"));
     cards.forEach(card => {
-      if (card.dataset.y == 1600 && card.dataset.owner === me) { // 今回ドローされたカード
+      if (card.dataset.owner === me && Number(card.dataset.y) >= 1500) {
         const destX = parseFloat(card.style.left) || deckX;
         const destY = parseFloat(card.style.top) || 1600;
         card.animate([
@@ -581,7 +582,7 @@ function showDamagePopup(targetOwner, type, subType) {
   if (type === "arcana") desc = "防御突破時のバースト";
   if (type === "hp_reduce") desc = "HPを直に減らす";
   if (type === "fragile") desc = "防御力を減少させる";
-  if (type === "direct_attack") desc = "直接の攻撃によるダメージ";
+  if (type === "direct_attack") desc = "アタッカーカードによる攻撃ダメージ";
 
   if (subType === "additional") {
     if (type === "damage") desc = "”追加”特性を持つ、通常のダメージ";
@@ -646,34 +647,68 @@ function showDamagePopup(targetOwner, type, subType) {
     const amount = parseInt(input.value) || 0;
     const s = state[targetOwner];
     if (!s) return;
+    const me = state[window.myRole || "player1"] || {};
 
-    // シミュレーション（実際の適用ロジックを模倣）
     let tHP = s.hp;
     let tShield = s.shield;
     let tBarrier = s.barrier;
     let tShieldMax = s.shieldMax || 0;
+    let actualAmount = amount;
 
-    for (let i = 0; i < amount; i++) {
-      if (type === "hp_reduce") {
-        tHP = Math.max(0, tHP - 1);
-      } else if (type === "fragile") {
-        tShield = Math.max(0, tShield - 1);
-      } else if (type === "pierce") {
-        if (tBarrier > 0) tBarrier--;
-        else tHP = Math.max(0, tHP - 1);
-      } else if (type === "arcana") {
-        if (tBarrier > 0) {
-          tBarrier--;
-        } else {
-          tShield = Math.max(0, tShield - 1);
+    const getLvIdx = (lv) => (lv >= 6 ? 3 : lv >= 5 ? 2 : lv >= 3 ? 1 : 0);
+
+    const applyHit = (hitType, hitAmount) => {
+      for (let i = 0; i < hitAmount; i++) {
+        if (hitType === "hp_reduce") {
           tHP = Math.max(0, tHP - 1);
+        } else if (hitType === "fragile") {
+          tShield = Math.max(0, tShield - 1);
+        } else if (hitType === "pierce") {
+          if (tBarrier > 0) tBarrier--;
+          else tHP = Math.max(0, tHP - 1);
+        } else if (hitType === "arcana") {
+          if (tBarrier > 0) tBarrier--;
+          else {
+            tShield = Math.max(0, tShield - 1);
+            tHP = Math.max(0, tHP - 1);
+          }
+        } else if (hitType === "damage" || hitType === "direct_attack") {
+          if (tBarrier > 0) tBarrier--;
+          else if (tShield > 0) tShield--;
+          else tHP = Math.max(0, tHP - 1);
         }
-      } else if (type === "damage" || type === "direct_attack") {
-        if (tBarrier > 0) tBarrier--;
-        else if (tShield > 0) tShield--;
-        else tHP = Math.max(0, tHP - 1);
+      }
+    };
+
+    // 瞬発の道: 本ダメージ前に脆弱ダメージ
+    if (actualAmount >= 6 && me.evolutionPath === "瞬発の道") {
+      const z = [1, 3, 4, 6][getLvIdx(me.level || 1)];
+      applyHit("fragile", z);
+    }
+
+    // 背水の道: 直接攻撃時の追加
+    if (type === "direct_attack" && me.evolutionPath === "背水の道") {
+      const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
+      if (handCount <= 2) actualAmount += 1;
+      if ((me.pp || 0) >= 2 && !me.evoBackwaterExpGained) {
+        const t = [1, 2, 3, 4][getLvIdx(me.level || 1)];
+        actualAmount += t;
       }
     }
+
+    // 本ダメージ
+    applyHit(type, actualAmount);
+
+    // 継続の道: 本ダメージ後に追加1ダメージ（3回目は貫通）
+    if (actualAmount >= 1 && me.evolutionPath === "継続の道") {
+      const y = [1, 3, 4, 6][getLvIdx(me.level || 1)];
+      const cur = me.evoContinuousDmgCount || 0;
+      if (cur < y) {
+        const isThird = cur + 1 === 3;
+        applyHit(isThird ? "pierce" : "damage", 1);
+      }
+    }
+
     const hpDmg = s.hp - tHP;
     preview.innerHTML = `HPに与えるダメージ: <span style="font-size:18px; color:#ff4d4d; font-weight:bold;">${hpDmg}</span>`;
   }

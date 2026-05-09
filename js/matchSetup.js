@@ -411,6 +411,8 @@ function updateFirebaseStatus(label, ok) {
 
 // ===== チャット =====
 
+// ===== チャット =====
+
 function addLog(type, text) {
   const log = document.getElementById("chatLog");
   if (!log) return;
@@ -427,25 +429,51 @@ function sendChat() {
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
-  if (currentRoom && firebaseClient.db) {
-    firebaseClient.db.ref(`rooms/${currentRoom}/chat`).push({
-      user: currentUser, text,
-      ts: firebase.database.ServerValue.TIMESTAMP
-    });
+
+  if (!currentRoom || !firebaseClient.db) {
+    // ルーム未参加時はローカル表示のみ
+    addLog("mine", `${currentUser}: ${text}`);
+    return;
   }
-  addLog("mine", `${currentUser}: ${text}`);
+
+  // Firebase に push するだけ。表示は child_added で全員統一して行う
+  firebaseClient.db.ref(`rooms/${currentRoom}/chat`).push({
+    user: currentUser,
+    text,
+    ts: firebase.database.ServerValue.TIMESTAMP
+  });
 }
 
 let _chatListenerRef = null;
+let _chatJoinedAt = 0;
+
 function watchChat(roomName) {
-  if (_chatListenerRef) { _chatListenerRef.off(); _chatListenerRef = null; }
+  // 既存リスナーを解除
+  if (_chatListenerRef) {
+    _chatListenerRef.off();
+    _chatListenerRef = null;
+  }
   if (!firebaseClient.db) return;
+
+  // 参加時刻を記録 — これ以降に届いたメッセージのみ受信する
+  _chatJoinedAt = Date.now();
+
   _chatListenerRef = firebaseClient.db.ref(`rooms/${roomName}/chat`);
-  _chatListenerRef.limitToLast(50).on("child_added", snap => {
-    const d = snap.val();
-    if (!d || d.user === currentUser) return;
-    addLog("other", `${d.user}: ${d.text}`);
-  });
+  _chatListenerRef
+    .orderByChild("ts")
+    .startAt(_chatJoinedAt)
+    .on("child_added", snap => {
+      const d = snap.val();
+      if (!d || !d.text) return;
+
+      if (d.user === currentUser) {
+        // 自分の発言 → mine スタイルで表示
+        addLog("mine", `${currentUser}: ${d.text}`);
+      } else {
+        // 相手の発言
+        addLog("other", `${d.user}: ${d.text}`);
+      }
+    });
 }
 
 // ===== ゲーム開始 =====

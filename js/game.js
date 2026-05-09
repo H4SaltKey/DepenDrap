@@ -713,6 +713,9 @@ function update() {
   updateMatchUI();
 
   if (typeof updateDeckObject === "function") updateDeckObject();
+  
+  // チャットログの更新
+  if (typeof updateGameLogs === "function") updateGameLogs(state.logs);
 
   // update() からは localStorage のみ保存（サーバーへの過剰POSTを防ぐ）
   saveLocal();
@@ -2018,9 +2021,27 @@ function setupRoomWatcher() {
   // ── 4. logs 監視──────────────────────────────────────────────────
   const logsRef = db.ref(`rooms/${gameRoom}/logs`);
   const logsListener = logsRef.on('value', (snap) => {
-    if (!snap || !snap.val()) return;
+    if (!snap || !snap.val()) {
+      // ログがクリアされた場合
+      state.logs = [];
+      update();
+      return;
+    }
     const logsObj = snap.val();
-    state.logs = Object.values(logsObj);
+    const receivedLogs = Object.values(logsObj);
+    
+    // 受信したログを state.logs にマージ（重複を避ける）
+    receivedLogs.forEach(log => {
+      if (!state.logs.includes(log)) {
+        state.logs.push(log);
+      }
+    });
+    
+    // 最大50件に制限
+    if (state.logs.length > 50) {
+      state.logs = state.logs.slice(-50);
+    }
+    
     update();
   });
 

@@ -292,8 +292,15 @@ function addGameLog(msg) {
   if (state.logs.length > 50) state.logs.shift();
   lastLocalLogSentAt = Date.now();
 
-  // Firebase 経由で同期（自動）
-  saveDebounced();
+  // Firebase にログを送信
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && typeof firebaseClient !== "undefined" && firebaseClient?.db) {
+    const logRef = firebaseClient.db.ref(`rooms/${gameRoom}/logs`);
+    logRef.push(entry);
+  }
+
+  // ローカルストレージに保存
+  saveLocal();
 }
 window.addGameLog = addGameLog;
 

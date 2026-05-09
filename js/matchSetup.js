@@ -368,10 +368,17 @@ function selectDeck(index) {
 
 function startGame() {
   console.log("[MatchSetup] ゲーム開始");
-  localStorage.setItem("gameRoom", currentRoom);
+  localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
-  localStorage.setItem("gameStarted", "true");
-  
+  localStorage.setItem("gameStarted",   "true");
+
+  // core.js が window.myRole / window.myUsername を読むための matchSetup キーを書く
+  localStorage.setItem("matchSetup", JSON.stringify({
+    role:     currentPlayerKey,          // "player1" or "player2"
+    self:     currentUser,               // 自分のユーザー名
+    username: currentUser
+  }));
+
   setTimeout(() => {
     location.href = "game.html";
   }, 1000);

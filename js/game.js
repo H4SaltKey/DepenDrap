@@ -659,6 +659,8 @@ function renderOwnerUI(owner) {
   " title="【進化の道】 ${s.evolutionPath}\n（現在システムは未適応です）">
     <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
     <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
+    ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+    ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
   </div>
   ` : ""}
   
@@ -1385,6 +1387,8 @@ async function executeReset() {
     s.level = 1; s.exp = 0;
     s.diceValue = -1; // ダイス値を確実にリセット
     s.evolutionPath = null; // 進化の道リセット
+    s.evoContinuousDmgCount = 0; // 継続の道: ターン中の発動回数
+    s.evoBackwaterExpGained = false; // 背水の道: ターン中の経験値獲得フラグ
     if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
   });
 
@@ -1892,6 +1896,10 @@ async function handleTurnEnd() {
     ? (state.player1.username || "プレイヤー1")
     : (state.player2.username || "プレイヤー2");
   addGameLog(`[TURN] ${window.myUsername || state[me]?.username || me} がターンを終了。次: ${nextPlayerName}`);
+
+  // 進化の道のターン依存変数をリセット
+  state[me].evoContinuousDmgCount = 0;
+  state[me].evoBackwaterExpGained = false;
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {

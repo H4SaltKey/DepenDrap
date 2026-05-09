@@ -261,6 +261,7 @@ function drawFromDeckObject() {
     const label = card.querySelector(".cardVisibilityLabel");
     if (label) label.textContent = "自分のみ";
     card.style.zIndex = ++cardZCounter;
+    card.dataset.handOrder = String(Date.now());
     placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
     if (typeof window.organizeHands === "function") window.organizeHands();
     const destX = parseFloat(card.style.left) || deckX;
@@ -679,9 +680,9 @@ function renderOwnerUI(owner) {
     ">
       <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;" data-tooltip="ターン毎の行動ポイント">PP</div>
       <div style="display:flex; align-items:center; gap:8px;">
-        ${isMine ? (s.pp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
+        ${isMine ? (s.pp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
         <span style="font-size:20px; font-weight:bold; color:#00ffff;">${s.pp || 0}/${s.ppMax || 2}</span>
-        ${isMine ? (s.pp >= (s.ppMax || 2) ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
+        ${isMine ? (s.pp >= (s.ppMax || 2) ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
       </div>
     </div>
 
@@ -2063,12 +2064,32 @@ document.body.addEventListener("change", (e) => {
 });
 
 let sliderActive = false;
+let ppRepeatTimer = null;
+let ppRepeatTarget = null;
 
 document.body.addEventListener("pointerdown", (e) => {
   if (e.target.classList.contains("lorSlider")) sliderActive = true;
+  const ppBtn = e.target.closest(".lorPpBtn");
+  if (!ppBtn) return;
+  const owner = ppBtn.dataset.owner;
+  const key = ppBtn.dataset.key;
+  const delta = Number(ppBtn.dataset.delta || 0);
+  if (!owner || key !== "pp" || !delta) return;
+  ppRepeatTarget = { owner, key, delta };
+  ppRepeatTimer = setTimeout(() => {
+    const loop = () => {
+      if (!ppRepeatTarget) return;
+      addVal(ppRepeatTarget.owner, ppRepeatTarget.key, ppRepeatTarget.delta);
+      ppRepeatTimer = setTimeout(loop, 70);
+    };
+    loop();
+  }, 260);
 });
 
 document.body.addEventListener("pointerup", (e) => {
+  if (ppRepeatTimer) clearTimeout(ppRepeatTimer);
+  ppRepeatTimer = null;
+  ppRepeatTarget = null;
   if (sliderActive) {
     sliderActive = false;
     update();

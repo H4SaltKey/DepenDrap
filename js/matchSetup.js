@@ -22,11 +22,13 @@ async function initMatchSetup() {
   currentUser = localStorage.getItem("username") || "Player";
   document.getElementById("myPlayerDisplay").textContent = currentUser;
 
-  // デッキ復元
-  selectedDeckId = localStorage.getItem("selectedDeckId") || null;
-  if (!selectedDeckId) {
-    const decks = getDeckList();
-    if (decks.length > 0) selectedDeckId = decks[0].id;
+  // デッキ復元:
+  // 未選択を基本とし、アカウントごとの最終使用デッキがあれば自動選択
+  selectedDeckId = null;
+  const lastUsedKey = `lastUsedDeckId:${currentUser}`;
+  const lastUsedDeckId = localStorage.getItem(lastUsedKey);
+  if (lastUsedDeckId && getDeckById(lastUsedDeckId)) {
+    selectedDeckId = lastUsedDeckId;
   }
   renderCurrentDeck();
 
@@ -79,7 +81,7 @@ function renderCurrentDeck() {
 }
 
 function selectedDeck() {
-  return getDeckById(selectedDeckId) || getDeckList()[0] || null;
+  return getDeckById(selectedDeckId) || null;
 }
 
 // ===== 現在のデッキ内容確認（左パネルのデッキをクリック） =====
@@ -200,6 +202,7 @@ function confirmDeckSelect() {
   if (!popupSelectedDeckId) return;
   selectedDeckId = popupSelectedDeckId;
   localStorage.setItem("selectedDeckId", selectedDeckId);
+  localStorage.setItem(`lastUsedDeckId:${currentUser}`, selectedDeckId);
   renderCurrentDeck();
   closeDeckSelectPopup();
   addLog("system", `デッキ「${getDeckById(selectedDeckId)?.name || selectedDeckId}」を選択しました。`);

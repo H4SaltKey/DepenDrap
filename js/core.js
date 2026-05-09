@@ -3,7 +3,9 @@ const BASE_INITIAL_STATE = {
   level: 1,      levelMax: 6,
   exp: 0,        expMax: 2,
   hp: 20,        hpMax: 20,
+  // NOTE: shield はゲーム上の「シールド」
   shield: 0,      shieldMax: 5,
+  // NOTE: defstack はゲーム上の「防御力（スタック）」
   defstack: 0,    defstackMax: 0, defstackOverMax: false,
   atk: 5,        atkMax: 999,
   def: 0,        defMax: 999,

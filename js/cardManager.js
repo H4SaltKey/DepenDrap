@@ -641,7 +641,12 @@ window.organizeHands = function() {
   const myHandCards = cards.filter(c => c.dataset.owner === myRole && Number(c.dataset.y) >= 1500);
   
   if (myHandCards.length > 0) {
-    myHandCards.sort((a, b) => Number(a.dataset.x) - Number(b.dataset.x));
+    myHandCards.sort((a, b) => {
+      const oa = Number(a.dataset.handOrder || 0);
+      const ob = Number(b.dataset.handOrder || 0);
+      if (oa !== ob) return oa - ob;
+      return Number(a.dataset.x) - Number(b.dataset.x);
+    });
     
     const spacing = 40;
     let startX = 40; // 左端詰め

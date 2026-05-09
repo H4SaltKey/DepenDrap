@@ -670,6 +670,13 @@ body.isDraggingCard #field .deckObject{
   flex-shrink:0;
 }
 
+
+.lorPpBtn{
+  min-width:34px;
+  min-height:34px;
+  font-size:18px;
+  border-width:2px;
+}
 .lorSmBtn:hover{ background:rgba(200,155,60,0.3); }
 .lorSmBtn:active{ background:rgba(200,155,60,0.5); }
 

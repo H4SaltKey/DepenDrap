@@ -903,7 +903,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
 
   // 最終的な負の値ガード（念のため）
   s.hp = Math.max(0, s.hp);
-  s.defstack = Math.max(0, s.defstack);
+  s.shield = Math.max(0, s.shield);
   s.defstack = Math.max(0, s.defstack);
 
   if (window.addGameLog) {

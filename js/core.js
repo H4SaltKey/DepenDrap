@@ -181,7 +181,18 @@ async function syncLoop() {
     if (s) {
       try {
         const loaded = JSON.parse(s);
+        // ダイスフェーズ中は diceValue を localStorage から読み込まない
+        // （setupPlayerDiceWatcher が Firebase から直接管理するため）
+        const isDicePhase = state.matchData && state.matchData.status === "setup_dice";
+        const savedDice = {
+          player1: state.player1 ? state.player1.diceValue : -1,
+          player2: state.player2 ? state.player2.diceValue : -1
+        };
         Object.keys(loaded).forEach(k => { if (state[k] !== undefined) state[k] = loaded[k]; });
+        if (isDicePhase) {
+          if (state.player1) state.player1.diceValue = savedDice.player1;
+          if (state.player2) state.player2.diceValue = savedDice.player2;
+        }
       } catch {}
     }
 

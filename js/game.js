@@ -1104,8 +1104,10 @@ function updateDicePhaseUI() {
   }
 
   // 自分のボタンだけ表示、相手のボタンは非表示
-  if (p1Btn) p1Btn.style.display = (playerKey === "player1" && p1Dice < 0) ? "inline-block" : "none";
-  if (p2Btn) p2Btn.style.display = (playerKey === "player2" && p2Dice < 0) ? "inline-block" : "none";
+  // diceValue が確実に -1 の場合のみボタンを表示（undefined/null は非表示）
+  const myDice = playerKey === "player1" ? p1Dice : p2Dice;
+  if (p1Btn) p1Btn.style.display = (playerKey === "player1" && myDice === -1) ? "inline-block" : "none";
+  if (p2Btn) p2Btn.style.display = (playerKey === "player2" && myDice === -1) ? "inline-block" : "none";
 
   // ステータスメッセージ
   if (statusMsg) {
@@ -1129,8 +1131,8 @@ function updateDicePhaseUI() {
 async function handleDiceRoll() {
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
 
-  // 既に振っていたら無視
-  if (state[playerKey].diceValue >= 0) return;
+  // 既に振っていたら無視（-1 = 未入力、それ以外は入力済み）
+  if (state[playerKey].diceValue !== -1) return;
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom || !firebaseClient) return;

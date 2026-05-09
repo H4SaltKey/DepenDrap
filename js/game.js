@@ -981,7 +981,8 @@ function updateDicePhaseUI() {
   // baseStyle は injectGameStyles() で <head> に注入済み
   let newHtml = "";
 
-  if (myDice === null) {
+  if (myDice === null && opDice === null) {
+    // 誰もダイスを振っていない
     newHtml = `
       <div class="dice-container">
         <h2 class="dice-title">ダイスロール</h2>
@@ -991,101 +992,118 @@ function updateDicePhaseUI() {
         </div>
       </div>
     `;
-  } else if (opDice === null) {
-    // 自分は振った、相手はまだ
-    newHtml = `
-      <div class="dice-container">
-        <h2 class="dice-title">あなたのダイス結果</h2>
-        <div class="dice-result-display">
-          <div class="dice-value-large" style="animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">${myDice}</div>
-        </div>
-        <p class="dice-subtitle" style="margin-top: 40px; color: #00ffcc;">相手がダイスを振るのを待っています...</p>
-        <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-          <div style="animation: pulse 2s infinite;">● 接続中</div>
-        </div>
-      </div>
-    `;
   } else {
-    if (myDice === opDice) {
+    // 少なくとも1人がダイスを振った → 両プレイヤーを表示
+    const player1Dice = m.dice.player1;
+    const player2Dice = m.dice.player2;
+    
+    // 両プレイヤーのダイス値が決定したか確認
+    if (player1Dice !== null && player2Dice !== null) {
+      // 両プレイヤーのダイス値が決定
+      if (player1Dice === player2Dice) {
+        // 引き分け
+        newHtml = `
+          <div class="dice-container">
+            <h2 class="dice-title" style="color: #ff4444;">引き分け</h2>
+            <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
+               <div style="text-align: center;">
+                 <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
+                 <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
+               </div>
+               <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
+               <div style="text-align: center;">
+                 <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
+                 <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
+               </div>
+            </div>
+            <p class="dice-subtitle" style="color: #ff4444; margin-top: 30px;">同じ値です。もう一度振ります...</p>
+            <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444; color:#fff; margin-top: 30px;">振り直し</button>
+          </div>
+        `;
+      } else {
+        const player1Wins = (player1Dice < player2Dice);
+        if (player1Wins) {
+          // プレイヤー1が先攻
+          newHtml = `
+            <div class="dice-container">
+              <h2 class="dice-title" style="color: #00ffcc; animation: titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>
+              <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
+                 <div style="text-align: center;">
+                   <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
+                   <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
+                 </div>
+                 <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
+                 <div style="text-align: center;">
+                   <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
+                   <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
+                 </div>
+              </div>
+              <p class="dice-subtitle" style="color: #00ffcc; margin-top: 30px; font-size: 18px;">プレイヤー1が先攻です</p>
+              <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
+                <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
+              </div>
+            </div>
+          `;
+          // 自動的に先攻を選択（player1のみが実行）
+          if (me === "player1" && !window._gameStartInitiated) {
+            window._gameStartInitiated = true;
+            setTimeout(async () => {
+              await handleChooseOrder(true);
+            }, 2500);
+          }
+        } else {
+          // プレイヤー2が先攻
+          newHtml = `
+            <div class="dice-container">
+              <h2 class="dice-title" style="color: #e24a4a; animation: titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>
+              <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
+                 <div style="text-align: center;">
+                   <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
+                   <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
+                 </div>
+                 <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
+                 <div style="text-align: center;">
+                   <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
+                   <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
+                 </div>
+              </div>
+              <p class="dice-subtitle" style="color: #e24a4a; margin-top: 30px; font-size: 18px;">プレイヤー2が先攻です</p>
+              <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
+                <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
+              </div>
+            </div>
+          `;
+          // 相手が先攻に決定（player1のみが実行）
+          if (me === "player1" && !window._gameStartInitiated) {
+            window._gameStartInitiated = true;
+            setTimeout(async () => {
+              await handleChooseOrder(false);
+            }, 2500);
+          }
+        }
+      }
+    } else {
+      // 1人だけがダイスを振った → 両プレイヤーを表示（片方は?）
       newHtml = `
         <div class="dice-container">
-          <h2 class="dice-title" style="color: #ff4444;">引き分け</h2>
+          <h2 class="dice-title">ダイスロール中...</h2>
           <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
              <div style="text-align: center;">
-               <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">あなた</div>
-               <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${myDice}</div>
+               <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
+               <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice !== null ? player1Dice : '?'}</div>
              </div>
              <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
              <div style="text-align: center;">
-               <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">相手</div>
-               <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${opDice}</div>
+               <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
+               <div class="dice-value-large" style="color: #e24a4a; animation: ${player2Dice === null ? 'diceRolling' : 'diceResultPop'} 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice !== null ? player2Dice : '?'}</div>
              </div>
           </div>
-          <p class="dice-subtitle" style="color: #ff4444; margin-top: 30px;">同じ値です。もう一度振ります...</p>
-          <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444; color:#fff; margin-top: 30px;">振り直し</button>
+          <p class="dice-subtitle" style="color: #00ffcc; margin-top: 30px;">相手がダイスを振るのを待っています...</p>
+          <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
+            <div style="animation: pulse 2s infinite;">● 接続中</div>
+          </div>
         </div>
       `;
-    } else {
-      const iWin = (myDice < opDice);
-      if (iWin) {
-        // あなたが先攻
-        newHtml = `
-          <div class="dice-container">
-            <h2 class="dice-title" style="color: #00ffcc; animation: titleGlow 1s ease-in-out infinite;">勝利！</h2>
-            <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">あなた</div>
-                 <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${myDice}</div>
-               </div>
-               <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">相手</div>
-                 <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${opDice}</div>
-               </div>
-            </div>
-            <p class="dice-subtitle" style="color: #00ffcc; margin-top: 30px; font-size: 18px;">あなたが先攻です</p>
-            <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-              <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
-            </div>
-          </div>
-        `;
-        // 自動的に先攻を選択（player1のみが実行）
-        if (me === "player1" && !window._gameStartInitiated) {
-          window._gameStartInitiated = true;
-          setTimeout(async () => {
-            await handleChooseOrder(true);
-          }, 2500);
-        }
-      } else {
-        // 相手が先攻
-        newHtml = `
-          <div class="dice-container">
-            <h2 class="dice-title" style="color: #e24a4a; animation: titleGlow 1s ease-in-out infinite;">敗北</h2>
-            <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">あなた</div>
-                 <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${myDice}</div>
-               </div>
-               <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">相手</div>
-                 <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${opDice}</div>
-               </div>
-            </div>
-            <p class="dice-subtitle" style="color: #e24a4a; margin-top: 30px; font-size: 18px;">相手が先攻です</p>
-            <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-              <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
-            </div>
-          </div>
-        `;
-        // 相手が先攻に決定（player1のみが実行）
-        if (me === "player1" && !window._gameStartInitiated) {
-          window._gameStartInitiated = true;
-          setTimeout(async () => {
-            await handleChooseOrder(false);
-          }, 2500);
-        }
-      }
     }
   }
 

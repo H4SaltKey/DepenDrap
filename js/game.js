@@ -1488,7 +1488,7 @@ function updateEvolutionPhaseUI() {
           <!-- 忍耐の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('忍耐の道')">
             <div class="evo-path-title">忍耐の道</div>
-            <div class="evo-path-desc">手札の枚数上限が2枚増加し、最大レベル時は2ではなく3枚になる。<br>また、各ラウンド開始時、手札をx枚増やす。<br><span class="evo-path-val">x=[1/1/3/4]</span></div>
+            <div class="evo-path-desc">手札の枚数上限が1枚増加し、最大レベル時は1ではなく2枚になる。<br>また、ラウンド開始時、手札をx枚増やす。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに経験値を最大2まで獲得する。<br><span class="evo-path-val">x=[0/1/3/4]</span></div>
           </button>
 
           <!-- 継続の道 -->
@@ -1506,7 +1506,7 @@ function updateEvolutionPhaseUI() {
           <!-- 背水の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('背水の道')">
             <div class="evo-path-title">背水の道</div>
-            <div class="evo-path-desc">手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]のダメージを+1する。<br>また、自身のPPが2以上なら、与ダメージを追加で+tして、1の経験値を獲得する。<br><span style="font-size:11px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span><br><span class="evo-path-val">t=[2/2/3/5]</span></div>
+            <div class="evo-path-desc">手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]のダメージを+1する。<br>また、自身のPPが2以上なら、与ダメージを追加で+tして、1の経験値を獲得する。<br><span style="font-size:11px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span><br><span class="evo-path-val">t=[1/2/3/4]</span></div>
           </button>
         </div>
       </div>

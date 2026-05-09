@@ -60,9 +60,11 @@ style.textContent = `
 document.head.appendChild(style);
 
 let currentSub = null;
+let subCloseTimer = null;
 
 function closeMenu() {
   menuEl.classList.add("hidden");
+  if(subCloseTimer){ clearTimeout(subCloseTimer); subCloseTimer = null; }
   if(currentSub){ currentSub.remove(); currentSub = null; }
 }
 
@@ -85,12 +87,25 @@ function buildMenu(items, x, y, el){
     if(!item.disabled){
       if(item.sub){
         row.addEventListener("pointerleave", () => {
-          if(currentSub){ currentSub.remove(); currentSub = null; }
+          if(subCloseTimer) clearTimeout(subCloseTimer);
+          subCloseTimer = setTimeout(() => {
+            if(currentSub){ currentSub.remove(); currentSub = null; }
+          }, 120);
         });
         row.addEventListener("pointerenter", (e) => {
+          if(subCloseTimer){ clearTimeout(subCloseTimer); subCloseTimer = null; }
           if(currentSub){ currentSub.remove(); currentSub = null; }
           const sub = document.createElement("div");
           sub.className = "ctxSub";
+          sub.addEventListener("pointerenter", () => {
+            if(subCloseTimer){ clearTimeout(subCloseTimer); subCloseTimer = null; }
+          });
+          sub.addEventListener("pointerleave", () => {
+            if(subCloseTimer) clearTimeout(subCloseTimer);
+            subCloseTimer = setTimeout(() => {
+              if(currentSub){ currentSub.remove(); currentSub = null; }
+            }, 120);
+          });
           item.sub.forEach(subItem => {
             const subRow = document.createElement("div");
             subRow.className = "ctxItem";

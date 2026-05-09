@@ -559,6 +559,7 @@ async function initCards(){
   if(slider) {
     slider.min = FIELD_ZOOM_MIN;
     slider.max = FIELD_ZOOM_MAX;
+    slider.value = fieldZoom;
   }
 
   // 手札エリアの描画

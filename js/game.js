@@ -659,22 +659,32 @@ function renderOwnerUI(owner) {
     ">
       <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;" data-tooltip="ターン毎の行動ポイント">PP</div>
       <div style="display:flex; align-items:center; gap:8px;">
-        ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>` : `<span class="lorSmBtnPlaceholder"></span>`}
+        ${isMine ? (s.pp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
         <span style="font-size:20px; font-weight:bold; color:#00ffff;">${s.pp || 0}/${s.ppMax || 2}</span>
-        ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>` : `<span class="lorSmBtnPlaceholder"></span>`}
+        ${isMine ? (s.pp >= (s.ppMax || 2) ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
       </div>
     </div>
 
   ${s.evolutionPath ? `
-  <div class="evoPanel" style="
-    background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
-    padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-  " data-tooltip="${getEvolutionPathTooltip(owner)}">
-    <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
-    <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
-    ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
-    ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+  <div class="evoPanelWrapper" style="position:relative;" onmouseenter="this.querySelector('.evoPopup').style.display='block'" onmouseleave="this.querySelector('.evoPopup').style.display='none'">
+    <div class="evoPanel" style="
+      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
+      padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    ">
+      <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+      <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
+      ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+      ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+    </div>
+    <div class="evoPopup" style="
+      display: none; position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 8px;' : 'top: 100%; margin-top: 8px;'} 
+      left: 50%; transform: translateX(-50%); width: 320px;
+      background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px;
+      z-index: 99999; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+    ">
+      ${getEvolutionPathHTML(owner)}
+    </div>
   </div>
   ` : ""}
   </div>
@@ -682,7 +692,9 @@ function renderOwnerUI(owner) {
   </div>`;
 }
 
-function getEvolutionPathTooltip(owner) {
+function getEvolutionPathTooltip(owner) { return ""; } // Obsolete, keeping to avoid undefined errors if called elsewhere
+
+function getEvolutionPathHTML(owner) {
   const s = state[owner];
   if (!s || !s.evolutionPath) return "";
   const lv = s.level || 1;
@@ -692,25 +704,44 @@ function getEvolutionPathTooltip(owner) {
   else if (lv >= 3) idx = 1;
 
   let desc = "";
+  let tableHTML = "";
+
+  const colorAction = "#ff9999"; // 行動につながる部分
+  const colorLevel = "#66ccff"; // レベルで変動する変数
+
   if (s.evolutionPath === '忍耐の道') {
     const xArr = [0, 1, 3, 4];
     const x = xArr[idx];
-    desc = `【忍耐の道】\n手札の枚数上限が2枚増加し、最大レベル時(Lv6)は2ではなく3枚になる。\nまた、ラウンド開始時、手札を ${x} 枚増やす。\nさらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに経験値を最大2まで獲得する。`;
+    desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
+    tableHTML = `x = [Lv1~2: 0, Lv3~4: 1, Lv5: 3, Lv6: 4]`;
   } else if (s.evolutionPath === '継続の道') {
     const yArr = [1, 3, 4, 6];
     const y = yArr[idx];
-    desc = `【継続の道】\nターン毎に ${y} 回まで、1以上のダメージを与える度(※)、1のダメージを与える。\nさらに、それぞれ3回目の発動に限り、1の貫通ダメージを与える。\n※：この効果によるものは含まない`;
+    desc = `ターン毎に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:10px; color:#aaa;">※：この効果によるものは含まない</span>`;
+    tableHTML = `y = [Lv1~2: 1, Lv3~4: 3, Lv5: 4, Lv6: 6]`;
   } else if (s.evolutionPath === '瞬発の道') {
     const zArr = [1, 3, 4, 6];
     const z = zArr[idx];
-    desc = `【瞬発の道】\n一撃で6以上のダメージを与える時、そのダメージ判定の直前に ${z} の脆弱ダメージを与える。`;
+    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
+    tableHTML = `z = [Lv1~2: 1, Lv3~4: 3, Lv5: 4, Lv6: 6]`;
   } else if (s.evolutionPath === '背水の道') {
     const tArr = [1, 2, 3, 4];
     const t = tArr[idx];
-    desc = `【背水の道】\n手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]のダメージを+1する。\nまた、自身のPPが2以上なら、与ダメージを追加で +${t} して、1の経験値を獲得する。\nただし、この効果による経験値は、ターン毎に1回まで獲得可能。`;
+    desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:10px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
+    tableHTML = `t = [Lv1~2: 1, Lv3~4: 2, Lv5: 3, Lv6: 4]`;
   }
   
-  return desc;
+  return \`
+    <div style="font-size:14px; font-weight:bold; color:#f0d080; margin-bottom:8px; border-bottom:1px solid #5a4b27; padding-bottom:4px; text-align:center;">
+      【\${s.evolutionPath}】
+    </div>
+    <div style="font-size:12px; color:#ddd; line-height:1.6; text-align:left;">
+      \${desc}
+    </div>
+    <div style="margin-top:12px; text-align:right; font-size:11px; color:#999; font-family:monospace;">
+      \${tableHTML}
+    </div>
+  \`;
 }
 
 function lorStatChip(icon, val, owner, key, title = "") {
@@ -1911,10 +1942,19 @@ async function handleChooseOrder(goFirst) {
 
   addGameLog(`[MATCH] 先攻: ${firstPlayerName}。進化の道を選択してください...`);
 
+  state.player1.evolutionPath = null;
+  state.player1.evoContinuousDmgCount = 0;
+  state.player1.evoBackwaterExpGained = false;
+
+  state.player2.evolutionPath = null;
+  state.player2.evoContinuousDmgCount = 0;
+  state.player2.evoBackwaterExpGained = false;
+
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
-    await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+    await firebaseClient.writeMyState(gameRoom, "player1", state.player1);
+    await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
   }
 
   update();

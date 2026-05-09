@@ -1961,6 +1961,11 @@ function setupRoomWatcher() {
     // 相手のデータを自分の state に反映
     Object.assign(state[opKey], rest);
     
+    // backImage も同期
+    if (opData.backImage) {
+      state[opKey].backImage = opData.backImage;
+    }
+    
     // デッキ枚数のみ同期（内容は同期しない）
     if (Array.isArray(opDeck)) {
       // 相手のデッキ内容は見えないが、枚数だけ反映

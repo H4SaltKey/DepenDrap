@@ -424,6 +424,14 @@ function openDeckMenu(deck, x, y){
 function drawMultiple(count, faceDown){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
+  
+  // デッキが0枚の場合、敗北判定を実行
+  if (dState.deck.length === 0) {
+    console.warn("[drawMultiple] デッキが空です。敗北判定を実行します。");
+    if (typeof checkGameResult === "function") checkGameResult();
+    return;
+  }
+  
   const actual = Math.min(count, dState.deck.length);
   const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
@@ -474,6 +482,14 @@ function drawMultiple(count, faceDown){
 
   if(typeof updateDeckObject === "function") updateDeckObject();
   if(typeof update === "function") update();
+  
+  // ドロー後にデッキが0枚以下になった場合、敗北判定
+  if (dState.deck.length <= 0) {
+    console.warn("[drawMultiple] ドロー後、デッキが空になりました。敗北判定を実行します。");
+    if (typeof checkGameResult === "function") {
+      setTimeout(() => checkGameResult(), 100); // 少し遅延させて状態を確定
+    }
+  }
 }
 
 function collectAllToDeck(){
@@ -688,7 +704,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
   const s = state[targetOwner];
   if (!s) return;
 
-  const actor = state[window.myRole].username || "Player";
+  const actor = state[window.myRole]?.username || "Player";
   const victim = s.username || targetOwner;
   const typeLabels = {
     damage: "ダメージ",
@@ -702,12 +718,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
     additional: "追加",
     none: ""
   };
-
-  let logType = `${typeLabels[targetOwner] || typeLabels[type]}${subLabels[subType] ? " (" + subLabels[subType] + ")" : ""}`;
   
-  // 同期ロックをかける（ローカルストレージから古いデータで上書きされるのを防ぐ）
-  // ※ Firebase 版では自動同期される
-
   // ダメージを1ずつ処理する（途中でリバウンドが発生する可能性があるため）
   for (let i = 0; i < amount; i++) {
     if (type === "hp_reduce") {

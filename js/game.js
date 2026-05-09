@@ -739,7 +739,7 @@ function getEvolutionPathHTML(owner) {
   } else if (s.evolutionPath === '継続の道') {
     const yArr = [1, 3, 4, 6];
     const y = yArr[idx];
-    desc = `ターン毎に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:10px; color:#aaa;">※：この効果によるものは含まない</span>`;
+    desc = `ターン毎に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:10px; color:#aaa;">※：この効果によるものは含まない</span>`;
     tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '瞬発の道') {
     const zArr = [1, 3, 4, 6];
@@ -1633,7 +1633,7 @@ function updateEvolutionPhaseUI() {
           <!-- 継続の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('継続の道')">
             <div class="evo-path-title">継続の道</div>
-            <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。<br>さらに、それぞれ3回目の発動に限り、1の貫通ダメージを与える。<br><span style="font-size:11px; color:#aaa;">※：この効果によるものは含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
+            <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。<br>さらに追加で、それぞれ3回目の発動に限り、1の貫通ダメージを与える。<br><span style="font-size:11px; color:#aaa;">※：この効果によるものは含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
           </button>
 
           <!-- 瞬発の道 -->

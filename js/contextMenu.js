@@ -682,11 +682,8 @@ function showDamagePopup(targetOwner, type, subType) {
           if (tBarrier > 0) tBarrier--;
           else tHP = Math.max(0, tHP - 1);
         } else if (hitType === "arcana") {
-          if (tBarrier > 0) tBarrier--;
-          else {
-            tShield = Math.max(0, tShield - 1);
-            tHP = Math.max(0, tHP - 1);
-          }
+          if (tShield > 0) tShield = Math.max(0, tShield - 1);
+          else tHP = Math.max(0, tHP - 1);
         } else if (hitType === "damage" || hitType === "direct_attack") {
           if (tBarrier > 0) tBarrier--;
           else if (tShield > 0) tShield--;
@@ -720,7 +717,8 @@ function showDamagePopup(targetOwner, type, subType) {
       const cur = me.evoContinuousDmgCount || 0;
       if (cur < y) {
         const isThird = cur + 1 === 3;
-        applyHit(isThird ? "pierce" : "damage", 1);
+        applyHit("damage", 1);
+        if (isThird) applyHit("pierce", 1);
       }
     }
 
@@ -873,6 +871,12 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
       } else {
         s.hp = Math.max(0, s.hp - 1);
       }
+    } else if (type === "arcana") {
+      if (s.shield > 0) {
+        s.shield = Math.max(0, s.shield - 1);
+      } else {
+        s.hp = Math.max(0, s.hp - 1);
+      }
     } else {
       // 通常/追加/アルカナ/直接攻撃
       if (s.shield > 0) {
@@ -933,8 +937,11 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
       if (typeof window.addGameLog === "function") {
         window.addGameLog(`[EVOLUTION] ${actor} の「継続の道」効果発動（${myState2.evoContinuousDmgCount}回目）！`);
       }
-      // 再帰呼び出しで進化ダメージを適用（isEvoDmg=true）
-      window.applyCalculatedDamage(targetOwner, isThird ? "pierce" : "damage", "additional", 1, true);
+      // 通常1ダメージを付与し、3回目のみ追加で1貫通ダメージを付与
+      window.applyCalculatedDamage(targetOwner, "damage", "additional", 1, true);
+      if (isThird) {
+        window.applyCalculatedDamage(targetOwner, "pierce", "additional", 1, true);
+      }
     }
   }
 

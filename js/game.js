@@ -1487,6 +1487,7 @@ function setupRoomWatcher() {
   });
 
   // ゲーム状態を監視（他のプレイヤーの変更を検知）
+  console.log("[Game] setupGameStateWatcher を呼び出し");
   setupGameStateWatcher(gameRoom);
 }
 
@@ -1501,13 +1502,24 @@ function setupGameStateWatcher(gameRoom) {
 
   console.log("[setupGameStateWatcher] ゲーム状態監視開始:", gameRoom);
 
-  if (!firebaseClient || !firebaseClient.watchGameState) {
+  if (!firebaseClient) {
+    console.error("[setupGameStateWatcher] firebaseClient が利用できません");
+    return;
+  }
+
+  if (!firebaseClient.watchGameState) {
     console.error("[setupGameStateWatcher] firebaseClient.watchGameState が利用できません");
     return;
   }
 
+  if (!firebaseClient.isConnected) {
+    console.warn("[setupGameStateWatcher] Firebase に接続していません。接続状態:", firebaseClient.isConnected);
+  }
+
+  console.log("[setupGameStateWatcher] firebaseClient.watchGameState を呼び出し");
+  
   gameStateWatcherUnsubscribe = firebaseClient.watchGameState(gameRoom, (remoteState) => {
-    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState);
+    console.log("[setupGameStateWatcher] コールバック実行。リモートゲーム状態:", remoteState);
     
     if (!remoteState) {
       console.log("[setupGameStateWatcher] リモートゲーム状態がありません");
@@ -1528,6 +1540,8 @@ function setupGameStateWatcher(gameRoom) {
       }
     }
   });
+  
+  console.log("[setupGameStateWatcher] ✅ ゲーム状態監視設定完了。unsubscribe関数:", typeof gameStateWatcherUnsubscribe);
 }
 
 

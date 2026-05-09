@@ -916,9 +916,24 @@ function checkGameResult() {
 
   // Firebase から winner が同期されてきた場合（相手が書き込んだ）
   if (state.matchData.winner) {
+    // winnerSetAt が存在しない（古いデータ）または gameStartedAt より前なら無視
+    const winnerSetAt = state.matchData.winnerSetAt || 0;
+    const gameStartedAt = window._gameStartedAt || 0;
+    if (winnerSetAt < gameStartedAt) {
+      console.warn("[Result] SKIP: winner is stale (winnerSetAt=", winnerSetAt, "< gameStartedAt=", gameStartedAt, ") winner=", state.matchData.winner);
+      // 古い winner を Firebase からクリア
+      state.matchData.winner = null;
+      state.matchData.winnerSetAt = null;
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+      return;
+    }
     console.log("[Result] winner synced from Firebase:", state.matchData.winner,
       "| round=", state.matchData.round, "turn=", state.matchData.turn,
-      "| gameReady=", gameReady, "status=", state.matchData.status);
+      "| gameReady=", gameReady, "status=", state.matchData.status,
+      "| winnerSetAt=", winnerSetAt, "gameStartedAt=", gameStartedAt);
     showResultScreen(state.matchData.winner);
     return;
   }
@@ -960,7 +975,8 @@ function checkGameResult() {
       winner = myRole;
     }
 
-    state.matchData.winner = winner;
+    state.matchData.winner      = winner;
+    state.matchData.winnerSetAt = Date.now();  // いつ決まったか記録
 
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && firebaseClient?.db) {
@@ -1120,11 +1136,12 @@ async function executeReset() {
 
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
-    winner: null, firstPlayer: null
+    winner: null, winnerSetAt: null, firstPlayer: null
   };
   state.player1.diceValue = -1;
   state.player2.diceValue = -1;
   window._gameStartInitiated = false;
+  window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");
@@ -1412,6 +1429,11 @@ async function handleChooseOrder(goFirst) {
   state.matchData.status      = "playing";
   state.matchData.round       = 1;
   state.matchData.turn        = 1;
+  state.matchData.winner      = null;   // 前回の winner を必ずクリア
+  state.matchData.winnerSetAt = null;   // タイムスタンプもクリア
+
+  // ゲーム開始時刻を記録（古い winner を無視するため）
+  window._gameStartedAt = Date.now();
 
   const firstPlayerName = state.matchData.turnPlayer === "player1"
     ? (state.player1.username || "P1")
@@ -1421,7 +1443,6 @@ async function handleChooseOrder(goFirst) {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
-    // matchData のみ書く（自分の playerState も更新）
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
     await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
   }

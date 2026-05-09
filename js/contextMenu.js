@@ -431,10 +431,9 @@ function drawMultiple(count, faceDown){
     if (typeof addGameLog === "function") {
       addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
     }
-    // デッキ枚数を負の値にして敗北を明示
-    dState.deck.length = -1;
-    if (typeof checkGameResult === "function") {
-      setTimeout(() => checkGameResult(), 100);
+    // オーバードロー敗北判定を呼び出し
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 100);
     }
     return;
   }
@@ -445,11 +444,9 @@ function drawMultiple(count, faceDown){
     if (typeof addGameLog === "function") {
       addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > ${dState.deck.length}枚）。敗北です。`);
     }
-    // デッキ枚数を負の値にして敗北を明示
-    const shortage = count - dState.deck.length;
-    dState.deck.length = -shortage;
-    if (typeof checkGameResult === "function") {
-      setTimeout(() => checkGameResult(), 100);
+    // オーバードロー敗北判定を呼び出し
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 100);
     }
     return;
   }

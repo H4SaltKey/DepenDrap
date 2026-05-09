@@ -227,9 +227,8 @@ function drawFromDeckObject() {
     // デッキが空の状態でドローしようとした場合、敗北判定
     console.warn("[Draw] デッキが空です。敗北判定を実行します。");
     addGameLog(`[DEFEAT] ${window.myUsername || state[currentRole]?.username || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
-    // デッキ枚数を負の値にして敗北を明示
-    s.deck.length = -1;
-    setTimeout(() => checkGameResult(), 100);
+    // オーバードロー敗北判定を呼び出し
+    setTimeout(() => triggerOverdrawDefeat(), 100);
     return;
   }
 
@@ -1112,9 +1111,9 @@ function checkGameResult() {
     return;
   }
 
-  // 敗北条件: HP <= 0 または デッキ枚数 < 0（オーバードロー）
-  const myLost = me.hp <= 0 || me.deck.length < 0;
-  const opLost = op.hp <= 0 || op.deck.length < 0;
+  // 敗北条件: HP <= 0
+  const myLost = me.hp <= 0;
+  const opLost = op.hp <= 0;
 
   if (myLost || opLost) {
     console.log("[Result] TRIGGER:",
@@ -1145,6 +1144,41 @@ function checkGameResult() {
     // 即座にリザルトを表示
     showResultScreen(winner);
   }
+}
+
+/**
+ * オーバードロー時の敗北判定
+ * デッキが空の状態でドローしようとした場合、即座に敗北とする
+ */
+function triggerOverdrawDefeat() {
+  // リザルト表示中は判定しない（2重表示防止）
+  if (window._resultShowing) return;
+  
+  // 閉じるボタンが押された後は判定しない
+  if (window._resultDismissed) return;
+  
+  // 盤面リセット中は判定しない
+  if (window._isResetting) return;
+  
+  const myRole = window.myRole;
+  if (!myRole) return;
+  const opRole = myRole === 'player1' ? 'player2' : 'player1';
+  
+  console.log("[Overdraw] オーバードローによる敗北:", myRole);
+  
+  // 自分が敗北
+  const winner = opRole;
+  
+  state.matchData.winner = winner;
+  state.matchData.winnerSetAt = Date.now();
+  
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.writeMatchData(gameRoom, state.matchData);
+  }
+  
+  // 即座にリザルトを表示
+  showResultScreen(winner);
 }
 
 function showResultScreen(winner) {

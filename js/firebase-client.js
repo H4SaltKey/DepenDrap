@@ -321,6 +321,48 @@ class FirebaseClient {
   }
 
   /**
+   * 自分のプレイヤー状態を書き込む（自分のパスのみ）
+   */
+  async writeMyState(roomName, playerKey, playerState) {
+    if (!this.db) return false;
+    try {
+      await this.db.ref(`rooms/${roomName}/playerState/${playerKey}`).set(playerState);
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] writeMyState エラー:", e.message);
+      return false;
+    }
+  }
+
+  /**
+   * matchData を書き込む（ターン権を持つプレイヤーのみ呼ぶ）
+   */
+  async writeMatchData(roomName, matchData) {
+    if (!this.db) return false;
+    try {
+      await this.db.ref(`rooms/${roomName}/matchData`).set(matchData);
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] writeMatchData エラー:", e.message);
+      return false;
+    }
+  }
+
+  /**
+   * ログを追記する
+   */
+  async appendLog(roomName, logEntry) {
+    if (!this.db) return false;
+    try {
+      await this.db.ref(`rooms/${roomName}/logs`).push(logEntry);
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] appendLog エラー:", e.message);
+      return false;
+    }
+  }
+
+  /**
    * ルームのゲーム状態をリセット
    */
   async resetRoomGameState(roomName) {
@@ -330,8 +372,11 @@ class FirebaseClient {
     }
 
     try {
-      const gameStateRef = this.db.ref(`rooms/${roomName}/gameState`);
-      await gameStateRef.remove();
+      // 旧 gameState パスと新パスの両方をクリア
+      await this.db.ref(`rooms/${roomName}/gameState`).remove();
+      await this.db.ref(`rooms/${roomName}/playerState`).remove();
+      await this.db.ref(`rooms/${roomName}/matchData`).remove();
+      await this.db.ref(`rooms/${roomName}/logs`).remove();
       console.log("[FirebaseClient] ✅ ゲーム状態をリセット:", roomName);
       return true;
     } catch (error) {
@@ -341,23 +386,16 @@ class FirebaseClient {
   }
 
   /**
-   * ルームのゲーム状態を更新
+   * ルームのゲーム状態を更新（後方互換 - 新設計では使わない）
+   * @deprecated writeMyState / writeMatchData を使うこと
    */
   async updateRoomGameState(roomName, gameState) {
-    if (!this.db) {
-      console.error("[FirebaseClient] Firebase が初期化されていません");
-      return false;
-    }
-
+    if (!this.db) return false;
     try {
-      console.log("[FirebaseClient] ルームゲーム状態を更新:", roomName);
-      // ルームの gameState フィールドに保存
-      const roomRef = this.db.ref(`rooms/${roomName}`);
-      await roomRef.update({ gameState: gameState });
-      console.log("[FirebaseClient] ✅ ルームゲーム状態更新完了");
+      await this.db.ref(`rooms/${roomName}/matchData`).set(gameState.matchData);
       return true;
     } catch (error) {
-      console.error("[FirebaseClient] ルームゲーム状態更新エラー:", error.message);
+      console.error("[FirebaseClient] updateRoomGameState エラー:", error.message);
       return false;
     }
   }

@@ -1128,11 +1128,12 @@ function updateDicePhaseUI() {
 }
 
 // ===== ダイスフェーズ =====
-// 設計原則:
-//   - Firebase の rooms/{room}/playerDice が唯一の真実の源
-//   - setupPlayerDiceWatcher だけが state を更新し update() を呼ぶ
-//   - handleDiceRoll は自分の値を Firebase に書くだけ
-//   - handleChooseOrder は勝者だけが呼ぶ
+// 設計原則（新）:
+//   - 自分のデータは rooms/{room}/playerState/{myKey} にのみ書く
+//   - 相手のデータは絶対に書かない
+//   - matchData は rooms/{room}/matchData に書く（ターン権保持者のみ）
+//   - diceValue は rooms/{room}/playerDice/{myKey} に書く（ダイスフェーズ専用）
+//   - 読み取りは各パスの watcher が担当
 
 async function handleDiceRoll() {
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
@@ -1142,45 +1143,34 @@ async function handleDiceRoll() {
     "gameRoom:", localStorage.getItem("gameRoom"),
     "firebase connected:", firebaseClient?.isConnected);
 
-  // state[playerKey] が存在しない場合は無視
   if (!state[playerKey]) {
     console.warn("[handleDiceRoll] state[playerKey] が存在しません:", playerKey);
     return;
   }
-
-  // 既に振っていたら無視（-1 = 未入力、それ以外は入力済み）
   if (state[playerKey].diceValue !== -1) {
     console.log("[handleDiceRoll] 既に振っています:", state[playerKey].diceValue);
     return;
   }
 
   const gameRoom = localStorage.getItem("gameRoom");
-  if (!gameRoom) {
-    console.warn("[handleDiceRoll] gameRoom が取得できません");
-    return;
-  }
-  if (!firebaseClient || !firebaseClient.db) {
-    console.warn("[handleDiceRoll] Firebase が初期化されていません");
+  if (!gameRoom || !firebaseClient?.db) {
+    console.warn("[handleDiceRoll] gameRoom または Firebase が未準備");
     return;
   }
 
-  // アニメーション開始（自分の欄のみ）
   showDiceRollingAnimation();
-
-  // 1秒後に値を決定
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const roll = Math.floor(Math.random() * 100) + 1;
   console.log("[handleDiceRoll] ロール結果:", roll);
   addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
 
-  // ローカル state に即座に反映（watcher 受信前に update() が呼ばれても正しく表示されるよう）
+  // ローカルに即反映
   state[playerKey].diceValue = roll;
   update();
 
-  // Firebase に書き込む → setupPlayerDiceWatcher が受信して相手側も更新
-  const ok = await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
-  console.log("[handleDiceRoll] Firebase 書き込み結果:", ok);
+  // Firebase: playerDice パスにのみ書く（相手のパスは触らない）
+  await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
 }
 
 function showDiceRollingAnimation() {
@@ -1194,8 +1184,6 @@ function showDiceRollingAnimation() {
 async function handleResetDice() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom || !firebaseClient) return;
-
-  // Firebase の playerDice を全削除 → watcher が受信して state/UI をリセット
   await firebaseClient.resetPlayerDice(gameRoom);
 }
 
@@ -1203,11 +1191,11 @@ async function handleChooseOrder(goFirst) {
   const me = window.myRole || "player1";
   const op = me === "player1" ? "player2" : "player1";
 
-  state.matchData.turnPlayer = goFirst ? me : op;
+  state.matchData.turnPlayer  = goFirst ? me : op;
   state.matchData.firstPlayer = state.matchData.turnPlayer;
-  state.matchData.status = "playing";
-  state.matchData.round = 1;
-  state.matchData.turn = 1;
+  state.matchData.status      = "playing";
+  state.matchData.round       = 1;
+  state.matchData.turn        = 1;
 
   const firstPlayerName = state.matchData.turnPlayer === "player1"
     ? (state.player1.username || "P1")
@@ -1215,38 +1203,27 @@ async function handleChooseOrder(goFirst) {
 
   addGameLog(`[MATCH] 試合開始！先攻: ${firstPlayerName}`);
 
-  if (typeof saveImmediate === "function") await saveImmediate();
-
   const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient) {
-    await firebaseClient.updateRoomGameState(gameRoom, state);
+  if (gameRoom && firebaseClient?.db) {
+    // matchData のみ書く（自分の playerState も更新）
+    await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
   }
 
-  if (typeof syncLoop === "function") syncLoop();
   update();
 }
 
 async function handleTurnEnd() {
-  const m = state.matchData;
+  const m  = state.matchData;
   const me = window.myRole || "player1";
-  
-  console.log("[handleTurnEnd] ターン終了処理開始。現在のターンプレイヤー:", m.turnPlayer, "自分:", me);
-  
-  if (m.turnPlayer !== me) {
-    console.log("[handleTurnEnd] 自分のターンではないため、処理をスキップ");
-    return;
-  }
-  if (m.winner) {
-    console.log("[handleTurnEnd] 勝敗確定後のため、処理をスキップ");
-    return; // 勝敗確定後は無効
-  }
 
-  // ターン変更
-  const op = me === "player1" ? "player2" : "player1";
+  if (m.turnPlayer !== me) return;
+  if (m.winner) return;
+
+  const op          = me === "player1" ? "player2" : "player1";
   const firstPlayer = m.firstPlayer || "player1";
-  const isFirstPlayerTurn = (m.turnPlayer === firstPlayer);
 
-  if (isFirstPlayerTurn) {
+  if (m.turnPlayer === firstPlayer) {
     m.turnPlayer = op;
   } else {
     m.turnPlayer = firstPlayer;
@@ -1258,22 +1235,26 @@ async function handleTurnEnd() {
     }
   }
 
-  // 保存・同期
-  console.log("[handleTurnEnd] ターン変更完了。新しいターンプレイヤー:", m.turnPlayer, "ラウンド:", m.round, "ターン:", m.turn);
-  addGameLog(`[TURN] ${window.myUsername || me} がターンを終了しました。次は ${m.turnPlayer} のターンです。`);
-  
-  // ローカルに保存
-  if (typeof saveImmediate === "function") await saveImmediate();
-  
-  // Firebase に保存（ルームデータとして）
+  addGameLog(`[TURN] ${window.myUsername || me} がターンを終了。次: ${m.turnPlayer}`);
+
   const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient) {
-    console.log("[handleTurnEnd] Firebase にゲーム状態を保存");
-    await firebaseClient.updateRoomGameState(gameRoom, state);
+  if (gameRoom && firebaseClient?.db) {
+    // matchData のみ書く（自分の playerState も更新）
+    await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
   }
-  
-  if (typeof syncLoop === "function") syncLoop();
+
   update();
+}
+
+/**
+ * 自分の playerState として Firebase に送る内容を返す
+ * diceValue は playerDice パスで管理するため除外
+ */
+function _getMyStateForSync() {
+  const me = window.myRole || "player1";
+  const { diceValue: _d, deck: _deck, ...rest } = state[me];
+  return rest;
 }
 
 // イベント委譲（body全体で拾う）
@@ -1553,84 +1534,77 @@ function setupRoomWatcher() {
     return;
   }
 
-  console.log("[Game] ルーム監視開始:", gameRoom);
+  const myKey   = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const opKey   = myKey === "player1" ? "player2" : "player1";
+  const db      = firebaseClient.db;
 
-  roomWatcherUnsubscribe = firebaseClient.watchRoom(gameRoom, (roomData) => {
-    if (!roomData) {
-      console.log("[Game] ルームが削除されました");
-      return;
-    }
+  console.log("[Game] ルーム監視開始:", gameRoom, "自分:", myKey);
 
-    console.log("[Game] ルーム更新を受信:", roomData);
+  // ── 1. players ノード監視（接続/切断・username 取得）──────────────────
+  const playersRef = db.ref(`rooms/${gameRoom}/players`);
+  const playersListener = playersRef.on('value', (snap) => {
+    if (!snap) return;
+    const players = snap.val() || {};
+    if (players.player1?.username) state.player1.username = players.player1.username;
+    if (players.player2?.username) state.player2.username = players.player2.username;
 
-    const players = roomData.players || {};
     const playerCount = Object.keys(players).length;
-
-    console.log("[Game] ルーム内プレイヤー数:", playerCount);
-
-    // ルームの players から username を state に紐づける（常に最新を反映）
-    if (players.player1 && players.player1.username) {
-      state.player1.username = players.player1.username;
-    }
-    if (players.player2 && players.player2.username) {
-      state.player2.username = players.player2.username;
-    }
-
-    // ゲーム状態を更新
-    if (roomData.gameState) {
-      console.log("[Game] ゲーム状態を更新:", roomData.gameState.matchData);
-
-      // diceValue は setupPlayerDiceWatcher が管理するため上書きしない
-      const savedDice = {
-        player1: state.player1.diceValue,
-        player2: state.player2.diceValue
-      };
-
-      state.player1 = roomData.gameState.player1 || state.player1;
-      state.player2 = roomData.gameState.player2 || state.player2;
-      state.matchData = roomData.gameState.matchData || state.matchData;
-      state.logs = roomData.gameState.logs || state.logs;
-
-      // ダイスフェーズ中は diceValue を保護
-      if (state.matchData.status === "setup_dice") {
-        state.player1.diceValue = savedDice.player1;
-        state.player2.diceValue = savedDice.player2;
-      }
-      
-      // localStorage に保存
-      localStorage.setItem("gameState", JSON.stringify(state));
-      
-      // UI を更新
-      if (typeof update === "function") {
-        console.log("[Game] update() を呼び出し");
-        update();
-      }
-    }
-
-    // 両プレイヤーが退出した場合
     if (playerCount === 0) {
-      console.log("[Game] 両プレイヤーが退出しました。ゲーム状態をリセット");
+      console.log("[Game] 両プレイヤーが退出");
       resetAllGameVariables();
-      
-      // ルーム監視を停止
-      if (roomWatcherUnsubscribe) {
-        roomWatcherUnsubscribe();
-        roomWatcherUnsubscribe = null;
-      }
-      
-      // プレイヤーダイス監視を停止
-      if (playerDiceWatcherUnsubscribe) {
-        playerDiceWatcherUnsubscribe();
-        playerDiceWatcherUnsubscribe = null;
-      }
-      
-      // ゲーム状態をリセット
+      stopAllWatchers();
       firebaseClient.resetRoomGameState(gameRoom);
     }
+    update();
   });
 
-  // プレイヤーダイス値の変更を監視
+  // ── 2. 相手の playerState 監視（相手のデータのみ受信）────────────────
+  const opStateRef = db.ref(`rooms/${gameRoom}/playerState/${opKey}`);
+  const opStateListener = opStateRef.on('value', (snap) => {
+    if (!snap || !snap.val()) return;
+    const opData = snap.val();
+    // 相手のデータを自分の state に反映（diceValue は playerDice で管理するため除外）
+    const { diceValue: _d, ...rest } = opData;
+    Object.assign(state[opKey], rest);
+    update();
+  });
+
+  // ── 3. matchData 監視（共有ターン情報）──────────────────────────────
+  const matchDataRef = db.ref(`rooms/${gameRoom}/matchData`);
+  const matchDataListener = matchDataRef.on('value', (snap) => {
+    if (!snap || !snap.val()) return;
+    const incoming = snap.val();
+    // matchData は丸ごと上書き（ターン権を持つプレイヤーが書いた値が正）
+    state.matchData = { ...state.matchData, ...incoming };
+    update();
+  });
+
+  // ── 4. logs 監視──────────────────────────────────────────────────
+  const logsRef = db.ref(`rooms/${gameRoom}/logs`);
+  const logsListener = logsRef.on('value', (snap) => {
+    if (!snap || !snap.val()) return;
+    const logsObj = snap.val();
+    // Firebase push() はオブジェクトで返るので配列に変換
+    state.logs = Object.values(logsObj);
+    update();
+  });
+
+  // ── クリーンアップ関数 ────────────────────────────────────────────
+  roomWatcherUnsubscribe = () => {
+    playersRef.off('value', playersListener);
+    opStateRef.off('value', opStateListener);
+    matchDataRef.off('value', matchDataListener);
+    logsRef.off('value', logsListener);
+    roomWatcherUnsubscribe = null;
+  };
+
+  // ── 5. playerDice 監視（ダイスフェーズ専用）──────────────────────
   setupPlayerDiceWatcher(gameRoom);
+}
+
+function stopAllWatchers() {
+  if (roomWatcherUnsubscribe) { roomWatcherUnsubscribe(); roomWatcherUnsubscribe = null; }
+  if (playerDiceWatcherUnsubscribe) { playerDiceWatcherUnsubscribe(); playerDiceWatcherUnsubscribe = null; }
 }
 
 /**

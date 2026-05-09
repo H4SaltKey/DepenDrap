@@ -1386,23 +1386,47 @@ document.body.addEventListener("click", (e) => {
 
   if (t.dataset.action === "addInstantDef") {
     const owner = t.dataset.owner;
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
     const next = (Number(state[owner].shield) || 0) + (Number(state[owner].instantDef) || 0);
     state[owner].shield = Math.max(0, next);
     state[owner].shieldOverMax = state[owner].shield > (Number(state[owner].shieldMax) || 0);
-    if (typeof saveImmediate === "function") saveImmediate();
+
+    if (owner === me) {
+      pushMyStateDebounced();
+    } else {
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.sendChangeRequest(gameRoom, me, owner, "_bulk", "set", {
+          shield: state[owner].shield,
+          shieldOverMax: state[owner].shieldOverMax
+        });
+      }
+    }
     update();
     return;
   }
 
   if (t.dataset.action === "resetDefense") {
     const owner = t.dataset.owner;
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
     const s = state[owner];
     const cur = Number(s.shield) || 0;
     const max = Number(s.shieldMax) || 0;
     if (cur > max) {
       s.shield = max;
       s.shieldOverMax = false;
-      if (typeof saveImmediate === "function") saveImmediate();
+
+      if (owner === me) {
+        pushMyStateDebounced();
+      } else {
+        const gameRoom = localStorage.getItem("gameRoom");
+        if (gameRoom && firebaseClient?.db) {
+          firebaseClient.sendChangeRequest(gameRoom, me, owner, "_bulk", "set", {
+            shield: s.shield,
+            shieldOverMax: s.shieldOverMax
+          });
+        }
+      }
       update();
     }
     return;

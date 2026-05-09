@@ -620,13 +620,13 @@ function renderOwnerUI(owner) {
           <div class="lorBarInner lorBarrierFill" style="width:${barrierPct}%"></div>
         </div>
         <div class="lorValGroup">
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="-1">−</button>` : ""}
+          ${isMine ? (s.barrier <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="-1">−</button>`) : ""}
           <input class="lorValInput" type="number" value="${s.barrier}"
             data-owner="${owner}" data-key="barrier" data-type="val" ${isMine ? "" : "readonly disabled"}>
           <span class="lorValSep">/</span>
           <input class="lorMaxInput" type="number" value="${s.barrierMax}" readonly disabled
             style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="1">＋</button>` : ""}
+          ${isMine ? (s.barrier >= s.barrierMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
       <div class="lorStatRow">
@@ -635,13 +635,13 @@ function renderOwnerUI(owner) {
           <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
         </div>
         <div class="lorValGroup">
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="-1">−</button>` : ""}
+          ${isMine ? (s.hp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="-1">−</button>`) : ""}
           <input class="lorValInput" type="number" value="${s.hp}"
             data-owner="${owner}" data-key="hp" data-type="val" ${isMine ? "" : "readonly disabled"}>
           <span class="lorValSep">/</span>
           <input class="lorMaxInput" type="number" value="${s.hpMax}"
             data-owner="${owner}" data-key="hp" data-type="max" ${isMine ? "" : "readonly disabled"}>
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="1">＋</button>` : ""}
+          ${isMine ? (s.hp >= s.hpMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
       <div class="lorStatRow" style="position: relative;">
@@ -650,13 +650,13 @@ function renderOwnerUI(owner) {
           <div class="lorBarInner lorSldFill" style="width:${sldPct}%"></div>
         </div>
         <div class="lorValGroup">
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>` : ""}
+          ${isMine ? (s.shield <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>`) : ""}
           <input class="lorValInput" type="number" value="${s.shield}"
             data-owner="${owner}" data-key="shield" data-type="val" ${isMine ? "" : "readonly disabled"}>
           <span class="lorValSep">/</span>
           <input class="lorMaxInput" type="number" value="${shieldMax}" readonly disabled
             style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>` : ""}
+          ${isMine ? (s.shield >= shieldMax && !s.shieldOverMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
     </div>

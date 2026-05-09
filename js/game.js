@@ -1494,25 +1494,36 @@ function setupRoomWatcher() {
  * ゲーム状態を監視して、他のプレイヤーの変更を反映
  */
 function setupGameStateWatcher(gameRoom) {
-  if (!gameRoom) return;
+  if (!gameRoom) {
+    console.warn("[setupGameStateWatcher] ゲームルーム情報がありません");
+    return;
+  }
 
-  console.log("[Game] ゲーム状態監視開始:", gameRoom);
+  console.log("[setupGameStateWatcher] ゲーム状態監視開始:", gameRoom);
+
+  if (!firebaseClient || !firebaseClient.watchGameState) {
+    console.error("[setupGameStateWatcher] firebaseClient.watchGameState が利用できません");
+    return;
+  }
 
   gameStateWatcherUnsubscribe = firebaseClient.watchGameState(gameRoom, (remoteState) => {
+    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState);
+    
     if (!remoteState) {
-      console.log("[Game] リモートゲーム状態がありません");
+      console.log("[setupGameStateWatcher] リモートゲーム状態がありません");
       return;
     }
 
-    console.log("[Game] リモートゲーム状態を受信:", remoteState.matchData);
+    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState.matchData);
 
     // リモート状態をローカルに反映
     if (remoteState.matchData) {
+      console.log("[setupGameStateWatcher] matchData を更新。ダイス:", remoteState.matchData.dice);
       state.matchData = remoteState.matchData;
-      console.log("[Game] ゲーム状態を更新。ダイス:", state.matchData.dice);
       
       // UI を更新
       if (typeof update === "function") {
+        console.log("[setupGameStateWatcher] update() を呼び出し");
         update();
       }
     }

@@ -822,9 +822,12 @@ function updateMatchUI() {
   endBtn.style.pointerEvents = isMyTurn ? "auto" : "none";
   endBtn.style.transform = `translateY(-50%) scale(${isMyTurn ? 1 : 0.9})`;
 
-  // 3. リザルト表示ボタン（勝者が決まっている場合のみ表示）
+  // 3. リザルト表示ボタン（勝者が決まっていて、リザルトが閉じられている場合のみ表示）
   let resultBtn = document.getElementById("showResultBtn");
-  if (m.winner && !document.getElementById('gameResultOverlay')) {
+  const hasWinner = m.winner || window._lastWinner; // 最後の勝者を記憶
+  const isResultOpen = !!document.getElementById('gameResultOverlay');
+  
+  if (hasWinner && !isResultOpen) {
     if (!resultBtn) {
       resultBtn = document.createElement("button");
       resultBtn.id = "showResultBtn";
@@ -839,7 +842,7 @@ function updateMatchUI() {
       `;
       resultBtn.onclick = () => {
         window._resultDismissed = false;
-        showResultScreen(m.winner);
+        showResultScreen(window._lastWinner);
       };
       document.body.appendChild(resultBtn);
     }
@@ -1022,6 +1025,10 @@ function checkGameResult() {
 
 function showResultScreen(winner) {
   if (document.getElementById('gameResultOverlay')) return;
+  
+  // 勝者を記憶（リザルトを閉じた後も再表示できるように）
+  window._lastWinner = winner;
+  
   const isWin = (window.myRole === winner);
   const isDraw = (winner === 'draw');
   const div = document.createElement('div');
@@ -1194,6 +1201,7 @@ async function executeReset() {
   window._gameStartInitiated = false;
   window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
   window._resultDismissed = false;  // 再戦時は判定を再開
+  window._lastWinner = null;  // 勝者情報をクリア
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");

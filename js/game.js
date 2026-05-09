@@ -1144,7 +1144,11 @@ async function handleDiceRoll() {
   const roll = Math.floor(Math.random() * 100) + 1;
   addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
 
-  // Firebase に書き込む → setupPlayerDiceWatcher が受信して state/UI を更新
+  // ローカル state に即座に反映（watcher 受信前に update() が呼ばれても正しく表示されるよう）
+  state[playerKey].diceValue = roll;
+  update();
+
+  // Firebase に書き込む → setupPlayerDiceWatcher が受信して相手側も更新
   await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
 }
 

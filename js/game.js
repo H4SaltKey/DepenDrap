@@ -674,7 +674,7 @@ function renderOwnerUI(owner) {
     </div>
 
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" style="position:relative;">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -688,7 +688,7 @@ function renderOwnerUI(owner) {
     <div class="evoPopup" style="
       position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
       left: 50%; transform: translateX(-50%); width: 320px;
-      z-index: 99999; pointer-events: auto;
+      z-index: 99999; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
       <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
@@ -2699,4 +2699,3 @@ document.addEventListener("firebaseJoined", () => {
 
 // ===== タイマー処理は削除（時間制限機能は実装しない） =====
 // 時間制限機能は Firebase では複雑なため、MVP では実装しません
-

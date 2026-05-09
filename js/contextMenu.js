@@ -919,6 +919,11 @@ function getContextMenuTarget(target){
   if(deck) return { type: "deck", el: deck };
   const lorPanel = target.closest(".lorPanel");
   if(lorPanel) return { type: "lorPanel", el: lorPanel };
+  const evoOwner = target.closest(".evoPanelWrapper[data-owner]")?.dataset?.owner;
+  if(evoOwner){
+    const panelByOwner = document.querySelector(`.lorPanel[data-owner="${evoOwner}"]`);
+    if(panelByOwner) return { type: "lorPanel", el: panelByOwner };
+  }
   return null;
 }
 

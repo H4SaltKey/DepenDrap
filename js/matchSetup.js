@@ -216,6 +216,10 @@ async function createRoom() {
   currentRoom = result;
   currentPlayerKey = "player1";
   myReady = false; // 初期状態は準備未完了
+  
+  // Firebase に明示的に ready: false を設定
+  await firebaseClient.setReady(result, "player1", false);
+  
   addLog("system", `ルーム「${result}」を作成しました。`);
   
   // ルーム監視を開始
@@ -236,6 +240,10 @@ async function joinRoom() {
   currentRoom = result.roomName;
   currentPlayerKey = result.playerKey;
   myReady = false; // 初期状態は準備未完了
+  
+  // Firebase に明示的に ready: false を設定（念のため）
+  await firebaseClient.setReady(result.roomName, result.playerKey, false);
+  
   addLog("system", `ルーム「${result.roomName}」に参加しました。`);
   
   // ルーム監視を開始

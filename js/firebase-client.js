@@ -311,9 +311,32 @@ class FirebaseClient {
         console.log("[FirebaseClient] ルームが空になったため削除:", roomName);
         await roomRef.remove();
         console.log("[FirebaseClient] ✅ 空のルームを削除しました");
+        
+        // ゲーム状態もリセット
+        this.emit('roomEmpty', { roomName });
       }
     } catch (error) {
       console.error("[FirebaseClient] ルーム削除エラー:", error.message);
+    }
+  }
+
+  /**
+   * ルームのゲーム状態をリセット
+   */
+  async resetRoomGameState(roomName) {
+    if (!this.db) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      const gameStateRef = this.db.ref(`rooms/${roomName}/gameState`);
+      await gameStateRef.remove();
+      console.log("[FirebaseClient] ✅ ゲーム状態をリセット:", roomName);
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] ゲーム状態リセットエラー:", error.message);
+      return false;
     }
   }
 

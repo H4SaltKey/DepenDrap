@@ -2,6 +2,67 @@ let gameReady = false;
 
 // setSafeSrc は cardManager.js で定義済み（重複定義を削除）
 
+// ===== ゲーム状態リセット =====
+/**
+ * 両プレイヤーが退出した場合、すべての変数をリセット
+ */
+function resetAllGameVariables() {
+  console.log("[Game] すべてのゲーム変数をリセット");
+  
+  // ゲーム状態をリセット
+  gameReady = false;
+  lastResetAt = 0;
+  lastTurnPlayer = null;
+  cardsReadyFired = false;
+  lastStateJson = "";
+  sliderActive = false;
+  
+  // state をリセット
+  state = {
+    player1: makeCharState(),
+    player2: makeCharState(),
+    matchData: {
+      round: 1, turn: 1,
+      turnPlayer: "player1",
+      status: "setup_dice",
+      dice: { player1: null, player2: null },
+      winner: null, firstPlayer: null
+    },
+    logs: []
+  };
+  
+  // localStorage をクリア
+  localStorage.removeItem("gameState");
+  localStorage.removeItem("fieldCards");
+  localStorage.removeItem("gameStarted");
+  localStorage.removeItem("gameRoom");
+  localStorage.removeItem("gamePlayerKey");
+  
+  // UI をリセット
+  const overlay = document.getElementById("dicePhaseOverlay");
+  if (overlay) overlay.style.display = "none";
+  
+  const matchInfo = document.getElementById("matchInfoDisplay");
+  if (matchInfo) matchInfo.innerHTML = "";
+  
+  const turnEndBtn = document.getElementById("turnEndBtn");
+  if (turnEndBtn) turnEndBtn.style.display = "none";
+  
+  const gameUiPlayer = document.getElementById("gameUiPlayer");
+  if (gameUiPlayer) gameUiPlayer.innerHTML = "";
+  
+  const gameUiEnemy = document.getElementById("gameUiEnemy");
+  if (gameUiEnemy) gameUiEnemy.innerHTML = "";
+  
+  // フィールドをクリア
+  const fieldContent = getFieldContent();
+  if (fieldContent) {
+    fieldContent.querySelectorAll(".card, .deckObject").forEach(el => el.remove());
+  }
+  
+  console.log("[Game] ✅ ゲーム変数リセット完了");
+}
+
 // ===== シャッフル =====
 function shuffleDeck() {
   const d = getMyState().deck;
@@ -1287,6 +1348,9 @@ async function initGame() {
       fieldCards: []
     };
 
+    // ルームの状態を監視（両プレイヤーが退出したかチェック）
+    setupRoomWatcher();
+
   } catch (e) {
     console.error("initGame FAILED:", e);
     console.error("Stack:", e.stack);
@@ -1296,6 +1360,49 @@ async function initGame() {
     }
   }
 }
+
+/**
+ * ルームの状態を監視して、両プレイヤーが退出したかチェック
+ */
+let roomWatcherUnsubscribe = null;
+
+function setupRoomWatcher() {
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (!gameRoom) {
+    console.warn("[Game] ゲームルーム情報がありません");
+    return;
+  }
+
+  console.log("[Game] ルーム監視開始:", gameRoom);
+
+  roomWatcherUnsubscribe = firebaseClient.watchRoom(gameRoom, (roomData) => {
+    if (!roomData) {
+      console.log("[Game] ルームが削除されました");
+      return;
+    }
+
+    const players = roomData.players || {};
+    const playerCount = Object.keys(players).length;
+
+    console.log("[Game] ルーム内プレイヤー数:", playerCount);
+
+    // 両プレイヤーが退出した場合
+    if (playerCount === 0) {
+      console.log("[Game] 両プレイヤーが退出しました。ゲーム状態をリセット");
+      resetAllGameVariables();
+      
+      // ルーム監視を停止
+      if (roomWatcherUnsubscribe) {
+        roomWatcherUnsubscribe();
+        roomWatcherUnsubscribe = null;
+      }
+      
+      // ゲーム状態をリセット
+      firebaseClient.resetRoomGameState(gameRoom);
+    }
+  });
+}
+
 
 window.addEventListener("cardsReady", () => {
   cardsReadyFired = true;

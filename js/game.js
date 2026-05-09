@@ -719,9 +719,6 @@ let lastTurnPlayer = null;
       gap: 30px;
       box-shadow: 0 5px 25px rgba(0,0,0,0.5);
     }
-    .match-timer-box { display: flex; flex-direction: column; align-items: center; min-width: 80px; }
-    .match-timer-label { font-size: 10px; color: #888; letter-spacing: 1px; }
-    .match-timer-val { font-size: 20px; font-weight: 900; color: #fff; }
     .match-info-center { text-align: center; }
     .match-round { font-size: 12px; color: #c7b377; letter-spacing: 3px; font-weight: bold; text-transform: uppercase; }
     .match-turn-count { font-size: 24px; font-weight: 900; color: #fff; margin-top: -5px; }
@@ -851,7 +848,6 @@ function updateMatchUI() {
     .dice-choice-btn.primary { background: #c7b377; border: none; color: #1a172c; }
     .dice-choice-btn.secondary { background: transparent; border: 1px solid #c7b377; color: #c7b377; }
     .dice-choice-btn:hover { transform: translateY(-3px); filter: brightness(1.2); }
-    .dice-timer { text-align: center; margin-bottom: 20px; }
   `;
   document.head.appendChild(s);
 })();
@@ -1072,11 +1068,11 @@ async function handleDiceRoll() {
   // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
   
-  // Firebase に保存（他のプレイヤーに通知）
+  // Firebase に保存（ルームデータとして）
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
     console.log("[handleDiceRoll] Firebase にゲーム状態を保存");
-    await firebaseClient.updateGameState(gameRoom, state);
+    await firebaseClient.updateRoomGameState(gameRoom, state);
   }
   
   if (typeof syncLoop === "function") syncLoop();
@@ -1095,7 +1091,7 @@ async function handleResetDice() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
     console.log("[handleResetDice] Firebase にゲーム状態を保存");
-    await firebaseClient.updateGameState(gameRoom, state);
+    await firebaseClient.updateRoomGameState(gameRoom, state);
   }
   
   if (typeof syncLoop === "function") syncLoop();
@@ -1105,11 +1101,6 @@ async function handleResetDice() {
 async function handleChooseOrder(goFirst) {
   console.log("[handleChooseOrder] ゲーム開始処理開始。goFirst:", goFirst);
   
-  // ClockSync が完了していなければ待つ（endTimestamp の精度を保証）
-  if (typeof ClockSync !== "undefined" && !ClockSync.isSynced()) {
-    await ClockSync.sync(3);
-  }
-
   const me = window.myRole || "player1";
   const op = me === "player1" ? "player2" : "player1";
 
@@ -1129,7 +1120,7 @@ async function handleChooseOrder(goFirst) {
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
     console.log("[handleChooseOrder] Firebase にゲーム状態を保存");
-    await firebaseClient.updateGameState(gameRoom, state);
+    await firebaseClient.updateRoomGameState(gameRoom, state);
   }
   
   if (typeof syncLoop === "function") syncLoop();
@@ -1175,11 +1166,11 @@ async function handleTurnEnd() {
   // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
   
-  // Firebase に保存
+  // Firebase に保存（ルームデータとして）
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
     console.log("[handleTurnEnd] Firebase にゲーム状態を保存");
-    await firebaseClient.updateGameState(gameRoom, state);
+    await firebaseClient.updateRoomGameState(gameRoom, state);
   }
   
   if (typeof syncLoop === "function") syncLoop();
@@ -1442,8 +1433,6 @@ async function initGame() {
  * ルームの状態を監視して、両プレイヤーが退出したかチェック
  */
 let roomWatcherUnsubscribe = null;
-let gameStateWatcherUnsubscribe = null;
-
 function setupRoomWatcher() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom) {
@@ -1459,10 +1448,30 @@ function setupRoomWatcher() {
       return;
     }
 
+    console.log("[Game] ルーム更新を受信:", roomData);
+
     const players = roomData.players || {};
     const playerCount = Object.keys(players).length;
 
     console.log("[Game] ルーム内プレイヤー数:", playerCount);
+
+    // ゲーム状態を更新
+    if (roomData.gameState) {
+      console.log("[Game] ゲーム状態を更新:", roomData.gameState.matchData);
+      state.player1 = roomData.gameState.player1 || state.player1;
+      state.player2 = roomData.gameState.player2 || state.player2;
+      state.matchData = roomData.gameState.matchData || state.matchData;
+      state.logs = roomData.gameState.logs || state.logs;
+      
+      // localStorage に保存
+      localStorage.setItem("gameState", JSON.stringify(state));
+      
+      // UI を更新
+      if (typeof update === "function") {
+        console.log("[Game] update() を呼び出し");
+        update();
+      }
+    }
 
     // 両プレイヤーが退出した場合
     if (playerCount === 0) {
@@ -1475,71 +1484,10 @@ function setupRoomWatcher() {
         roomWatcherUnsubscribe = null;
       }
       
-      // ゲーム状態監視を停止
-      if (gameStateWatcherUnsubscribe) {
-        gameStateWatcherUnsubscribe();
-        gameStateWatcherUnsubscribe = null;
-      }
-      
       // ゲーム状態をリセット
       firebaseClient.resetRoomGameState(gameRoom);
     }
   });
-
-  // ゲーム状態を監視（他のプレイヤーの変更を検知）
-  console.log("[Game] setupGameStateWatcher を呼び出し");
-  setupGameStateWatcher(gameRoom);
-}
-
-/**
- * ゲーム状態を監視して、他のプレイヤーの変更を反映
- */
-function setupGameStateWatcher(gameRoom) {
-  if (!gameRoom) {
-    console.warn("[setupGameStateWatcher] ゲームルーム情報がありません");
-    return;
-  }
-
-  console.log("[setupGameStateWatcher] ゲーム状態監視開始:", gameRoom);
-
-  if (!firebaseClient) {
-    console.error("[setupGameStateWatcher] firebaseClient が利用できません");
-    return;
-  }
-
-  if (!firebaseClient.watchGameState) {
-    console.error("[setupGameStateWatcher] firebaseClient.watchGameState が利用できません");
-    return;
-  }
-
-  console.log("[setupGameStateWatcher] firebaseClient.watchGameState を呼び出し");
-  
-  gameStateWatcherUnsubscribe = firebaseClient.watchGameState(gameRoom, (remoteState) => {
-    console.log("[setupGameStateWatcher] リモートゲーム状態を受信:", remoteState);
-    
-    if (!remoteState) {
-      console.log("[setupGameStateWatcher] リモートゲーム状態がありません");
-      return;
-    }
-
-    // リモート状態をローカルに反映
-    console.log("[setupGameStateWatcher] ローカル状態を更新");
-    state.player1 = remoteState.player1 || state.player1;
-    state.player2 = remoteState.player2 || state.player2;
-    state.matchData = remoteState.matchData || state.matchData;
-    state.logs = remoteState.logs || state.logs;
-    
-    // localStorage に保存
-    localStorage.setItem("gameState", JSON.stringify(state));
-    
-    // UI を更新
-    if (typeof update === "function") {
-      console.log("[setupGameStateWatcher] update() を呼び出し");
-      update();
-    }
-  });
-  
-  console.log("[setupGameStateWatcher] ✅ ゲーム状態監視設定完了");
 }
 
 

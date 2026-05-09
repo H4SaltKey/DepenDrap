@@ -341,53 +341,25 @@ class FirebaseClient {
   }
 
   /**
-   * ゲーム状態を更新（ルームデータの一部として保存）
+   * ルームのゲーム状態を更新
    */
-  async updateGameState(roomName, gameState) {
+  async updateRoomGameState(roomName, gameState) {
     if (!this.db) {
       console.error("[FirebaseClient] Firebase が初期化されていません");
       return false;
     }
 
     try {
-      console.log("[FirebaseClient] ゲーム状態を更新:", roomName, gameState.matchData);
+      console.log("[FirebaseClient] ルームゲーム状態を更新:", roomName);
       // ルームの gameState フィールドに保存
-      const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
-      await stateRef.set(gameState);
-      console.log("[FirebaseClient] ✅ ゲーム状態更新完了");
+      const roomRef = this.db.ref(`rooms/${roomName}`);
+      await roomRef.update({ gameState: gameState });
+      console.log("[FirebaseClient] ✅ ルームゲーム状態更新完了");
       return true;
     } catch (error) {
-      console.error("[FirebaseClient] ゲーム状態更新エラー:", error.message);
+      console.error("[FirebaseClient] ルームゲーム状態更新エラー:", error.message);
       return false;
     }
-  }
-
-  /**
-   * ゲーム状態を監視（ルームデータから取得）
-   */
-  watchGameState(roomName, callback) {
-    if (!this.db) {
-      console.error("[FirebaseClient] Firebase が初期化されていません");
-      return null;
-    }
-
-    console.log("[FirebaseClient] ゲーム状態監視開始:", roomName);
-
-    // ルームの gameState を監視
-    const stateRef = this.db.ref(`rooms/${roomName}/gameState`);
-    const listener = stateRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      console.log("[FirebaseClient] ゲーム状態変更を検知:", data);
-      callback(data);
-    });
-
-    this.listeners.set(`gameState:${roomName}`, { ref: stateRef, listener });
-
-    return () => {
-      console.log("[FirebaseClient] ゲーム状態監視停止:", roomName);
-      stateRef.off('value', listener);
-      this.listeners.delete(`gameState:${roomName}`);
-    };
   }
 
   /**

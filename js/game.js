@@ -109,7 +109,7 @@ async function resetField() {
     if (!s) return;
     s.hp = 20; s.hpMax = 20;
     s.shield = 0; s.barrier = 0; s.def = 0;
-    s.level = 1; s.exp = 0; s.timeLeft = 300;
+    s.level = 1; s.exp = 0;
     if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
   });
 
@@ -134,7 +134,7 @@ async function resetField() {
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
     dice: { player1: null, player2: null },
-    diceTimeLeft: 30, choiceTimeLeft: 15, winner: null, firstPlayer: null
+    winner: null, firstPlayer: null
   };
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
@@ -696,32 +696,17 @@ function updateMatchUI() {
     document.body.appendChild(info);
   }
 
-  const isTimeEnabled = JSON.parse(localStorage.getItem("settings"))?.timeLimitEnabled !== false;
   const isMyTurn = (m.turnPlayer === window.myRole);
-  const p1Time = Math.max(0, Math.floor(state.player1.timeLeft ?? BASE_INITIAL_STATE.timeLeft));
-  const p2Time = Math.max(0, Math.floor(state.player2.timeLeft ?? BASE_INITIAL_STATE.timeLeft));
-
-  const formatTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`;
 
   // <style> タグは injectMatchHeaderStyle() で初回のみ <head> に追加済み
   const html = `
     <div class="match-header">
-      <div class="match-timer-box" style="${m.turnPlayer === 'player1' ? 'filter: drop-shadow(0 0 8px #c7b377);' : 'opacity: 0.5;'}">
-        <span class="match-timer-label">P1 持ち時間</span>
-        <span class="match-timer-val" style="${p1Time < 30 ? 'color: #e24a4a;' : ''}">${formatTime(p1Time)}</span>
-      </div>
-      
       <div class="match-info-center">
         <div class="match-round">第 ${m.round} ラウンド</div>
         <div class="match-turn-count">TURN ${m.turn}</div>
         <div class="match-turn-indicator" style="background: ${isMyTurn ? '#00ffcc' : '#e24a4a'}; color: #1a172c;">
           ${isMyTurn ? 'あなたのターン' : "相手のターン"}
         </div>
-      </div>
-
-      <div class="match-timer-box" style="${m.turnPlayer === 'player2' ? 'filter: drop-shadow(0 0 8px #c7b377);' : 'opacity: 0.5;'}">
-        <span class="match-timer-label">P2 持ち時間</span>
-        <span class="match-timer-val" style="${p2Time < 30 ? 'color: #e24a4a;' : ''}">${formatTime(p2Time)}</span>
       </div>
     </div>
   `;
@@ -924,28 +909,6 @@ function updateDicePhaseUI() {
   const bothRolled = (myDice !== null && opDice !== null);
   const someoneWon = bothRolled && (myDice !== opDice);
 
-  const isTimeEnabled = JSON.parse(localStorage.getItem('settings'))?.timeLimitEnabled !== false;
-  let timerDisplay = '';
-
-  if (isTimeEnabled) {
-    let left = 0;
-    let label = "残り時間";
-    if (!bothRolled) {
-      left = Math.max(0, Math.floor(m.diceTimeLeft || 0));
-    } else if (someoneWon) {
-      left = Math.max(0, Math.floor(m.choiceTimeLeft || 0));
-      label = "選択の残り時間";
-    }
-
-    if (!bothRolled || someoneWon) {
-      timerDisplay = `
-        <div class="dice-timer" style="color:${left < 5 ? '#e24a4a' : '#c7b377'};">
-          <span style="font-size: 12px; letter-spacing: 2px; opacity: 0.7;">${label}</span>
-          <div style="font-size: 32px; font-weight: 900;">${left}s</div>
-        </div>`;
-    }
-  }
-
   // baseStyle は injectGameStyles() で <head> に注入済み
   let newHtml = "";
 
@@ -954,7 +917,6 @@ function updateDicePhaseUI() {
       <div class="dice-container">
         <h2 class="dice-title">ダイスロール</h2>
         <p class="dice-subtitle">先攻・後攻を決定します</p>
-        ${timerDisplay}
         <div style="margin-top: 40px;">
           <button class="dice-roll-btn" onclick="handleDiceRoll()">ダイスを振る</button>
         </div>
@@ -1035,8 +997,6 @@ async function handleDiceRoll() {
 
 async function handleResetDice() {
   state.matchData.dice = { player1: null, player2: null };
-  state.matchData.diceTimeLeft = 30;
-  state.matchData.choiceTimeLeft = 15;
   if (typeof saveImmediate === "function") await saveImmediate();
   if (typeof syncLoop === "function") syncLoop();
   update();
@@ -1299,7 +1259,6 @@ async function initGame() {
       if (state.matchData && state.matchData.status !== "setup_dice" && !state.matchData.winner) {
         state.matchData.status = "setup_dice";
         state.matchData.dice = { player1: null, player2: null };
-        state.matchData.diceTimeLeft = 30;
       }
 
       markGameStarted();
@@ -1320,21 +1279,11 @@ async function initGame() {
       }, { once: true });
     }
 
-    // 初期状態の保存（ホスト側が最初に行う）
-    setTimeout(async () => {
-      if (!window.initialState) {
-        const initData = {
-          gameState: JSON.parse(JSON.stringify(state)),
-          fieldCards: []
-        };
-        await fetch("/api/state", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initialState: initData })
-        });
-        window.initialState = initData;
-      }
-    }, 3000);
+    // 初期状態は Firebase で管理（API呼び出しは不要）
+    window.initialState = {
+      gameState: JSON.parse(JSON.stringify(state)),
+      fieldCards: []
+    };
 
   } catch (e) {
     console.error("initGame FAILED:", e);

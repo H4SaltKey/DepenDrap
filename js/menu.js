@@ -24,10 +24,6 @@
         <label>SE音量</label>
         <input type="range" id="seVolume" min="0" max="1" step="0.01">
 
-        <label style="display:flex; align-items:center; gap:8px; margin-top:20px; cursor:pointer; font-weight:bold;">
-          <input type="checkbox" id="timeLimitEnabled" style="width:18px; height:18px;"> 制限時間を有効にする
-        </label>
-
         <div class="optionFooter">
           <button id="deleteAccountBtn" class="dangerBtn" type="button">アカウントを削除する</button>
           <button id="closeOpt" type="button">閉じる</button>

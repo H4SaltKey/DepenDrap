@@ -8,7 +8,6 @@ const BASE_INITIAL_STATE = {
   atk: 5,        atkMax: 999,
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
-  timeLeft: 300,
   deck: [],
   backImage: null
 };
@@ -26,7 +25,6 @@ let state = {
     turnPlayer: "player1",
     status: "setup_dice",
     dice: { player1: null, player2: null },
-    diceTimeLeft: 30, choiceTimeLeft: 15,
     winner: null, firstPlayer: null
   },
   logs: []

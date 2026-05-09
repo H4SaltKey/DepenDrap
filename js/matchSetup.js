@@ -83,15 +83,6 @@ function selectedDeck() {
 }
 
 // ===== 現在のデッキ内容確認（左パネルのデッキをクリック） =====
-
-async function openCurrentDeckView() {
-  if (!selectedDeckId) return;
-  openDeckSelectPopup();
-  // ポップアップを開いた後、選択中デッキのプレビューを表示
-  await new Promise(r => setTimeout(r, 50));
-  await renderDeckPreview(selectedDeckId);
-}
-
 // ===== デッキ選択ポップアップ =====
 
 function openDeckSelectPopup() {
@@ -410,12 +401,22 @@ function renderRoomList(rooms) {
     const joinBtn = document.createElement("button");
     joinBtn.className = "room-join-btn";
     joinBtn.type = "button";
-    joinBtn.textContent = "参加";
-    joinBtn.addEventListener("click", e => {
-      e.stopPropagation();
-      document.getElementById("roomNameInput").value = room.name;
-      joinRoom();
-    });
+    
+    // 現在接続中のルームかチェック
+    const isCurrentRoom = (currentRoom === room.name);
+    if (isCurrentRoom) {
+      joinBtn.textContent = "参加済み";
+      joinBtn.disabled = true;
+      joinBtn.style.opacity = "0.5";
+      joinBtn.style.cursor = "not-allowed";
+    } else {
+      joinBtn.textContent = "参加";
+      joinBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        document.getElementById("roomNameInput").value = room.name;
+        joinRoom();
+      });
+    }
 
     btnGroup.appendChild(deleteBtn);
     btnGroup.appendChild(joinBtn);

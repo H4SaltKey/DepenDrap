@@ -122,15 +122,6 @@ body {
 .deck-count { font-size: 10px; color: #777; margin-top: 2px; }
 .deck-hint { font-size: 9px; color: #c7b377; margin-top: 3px; }
 
-/* デッキ選択ボタン */
-#msDeckSelectBtn {
-  padding: 7px 10px; font-size: 12px; font-weight: bold;
-  background: rgba(199,179,119,0.08); border: 1px solid rgba(199,179,119,0.35);
-  color: #c7b377; border-radius: 4px; cursor: pointer; transition: all 0.2s;
-  flex-shrink: 0;
-}
-#msDeckSelectBtn:hover { background: rgba(199,179,119,0.18); border-color: #c7b377; }
-
 /* READY ボタン */
 #startBtn {
   padding: 14px 10px; font-size: 20px; font-weight: 900; letter-spacing: 3px;
@@ -428,16 +419,14 @@ body {
       <span id="myPlayerDisplay">---</span>
     </div>
 
-    <div id="msCurrentDeck" onclick="openCurrentDeckView()">
+    <div id="msCurrentDeck" onclick="openDeckSelectPopup()">
       <img id="msDeckThumb" class="deck-thumb" src="assets/favicon.png" alt="deck">
       <div class="deck-info">
         <div id="msDeckName" class="deck-name">デッキ未選択</div>
         <div id="msDeckCount" class="deck-count">-- 枚</div>
-        <div class="deck-hint">▶ クリックで内容確認</div>
+        <div class="deck-hint">▶ クリックでデッキ選択</div>
       </div>
     </div>
-
-    <button id="msDeckSelectBtn" onclick="openDeckSelectPopup()">デッキを選択</button>
 
     <button id="startBtn" disabled>
       READY

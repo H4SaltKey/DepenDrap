@@ -209,6 +209,7 @@
         const op = me === "player1" ? "player2" : "player1";
         if (state.matchData) {
           state.matchData.winner = op;
+          state.matchData.winnerSetAt = Date.now(); // タイムスタンプを設定
           const gameRoom = localStorage.getItem("gameRoom");
           if (gameRoom && firebaseClient?.db) {
             firebaseClient.writeMatchData(gameRoom, state.matchData);

@@ -686,13 +686,14 @@ function renderOwnerUI(owner) {
       ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
-      position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0;' : 'top: 100%; margin-top: 0;'} 
+      position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
       left: 50%; transform: translateX(-50%); width: 320px;
-      background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px;
-      z-index: 99999; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      z-index: 99999; pointer-events: auto;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
-      ${getEvolutionPathHTML(owner)}
+      <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
+        ${getEvolutionPathHTML(owner)}
+      </div>
     </div>
   </div>
   ` : ""}

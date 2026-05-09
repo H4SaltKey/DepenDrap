@@ -265,7 +265,7 @@ function updateReadyUI() {
   if (myReadyStatus) {
     myReadyStatus.className = myReady ? "readyPill ready" : "readyPill";
     myReadyStatus.innerHTML = `
-      <span>YOU: ${myReady ? "READY" : "UNREADY"}</span>
+      <span>あなた: ${myReady ? "READY" : "UNREADY"}</span>
       <div class="readyIndicator"></div>
     `;
   }
@@ -281,7 +281,7 @@ function updateOpponentUI(name, isReady) {
   if (opReadyStatus) {
     opReadyStatus.className = isReady ? "readyPill ready" : "readyPill";
     opReadyStatus.innerHTML = `
-      <span>OPPONENT: ${isReady ? "READY" : "WAITING"}</span>
+      <span>相手: ${isReady ? "READY" : "WAITING"}</span>
       <div class="readyIndicator"></div>
     `;
   }

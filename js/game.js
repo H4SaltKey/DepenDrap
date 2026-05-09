@@ -765,28 +765,33 @@ function updateMatchUI() {
   const m = state.matchData;
   if (!m) return;
 
-  // ラウンド開始通知（ターンよりも大きな括り）
-  const roundChanged = window._lastRound !== m.round && m.status === 'playing';
-  const turnChanged = lastTurnPlayer !== m.turnPlayer && m.status === 'playing';
+  // ダイスロールが完全に終了するまで通知を表示しない
+  // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
+  const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
   
-  if (roundChanged) {
+  // ラウンド開始通知（ターンよりも大きな括り）
+  // ラウンドが変わった時、かつターン1の時に表示（先攻・後攻関係なく全員に表示）
+  const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
+  const isFirstTurnOfRound = m.turn === 1;
+  
+  if (roundChanged && isFirstTurnOfRound) {
     showRoundNotification(m.round);
     window._lastRound = m.round;
     
-    // ラウンド変更時にターンも変更された場合は、ラウンド通知の後にターン通知を表示
+    // ラウンド通知の後、2秒後にターン通知を表示
+    setTimeout(() => {
+      const isMe = m.turnPlayer === window.myRole;
+      showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
+      lastTurnPlayer = m.turnPlayer;
+    }, 2000);
+  } else {
+    // ラウンド変更がない場合、またはターン1以外の場合は通常のターン通知のみ
+    const turnChanged = lastTurnPlayer !== m.turnPlayer && isDicePhaseComplete;
     if (turnChanged) {
       const isMe = m.turnPlayer === window.myRole;
-      // ラウンド通知が少し進んでから（2秒後に）ターン通知を表示
-      setTimeout(() => {
-        showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
-      }, 2000);
+      showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
       lastTurnPlayer = m.turnPlayer;
     }
-  } else if (turnChanged) {
-    // ラウンド変更がない場合は即座にターン通知を表示
-    const isMe = m.turnPlayer === window.myRole;
-    showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
-    lastTurnPlayer = m.turnPlayer;
   }
 
   // 1. ラウンド・ターン表示

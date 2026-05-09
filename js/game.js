@@ -589,7 +589,7 @@ function renderOwnerUI(owner) {
     <!-- 中央: HP・シールド -->
     <div class="lorCenter">
       <div class="lorStatRow lorBarrierRow" style="transform: scale(0.85); transform-origin: left bottom; margin-bottom: -4px;">
-        <span class="lorIcon" title="シールド">${ICON_BARRIER}</span>
+        <span class="lorIcon" data-tooltip="シールド">${ICON_BARRIER}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorBarrierFill" style="width:${barrierPct}%"></div>
         </div>
@@ -604,7 +604,7 @@ function renderOwnerUI(owner) {
         </div>
       </div>
       <div class="lorStatRow">
-        <span class="lorIcon" title="HP">${ICON_HP}</span>
+        <span class="lorIcon" data-tooltip="HP">${ICON_HP}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
         </div>
@@ -619,7 +619,7 @@ function renderOwnerUI(owner) {
         </div>
       </div>
       <div class="lorStatRow" style="position: relative;">
-        <span class="lorIcon" title="防御力">${ICON_SLD}</span>
+        <span class="lorIcon" data-tooltip="防御力">${ICON_SLD}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorSldFill" style="width:${sldPct}%"></div>
         </div>
@@ -650,19 +650,34 @@ function renderOwnerUI(owner) {
 
   </div>
   
+  <div style="display:flex; flex-direction:column; gap:8px;">
+    <!-- PP パネル -->
+    <div class="evoPanel" style="
+      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
+      padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    ">
+      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;" data-tooltip="ターン毎の行動ポイント">PP</div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>` : `<span class="lorSmBtnPlaceholder"></span>`}
+        <span style="font-size:20px; font-weight:bold; color:#00ffff;">${s.pp || 0}/${s.ppMax || 2}</span>
+        ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>` : `<span class="lorSmBtnPlaceholder"></span>`}
+      </div>
+    </div>
+
   ${s.evolutionPath ? `
   <div class="evoPanel" style="
     background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
     padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    cursor: help;
-  " title="${getEvolutionPathTooltip(owner)}">
+  " data-tooltip="${getEvolutionPathTooltip(owner)}">
     <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
     <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
     ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
     ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
   </div>
   ` : ""}
+  </div>
   
   </div>`;
 }
@@ -701,7 +716,7 @@ function getEvolutionPathTooltip(owner) {
 function lorStatChip(icon, val, owner, key, title = "") {
   const isEditable = window.devMode;
   return `
-  <div class="lorChip" title="${title}">
+  <div class="lorChip" data-tooltip="${title}">
     <span class="lorChipIcon">${icon}</span>
     ${isEditable ? `
       <input class="lorChipInput" type="number" value="${val}"
@@ -876,7 +891,7 @@ function updateMatchUI() {
     <div class="match-header">
       <div class="match-info-center">
         <div class="match-round">第 ${m.round} ラウンド</div>
-        <div class="match-turn-count">TURN ${m.turn}</div>
+        <div class="match-turn-count">ターン ${m.turn}</div>
         <div class="match-turn-indicator" style="background: ${isMyTurn ? '#00ffcc' : '#e24a4a'}; color: #1a172c;">
           ${isMyTurn ? 'あなたのターン' : "相手のターン"}
         </div>
@@ -1416,6 +1431,7 @@ async function executeReset() {
     s.hp = 20; s.hpMax = 20;
     s.shield = 0; s.barrier = 0; s.def = 0;
     s.level = 1; s.exp = 0;
+    s.pp = 0; s.ppMax = 2;
     s.diceValue = -1; // ダイス値を確実にリセット
     s.evolutionPath = null; // 進化の道リセット
     s.evoContinuousDmgCount = 0; // 継続の道: ターン中の発動回数
@@ -1458,6 +1474,9 @@ async function executeReset() {
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1);
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1);
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    // リセットされた playerState を反映
+    await firebaseClient.writeMyState(gameRoom, "player1", state.player1);
+    await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
   }
 
   localStorage.setItem("gameState", JSON.stringify(state));

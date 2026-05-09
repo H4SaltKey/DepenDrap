@@ -1001,3 +1001,30 @@ h3{
 .card-draw-anim {
   animation: drawCardAnim 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
+[data-tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 8, 20, 0.95);
+  border: 1px solid #c89b3c;
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 99999;
+  min-width: 150px;
+  max-width: 300px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+  margin-bottom: 8px;
+}

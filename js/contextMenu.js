@@ -544,7 +544,8 @@ function showDamagePopup(targetOwner, type, subType) {
     pierce: "貫通ダメージ",
     fragile: "脆弱ダメージ",
     arcana: "アルカナダメージ",
-    hp_reduce: "HP減少"
+    hp_reduce: "HP減少",
+    direct_attack: "直接攻撃"
   };
   const subLabels = {
     normal: "通常",
@@ -559,6 +560,7 @@ function showDamagePopup(targetOwner, type, subType) {
   if (type === "arcana") desc = "防御突破時のバースト";
   if (type === "hp_reduce") desc = "HPを直に減らす";
   if (type === "fragile") desc = "防御力を減少させる";
+  if (type === "direct_attack") desc = "直接の攻撃によるダメージ";
 
   if (subType === "additional") {
     if (type === "damage") desc = "”追加”特性を持つ、通常のダメージ";
@@ -636,17 +638,19 @@ function showDamagePopup(targetOwner, type, subType) {
       } else if (type === "fragile") {
         tShield = Math.max(0, tShield - 1);
       } else if (type === "pierce") {
-        if (tBarrier > 0) tBarrier -= 1;
+        if (tBarrier > 0) tBarrier--;
         else tHP = Math.max(0, tHP - 1);
-      } else {
-        if (tShield > 0) {
-          tShield -= 1;
+      } else if (type === "arcana") {
+        if (tBarrier > 0) {
+          tBarrier--;
         } else {
-          if (type === "damage") tShield = tShieldMax;
-          else tShield = 0;
-          if (tBarrier > 0) tBarrier -= 1;
-          else tHP = Math.max(0, tHP - 1);
+          tShield = Math.max(0, tShield - 1);
+          tHP = Math.max(0, tHP - 1);
         }
+      } else if (type === "damage" || type === "direct_attack") {
+        if (tBarrier > 0) tBarrier--;
+        else if (tShield > 0) tShield--;
+        else tHP = Math.max(0, tHP - 1);
       }
     }
     const hpDmg = s.hp - tHP;
@@ -699,6 +703,7 @@ function openStatusMenu(targetOwner, x, y) {
     { label: `${targetName}にダメージを与える`, disabled: true },
     { sep: true },
     { label: "ダメージ", sub: makeSubTypeBranch("damage") },
+    { label: "直接攻撃", action: () => showDamagePopup(targetOwner, "direct_attack", "none") },
     { label: "貫通ダメージ", sub: makeSubTypeBranch("pierce") },
     { label: "脆弱ダメージ", sub: makeSubTypeBranch("fragile") },
     { label: "アルカナダメージ", sub: makeSubTypeBranch("arcana") },
@@ -720,7 +725,8 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
     pierce: "貫通ダメージ",
     fragile: "脆弱ダメージ",
     arcana: "アルカナダメージ",
-    hp_reduce: "HP減少"
+    hp_reduce: "HP減少",
+    direct_attack: "直接攻撃"
   };
   const subLabels = {
     normal: "通常",
@@ -728,31 +734,66 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
     none: ""
   };
   
+  let actualAmount = amount;
+  
+  // 「直接攻撃」の処理と、背水の道効果の適用
+  if (type === "direct_attack") {
+    const meRole = window.myRole || "player1";
+    const myState = state[meRole];
+    if (myState && myState.evolutionPath === '背水の道') {
+      const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
+      if (handCount <= 2) {
+        actualAmount += 1;
+        if (typeof addGameLog === "function") {
+          addGameLog(`[EVOLUTION] ${actor} の「背水の道」効果により、直接攻撃ダメージが +1 されました！`);
+        }
+      }
+      
+      if (myState.pp >= 2) {
+        if (!myState.evoBackwaterExpGained) {
+          const lv = myState.level || 1;
+          let idx = 0;
+          if (lv >= 6) idx = 3;
+          else if (lv >= 5) idx = 2;
+          else if (lv >= 3) idx = 1;
+          const tArr = [1, 2, 3, 4];
+          const t = tArr[idx];
+          
+          actualAmount += t;
+          myState.exp += 1;
+          myState.evoBackwaterExpGained = true;
+          
+          if (typeof addGameLog === "function") {
+            addGameLog(`[EVOLUTION] ${actor} の「背水の道」効果（PP2以上）により、与ダメージが +${t} され、経験値1を獲得しました！`);
+          }
+          if (typeof applyLevelStats === "function") applyLevelStats(meRole, true);
+        }
+      }
+    }
+  }
+  
   // ダメージを1ずつ処理する（途中でリバウンドが発生する可能性があるため）
-  for (let i = 0; i < amount; i++) {
+  for (let i = 0; i < actualAmount; i++) {
     if (type === "hp_reduce") {
-      // HPを減らす: 直接HP
       s.hp = Math.max(0, s.hp - 1);
     } else if (type === "fragile") {
-      // 脆弱ダメージ: 防御力(現在値:shield)を0になるまで減らす
       s.shield = Math.max(0, s.shield - 1);
     } else if (type === "pierce") {
-      // 貫通ダメージ: 防御力を無視してシールド(barrier) -> HP
       if (s.barrier > 0) {
         s.barrier -= 1;
       } else {
         s.hp = Math.max(0, s.hp - 1);
       }
     } else {
-      // 通常/追加/アルカナ
+      // 通常/追加/アルカナ/直接攻撃
       if (s.shield > 0) {
         // 防御力がある場合は防御力を減らす
         s.shield -= 1;
       } else {
         // 防御力が0の場合
-        if (type === "damage") {
+        if (type === "damage" || type === "direct_attack") {
           // 通常ダメージならリバウンド特性発動
-          s.shield = s.shieldMax;
+          s.shield = s.shieldMax || 0;
         } else {
           s.shield = 0;
         }

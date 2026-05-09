@@ -1517,6 +1517,11 @@ function setupRoomWatcher() {
     return;
   }
 
+  if (!firebaseClient || !firebaseClient.db) {
+    console.warn("[Game] Firebase 未初期化 - setupRoomWatcher をスキップ");
+    return;
+  }
+
   console.log("[Game] ルーム監視開始:", gameRoom);
 
   roomWatcherUnsubscribe = firebaseClient.watchRoom(gameRoom, (roomData) => {
@@ -1648,7 +1653,17 @@ window.addEventListener("cardsReady", () => {
   cardsReadyFired = true;
 });
 
-initGame();
+// Firebase 初期化完了を待ってから initGame を呼ぶ
+document.addEventListener("firebaseJoined", () => {
+  console.log("[Game] firebaseJoined 受信 → initGame 開始");
+  initGame();
+});
+
+// フォールバック: 既に初期化済みの場合（リロード等）
+if (firebaseClient && firebaseClient.isConnected) {
+  console.log("[Game] Firebase 既に接続済み → initGame 開始");
+  initGame();
+}
 
 // ===== タイマー処理は削除（時間制限機能は実装しない） =====
 // 時間制限機能は Firebase では複雑なため、MVP では実装しません

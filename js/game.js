@@ -20,13 +20,18 @@ function resetAllGameVariables() {
   
   // state をリセット
   state = {
-    player1: makeCharState(),
-    player2: makeCharState(),
+    player1: {
+      ...makeCharState(),
+      diceValue: null
+    },
+    player2: {
+      ...makeCharState(),
+      diceValue: null
+    },
     matchData: {
       round: 1, turn: 1,
       turnPlayer: "player1",
       status: "setup_dice",
-      dice: { player1: null, player2: null },
       winner: null, firstPlayer: null
     },
     logs: []
@@ -955,7 +960,7 @@ function updateDicePhaseUI() {
     return;
   }
 
-  console.log("[updateDicePhaseUI] ダイスフェーズ表示。dice:", m.dice);
+  console.log("[updateDicePhaseUI] ダイスフェーズ表示。dice:", state.player1.diceValue, state.player2.diceValue);
 
   if (!overlay) {
     overlay = document.createElement("div");
@@ -971,17 +976,13 @@ function updateDicePhaseUI() {
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 
-  const me = window.myRole || "player1";
-  const op = me === "player1" ? "player2" : "player1";
-  const myDice = m.dice[me];
-  const opDice = m.dice[op];
-  const bothRolled = (myDice !== null && opDice !== null);
-  const someoneWon = bothRolled && (myDice !== opDice);
+  const player1Dice = state.player1.diceValue;
+  const player2Dice = state.player2.diceValue;
 
   // baseStyle は injectGameStyles() で <head> に注入済み
   let newHtml = "";
 
-  if (myDice === null && opDice === null) {
+  if (player1Dice === null && player2Dice === null) {
     // 誰もダイスを振っていない
     newHtml = `
       <div class="dice-container">
@@ -994,8 +995,6 @@ function updateDicePhaseUI() {
     `;
   } else {
     // 少なくとも1人がダイスを振った → 両プレイヤーを表示
-    const player1Dice = m.dice.player1;
-    const player2Dice = m.dice.player2;
     
     // 両プレイヤーのダイス値が決定したか確認
     if (player1Dice !== null && player2Dice !== null) {
@@ -1045,6 +1044,7 @@ function updateDicePhaseUI() {
             </div>
           `;
           // 自動的に先攻を選択（player1のみが実行）
+          const me = window.myRole || "player1";
           if (me === "player1" && !window._gameStartInitiated) {
             window._gameStartInitiated = true;
             setTimeout(async () => {
@@ -1074,6 +1074,7 @@ function updateDicePhaseUI() {
             </div>
           `;
           // 相手が先攻に決定（player1のみが実行）
+          const me = window.myRole || "player1";
           if (me === "player1" && !window._gameStartInitiated) {
             window._gameStartInitiated = true;
             setTimeout(async () => {
@@ -1130,6 +1131,9 @@ async function handleDiceRoll() {
   console.log("[handleDiceRoll] ダイスロール結果:", me, "=", roll);
   addGameLog(`[DICE] ${window.myUsername || me} がダイスを振りました: ${roll}`);
   
+  // state に直接保存
+  state[playerKey].diceValue = roll;
+  
   // Firebase にプレイヤーのダイス値を保存（プレイヤーごとに分けて管理）
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
@@ -1145,7 +1149,8 @@ async function handleDiceRoll() {
       console.log("[handleDiceRoll] 両プレイヤーのダイス値が決定。比較開始");
       
       // ダイス値を state に保存
-      state.matchData.dice = { player1: allDice.player1, player2: allDice.player2 };
+      state.player1.diceValue = allDice.player1;
+      state.player2.diceValue = allDice.player2;
       
       // ローカルに保存
       if (typeof saveImmediate === "function") await saveImmediate();
@@ -1212,7 +1217,8 @@ async function handleResetDice() {
   }
   
   // ローカルの state もリセット
-  state.matchData.dice = { player1: null, player2: null };
+  state.player1.diceValue = null;
+  state.player2.diceValue = null;
   
   // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
@@ -1646,7 +1652,8 @@ function setupPlayerDiceWatcher(gameRoom) {
       console.log("[Game] 両プレイヤーのダイス値が決定:", allDice);
       
       // state に保存
-      state.matchData.dice = { player1: allDice.player1, player2: allDice.player2 };
+      state.player1.diceValue = allDice.player1;
+      state.player2.diceValue = allDice.player2;
       
       // localStorage に保存
       localStorage.setItem("gameState", JSON.stringify(state));

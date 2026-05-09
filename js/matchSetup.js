@@ -306,14 +306,22 @@ function renderRoomList(rooms) {
       <span class="room-players">${room.playerCount}/${2} 人</span>
       <button class="room-join-btn" type="button">接続</button>
     `;
-    // 行全体クリックで直接参加（コードで参加と同じ挙動）
-    item.addEventListener("click", () => joinRoomByName(room.name));
+    // 行全体クリック → コードを入力するだけ
+    item.addEventListener("click", (e) => {
+      // 接続ボタン自体のクリックは除外
+      if (e.target.classList.contains("room-join-btn")) return;
+      document.getElementById("roomCodeInput").value = room.name;
+    });
+    // 接続ボタンクリック → コードで参加と同じ挙動
+    item.querySelector(".room-join-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      joinRoomByName(room.name);
+    });
     container.appendChild(item);
   });
 }
 
 async function joinRoomByName(roomName) {
-  // コードで参加と同じ挙動
   document.getElementById("roomCodeInput").value = roomName;
   await joinRoom();
 }

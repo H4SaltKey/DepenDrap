@@ -943,12 +943,15 @@ function updateDicePhaseUI() {
   let overlay = document.getElementById("dicePhaseOverlay");
 
   if (m.status !== "setup_dice") {
+    console.log("[updateDicePhaseUI] ダイスフェーズ終了。ステータス:", m.status);
     if (overlay) {
       overlay.style.opacity = "0";
       setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
     }
     return;
   }
+
+  console.log("[updateDicePhaseUI] ダイスフェーズ表示。dice:", m.dice);
 
   if (!overlay) {
     overlay = document.createElement("div");
@@ -1077,6 +1080,8 @@ async function handleResetDice() {
 }
 
 async function handleChooseOrder(goFirst) {
+  console.log("[handleChooseOrder] ゲーム開始処理開始。goFirst:", goFirst);
+  
   // ClockSync が完了していなければ待つ（endTimestamp の精度を保証）
   if (typeof ClockSync !== "undefined" && !ClockSync.isSynced()) {
     await ClockSync.sync(3);
@@ -1091,6 +1096,7 @@ async function handleChooseOrder(goFirst) {
   state.matchData.round = 1;
   state.matchData.turn = 1;
 
+  console.log("[handleChooseOrder] ゲーム開始。先攻:", state.matchData.turnPlayer, "ステータス:", state.matchData.status);
   addGameLog(`[MATCH] 試合開始！先攻: ${state.matchData.turnPlayer === "player1" ? (state.player1.username || "P1") : (state.player2.username || "P2")}`);
   if (typeof saveImmediate === "function") await saveImmediate();
   if (typeof syncLoop === "function") syncLoop();
@@ -1100,8 +1106,17 @@ async function handleChooseOrder(goFirst) {
 async function handleTurnEnd() {
   const m = state.matchData;
   const me = window.myRole || "player1";
-  if (m.turnPlayer !== me) return;
-  if (m.winner) return; // 勝敗確定後は無効
+  
+  console.log("[handleTurnEnd] ターン終了処理開始。現在のターンプレイヤー:", m.turnPlayer, "自分:", me);
+  
+  if (m.turnPlayer !== me) {
+    console.log("[handleTurnEnd] 自分のターンではないため、処理をスキップ");
+    return;
+  }
+  if (m.winner) {
+    console.log("[handleTurnEnd] 勝敗確定後のため、処理をスキップ");
+    return; // 勝敗確定後は無効
+  }
 
   // ターン変更
   const op = me === "player1" ? "player2" : "player1";
@@ -1121,6 +1136,7 @@ async function handleTurnEnd() {
   }
 
   // 保存・同期
+  console.log("[handleTurnEnd] ターン変更完了。新しいターンプレイヤー:", m.turnPlayer, "ラウンド:", m.round, "ターン:", m.turn);
   addGameLog(`[TURN] ${window.myUsername || me} がターンを終了しました。次は ${m.turnPlayer} のターンです。`);
   if (typeof saveImmediate === "function") await saveImmediate();
   if (typeof syncLoop === "function") syncLoop();

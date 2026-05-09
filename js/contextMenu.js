@@ -911,16 +911,38 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   // ダメージ処理からの更新なので、ログチェックをスキップ（既にログは出力済み）
   if (typeof update === "function") update(true);
 };
-document.addEventListener("contextmenu", (e) => {
-  const card = e.target.closest(".card:not(.deckObject)");
-  const deck = e.target.closest(".deckObject");
-  const lorPanel = e.target.closest(".lorPanel");
+function getContextMenuTarget(target){
+  if(!target || typeof target.closest !== "function") return null;
+  const card = target.closest(".card:not(.deckObject)");
+  if(card) return { type: "card", el: card };
+  const deck = target.closest(".deckObject");
+  if(deck) return { type: "deck", el: deck };
+  const lorPanel = target.closest(".lorPanel");
+  if(lorPanel) return { type: "lorPanel", el: lorPanel };
+  return null;
+}
 
-  if(card || deck || lorPanel){
+function openGameContextMenu(hit, x, y){
+  if(!hit) return;
+  if(hit.type === "card") openCardMenu(hit.el, x, y);
+  else if(hit.type === "deck") openDeckMenu(hit.el, x, y);
+  else if(hit.type === "lorPanel") openStatusMenu(hit.el.dataset.owner, x, y);
+}
+
+document.addEventListener("mousedown", (e) => {
+  if(e.button !== 2) return;
+  const hit = getContextMenuTarget(e.target);
+  if(hit){
+    console.log("[ctx-debug:mousedown]", e.button, e.target);
+  }
+});
+
+document.addEventListener("contextmenu", (e) => {
+  const hit = getContextMenuTarget(e.target);
+  if(hit){
+    console.log("[ctx-debug:contextmenu]", e.button, e.target);
     e.preventDefault();
-    if(card) openCardMenu(card, e.clientX, e.clientY);
-    else if(deck) openDeckMenu(deck, e.clientX, e.clientY);
-    else if(lorPanel) openStatusMenu(lorPanel.dataset.owner, e.clientX, e.clientY);
+    openGameContextMenu(hit, e.clientX, e.clientY);
   }
 });
 

@@ -764,6 +764,12 @@ function updateMatchUI() {
   const m = state.matchData;
   if (!m) return;
 
+  // ラウンド開始通知（ターンよりも大きな括り）
+  if (window._lastRound !== m.round && m.status === 'playing') {
+    showRoundNotification(m.round);
+    window._lastRound = m.round;
+  }
+
   // ターン開始通知
   if (lastTurnPlayer !== m.turnPlayer && m.status === 'playing') {
     const isMe = m.turnPlayer === window.myRole;
@@ -937,6 +943,77 @@ function showNotification(text, color) {
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 2500);
 }
+
+function showRoundNotification(round) {
+  const div = document.createElement('div');
+  div.style.cssText = `
+    position: fixed; inset: 0; z-index: 10000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle, rgba(199,179,119,0.15) 0%, rgba(0,0,0,0.8) 70%);
+    animation: roundFadeIn 0.6s ease-out forwards, roundFadeOut 0.6s 2.4s ease-in forwards;
+  `;
+  
+  const subtitle = round === 1 ? "戦いが始まる" : "新たな戦いが始まる";
+  
+  div.innerHTML = `
+    <div style="text-align: center; animation: roundContentScale 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+      <div style="
+        font-size: 28px; font-weight: 700; color: #c7b377; letter-spacing: 8px;
+        text-transform: uppercase; margin-bottom: 20px; opacity: 0.9;
+        animation: roundSubtitleSlide 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        transform: translateY(30px); opacity: 0;
+      ">ROUND</div>
+      <div style="
+        font-size: 140px; font-weight: 900; color: #fff;
+        letter-spacing: 20px; line-height: 1;
+        text-shadow: 0 0 40px rgba(199,179,119,0.6), 0 0 80px rgba(199,179,119,0.4),
+                     0 10px 30px rgba(0,0,0,0.8);
+        animation: roundNumberPulse 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        transform: scale(0.5); opacity: 0;
+      ">${round}</div>
+      <div style="
+        margin-top: 30px; font-size: 20px; font-weight: 600; color: #e0d0a0;
+        letter-spacing: 4px; opacity: 0.8;
+        animation: roundSubtitleSlide 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        transform: translateY(-30px); opacity: 0;
+      ">${subtitle}</div>
+    </div>
+  `;
+  
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 3200);
+}
+
+// ラウンド通知用のアニメーションスタイルを追加
+(function injectRoundNotificationStyles() {
+  if (document.getElementById('roundNotificationStyles')) return;
+  const s = document.createElement('style');
+  s.id = 'roundNotificationStyles';
+  s.textContent = `
+    @keyframes roundFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes roundFadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes roundContentScale {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    @keyframes roundNumberPulse {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes roundSubtitleSlide {
+      from { transform: translateY(var(--slide-y, 30px)); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(s);
+})();
 
 function checkGameResult() {
   if (!state.matchData) return;

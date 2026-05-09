@@ -18,8 +18,8 @@ function makeCharState() {
 
 // ===== ゲーム状態 =====
 let state = {
-  player1: { ...makeCharState(), diceValue: null },
-  player2: { ...makeCharState(), diceValue: null },
+  player1: { ...makeCharState(), diceValue: -1 },
+  player2: { ...makeCharState(), diceValue: -1 },
   matchData: {
     round: 1, turn: 1,
     turnPlayer: "player1",
@@ -209,10 +209,10 @@ setInterval(syncLoop, 1000);
 // ===== 状態正規化 =====
 function normalizeState() {
   ["player1", "player2"].forEach(p => {
-    if (!state[p]) state[p] = { ...makeCharState(), diceValue: null };
+    if (!state[p]) state[p] = { ...makeCharState(), diceValue: -1 };
     if (!Array.isArray(state[p].deck)) state[p].deck = [];
-    // diceValue が undefined の場合は null に初期化
-    if (state[p].diceValue === undefined) state[p].diceValue = null;
+    // diceValue が undefined/null の場合は -1 に初期化
+    if (state[p].diceValue === undefined || state[p].diceValue === null) state[p].diceValue = -1;
     // matchSetup 由来の一時フラグを除去（ゲーム状態を汚染しない）
     delete state[p]._ready;
     delete state[p]._deckCode;

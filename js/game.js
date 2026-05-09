@@ -22,11 +22,11 @@ function resetAllGameVariables() {
   state = {
     player1: {
       ...makeCharState(),
-      diceValue: null
+      diceValue: -1
     },
     player2: {
       ...makeCharState(),
-      diceValue: null
+      diceValue: -1
     },
     matchData: {
       round: 1, turn: 1,
@@ -977,7 +977,7 @@ function updateDicePhaseUI() {
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
   const p1Dice = state.player1.diceValue;
   const p2Dice = state.player2.diceValue;
-  const bothRolled = (p1Dice !== null && p2Dice !== null);
+  const bothRolled = (p1Dice >= 0 && p2Dice >= 0);
 
   // 両プレイヤーが揃ったら結果画面に切り替え
   if (bothRolled) {
@@ -1069,13 +1069,13 @@ function updateDicePhaseUI() {
   const p2Btn = document.getElementById("dice-btn-player2");
   const statusMsg = document.getElementById("dice-status-msg");
 
-  if (p1El && p1Dice !== null && p1El.textContent !== String(p1Dice)) {
+  if (p1El && p1Dice >= 0 && p1El.textContent !== String(p1Dice)) {
     p1El.style.animation = "none";
     p1El.textContent = p1Dice;
     void p1El.offsetWidth; // reflow
     p1El.style.animation = "diceResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
   }
-  if (p2El && p2Dice !== null && p2El.textContent !== String(p2Dice)) {
+  if (p2El && p2Dice >= 0 && p2El.textContent !== String(p2Dice)) {
     p2El.style.animation = "none";
     p2El.textContent = p2Dice;
     void p2El.offsetWidth;
@@ -1085,14 +1085,14 @@ function updateDicePhaseUI() {
   // 自分のボタンだけ有効、相手のボタンは非表示
   if (p1Btn) {
     if (playerKey === "player1") {
-      p1Btn.style.display = p1Dice !== null ? "none" : "inline-block";
+      p1Btn.style.display = p1Dice >= 0 ? "none" : "inline-block";
     } else {
       p1Btn.style.display = "none";
     }
   }
   if (p2Btn) {
     if (playerKey === "player2") {
-      p2Btn.style.display = p2Dice !== null ? "none" : "inline-block";
+      p2Btn.style.display = p2Dice >= 0 ? "none" : "inline-block";
     } else {
       p2Btn.style.display = "none";
     }
@@ -1100,9 +1100,9 @@ function updateDicePhaseUI() {
 
   // ステータスメッセージ
   if (statusMsg) {
-    if (p1Dice !== null && p2Dice === null) {
+    if (p1Dice >= 0 && p2Dice < 0) {
       statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">プレイヤー2がダイスを振るのを待っています...</span>`;
-    } else if (p2Dice !== null && p1Dice === null) {
+    } else if (p2Dice >= 0 && p1Dice < 0) {
       statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">プレイヤー1がダイスを振るのを待っています...</span>`;
     } else {
       statusMsg.innerHTML = "";
@@ -1115,7 +1115,7 @@ async function handleDiceRoll() {
   const playerKey = localStorage.getItem("gamePlayerKey") || me;
 
   // 既に振っていたら無視
-  if (state[playerKey].diceValue !== null) return;
+  if (state[playerKey].diceValue >= 0) return;
 
   console.log("[handleDiceRoll] ダイスロール開始:", playerKey);
 
@@ -1151,8 +1151,8 @@ async function handleDiceRoll() {
     const allDice = await firebaseClient.getAllPlayerDice(gameRoom);
     console.log("[handleDiceRoll] すべてのダイス値:", allDice);
 
-    if (allDice.player1 !== null && allDice.player1 !== undefined &&
-        allDice.player2 !== null && allDice.player2 !== undefined) {
+    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0 &&
+        allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
       // 両プレイヤーのダイス値が決定
       state.player1.diceValue = allDice.player1;
       state.player2.diceValue = allDice.player2;
@@ -1191,8 +1191,8 @@ async function handleResetDice() {
   }
   
   // ローカルの state もリセット
-  state.player1.diceValue = null;
-  state.player2.diceValue = null;
+  state.player1.diceValue = -1;
+  state.player2.diceValue = -1;
   
   // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
@@ -1621,8 +1621,8 @@ function setupPlayerDiceWatcher(gameRoom) {
     console.log("[Game] プレイヤーダイス更新を受信:", allDice);
 
     // 両プレイヤーのダイス値が決定したか確認
-    if (allDice.player1 !== null && allDice.player1 !== undefined && 
-        allDice.player2 !== null && allDice.player2 !== undefined) {
+    if (allDice.player1 !== null && allDice.player1 !== undefined && allDice.player1 >= 0 &&
+        allDice.player2 !== null && allDice.player2 !== undefined && allDice.player2 >= 0) {
       console.log("[Game] 両プレイヤーのダイス値が決定:", allDice);
       
       // state に保存

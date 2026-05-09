@@ -613,8 +613,7 @@ function saveFieldCards(){
   const data = window.getFieldData();
   localStorage.setItem("fieldCards", JSON.stringify(data));
 
-  // game.html でのみ Firebase に書き込む
-  if (typeof _pushFieldCardsDebounced === "function" && localStorage.getItem("gameRoom")) {
+  if (typeof _pushFieldCardsDebounced === "function") {
     _pushFieldCardsDebounced(data);
   }
 }

@@ -328,40 +328,65 @@ async function joinRoomByName(roomName) {
 
 function renderDeckGallery() {
   const gallery = document.getElementById("deckGallery");
+  const select  = document.getElementById("deckSelect");
   if (!gallery) return;
 
-  // cardData.js から デッキ情報を取得
-  if (typeof cardData === "undefined" || !cardData.decks) {
-    console.warn("[MatchSetup] cardData が見つかりません");
+  // localStorage の deckList からデッキ情報を取得
+  let decks = [];
+  try { decks = JSON.parse(localStorage.getItem("deckList")) || []; } catch {}
+
+  gallery.innerHTML = "";
+  if (select) select.innerHTML = "";
+
+  if (decks.length === 0) {
+    gallery.innerHTML = "<div style='color:#b0a070;font-size:13px;padding:20px;text-align:center;width:100%;'>デッキがありません。デッキ構築画面で作成してください。</div>";
     return;
   }
 
-  gallery.innerHTML = "";
-  cardData.decks.forEach((deck, index) => {
+  decks.forEach((deck, index) => {
+    if (select) {
+      const option = document.createElement("option");
+      option.value = deck.id;
+      option.textContent = deck.name || "名称未設定";
+      select.appendChild(option);
+    }
+
     const card = document.createElement("div");
-    card.className = "deckCard";
-    card.onclick = () => selectDeck(index);
-    
+    card.className = "deckCard" + (index === 0 ? " selected" : "");
+    card.dataset.id = deck.id;
+
     const img = document.createElement("img");
-    img.src = deck.image || "assets/deck-placeholder.png";
-    img.alt = deck.name;
-    
+    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
+    img.onerror = () => { img.src = "assets/favicon.png"; };
+
     const name = document.createElement("div");
     name.className = "deckCardName";
-    name.textContent = deck.name;
-    
+    name.textContent = deck.name || "名称未設定";
+
     card.appendChild(img);
     card.appendChild(name);
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".deckCard").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      if (select) select.value = deck.id;
+      localStorage.setItem("selectedDeckId", deck.id);
+    });
     gallery.appendChild(card);
   });
+
+  // 最初のデッキを選択状態にする
+  if (decks.length > 0) {
+    if (select) select.value = decks[0].id;
+    localStorage.setItem("selectedDeckId", decks[0].id);
+  }
 }
 
-function selectDeck(index) {
-  const cards = document.querySelectorAll(".deckCard");
-  cards.forEach((card, i) => {
-    card.classList.toggle("selected", i === index);
-  });
-  localStorage.setItem("selectedDeckIndex", index);
+function selectedDeck() {
+  const deckId = localStorage.getItem("selectedDeckId");
+  try {
+    const list = JSON.parse(localStorage.getItem("deckList")) || [];
+    return list.find(d => d.id === deckId) || list[0] || null;
+  } catch { return null; }
 }
 
 // ===== ゲーム開始 =====
@@ -370,17 +395,23 @@ let isStartingGame = false; // ゲーム開始フラグ（beforeunload での退
 
 function startGame() {
   console.log("[MatchSetup] ゲーム開始");
-  isStartingGame = true; // ゲーム開始中フラグを立てる
+  isStartingGame = true;
+
+  const deck = selectedDeck();
 
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
   localStorage.setItem("gameStarted",   "true");
+  if (deck) {
+    localStorage.setItem("deckCode", deck.code || "empty");
+  }
 
-  // core.js が window.myRole / window.myUsername を読むための matchSetup キーを書く
   localStorage.setItem("matchSetup", JSON.stringify({
     role:     currentPlayerKey,
     self:     currentUser,
-    username: currentUser
+    username: currentUser,
+    deckCode: deck?.code || "empty",
+    deckId:   deck?.id   || ""
   }));
 
   setTimeout(() => {

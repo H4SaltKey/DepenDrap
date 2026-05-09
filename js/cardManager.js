@@ -38,7 +38,7 @@ function toLocalY(serverY){
 const CARD_GRID_SIZE = 20;
 const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.05;
-const FIELD_ZOOM_MAX = 0.9;
+let FIELD_ZOOM_MAX = 0.8;
 const FIELD_W = 3000;
 const FIELD_H = 2000;
 

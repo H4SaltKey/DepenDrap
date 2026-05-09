@@ -977,14 +977,14 @@ function showResultScreen(winner) {
       <p class="result-subtext">${subText}</p>
       <div id="rematchStatus" style="min-height:28px;margin-bottom:10px;font-size:13px;color:#aaa;letter-spacing:1px;"></div>
       <div class="result-actions">
-        <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
-          閉じる
+        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
+          再戦を申し込む
         </button>
         <button class="result-btn secondary" onclick="location.href='index.html'">
           退室
         </button>
-        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
-          再戦を申し込む
+        <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
+          閉じる
         </button>
       </div>
     </div>

@@ -765,13 +765,24 @@ function updateMatchUI() {
   if (!m) return;
 
   // ラウンド開始通知（ターンよりも大きな括り）
-  if (window._lastRound !== m.round && m.status === 'playing') {
+  const roundChanged = window._lastRound !== m.round && m.status === 'playing';
+  const turnChanged = lastTurnPlayer !== m.turnPlayer && m.status === 'playing';
+  
+  if (roundChanged) {
     showRoundNotification(m.round);
     window._lastRound = m.round;
-  }
-
-  // ターン開始通知
-  if (lastTurnPlayer !== m.turnPlayer && m.status === 'playing') {
+    
+    // ラウンド変更時にターンも変更された場合は、ラウンド通知の後にターン通知を表示
+    if (turnChanged) {
+      const isMe = m.turnPlayer === window.myRole;
+      // ラウンド通知が少し進んでから（2秒後に）ターン通知を表示
+      setTimeout(() => {
+        showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
+      }, 2000);
+      lastTurnPlayer = m.turnPlayer;
+    }
+  } else if (turnChanged) {
+    // ラウンド変更がない場合は即座にターン通知を表示
     const isMe = m.turnPlayer === window.myRole;
     showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
     lastTurnPlayer = m.turnPlayer;

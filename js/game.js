@@ -1177,7 +1177,7 @@ function updateDicePhaseUI() {
       const winnerIsMe = (playerKey === "player1");
       const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
       p1Color = winnerIsMe ? "#4fc3f7" : "#e24a4a"; p2Color = "#fff";
-      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p1Label} 勝利！</h2>`;
+      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p1Label}の勝利！</h2>`;
       if (playerKey === "player1") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
@@ -1196,7 +1196,7 @@ function updateDicePhaseUI() {
       const winnerIsMe = (playerKey === "player2");
       const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
       p1Color = "#fff"; p2Color = winnerIsMe ? "#4fc3f7" : "#e24a4a";
-      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p2Label} 勝利！</h2>`;
+      resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p2Label}の勝利！</h2>`;
       if (playerKey === "player2") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>

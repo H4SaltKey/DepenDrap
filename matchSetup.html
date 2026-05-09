@@ -248,12 +248,20 @@ body {
 .roomItem:hover { border-color: #c7b377; background: rgba(199,179,119,0.07); }
 .room-name { font-weight: bold; font-size: 12px; letter-spacing: 0.5px; }
 .room-players { font-size: 10px; color: #666; }
+.room-btn-group { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
 .room-join-btn {
-  background: rgba(199,179,119,0.12); border: 1px solid #c7b377;
-  color: #e0d0a0; padding: 3px 10px; border-radius: 3px;
-  cursor: pointer; font-size: 10px; font-weight: bold; transition: all 0.2s;
+  background: rgba(199,179,119,0.15); border: 1px solid #c7b377;
+  color: #e0d0a0; padding: 5px 14px; border-radius: 3px;
+  cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;
 }
-.room-join-btn:hover { background: rgba(199,179,119,0.3); }
+.room-join-btn:hover { background: rgba(199,179,119,0.35); }
+.room-delete-btn {
+  background: rgba(80,10,10,0.5); border: 1px solid rgba(255,80,80,0.35);
+  color: #cc5555; padding: 5px 8px; border-radius: 3px;
+  cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.2s;
+  line-height: 1;
+}
+.room-delete-btn:hover { background: rgba(140,20,20,0.7); border-color: #ff6b6b; color: #ff9999; }
 
 /* ===== 右: 相手情報 ===== */
 #msOpponentBox {
@@ -508,6 +516,6 @@ body {
 <script src="js/firebase-client.js?v=6"></script>
 <script src="js/cardData.js?v=11"></script>
 <script src="js/deckCode.js?v=11"></script>
-<script src="js/matchSetup.js?v=18"></script>
+<script src="js/matchSetup.js?v=19"></script>
 </body>
 </html>

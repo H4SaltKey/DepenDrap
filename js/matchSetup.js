@@ -384,22 +384,70 @@ function renderRoomList(rooms) {
   rooms.forEach(room => {
     const item = document.createElement("div");
     item.className = "roomItem";
-    item.innerHTML = `
-      <span class="room-name">${room.name}</span>
-      <span class="room-players">${room.playerCount}/2</span>
-      <button class="room-join-btn" type="button">参加</button>
-    `;
-    item.addEventListener("click", e => {
-      if (e.target.classList.contains("room-join-btn")) return;
-      document.getElementById("roomNameInput").value = room.name;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "room-name";
+    nameSpan.textContent = room.name;
+
+    const playersSpan = document.createElement("span");
+    playersSpan.className = "room-players";
+    playersSpan.textContent = `${room.playerCount}/2`;
+
+    const btnGroup = document.createElement("div");
+    btnGroup.className = "room-btn-group";
+
+    // 削除ボタン
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "room-delete-btn";
+    deleteBtn.type = "button";
+    deleteBtn.textContent = "削除";
+    deleteBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      deleteRoom(room.name);
     });
-    item.querySelector(".room-join-btn").addEventListener("click", e => {
+
+    // 参加ボタン
+    const joinBtn = document.createElement("button");
+    joinBtn.className = "room-join-btn";
+    joinBtn.type = "button";
+    joinBtn.textContent = "参加";
+    joinBtn.addEventListener("click", e => {
       e.stopPropagation();
       document.getElementById("roomNameInput").value = room.name;
       joinRoom();
     });
+
+    btnGroup.appendChild(deleteBtn);
+    btnGroup.appendChild(joinBtn);
+
+    item.appendChild(nameSpan);
+    item.appendChild(playersSpan);
+    item.appendChild(btnGroup);
+
+    // 行クリックでルーム名を入力欄にセット
+    item.addEventListener("click", () => {
+      document.getElementById("roomNameInput").value = room.name;
+    });
+
     container.appendChild(item);
   });
+}
+
+async function deleteRoom(roomName) {
+  if (!confirm(`ルーム「${roomName}」を削除しますか？`)) return;
+
+  if (!firebaseClient.db) {
+    addLog("system", "Firebase に接続されていません。");
+    return;
+  }
+
+  try {
+    await firebaseClient.db.ref(`rooms/${roomName}`).remove();
+    addLog("system", `ルーム「${roomName}」を削除しました。`);
+  } catch (e) {
+    console.error("[MatchSetup] ルーム削除エラー:", e);
+    addLog("system", `ルーム削除に失敗しました: ${e.message}`);
+  }
 }
 
 function updateFirebaseStatus(label, ok) {

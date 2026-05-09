@@ -430,7 +430,18 @@ class FirebaseClient {
   }
 
   /**
-   * ステータス変更リクエストを送信
+   * フィールドカードデータを書き込む（自分のカードのみ）
+   */
+  async writeFieldCards(roomName, playerKey, cardData) {
+    if (!this.db) return false;
+    try {
+      await this.db.ref(`rooms/${roomName}/fieldCards/${playerKey}`).set(cardData);
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] writeFieldCards エラー:", e.message);
+      return false;
+    }
+  }
    * 相手のステータスを変更したい時に使う
    */
   async sendChangeRequest(roomName, fromKey, target, key, type, value) {

@@ -330,6 +330,21 @@ function pushMyStateDebounced() {
 }
 
 /**
+ * フィールドカードを Firebase に送信（デバウンス付き）
+ */
+let _pushFieldCardsTimer = null;
+window._pushFieldCardsDebounced = function(data) {
+  if (_pushFieldCardsTimer) clearTimeout(_pushFieldCardsTimer);
+  _pushFieldCardsTimer = setTimeout(async () => {
+    const gameRoom = localStorage.getItem("gameRoom");
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    if (gameRoom && firebaseClient?.db && me) {
+      await firebaseClient.writeFieldCards(gameRoom, me, data || window.getFieldData());
+    }
+  }, 200);
+};
+
+/**
  * 相手のステータス変更リクエストを送信（デバウンス付き）
  * 競合防止: 送信中フラグで同時変更を防ぐ
  */
@@ -839,6 +854,9 @@ function updateMatchUI() {
 
   // 勝敗チェック
   checkGameResult();
+  if (state.matchData?.winner) {
+    showResultScreen(state.matchData.winner);
+  }
 
   // 2. ターンエンドボタン
   let endBtn = document.getElementById("turnEndBtn");
@@ -941,21 +959,39 @@ function showNotification(text, color) {
 
 function checkGameResult() {
   if (!state.matchData) return;
+  if (state.matchData.status !== "playing") return;
   if (state.matchData.winner) {
     showResultScreen(state.matchData.winner);
     return;
   }
-  // 自分のHPが0になった場合のみ自分が敗北を宣言（二重書き込み防止）
+
   const myRole = window.myRole;
   if (!myRole) return;
   const opRole = myRole === 'player1' ? 'player2' : 'player1';
-  if (state[myRole] && state[myRole].hp <= 0) {
-    if (state[opRole] && state[opRole].hp <= 0) {
-      state.matchData.winner = 'draw';
+  const me = state[myRole];
+  const op = state[opRole];
+
+  // 自分が敗北条件を満たした場合のみ宣言（二重書き込み防止）
+  const myLost = me && (me.hp <= 0 || me.deck.length === 0);
+  const opLost = op && (op.hp <= 0 || op.deck.length === 0);
+
+  if (myLost || opLost) {
+    let winner;
+    if (myLost && opLost) {
+      winner = 'draw';
+    } else if (myLost) {
+      winner = opRole;
     } else {
-      state.matchData.winner = opRole;
+      winner = myRole;
     }
-    saveImmediate();
+
+    state.matchData.winner = winner;
+
+    // Firebase に書き込んで相手にも通知
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && firebaseClient?.db) {
+      firebaseClient.writeMatchData(gameRoom, state.matchData);
+    }
   }
 }
 
@@ -1061,7 +1097,9 @@ function updateDicePhaseUI() {
       // プレイヤー1が勝利 → 選択権あり
       p1Color = "#4fc3f7"; p2Color = "#fff";
       const p1Name = state.player1.username || "プレイヤー1";
-      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p1Name} 勝利！</h2>`;
+      const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
+      const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
+      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p1Label} 勝利！</h2>`;
       if (playerKey === "player1") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
@@ -1077,7 +1115,9 @@ function updateDicePhaseUI() {
       // プレイヤー2が勝利 → 選択権あり
       p1Color = "#fff"; p2Color = "#4fc3f7";
       const p2Name = state.player2.username || "プレイヤー2";
-      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p2Name} 勝利！</h2>`;
+      const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
+      const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
+      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">${p2Label} 勝利！</h2>`;
       if (playerKey === "player2") {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
@@ -1090,17 +1130,19 @@ function updateDicePhaseUI() {
       }
     }
 
+    const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
+    const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
     overlay.innerHTML = `
       <div class="dice-container" style="max-width:900px;width:90%;">
         ${resultTitle}
         <div style="display:flex;justify-content:center;gap:100px;align-items:center;margin:50px 0;">
           <div style="text-align:center;">
-            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">${state.player1.username || "プレイヤー1"}</div>
+            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">${p1Label}</div>
             <div class="dice-value-large" style="color:${p1Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;">${p1Dice}</div>
           </div>
           <div style="font-size:32px;color:#444;font-weight:900;">VS</div>
           <div style="text-align:center;">
-            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">${state.player2.username || "プレイヤー2"}</div>
+            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">${p2Label}</div>
             <div class="dice-value-large" style="color:${p2Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;">${p2Dice}</div>
           </div>
         </div>
@@ -1735,8 +1777,18 @@ function setupRoomWatcher() {
     update();
   });
 
-  // ── 5. 相手からの変更リクエスト監視 ──────────────────────────────
-  // 相手が自分のステータスを変更したい時、pendingChange/{opKey} に書いてくる
+  // ── 5. 相手のフィールドカード監視 ────────────────────────────────
+  const opCardsRef = db.ref(`rooms/${gameRoom}/fieldCards/${opKey}`);
+  const opCardsListener = opCardsRef.on('value', (snap) => {
+    if (!snap || !snap.val()) return;
+    const opCards = snap.val();
+    // 相手のカードデータを適用（applyFieldCardsFromServer は自分のカードを上書きしない）
+    if (typeof window.applyFieldCardsFromServer === "function") {
+      window.applyFieldCardsFromServer(opCards);
+    }
+  });
+
+  // ── 6. 相手からの変更リクエスト監視 ──────────────────────────────  // 相手が自分のステータスを変更したい時、pendingChange/{opKey} に書いてくる
   const pendingRef = db.ref(`rooms/${gameRoom}/pendingChange/${opKey}`);
   const pendingListener = pendingRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
@@ -1782,6 +1834,7 @@ function setupRoomWatcher() {
     opStateRef.off('value', opStateListener);
     matchDataRef.off('value', matchDataListener);
     logsRef.off('value', logsListener);
+    opCardsRef.off('value', opCardsListener);
     pendingRef.off('value', pendingListener);
     roomWatcherUnsubscribe = null;
   };

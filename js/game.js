@@ -581,7 +581,7 @@ function renderOwnerUI(owner) {
         <span class="lorSmBtnPlaceholder"></span>
       </div>
       ${(!atMaxLv && isMine)
-        ? `<button class="lorExpAddBtn statBtn" data-owner="${owner}" data-key="exp" data-delta="1" style="width: 100%; padding: 4px 0; font-size: 11px; margin-top: 4px; background: rgba(50,40,30,0.8); border: 1px solid #7a6a40; border-radius: 4px; color: #f0d080; cursor: pointer; transition: all 0.2s;">＋ EXP追加</button>`
+        ? `<button class="lorExpAddBtn lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="1" style="width: 100%; padding: 4px 0; font-size: 11px; margin-top: 4px; background: rgba(50,40,30,0.8); border: 1px solid #7a6a40; border-radius: 4px; color: #f0d080; cursor: pointer; transition: all 0.2s;">＋ EXP追加</button>`
         : `<div style="height:24px;"></div>`
       }
     </div>
@@ -656,7 +656,7 @@ function renderOwnerUI(owner) {
     padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     cursor: help;
-  " title="【進化の道】 ${s.evolutionPath}\n（現在システムは未適応です）">
+  " title="${getEvolutionPathTooltip(owner)}">
     <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
     <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
     ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
@@ -665,6 +665,37 @@ function renderOwnerUI(owner) {
   ` : ""}
   
   </div>`;
+}
+
+function getEvolutionPathTooltip(owner) {
+  const s = state[owner];
+  if (!s || !s.evolutionPath) return "";
+  const lv = s.level || 1;
+  let idx = 0;
+  if (lv >= 6) idx = 3;
+  else if (lv >= 5) idx = 2;
+  else if (lv >= 3) idx = 1;
+
+  let desc = "";
+  if (s.evolutionPath === '忍耐の道') {
+    const xArr = [0, 1, 3, 4];
+    const x = xArr[idx];
+    desc = `【忍耐の道】\n手札の枚数上限が2枚増加し、最大レベル時(Lv6)は2ではなく3枚になる。\nまた、ラウンド開始時、手札を ${x} 枚増やす。\nさらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに経験値を最大2まで獲得する。`;
+  } else if (s.evolutionPath === '継続の道') {
+    const yArr = [1, 3, 4, 6];
+    const y = yArr[idx];
+    desc = `【継続の道】\nターン毎に ${y} 回まで、1以上のダメージを与える度(※)、1のダメージを与える。\nさらに、それぞれ3回目の発動に限り、1の貫通ダメージを与える。\n※：この効果によるものは含まない`;
+  } else if (s.evolutionPath === '瞬発の道') {
+    const zArr = [1, 3, 4, 6];
+    const z = zArr[idx];
+    desc = `【瞬発の道】\n一撃で6以上のダメージを与える時、そのダメージ判定の直前に ${z} の脆弱ダメージを与える。`;
+  } else if (s.evolutionPath === '背水の道') {
+    const tArr = [1, 2, 3, 4];
+    const t = tArr[idx];
+    desc = `【背水の道】\n手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]のダメージを+1する。\nまた、自身のPPが2以上なら、与ダメージを追加で +${t} して、1の経験値を獲得する。\nただし、この効果による経験値は、ターン毎に1回まで獲得可能。`;
+  }
+  
+  return desc;
 }
 
 function lorStatChip(icon, val, owner, key, title = "") {

@@ -553,7 +553,7 @@ async function initCards(){
   content.style.height = FIELD_H + "px";
 
   // 最小ズームをウィンドウサイズから計算
-  FIELD_ZOOM_MIN = 0.6;
+  FIELD_ZOOM_MIN = -0.1;
   const slider = document.getElementById("zoomSlider");
   if(slider) {
     slider.min = FIELD_ZOOM_MIN;
@@ -642,8 +642,7 @@ window.organizeHands = function() {
     myHandCards.sort((a, b) => Number(a.dataset.x) - Number(b.dataset.x));
     
     const spacing = 40;
-    const totalW = myHandCards.length * CARD_W + (myHandCards.length - 1) * spacing;
-    let startX = (FIELD_W - totalW) / 2;
+    let startX = 40; // 左端詰め
     const handY = FIELD_H - CARD_H - 20;
 
     myHandCards.forEach((c) => {

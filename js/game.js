@@ -994,14 +994,13 @@ function updateDicePhaseUI() {
       resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
       if (iAmChooser) {
         resultMsg = `
-          <p class="dice-subtitle" style="color:#00ffcc;margin-top:40px;font-size:18px;font-weight:900;">あなたが選択権を持っています</p>
-          <div style="display:flex;gap:20px;justify-content:center;margin-top:30px;">
-            <button class="dice-roll-btn" onclick="handleChooseOrder(true)" style="padding:15px 40px;font-size:16px;">先攻</button>
-            <button class="dice-roll-btn" onclick="handleChooseOrder(false)" style="padding:15px 40px;font-size:16px;background:#444;color:#fff;">後攻</button>
+          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
+          <div class="dice-choice-group">
+            <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
+            <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
           </div>`;
       } else {
-        resultMsg = `<p class="dice-subtitle" style="color:#888;margin-top:40px;font-size:16px;">相手が先攻・後攻を選択しています...</p>
-                     <div style="margin-top:20px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">● 待機中</div>`;
+        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
       }
       p1Color = "#00ffcc"; p2Color = "#888";
     } else {
@@ -1011,14 +1010,13 @@ function updateDicePhaseUI() {
       resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
       if (iAmChooser) {
         resultMsg = `
-          <p class="dice-subtitle" style="color:#e24a4a;margin-top:40px;font-size:18px;font-weight:900;">あなたが選択権を持っています</p>
-          <div style="display:flex;gap:20px;justify-content:center;margin-top:30px;">
-            <button class="dice-roll-btn" onclick="handleChooseOrder(true)" style="padding:15px 40px;font-size:16px;">先攻</button>
-            <button class="dice-roll-btn" onclick="handleChooseOrder(false)" style="padding:15px 40px;font-size:16px;background:#444;color:#fff;">後攻</button>
+          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
+          <div class="dice-choice-group">
+            <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
+            <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
           </div>`;
       } else {
-        resultMsg = `<p class="dice-subtitle" style="color:#888;margin-top:40px;font-size:16px;">相手が先攻・後攻を選択しています...</p>
-                     <div style="margin-top:20px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">● 待機中</div>`;
+        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
       }
       p1Color = "#888"; p2Color = "#e24a4a";
     }

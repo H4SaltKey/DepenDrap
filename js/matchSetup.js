@@ -1,5 +1,5 @@
 /**
- * matchSetup.js v5.0 — 横向きレイアウト版
+ * matchSetup.js v6.0
  */
 
 // ===== 状態 =====
@@ -13,9 +13,8 @@ let roomUnsubscribe = null;
 let roomListUnsubscribe = null;
 let isStartingGame = false;
 
-// デッキ選択
-let selectedDeckId = null;       // 現在使用中のデッキID
-let popupSelectedDeckId = null;  // ポップアップ内で選択中のデッキID
+let selectedDeckId = null;
+let popupSelectedDeckId = null;
 
 // ===== 初期化 =====
 
@@ -23,7 +22,7 @@ async function initMatchSetup() {
   currentUser = localStorage.getItem("username") || "Player";
   document.getElementById("myPlayerDisplay").textContent = currentUser;
 
-  // 前回選択したデッキを復元
+  // デッキ復元
   selectedDeckId = localStorage.getItem("selectedDeckId") || null;
   if (!selectedDeckId) {
     const decks = getDeckList();
@@ -31,37 +30,35 @@ async function initMatchSetup() {
   }
   renderCurrentDeck();
 
-  // チャット送信
+  // チャット
   document.getElementById("chatSendBtn").addEventListener("click", sendChat);
-  document.getElementById("chatInput").addEventListener("keydown", e => {
-    if (e.key === "Enter") sendChat();
-  });
+  document.getElementById("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
 
-  // Firebase 初期化
-  console.log("[MatchSetup] Firebase 初期化中...");
+  // Firebase
   const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
-
   if (success) {
     updateFirebaseStatus("Firebase 接続済み ✓", true);
     watchRoomList();
     addLog("system", "Firebase に接続しました。");
   } else {
-    updateFirebaseStatus("Firebase 接続エラー", false);
+    updateFirebaseStatus("接続エラー", false);
     addLog("system", "Firebase への接続に失敗しました。");
   }
-
   firebaseClient.on("connected",    () => { updateFirebaseStatus("Firebase 接続済み ✓", true);  addLog("system", "再接続しました。"); });
-  firebaseClient.on("disconnected", () => { updateFirebaseStatus("Firebase 切断", false); addLog("system", "接続が切断されました。"); });
+  firebaseClient.on("disconnected", () => { updateFirebaseStatus("切断", false); addLog("system", "接続が切断されました。"); });
 }
 
-// ===== デッキ関連 =====
+// ===== デッキ =====
 
 function getDeckList() {
   try { return JSON.parse(localStorage.getItem("deckList")) || []; } catch { return []; }
 }
-
 function getDeckById(id) {
   return getDeckList().find(d => d.id === id) || null;
+}
+function getDeckCardCount(deck) {
+  if (!deck) return 0;
+  try { return decodeDeck(deck.code || "empty").length; } catch { return 0; }
 }
 
 function renderCurrentDeck() {
@@ -69,79 +66,30 @@ function renderCurrentDeck() {
   const thumb = document.getElementById("msDeckThumb");
   const nameEl = document.getElementById("msDeckName");
   const countEl = document.getElementById("msDeckCount");
-
   if (!deck) {
     thumb.src = "assets/favicon.png";
     nameEl.textContent = "デッキ未選択";
     countEl.textContent = "-- 枚";
     return;
   }
-
   thumb.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
   thumb.onerror = () => { thumb.src = "assets/favicon.png"; };
   nameEl.textContent = deck.name || "名称未設定";
-
-  // デッキ枚数を計算
-  try {
-    const cards = decodeDeck(deck.code || "empty");
-    countEl.textContent = `${cards.length} 枚`;
-  } catch {
-    countEl.textContent = "-- 枚";
-  }
+  countEl.textContent = `${getDeckCardCount(deck)} 枚`;
 }
 
-// ===== デッキ内容ポップアップ =====
-
-async function openDeckView(deckId) {
-  if (!deckId) return;
-  const deck = getDeckById(deckId);
-  if (!deck) return;
-
-  // カードデータが未ロードなら読み込む
-  if (typeof CARD_DB === "undefined" || CARD_DB.length === 0) {
-    if (typeof loadCardData === "function") await loadCardData();
-  }
-
-  document.getElementById("deckViewTitle").textContent = deck.name || "デッキ内容";
-
-  let cards = [];
-  try { cards = decodeDeck(deck.code || "empty"); } catch { cards = []; }
-
-  // 同じカードをまとめる
-  const counts = {};
-  cards.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
-
-  const container = document.getElementById("deckViewCards");
-  container.innerHTML = "";
-
-  if (Object.keys(counts).length === 0) {
-    container.innerHTML = '<div style="color:#666;padding:20px;">カードがありません。</div>';
-  } else {
-    Object.entries(counts).forEach(([id, count]) => {
-      const cardInfo = (typeof getCardData === "function") ? getCardData(id) : null;
-      const div = document.createElement("div");
-      div.className = "deckViewCard";
-
-      const img = document.createElement("img");
-      img.src = cardInfo ? cardInfo.image : "assets/cards/cd0000.png";
-      img.onerror = () => { img.src = "assets/cards/cd0000.png"; };
-      img.alt = id;
-
-      const badge = document.createElement("div");
-      badge.className = "card-count";
-      badge.textContent = count > 1 ? `×${count}` : "";
-
-      div.appendChild(img);
-      if (count > 1) div.appendChild(badge);
-      container.appendChild(div);
-    });
-  }
-
-  document.getElementById("deckViewPopup").classList.remove("hidden");
+function selectedDeck() {
+  return getDeckById(selectedDeckId) || getDeckList()[0] || null;
 }
 
-function closeDeckView() {
-  document.getElementById("deckViewPopup").classList.add("hidden");
+// ===== 現在のデッキ内容確認（左パネルのデッキをクリック） =====
+
+async function openCurrentDeckView() {
+  if (!selectedDeckId) return;
+  openDeckSelectPopup();
+  // ポップアップを開いた後、選択中デッキのプレビューを表示
+  await new Promise(r => setTimeout(r, 50));
+  await renderDeckPreview(selectedDeckId);
 }
 
 // ===== デッキ選択ポップアップ =====
@@ -150,6 +98,8 @@ function openDeckSelectPopup() {
   popupSelectedDeckId = selectedDeckId;
   renderDeckSelectList();
   document.getElementById("deckSelectPopup").classList.remove("hidden");
+  // 選択中デッキのプレビューを即表示
+  if (popupSelectedDeckId) renderDeckPreview(popupSelectedDeckId);
 }
 
 function closeDeckSelectPopup() {
@@ -162,42 +112,96 @@ function renderDeckSelectList() {
   const decks = getDeckList();
 
   if (decks.length === 0) {
-    container.innerHTML = '<div style="color:#666;padding:20px;">デッキがありません。デッキ構築画面で作成してください。</div>';
+    container.innerHTML = '<div style="color:#555;padding:16px;font-size:12px;">デッキがありません。<br>デッキ構築画面で作成してください。</div>';
     return;
   }
 
   decks.forEach(deck => {
-    const div = document.createElement("div");
-    div.className = "deckSelectCard" + (deck.id === popupSelectedDeckId ? " selected" : "");
-    div.dataset.id = deck.id;
+    const item = document.createElement("div");
+    item.className = "deckSelectItem" + (deck.id === popupSelectedDeckId ? " selected" : "");
+    item.dataset.id = deck.id;
 
     const img = document.createElement("img");
     img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
     img.onerror = () => { img.src = "assets/favicon.png"; };
 
+    const info = document.createElement("div");
+    info.style.flex = "1";
+    info.style.minWidth = "0";
+
     const name = document.createElement("div");
-    name.className = "ds-name";
+    name.className = "dsi-name";
     name.textContent = deck.name || "名称未設定";
 
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "ds-view-btn";
-    viewBtn.textContent = "確認";
-    viewBtn.addEventListener("click", e => {
-      e.stopPropagation();
-      openDeckView(deck.id);
+    const count = document.createElement("div");
+    count.className = "dsi-count";
+    count.textContent = `${getDeckCardCount(deck)} 枚`;
+
+    info.appendChild(name);
+    info.appendChild(count);
+    item.appendChild(img);
+    item.appendChild(info);
+
+    item.addEventListener("click", () => {
+      popupSelectedDeckId = deck.id;
+      container.querySelectorAll(".deckSelectItem").forEach(c => c.classList.remove("selected"));
+      item.classList.add("selected");
+      renderDeckPreview(deck.id);
     });
+
+    container.appendChild(item);
+  });
+}
+
+async function renderDeckPreview(deckId) {
+  const deck = getDeckById(deckId);
+  const titleEl = document.getElementById("deckPreviewTitle");
+  const cardsEl = document.getElementById("deckPreviewCards");
+
+  if (!deck) {
+    titleEl.textContent = "デッキを選択してください";
+    cardsEl.innerHTML = '<div id="deckPreviewEmpty">← デッキをクリックして内容を確認</div>';
+    return;
+  }
+
+  titleEl.textContent = deck.name || "名称未設定";
+
+  // カードデータ読み込み
+  if (typeof CARD_DB === "undefined" || CARD_DB.length === 0) {
+    if (typeof loadCardData === "function") await loadCardData();
+  }
+
+  let cards = [];
+  try { cards = decodeDeck(deck.code || "empty"); } catch { cards = []; }
+
+  // 同じカードをまとめる
+  const counts = {};
+  cards.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+
+  cardsEl.innerHTML = "";
+
+  if (Object.keys(counts).length === 0) {
+    cardsEl.innerHTML = '<div style="color:#444;font-size:12px;padding:16px;">カードがありません。</div>';
+    return;
+  }
+
+  Object.entries(counts).forEach(([id, count]) => {
+    const cardInfo = (typeof getCardData === "function") ? getCardData(id) : null;
+    const div = document.createElement("div");
+    div.className = "pvCard";
+
+    const img = document.createElement("img");
+    img.src = cardInfo ? cardInfo.image : "assets/cards/cd0000.png";
+    img.onerror = () => { img.src = "assets/cards/cd0000.png"; };
 
     div.appendChild(img);
-    div.appendChild(name);
-    div.appendChild(viewBtn);
-
-    div.addEventListener("click", () => {
-      popupSelectedDeckId = deck.id;
-      container.querySelectorAll(".deckSelectCard").forEach(c => c.classList.remove("selected"));
-      div.classList.add("selected");
-    });
-
-    container.appendChild(div);
+    if (count > 1) {
+      const badge = document.createElement("div");
+      badge.className = "pv-count";
+      badge.textContent = `×${count}`;
+      div.appendChild(badge);
+    }
+    cardsEl.appendChild(div);
   });
 }
 
@@ -210,17 +214,12 @@ function confirmDeckSelect() {
   addLog("system", `デッキ「${getDeckById(selectedDeckId)?.name || selectedDeckId}」を選択しました。`);
 }
 
-function selectedDeck() {
-  return getDeckById(selectedDeckId) || getDeckList()[0] || null;
-}
-
 // ===== ルーム操作 =====
 
 async function createRoom() {
   const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase() || undefined;
   const result = await firebaseClient.createRoom(roomName);
   if (!result) { addLog("system", "ルーム作成に失敗しました。"); return; }
-
   currentRoom = result;
   currentPlayerKey = "player1";
   addLog("system", `ルーム「${result}」を作成しました。`);
@@ -231,10 +230,8 @@ async function createRoom() {
 async function joinRoom() {
   const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase();
   if (!roomName) { addLog("system", "ルーム名を入力してください。"); return; }
-
   const result = await firebaseClient.joinRoom(roomName);
   if (!result) { addLog("system", `ルーム「${roomName}」が見つかりません。`); return; }
-
   currentRoom = result.roomName;
   currentPlayerKey = result.playerKey;
   addLog("system", `ルーム「${result.roomName}」に参加しました。`);
@@ -254,12 +251,11 @@ async function leaveRoom() {
 function watchRoom(roomName) {
   if (roomUnsubscribe) roomUnsubscribe();
 
+  // チャット監視も開始
+  watchChat(roomName);
+
   roomUnsubscribe = firebaseClient.watchRoom(roomName, (roomData) => {
-    if (!roomData) {
-      addLog("system", "ルームが削除されました。");
-      resetRoom();
-      return;
-    }
+    if (!roomData) { addLog("system", "ルームが削除されました。"); resetRoom(); return; }
 
     const players = roomData.players || {};
     const myData  = players[currentPlayerKey];
@@ -268,30 +264,23 @@ function watchRoom(roomName) {
     const opRole = currentPlayerKey === "player1" ? "player2" : "player1";
     const opData = players[opRole];
 
-    // 相手の入室
     if (opData && !opData.hasJoined) {
       opponentName = opData.username;
       addLog("system", `「${opponentName}」が入室しました。`);
-      updateOpponentUI(opponentName, false, true);
+      updateOpponentUI(opponentName, false, true, null);
       firebaseClient.db.ref(`rooms/${roomName}/players/${opRole}/hasJoined`).set(true);
     }
-
-    // 相手の退出
     if (!opData) {
       addLog("system", "対戦相手が退出しました。");
       opponentName = null;
-      updateOpponentUI(null, false, false);
+      updateOpponentUI(null, false, false, null);
       myReady = false;
       updateReadyUI();
     }
-
-    // 相手の Ready 状態
     if (opData) {
       opponentReady = !!opData.ready;
-      updateOpponentUI(opData.username, opponentReady, true);
+      updateOpponentUI(opData.username, opponentReady, true, null);
     }
-
-    // 両者 Ready → ゲーム開始
     if (myData.ready && opData && opData.ready && !isStartingGame) {
       addLog("system", "両者が準備完了！ゲームを開始します...");
       startGame();
@@ -307,19 +296,11 @@ function watchRoomList() {
 // ===== Ready =====
 
 async function toggleReady() {
-  if (!currentRoom || !currentPlayerKey) {
-    addLog("system", "先にルームに参加してください。");
-    return;
-  }
-  if (!selectedDeck()) {
-    addLog("system", "デッキを選択してください。");
-    return;
-  }
-
+  if (!currentRoom || !currentPlayerKey) { addLog("system", "先にルームに参加してください。"); return; }
+  if (!selectedDeck()) { addLog("system", "デッキを選択してください。"); return; }
   myReady = !myReady;
   const ok = await firebaseClient.setReady(currentRoom, currentPlayerKey, myReady);
   if (!ok) { myReady = !myReady; return; }
-
   updateReadyUI();
   addLog("system", myReady ? "準備完了にしました。" : "準備をキャンセルしました。");
 }
@@ -331,76 +312,72 @@ function updateUIForRoom() {
   document.getElementById("joinRoomBtn").disabled   = true;
   document.getElementById("cancelBtn").style.display = "block";
   document.getElementById("startBtn").disabled = false;
-  document.getElementById("startBtnSub").textContent = "クリックで準備完了";
   document.getElementById("roomNameInput").value = currentRoom || "";
+  updateReadyUI();
 }
 
 function resetRoom() {
-  currentRoom = null;
-  currentPlayerKey = null;
-  myReady = false;
-  opponentReady = false;
-  opponentName = null;
-
+  currentRoom = null; currentPlayerKey = null;
+  myReady = false; opponentReady = false; opponentName = null;
   document.getElementById("createRoomBtn").disabled = false;
   document.getElementById("joinRoomBtn").disabled   = false;
   document.getElementById("cancelBtn").style.display = "none";
   document.getElementById("startBtn").disabled = true;
   document.getElementById("startBtn").classList.remove("isReady");
-  document.getElementById("startBtnSub").textContent = "ルームに参加してください";
-
-  updateOpponentUI(null, false, false);
+  updateOpponentUI(null, false, false, null);
+  updateReadyUI();
   if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
 }
 
 function updateReadyUI() {
   const btn = document.getElementById("startBtn");
-  const sub = document.getElementById("startBtnSub");
-  if (myReady) {
-    btn.textContent = "READY";
-    btn.classList.add("isReady");
-    sub.textContent = "準備完了 — クリックでキャンセル";
-  } else {
-    btn.textContent = "READY";
+  const isInRoom = !!(currentRoom && currentPlayerKey);
+  if (!isInRoom) {
+    btn.innerHTML = `READY<span class="btn-sub" id="startBtnSub">ルームに参加してください</span>`;
     btn.classList.remove("isReady");
-    sub.textContent = opponentName ? "クリックで準備完了" : "相手を待っています...";
+    return;
   }
-  // btn-sub を再追加（textContent で消えるため）
-  btn.innerHTML = `${myReady ? "READY ✓" : "READY"}<span class="btn-sub" id="startBtnSub">${sub.textContent}</span>`;
+  if (myReady) {
+    btn.innerHTML = `READY ✓<span class="btn-sub" id="startBtnSub">準備完了 — クリックでキャンセル</span>`;
+    btn.classList.add("isReady");
+  } else {
+    const sub = opponentName ? "クリックで準備完了" : "相手を待っています...";
+    btn.innerHTML = `READY<span class="btn-sub" id="startBtnSub">${sub}</span>`;
+    btn.classList.remove("isReady");
+  }
 }
 
-function updateOpponentUI(name, isReady, isOnline) {
+function updateOpponentUI(name, isReady, isOnline, deckName) {
   const dot    = document.getElementById("opponentDot");
-  const nameEl = document.getElementById("opponentName");
-  const status = document.getElementById("opponentStatus");
+  const nameEl = document.getElementById("opponentNameEl");
+  const status = document.getElementById("opponentStatusEl");
+  const dkName = document.getElementById("opponentDeckName");
+  const dkThumb = document.getElementById("opponentDeckThumb");
 
   if (!isOnline || !name) {
     dot.className = "";
-    nameEl.textContent = "待機中...";
-    nameEl.className = "";
-    status.textContent = "未接続";
-    status.className = "";
+    nameEl.textContent = "待機中..."; nameEl.className = "";
+    status.textContent = "未接続"; status.className = "";
+    dkName.textContent = "デッキ未選択"; dkName.className = "";
+    dkThumb.style.opacity = "0.3";
     return;
   }
-
-  nameEl.textContent = name;
-  nameEl.className = "active";
-
+  nameEl.textContent = name; nameEl.className = "active";
+  dkThumb.style.opacity = "0.6";
   if (isReady) {
     dot.className = "ready";
-    status.textContent = "準備完了";
-    status.className = "ready";
+    status.textContent = "準備完了"; status.className = "ready";
   } else {
     dot.className = "online";
-    status.textContent = "接続中";
-    status.className = "";
+    status.textContent = "接続中"; status.className = "";
   }
+  if (deckName) { dkName.textContent = deckName; dkName.className = "active"; }
 }
 
 function renderRoomList(rooms) {
   const container = document.getElementById("roomList");
   if (!rooms || rooms.length === 0) {
-    container.innerHTML = '<div style="color:#555;font-size:12px;padding:8px;">公開ルームがありません。</div>';
+    container.innerHTML = '<div style="color:#444;font-size:11px;padding:6px;">公開ルームがありません。</div>';
     return;
   }
   container.innerHTML = "";
@@ -409,7 +386,7 @@ function renderRoomList(rooms) {
     item.className = "roomItem";
     item.innerHTML = `
       <span class="room-name">${room.name}</span>
-      <span class="room-players">${room.playerCount}/2 人</span>
+      <span class="room-players">${room.playerCount}/2</span>
       <button class="room-join-btn" type="button">参加</button>
     `;
     item.addEventListener("click", e => {
@@ -450,27 +427,23 @@ function sendChat() {
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
-
-  // Firebase チャット送信（ルーム内のみ）
   if (currentRoom && firebaseClient.db) {
-    const chatRef = firebaseClient.db.ref(`rooms/${currentRoom}/chat`);
-    chatRef.push({
-      user: currentUser,
-      text: text,
+    firebaseClient.db.ref(`rooms/${currentRoom}/chat`).push({
+      user: currentUser, text,
       ts: firebase.database.ServerValue.TIMESTAMP
     });
   }
   addLog("mine", `${currentUser}: ${text}`);
 }
 
-// チャット受信（ルーム監視内で呼ぶ）
+let _chatListenerRef = null;
 function watchChat(roomName) {
+  if (_chatListenerRef) { _chatListenerRef.off(); _chatListenerRef = null; }
   if (!firebaseClient.db) return;
-  const chatRef = firebaseClient.db.ref(`rooms/${roomName}/chat`);
-  chatRef.limitToLast(50).on("child_added", snap => {
+  _chatListenerRef = firebaseClient.db.ref(`rooms/${roomName}/chat`);
+  _chatListenerRef.limitToLast(50).on("child_added", snap => {
     const d = snap.val();
-    if (!d) return;
-    if (d.user === currentUser) return; // 自分の発言は addLog("mine") 済み
+    if (!d || d.user === currentUser) return;
     addLog("other", `${d.user}: ${d.text}`);
   });
 }
@@ -480,20 +453,14 @@ function watchChat(roomName) {
 function startGame() {
   isStartingGame = true;
   const deck = selectedDeck();
-
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
   localStorage.setItem("gameStarted",   "true");
   if (deck) localStorage.setItem("deckCode", deck.code || "empty");
-
   localStorage.setItem("matchSetup", JSON.stringify({
-    role:     currentPlayerKey,
-    self:     currentUser,
-    username: currentUser,
-    deckCode: deck?.code || "empty",
-    deckId:   deck?.id   || ""
+    role: currentPlayerKey, self: currentUser, username: currentUser,
+    deckCode: deck?.code || "empty", deckId: deck?.id || ""
   }));
-
   setTimeout(() => { location.href = "game.html"; }, 1000);
 }
 
@@ -512,4 +479,5 @@ window.addEventListener("beforeunload", async () => {
   }
   if (roomUnsubscribe)     roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
+  if (_chatListenerRef)    _chatListenerRef.off();
 });

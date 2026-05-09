@@ -363,6 +363,86 @@ class FirebaseClient {
   }
 
   /**
+   * プレイヤーのダイス値を保存（プレイヤーごとに分けて管理）
+   */
+  async setPlayerDice(roomName, playerKey, diceValue) {
+    if (!this.db) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      console.log("[FirebaseClient] プレイヤーダイス値を保存:", roomName, playerKey, diceValue);
+      const diceRef = this.db.ref(`rooms/${roomName}/playerDice/${playerKey}`);
+      await diceRef.set(diceValue);
+      console.log("[FirebaseClient] ✅ プレイヤーダイス値保存完了");
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] プレイヤーダイス値保存エラー:", error.message);
+      return false;
+    }
+  }
+
+  /**
+   * プレイヤーのダイス値を取得
+   */
+  async getPlayerDice(roomName, playerKey) {
+    if (!this.db) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return null;
+    }
+
+    try {
+      const diceRef = this.db.ref(`rooms/${roomName}/playerDice/${playerKey}`);
+      const snapshot = await diceRef.once('value');
+      return snapshot.val();
+    } catch (error) {
+      console.error("[FirebaseClient] プレイヤーダイス値取得エラー:", error.message);
+      return null;
+    }
+  }
+
+  /**
+   * すべてのプレイヤーのダイス値を取得
+   */
+  async getAllPlayerDice(roomName) {
+    if (!this.db) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return null;
+    }
+
+    try {
+      const diceRef = this.db.ref(`rooms/${roomName}/playerDice`);
+      const snapshot = await diceRef.once('value');
+      return snapshot.val() || {};
+    } catch (error) {
+      console.error("[FirebaseClient] すべてのプレイヤーダイス値取得エラー:", error.message);
+      return {};
+    }
+  }
+
+  /**
+   * プレイヤーのダイス値をリセット
+   */
+  async resetPlayerDice(roomName) {
+    if (!this.db) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      console.log("[FirebaseClient] プレイヤーダイス値をリセット:", roomName);
+      const diceRef = this.db.ref(`rooms/${roomName}/playerDice`);
+      await diceRef.remove();
+      console.log("[FirebaseClient] ✅ プレイヤーダイス値リセット完了");
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] プレイヤーダイス値リセットエラー:", error.message);
+      return false;
+    }
+  }
+
+  /**
    * オンライン状態を設定
    */
   async setOnlineStatus(isOnline) {

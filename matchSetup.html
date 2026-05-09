@@ -235,6 +235,19 @@ body {
 #msRoomListWrap {
   flex: 1; display: flex; flex-direction: column; gap: 6px; min-height: 0;
 }
+#msRoomListHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+#roomRefreshBtn {
+  padding: 3px 10px; font-size: 10px; font-weight: bold;
+  background: rgba(199,179,119,0.08); border: 1px solid rgba(199,179,119,0.3);
+  color: #b0a070; border-radius: 3px; cursor: pointer; transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+#roomRefreshBtn:hover:not(:disabled) { background: rgba(199,179,119,0.2); color: #e0d0a0; border-color: #c7b377; }
+#roomRefreshBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+#roomRefreshCooldown { font-size: 9px; color: #555; margin-left: 4px; }
 #roomList {
   flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px;
   scrollbar-width: thin; scrollbar-color: #3a321a transparent;
@@ -251,7 +264,7 @@ body {
 .room-btn-group { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
 .room-join-btn {
   background: rgba(199,179,119,0.15); border: 1px solid #c7b377;
-  color: #e0d0a0; padding: 5px 22px; border-radius: 3px;
+  color: #e0d0a0; padding: 5px 135px; border-radius: 3px;
   cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s;
 }
 .room-join-btn:hover { background: rgba(199,179,119,0.35); }
@@ -460,7 +473,13 @@ body {
     </div>
 
     <div id="msRoomListWrap">
-      <div class="sec-label">公開ルーム一覧</div>
+      <div id="msRoomListHeader">
+        <div class="sec-label">公開ルーム一覧</div>
+        <span>
+          <button id="roomRefreshBtn" type="button">更新</button>
+          <span id="roomRefreshCooldown"></span>
+        </span>
+      </div>
       <div id="roomList">
         <div style="color:#444;font-size:11px;padding:6px;">検索中...</div>
       </div>
@@ -513,9 +532,10 @@ body {
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/firebase-client.js?v=6"></script>
+<script src="js/firebase-client.js?v=7"></script>
 <script src="js/cardData.js?v=11"></script>
+
 <script src="js/deckCode.js?v=11"></script>
-<script src="js/matchSetup.js?v=19"></script>
+<script src="js/matchSetup.js?v=14"></script>
 </body>
 </html>

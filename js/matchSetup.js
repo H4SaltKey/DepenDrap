@@ -540,6 +540,39 @@ function startGame() {
   setTimeout(() => { location.href = "game.html"; }, 1000);
 }
 
+// ===== ルーム一覧更新ボタン（5秒クールダウン） =====
+
+let _refreshCooldownTimer = null;
+
+function setupRefreshButton() {
+  const btn = document.getElementById("roomRefreshBtn");
+  const cooldownEl = document.getElementById("roomRefreshCooldown");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    if (btn.disabled) return;
+
+    // 手動でルーム一覧を再取得
+    watchRoomList();
+
+    // クールダウン開始
+    btn.disabled = true;
+    let remaining = 5;
+    if (cooldownEl) cooldownEl.textContent = `(${remaining}s)`;
+
+    if (_refreshCooldownTimer) clearInterval(_refreshCooldownTimer);
+    _refreshCooldownTimer = setInterval(() => {
+      remaining -= 1;
+      if (cooldownEl) cooldownEl.textContent = remaining > 0 ? `(${remaining}s)` : "";
+      if (remaining <= 0) {
+        clearInterval(_refreshCooldownTimer);
+        _refreshCooldownTimer = null;
+        btn.disabled = false;
+      }
+    }, 1000);
+  });
+}
+
 // ===== イベントリスナー =====
 
 window.addEventListener("load", () => {

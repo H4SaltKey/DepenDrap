@@ -998,42 +998,42 @@ function updateDicePhaseUI() {
       // 引き分け
       resultTitle = `<h2 class="dice-title" style="color:#ff4444;">引き分け</h2>`;
       resultMsg = `
-        <p class="dice-subtitle" style="color:#ff4444;margin-top:40px;">同じ値です。もう一度振ります...</p>
+        <p class="dice-subtitle" style="color:#fff;margin-top:40px;">同じ値です。もう一度振ります...</p>
         <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444;color:#fff;margin-top:30px;">振り直し</button>`;
-      p1Color = "#ff4444"; p2Color = "#ff4444";
+      p1Color = "#fff"; p2Color = "#fff";
 
     } else if (p1Dice < p2Dice) {
       // プレイヤー1が勝利 → 選択権あり
-      p1Color = "#00ffcc"; p2Color = "#888";
-      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
+      p1Color = "#4fc3f7"; p2Color = "#fff";
+      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>`;
       if (playerKey === "player1") {
         // 勝者: 選択ボタン表示
         resultMsg = `
-          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
+          <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
           <div class="dice-choice-group">
             <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
             <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
           </div>`;
       } else {
         // 敗者: 待機
-        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
+        resultMsg = `<p class="dice-wait-msg" style="color:#fff;margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
       }
 
     } else {
       // プレイヤー2が勝利 → 選択権あり
-      p1Color = "#888"; p2Color = "#e24a4a";
-      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
+      p1Color = "#fff"; p2Color = "#4fc3f7";
+      resultTitle = `<h2 class="dice-title" style="color:#4fc3f7;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>`;
       if (playerKey === "player2") {
         // 勝者: 選択ボタン表示
         resultMsg = `
-          <p class="dice-subtitle" style="margin-top:30px;">先攻・後攻を選択してください</p>
+          <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
           <div class="dice-choice-group">
             <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
             <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
           </div>`;
       } else {
         // 敗者: 待機
-        resultMsg = `<p class="dice-wait-msg" style="margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
+        resultMsg = `<p class="dice-wait-msg" style="color:#fff;margin-top:40px;">相手が手番（先攻・後攻）を選択しています...</p>`;
       }
     }
 
@@ -1042,12 +1042,12 @@ function updateDicePhaseUI() {
         ${resultTitle}
         <div style="display:flex;justify-content:center;gap:100px;align-items:center;margin:50px 0;">
           <div style="text-align:center;">
-            <div style="font-size:16px;color:${p1Color};letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー1</div>
+            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー1</div>
             <div class="dice-value-large" style="color:${p1Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;">${p1Dice}</div>
           </div>
           <div style="font-size:32px;color:#444;font-weight:900;">VS</div>
           <div style="text-align:center;">
-            <div style="font-size:16px;color:${p2Color};letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー2</div>
+            <div style="font-size:16px;color:#fff;letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー2</div>
             <div class="dice-value-large" style="color:${p2Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;">${p2Dice}</div>
           </div>
         </div>
@@ -1067,18 +1067,21 @@ function updateDicePhaseUI() {
         <h2 class="dice-title" style="margin-bottom:60px;">ダイスロール</h2>
         <div style="display:flex;justify-content:center;gap:100px;align-items:flex-start;">
           <div style="text-align:center;">
-            <div style="font-size:18px;color:#00ffcc;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー1</div>
-            <div id="dice-val-player1" class="dice-value-large" style="color:#00ffcc;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
-            <button id="dice-btn-player1" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
+            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー1</div>
+            <div id="dice-val-player1" class="dice-value-large" style="color:#fff;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
+            <button id="dice-btn-player1" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;display:none;">ダイスを振る</button>
           </div>
           <div style="font-size:32px;color:#444;font-weight:900;margin-top:90px;">VS</div>
           <div style="text-align:center;">
-            <div style="font-size:18px;color:#e24a4a;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー2</div>
-            <div id="dice-val-player2" class="dice-value-large" style="color:#e24a4a;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
-            <button id="dice-btn-player2" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
+            <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー2</div>
+            <div id="dice-val-player2" class="dice-value-large" style="color:#fff;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
+            <button id="dice-btn-player2" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;display:none;">ダイスを振る</button>
           </div>
         </div>
-        <div id="dice-status-msg" style="margin-top:50px;font-size:13px;color:#888;letter-spacing:2px;min-height:20px;"></div>
+        <div id="dice-roll-center" style="text-align:center;margin-top:40px;">
+          <button id="dice-btn-center" class="dice-roll-btn" onclick="handleDiceRoll()" style="display:none;">ダイスを振る</button>
+        </div>
+        <div id="dice-status-msg" style="margin-top:30px;font-size:13px;color:#fff;letter-spacing:2px;min-height:20px;text-align:center;"></div>
       </div>
     `;
   }
@@ -1106,8 +1109,11 @@ function updateDicePhaseUI() {
   // 自分のボタンだけ表示、相手のボタンは非表示
   // diceValue が確実に -1 の場合のみボタンを表示（undefined/null は非表示）
   const myDice = playerKey === "player1" ? p1Dice : p2Dice;
-  if (p1Btn) p1Btn.style.display = (playerKey === "player1" && myDice === -1) ? "inline-block" : "none";
-  if (p2Btn) p2Btn.style.display = (playerKey === "player2" && myDice === -1) ? "inline-block" : "none";
+  if (p1Btn) p1Btn.style.display = "none";
+  if (p2Btn) p2Btn.style.display = "none";
+  // 中央ボタン
+  const centerBtn = document.getElementById("dice-btn-center");
+  if (centerBtn) centerBtn.style.display = (myDice === -1) ? "inline-block" : "none";
 
   // ステータスメッセージ
   if (statusMsg) {
@@ -1604,6 +1610,9 @@ function setupPlayerDiceWatcher(gameRoom) {
   const diceRef = firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`);
 
   const listener = (snapshot) => {
+    // snapshot の null チェック
+    if (!snapshot) return;
+
     // ダイスフェーズ以外は無視
     if (state.matchData.status !== "setup_dice") return;
 

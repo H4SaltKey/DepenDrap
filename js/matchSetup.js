@@ -300,17 +300,22 @@ function renderRoomList(rooms) {
   rooms.forEach(room => {
     const item = document.createElement("div");
     item.className = "roomItem";
+    item.style.cursor = "pointer";
     item.innerHTML = `
       <span class="room-name">${room.name}</span>
       <span class="room-players">${room.playerCount}/${2} 人</span>
-      <button class="room-join-btn" onclick="selectRoom('${room.name}')">選択</button>
+      <button class="room-join-btn" type="button">接続</button>
     `;
+    // 行全体クリックで直接参加（コードで参加と同じ挙動）
+    item.addEventListener("click", () => joinRoomByName(room.name));
     container.appendChild(item);
   });
 }
 
-function selectRoom(roomName) {
+async function joinRoomByName(roomName) {
+  // コードで参加と同じ挙動
   document.getElementById("roomCodeInput").value = roomName;
+  await joinRoom();
 }
 
 function renderDeckGallery() {

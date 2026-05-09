@@ -184,10 +184,14 @@ function updateDeckObject() {
     const obj = content.querySelector(`.deckObject[data-owner="${owner}"]`);
     if (!obj) return;
     const s = state[owner];
-    if (!s || !s.deck) return;
+    if (!s) return;
 
     const countLabel = obj.querySelector(".deckObjectCount");
-    if (countLabel) countLabel.textContent = s.deck.length;
+    if (countLabel) {
+      const deckLen = Array.isArray(s.deck) ? s.deck.length : 0;
+      const deckCount = Number.isFinite(Number(s.deckCount)) ? Number(s.deckCount) : deckLen;
+      countLabel.textContent = String(Math.max(deckLen, deckCount, 0));
+    }
 
     const img = obj.querySelector("img");
     if (img) {
@@ -2045,7 +2049,8 @@ function _getMyStateForSync() {
   
   return {
     ...rest,
-    deck: dummyDeck
+    deck: dummyDeck,
+    deckCount: deckLength
   };
 }
 
@@ -2450,7 +2455,7 @@ function setupRoomWatcher() {
     const opData = snap.val();
     // diceValue は playerDice で管理、username は players で管理するため除外
     // deck の内容は同期しないが、枚数（length）は同期する
-    const { diceValue: _d, username: _u, deck: opDeck, ...rest } = opData;
+    const { diceValue: _d, username: _u, deck: opDeck, deckCount: opDeckCount, ...rest } = opData;
     // 相手のデータを自分の state に反映
     Object.assign(state[opKey], rest);
     
@@ -2477,6 +2482,9 @@ function setupRoomWatcher() {
         // 多い分を削除
         state[opKey].deck.splice(targetLen);
       }
+    }
+    if (Number.isFinite(Number(opDeckCount))) {
+      state[opKey].deckCount = Number(opDeckCount);
     }
     
     // username は players watcher が管理するため上書きしない

@@ -218,6 +218,7 @@ class FirebaseClient {
     const roomsRef = this.db.ref('rooms');
     const listener = roomsRef.on('value', (snapshot) => {
       const rooms = [];
+      this.cleanupStaleRooms(snapshot);
 
       if (snapshot.exists()) {
         snapshot.forEach((childSnapshot) => {
@@ -243,6 +244,36 @@ class FirebaseClient {
       roomsRef.off('value', listener);
       this.listeners.delete('roomList');
     };
+  }
+
+  /**
+   * ゴースト/放置ルームをクリーンアップ
+   * - プレイヤー0人: 即削除
+   * - waiting かつ 1人部屋で24時間超: 削除
+   */
+  cleanupStaleRooms(snapshot) {
+    if (!snapshot || !snapshot.exists()) return;
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    snapshot.forEach((childSnapshot) => {
+      const roomName = childSnapshot.key;
+      const roomData = childSnapshot.val() || {};
+      const players = roomData.players || {};
+      const playerEntries = Object.entries(players).filter(([, v]) => !!v);
+      const playerCount = playerEntries.length;
+
+      if (playerCount === 0) {
+        this.db.ref(`rooms/${roomName}`).remove();
+        return;
+      }
+
+      const status = roomData.status || "waiting";
+      const createdAt = Number(roomData.createdAt) || 0;
+      const isOldWaitingSingle = status === "waiting" && playerCount === 1 && createdAt > 0 && (now - createdAt) > ONE_DAY_MS;
+      if (isOldWaitingSingle) {
+        this.db.ref(`rooms/${roomName}`).remove();
+      }
+    });
   }
 
   /**

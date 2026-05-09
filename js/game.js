@@ -316,7 +316,6 @@ function drawFromDeckObject() {
 
 /**
  * 自分の playerState を Firebase に送信（デバウンス付き）
- * addVal/setVal/setMax から呼ばれる
  */
 let _syncMyStateTimer = null;
 function pushMyStateDebounced() {
@@ -330,7 +329,33 @@ function pushMyStateDebounced() {
   }, 300);
 }
 
+/**
+ * 相手のステータス変更リクエストを送信（デバウンス付き）
+ * 競合防止: 送信中フラグで同時変更を防ぐ
+ */
+let _pendingChangeTimer = null;
+let _pendingChangeLock = false;
+
+async function sendChangeRequest(owner, key, type, value) {
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (!gameRoom || !firebaseClient?.db) return;
+
+  // 送信中は新しいリクエストを上書き（最後の値が勝つ）
+  if (_pendingChangeTimer) clearTimeout(_pendingChangeTimer);
+  _pendingChangeTimer = setTimeout(async () => {
+    if (_pendingChangeLock) return; // 競合防止
+    _pendingChangeLock = true;
+    try {
+      await firebaseClient.sendChangeRequest(gameRoom, me, owner, key, type, value);
+    } finally {
+      _pendingChangeLock = false;
+    }
+  }, 100);
+}
+
 function addVal(owner, key, delta) {
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
   const s = state[owner];
   const maxLv = Number(s.levelMax) || LEVEL_MAX;
   const curLv = Number(s.level) || 1;
@@ -339,18 +364,18 @@ function addVal(owner, key, delta) {
     s.level = Math.min(Math.max(curLv + delta, 1), maxLv);
     s.exp = Math.min(Number(s.exp) || 0, calcExpMax(s.level) - 1);
     applyLevelStats(owner);
-    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+    if (owner === me) pushMyStateDebounced();
+    else sendChangeRequest(owner, key, "set", s.level);
     update();
     return;
   }
 
-  // Lv最大時は経験値を増やさない（減少は可）
   if (key === "exp" && delta > 0 && curLv >= maxLv) return;
-  // Lv1の時は経験値をマイナスにしない
   if (key === "exp" && delta < 0 && curLv <= 1) {
     s.exp = Math.max(0, (Number(s.exp) || 0) + delta);
     syncDerivedStats(owner);
-    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+    if (owner === me) pushMyStateDebounced();
+    else sendChangeRequest(owner, key, "set", s.exp);
     update();
     return;
   }
@@ -368,11 +393,13 @@ function addVal(owner, key, delta) {
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
 
-  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+  if (owner === me) pushMyStateDebounced();
+  else sendChangeRequest(owner, key, "set", s[key]);
   update();
 }
 
 function setVal(owner, key, value) {
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
   const s = state[owner];
   const maxLv = s.levelMax || LEVEL_MAX;
 
@@ -380,12 +407,12 @@ function setVal(owner, key, value) {
     s.level = Math.min(Math.max(Math.round(Number(value) || 1), 1), maxLv);
     s.exp = Math.min(Number(s.exp) || 0, calcExpMax(s.level) - 1);
     applyLevelStats(owner);
-    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+    if (owner === me) pushMyStateDebounced();
+    else sendChangeRequest(owner, key, "set", s.level);
     update();
     return;
   }
 
-  // Lv最大時は経験値の増加だけ不可（減少によるレベルダウンは可）
   if (key === "exp" && s.level >= maxLv && Number(value) > (Number(s.exp) || 0)) return;
   let prev = Number(s[key]) || 0;
   let v = Number(value) || 0;
@@ -395,25 +422,23 @@ function setVal(owner, key, value) {
   } else if (key !== "hp") {
     v = Math.max(key === "exp" ? -999 : 0, v);
   }
-  if (key === "barrier") {
-    v = Math.min(v, s.barrierMax || 5);
-  }
-  if (key === "shield") {
-    v = Math.min(v, s.shieldMax || 0);
-    s.shieldOverMax = false;
-  }
+  if (key === "barrier") v = Math.min(v, s.barrierMax || 5);
+  if (key === "shield") { v = Math.min(v, s.shieldMax || 0); s.shieldOverMax = false; }
 
   s[key] = v;
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
-  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+  if (owner === me) pushMyStateDebounced();
+  else sendChangeRequest(owner, key, "set", s[key]);
   update();
 }
 
 function setMax(owner, key, value) {
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
   state[owner][key + "Max"] = Math.max(0, Number(value) || 0);
   syncDerivedStats(owner);
-  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
+  if (owner === me) pushMyStateDebounced();
+  else sendChangeRequest(owner, key + "Max", "set", state[owner][key + "Max"]);
   update();
 }
 
@@ -1629,8 +1654,43 @@ function setupRoomWatcher() {
   const logsListener = logsRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
     const logsObj = snap.val();
-    // Firebase push() はオブジェクトで返るので配列に変換
     state.logs = Object.values(logsObj);
+    update();
+  });
+
+  // ── 5. 相手からの変更リクエスト監視 ──────────────────────────────
+  // 相手が自分のステータスを変更したい時、pendingChange/{opKey} に書いてくる
+  const pendingRef = db.ref(`rooms/${gameRoom}/pendingChange/${opKey}`);
+  const pendingListener = pendingRef.on('value', (snap) => {
+    if (!snap || !snap.val()) return;
+    const req = snap.val();
+    // 自分のステータスへのリクエストのみ処理
+    if (req.target !== myKey) return;
+
+    console.log("[PendingChange] 変更リクエスト受信:", req);
+
+    const s = state[myKey];
+    if (!s) return;
+
+    // リクエストを適用
+    if (req.type === "set") {
+      s[req.key] = req.value;
+    } else if (req.type === "add") {
+      s[req.key] = (Number(s[req.key]) || 0) + req.value;
+    }
+
+    // 派生ステータスを再計算
+    if (req.key === "exp") checkLevelUp(myKey);
+    syncDerivedStats(myKey);
+    normalizeState();
+    applyLevelStats(myKey);
+
+    // 自分のパスに書き込んで確定
+    pushMyStateDebounced();
+
+    // リクエストをクリア（処理済み）
+    firebaseClient.clearChangeRequest(gameRoom, opKey);
+
     update();
   });
 
@@ -1640,6 +1700,7 @@ function setupRoomWatcher() {
     opStateRef.off('value', opStateListener);
     matchDataRef.off('value', matchDataListener);
     logsRef.off('value', logsListener);
+    pendingRef.off('value', pendingListener);
     roomWatcherUnsubscribe = null;
   };
 

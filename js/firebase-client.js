@@ -430,8 +430,32 @@ class FirebaseClient {
   }
 
   /**
-   * プレイヤーのダイス値を保存（プレイヤーごとに分けて管理）
+   * ステータス変更リクエストを送信
+   * 相手のステータスを変更したい時に使う
    */
+  async sendChangeRequest(roomName, fromKey, target, key, type, value) {
+    if (!this.db) return false;
+    try {
+      await this.db.ref(`rooms/${roomName}/pendingChange/${fromKey}`).set({
+        target, key, type, value,
+        ts: firebase.database.ServerValue.TIMESTAMP
+      });
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] sendChangeRequest エラー:", e.message);
+      return false;
+    }
+  }
+
+  /**
+   * ステータス変更リクエストをクリア
+   */
+  async clearChangeRequest(roomName, fromKey) {
+    if (!this.db) return;
+    try {
+      await this.db.ref(`rooms/${roomName}/pendingChange/${fromKey}`).remove();
+    } catch (e) {}
+  }
   async setPlayerDice(roomName, playerKey, diceValue) {
     if (!this.db) {
       console.error("[FirebaseClient] Firebase が初期化されていません");

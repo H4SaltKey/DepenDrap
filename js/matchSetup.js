@@ -265,14 +265,14 @@ function updateReadyUI() {
   if (myReadyStatus) {
     myReadyStatus.className = myReady ? "readyPill ready" : "readyPill";
     myReadyStatus.innerHTML = `
-      <span>あなた: ${myReady ? "READY" : "UNREADY"}</span>
+      <span>あなた: ${myReady ? "準備完了" : "未準備"}</span>
       <div class="readyIndicator"></div>
     `;
   }
 
   const startBtn = document.getElementById("startBtn");
   if (startBtn) {
-    startBtn.textContent = myReady ? "CANCEL" : "READY";
+    startBtn.textContent = myReady ? "キャンセル" : "準備完了";
   }
 }
 
@@ -281,7 +281,7 @@ function updateOpponentUI(name, isReady) {
   if (opReadyStatus) {
     opReadyStatus.className = isReady ? "readyPill ready" : "readyPill";
     opReadyStatus.innerHTML = `
-      <span>相手: ${isReady ? "READY" : "WAITING"}</span>
+      <span>相手: ${isReady ? "準備完了" : "待機中"}</span>
       <div class="readyIndicator"></div>
     `;
   }

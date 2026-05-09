@@ -8,7 +8,7 @@
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="css/style.css">
   
-  <!-- Firebase Configuration (MUST be before Firebase SDK) -->
+  <!-- Firebase Configuration -->
   <script>
     window.FIREBASE_CONFIG = {
       apiKey: "AIzaSyDNe58gGvJ3-09brUHkoorkQalrS8jkPAw",
@@ -20,6 +20,7 @@
       appId: "1:536531285865:web:0d53a2c4fd8fae7ff32ff8"
     };
   </script>
+
   <style>
     body {
       display: flex;
@@ -29,7 +30,9 @@
       background: radial-gradient(circle at center, #1a172c 0%, #08060f 100%);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overflow: hidden;
+      margin: 0;
     }
+
     .login-container {
       background: rgba(20, 18, 32, 0.9);
       border: 1px solid #c7b377;
@@ -41,6 +44,7 @@
       text-align: center;
       color: #e0d0a0;
     }
+
     .login-container h1 {
       margin-top: 0;
       font-size: 28px;
@@ -50,16 +54,19 @@
       padding-bottom: 15px;
       margin-bottom: 25px;
     }
+
     .login-subtitle {
       font-size: 12px;
       color: #888;
       margin-bottom: 24px;
       letter-spacing: 1px;
     }
+
     .input-group {
       margin-bottom: 20px;
       text-align: left;
     }
+
     .input-group label {
       display: block;
       font-size: 12px;
@@ -68,6 +75,7 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
+
     .input-group input {
       width: 100%;
       padding: 12px;
@@ -79,28 +87,37 @@
       font-size: 16px;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .input-group input:focus {
       outline: none;
       border-color: #c7b377;
       box-shadow: 0 0 5px rgba(199,179,119,0.4);
     }
+
+    .input-group input::placeholder {
+      color: #666;
+    }
+
     .error-msg {
       color: #ff6b6b;
       font-size: 13px;
       min-height: 20px;
       margin-bottom: 15px;
     }
+
     .success-msg {
       color: #70c070;
       font-size: 13px;
       min-height: 20px;
       margin-bottom: 15px;
     }
+
     .button-group {
       display: flex;
       gap: 10px;
       margin-top: 20px;
     }
+
     .lorBtn {
       flex: 1;
       padding: 14px;
@@ -115,20 +132,33 @@
       border: none;
       transition: all 0.2s;
     }
-    .lorBtn:hover { filter: brightness(1.1); }
-    .lorBtn:disabled { opacity: 0.5; cursor: wait; }
+
+    .lorBtn:hover {
+      filter: brightness(1.1);
+    }
+
+    .lorBtn:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+
     .lorBtn.secondary {
       background: rgba(199,179,119,0.15);
       border: 1px solid rgba(199,179,119,0.5);
       color: #e0d0a0;
     }
-    .lorBtn.secondary:hover { background: rgba(199,179,119,0.3); }
+
+    .lorBtn.secondary:hover {
+      background: rgba(199,179,119,0.3);
+    }
+
     .mode-toggle {
       text-align: center;
       margin-top: 15px;
       font-size: 12px;
       color: #888;
     }
+
     .mode-toggle button {
       background: none;
       border: none;
@@ -137,7 +167,10 @@
       text-decoration: underline;
       font-size: 12px;
     }
-    .mode-toggle button:hover { color: #e0d0a0; }
+
+    .mode-toggle button:hover {
+      color: #e0d0a0;
+    }
   </style>
 </head>
 <body>
@@ -152,7 +185,7 @@
   <div class="input-group">
     <label for="nickname">Nickname</label>
     <input type="text" id="nickname" autocomplete="off" spellcheck="false"
-           placeholder="例: ディペンド太郎" maxlength="20">
+           placeholder="ニックネームを入力" maxlength="20">
   </div>
 
   <div class="input-group">
@@ -171,44 +204,21 @@
   </div>
 </div>
 
-<!-- Firebase SDK (Compat version for global firebase object) -->
+<!-- Firebase SDK (Compat version) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
+<!-- Firebase Client -->
+<script src="js/firebase-client.js?v=1"></script>
+
 <script>
-  // Firebase 設定
   const firebaseConfig = window.FIREBASE_CONFIG;
-  
   let db = null;
   let isLoginMode = true;
-  let firebaseInitialized = false;
 
-  // Firebase 初期化
-  if (firebaseConfig) {
-    try {
-      if (typeof firebase === 'undefined') {
-        console.error("[Login] ❌ Firebase SDK が読み込まれていません");
-        console.error("[Login] firebase-app-compat.js と firebase-database-compat.js を確認してください");
-        firebaseInitialized = false;
-      } else {
-        const app = firebase.initializeApp(firebaseConfig);
-        db = firebase.database(app);
-        firebaseInitialized = true;
-        console.log("[Login] ✅ Firebase 初期化成功");
-        console.log("[Login] Project ID:", firebaseConfig.projectId);
-        console.log("[Login] Database URL:", firebaseConfig.databaseURL);
-      }
-    } catch (e) {
-      console.error("[Login] ❌ Firebase 初期化エラー:", e.message);
-      firebaseInitialized = false;
-    }
-  } else {
-    console.error("[Login] ❌ FIREBASE_CONFIG が設定されていません");
-    console.error("[Login] <head> セクションに window.FIREBASE_CONFIG を設定してください");
-  }
-
-  const nicknameIn = document.getElementById("nickname");
-  const passwordIn = document.getElementById("password");
+  // UI 要素
+  const nicknameInput = document.getElementById("nickname");
+  const passwordInput = document.getElementById("password");
   const submitBtn = document.getElementById("submitBtn");
   const toggleBtn = document.getElementById("toggleBtn");
   const errorMsg = document.getElementById("errorMsg");
@@ -222,11 +232,34 @@
     window.location.href = "index.html";
   }
 
+  /**
+   * Firebase を初期化
+   */
+  async function initializeFirebase() {
+    console.log("[Login] Firebase 初期化中...");
+    
+    const success = await firebaseClient.initialize(firebaseConfig);
+    
+    if (success) {
+      db = firebaseClient.db;
+      console.log("[Login] ✅ Firebase 初期化成功");
+      console.log("[Login] Project ID:", firebaseConfig.projectId);
+    } else {
+      console.error("[Login] ❌ Firebase 初期化失敗");
+    }
+  }
+
+  /**
+   * メッセージをクリア
+   */
   function clearMessages() {
     errorMsg.textContent = "";
     successMsg.textContent = "";
   }
 
+  /**
+   * モードを切り替え
+   */
   function toggleMode() {
     isLoginMode = !isLoginMode;
     clearMessages();
@@ -236,55 +269,52 @@
       submitBtn.textContent = "LOGIN";
       toggleBtn.textContent = "REGISTER";
       toggleText.textContent = "アカウントをお持ちでない場合は「REGISTER」をクリック";
-      passwordIn.placeholder = "パスワードを入力";
+      passwordInput.placeholder = "パスワードを入力";
     } else {
       modeTitle.textContent = "REGISTER";
       submitBtn.textContent = "CREATE ACCOUNT";
       toggleBtn.textContent = "LOGIN";
       toggleText.textContent = "既にアカウントをお持ちの場合は「LOGIN」をクリック";
-      passwordIn.placeholder = "新しいパスワードを入力";
+      passwordInput.placeholder = "新しいパスワードを入力";
     }
   }
 
+  /**
+   * ログイン処理
+   */
   async function doLogin() {
     clearMessages();
-    const nickname = nicknameIn.value.trim();
-    const password = passwordIn.value.trim();
+    const nickname = nicknameInput.value.trim();
+    const password = passwordInput.value.trim();
 
-    // ✅ 確認 1: ニックネーム入力
-    if (!nickname) { 
-      errorMsg.textContent = "ニックネームを入力してください。"; 
-      return; 
+    // バリデーション
+    if (!nickname) {
+      errorMsg.textContent = "ニックネームを入力してください。";
+      return;
     }
 
-    // ✅ 確認 2: パスワード入力
-    if (!password) { 
-      errorMsg.textContent = "パスワードを入力してください。"; 
-      return; 
+    if (!password) {
+      errorMsg.textContent = "パスワードを入力してください。";
+      return;
     }
 
-    // ✅ 確認 3: ニックネーム長（2文字以上）
-    if (nickname.length < 2) { 
-      errorMsg.textContent = "ニックネームは2文字以上で入力してください。"; 
-      return; 
+    if (nickname.length < 2) {
+      errorMsg.textContent = "ニックネームは2文字以上で入力してください。";
+      return;
     }
 
-    // ✅ 確認 4: パスワード長（4文字以上）
-    if (password.length < 4) { 
-      errorMsg.textContent = "パスワードは4文字以上で入力してください。"; 
-      return; 
+    if (password.length < 4) {
+      errorMsg.textContent = "パスワードは4文字以上で入力してください。";
+      return;
     }
 
-    // ✅ 確認 5: Firebase 初期化確認
-    if (!firebaseInitialized || !db) { 
-      // Firebase が初期化されていない場合、ローカルストレージのみで動作
-      console.warn("[Login] Firebase not initialized. Using local storage only.");
+    // Firebase が初期化されていない場合
+    if (!db) {
+      console.warn("[Login] Firebase が初期化されていません。ローカルストレージを使用します。");
       
-      // ローカルストレージからアカウント情報を取得
       const accountsJson = localStorage.getItem("accounts");
       const accounts = accountsJson ? JSON.parse(accountsJson) : {};
       
-      // アカウントが存在するか確認
       if (!accounts[nickname]) {
         errorMsg.textContent = "アカウントが見つかりません。";
         return;
@@ -292,28 +322,26 @@
 
       const accountData = accounts[nickname];
       
-      // パスワードが一致するか確認
       if (accountData.password !== password) {
         errorMsg.textContent = "パスワードが間違っています。";
         return;
       }
 
-      // ✅ ログイン成功
+      // ログイン成功
       localStorage.setItem("username", nickname);
       localStorage.setItem("isOnline", "true");
       localStorage.setItem("accountId", accountData.id);
       
-      console.log("[Login] Login successful (local):", nickname);
+      console.log("[Login] ✅ ログイン成功（ローカル）:", nickname);
       window.location.href = "index.html";
       return;
     }
 
+    // Firebase でログイン
     try {
-      // ✅ 確認 6: Firebase からアカウント情報を取得
       const accountRef = db.ref(`accounts/${nickname}`);
       const snapshot = await accountRef.once('value');
 
-      // ✅ 確認 7: アカウントが存在するか
       if (!snapshot.exists()) {
         errorMsg.textContent = "アカウントが見つかりません。";
         return;
@@ -321,73 +349,67 @@
 
       const accountData = snapshot.val();
       
-      // ✅ 確認 8: パスワードが一致するか
       if (accountData.password !== password) {
         errorMsg.textContent = "パスワードが間違っています。";
         return;
       }
 
-      // ✅ ログイン成功
+      // ログイン成功
       localStorage.setItem("username", nickname);
       localStorage.setItem("isOnline", "true");
       localStorage.setItem("accountId", accountData.id);
       
-      console.log("[Login] Login successful:", nickname);
+      console.log("[Login] ✅ ログイン成功:", nickname);
       window.location.href = "index.html";
-    } catch (e) {
-      console.error("[Login] Login error:", e);
-      errorMsg.textContent = "ログイン処理中にエラーが発生しました。ブラウザコンソールを確認してください。";
+    } catch (error) {
+      console.error("[Login] ログインエラー:", error.message);
+      errorMsg.textContent = "ログイン処理中にエラーが発生しました。";
     }
   }
 
+  /**
+   * アカウント作成処理
+   */
   async function doRegister() {
     clearMessages();
-    const nickname = nicknameIn.value.trim();
-    const password = passwordIn.value.trim();
+    const nickname = nicknameInput.value.trim();
+    const password = passwordInput.value.trim();
 
-    // ✅ 確認 1: ニックネーム入力
-    if (!nickname) { 
-      errorMsg.textContent = "ニックネームを入力してください。"; 
-      return; 
+    // バリデーション
+    if (!nickname) {
+      errorMsg.textContent = "ニックネームを入力してください。";
+      return;
     }
 
-    // ✅ 確認 2: パスワード入力
-    if (!password) { 
-      errorMsg.textContent = "パスワードを入力してください。"; 
-      return; 
+    if (!password) {
+      errorMsg.textContent = "パスワードを入力してください。";
+      return;
     }
 
-    // ✅ 確認 3: ニックネーム長（2文字以上）
-    if (nickname.length < 2) { 
-      errorMsg.textContent = "ニックネームは2文字以上で入力してください。"; 
-      return; 
+    if (nickname.length < 2) {
+      errorMsg.textContent = "ニックネームは2文字以上で入力してください。";
+      return;
     }
 
-    // ✅ 確認 4: パスワード長（4文字以上）
-    if (password.length < 4) { 
-      errorMsg.textContent = "パスワードは4文字以上で入力してください。"; 
-      return; 
+    if (password.length < 4) {
+      errorMsg.textContent = "パスワードは4文字以上で入力してください。";
+      return;
     }
 
-    // ✅ 確認 5: Firebase 初期化確認
-    if (!firebaseInitialized || !db) { 
-      // Firebase が初期化されていない場合、ローカルストレージのみで動作
-      console.warn("[Login] Firebase not initialized. Using local storage only.");
+    // Firebase が初期化されていない場合
+    if (!db) {
+      console.warn("[Login] Firebase が初期化されていません。ローカルストレージを使用します。");
       
-      // ローカルストレージからアカウント情報を取得
       const accountsJson = localStorage.getItem("accounts");
       const accounts = accountsJson ? JSON.parse(accountsJson) : {};
       
-      // 既存アカウントの確認
       if (accounts[nickname]) {
         const existingAccount = accounts[nickname];
         
-        // 同じニックネーム + パスワードの組み合わせが存在するか
         if (existingAccount.password === password) {
           errorMsg.textContent = "このニックネーム + パスワードの組み合わせは既に使用されています。";
           return;
         }
-        // 異なるパスワードなら新規作成可能
       }
 
       // 新規アカウントを作成
@@ -409,7 +431,7 @@
       localStorage.setItem("accountId", accountId);
 
       successMsg.textContent = "アカウントを作成しました。ゲームを開始します...";
-      console.log("[Login] Account created (local):", nickname);
+      console.log("[Login] ✅ アカウント作成成功（ローカル）:", nickname);
       
       setTimeout(() => {
         window.location.href = "index.html";
@@ -417,24 +439,21 @@
       return;
     }
 
+    // Firebase でアカウント作成
     try {
-      // ✅ 確認 6: Firebase からアカウント情報を取得
       const accountRef = db.ref(`accounts/${nickname}`);
       const snapshot = await accountRef.once('value');
 
-      // ✅ 確認 7: 既存アカウントの確認
       if (snapshot.exists()) {
         const existingAccount = snapshot.val();
         
-        // ✅ 確認 8: 同じニックネーム + パスワードの組み合わせが存在するか
         if (existingAccount.password === password) {
           errorMsg.textContent = "このニックネーム + パスワードの組み合わせは既に使用されています。";
           return;
         }
-        // 異なるパスワードなら新規作成可能
       }
 
-      // ✅ 新規アカウントを作成
+      // 新規アカウントを作成
       const accountId = Math.random().toString(36).substr(2, 9);
       const accountData = {
         id: accountId,
@@ -446,23 +465,26 @@
 
       await accountRef.set(accountData);
 
-      // ✅ ログイン状態に設定
+      // ログイン状態に設定
       localStorage.setItem("username", nickname);
       localStorage.setItem("isOnline", "true");
       localStorage.setItem("accountId", accountId);
 
       successMsg.textContent = "アカウントを作成しました。ゲームを開始します...";
-      console.log("[Login] Account created:", nickname);
+      console.log("[Login] ✅ アカウント作成成功:", nickname);
       
       setTimeout(() => {
         window.location.href = "index.html";
       }, 1000);
-    } catch (e) {
-      console.error("[Login] Register error:", e);
-      errorMsg.textContent = "アカウント作成中にエラーが発生しました。ブラウザコンソールを確認してください。";
+    } catch (error) {
+      console.error("[Login] アカウント作成エラー:", error.message);
+      errorMsg.textContent = "アカウント作成中にエラーが発生しました。";
     }
   }
 
+  /**
+   * フォーム送信
+   */
   function handleSubmit() {
     if (isLoginMode) {
       doLogin();
@@ -471,11 +493,22 @@
     }
   }
 
+  // イベントリスナー
   submitBtn.addEventListener("click", handleSubmit);
   toggleBtn.addEventListener("click", toggleMode);
   
-  nicknameIn.addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
-  passwordIn.addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
+  nicknameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSubmit();
+  });
+  
+  passwordInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleSubmit();
+  });
+
+  // 初期化
+  window.addEventListener("load", () => {
+    initializeFirebase();
+  });
 </script>
 
 </body>

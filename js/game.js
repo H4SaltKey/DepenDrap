@@ -1674,7 +1674,12 @@ function setupRoomWatcher() {
 
     // リクエストを適用
     if (req.type === "set") {
-      s[req.key] = req.value;
+      if (req.key === "_bulk" && typeof req.value === "object") {
+        // 複数フィールドを一括適用（ダメージ計算後の確定値）
+        Object.assign(s, req.value);
+      } else {
+        s[req.key] = req.value;
+      }
     } else if (req.type === "add") {
       s[req.key] = (Number(s[req.key]) || 0) + req.value;
     }

@@ -757,11 +757,24 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
     window.addGameLog(`【${fullType}】${actor} が ${victim} に ${amount} ダメージ！`);
   }
 
-  if (typeof saveImmediate === "function") {
-    saveImmediate();
-  } else if (typeof save === "function") {
-    save();
+  // Firebase 同期
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (targetOwner === me) {
+    // 自分のステータス → 自分のパスに直接書く
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+  } else {
+    // 相手のステータス → 確定後の値を pendingChange 経由で送る
+    // hp/barrier/shield の確定値をまとめて送信
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && window.firebaseClient?.db) {
+      window.firebaseClient.sendChangeRequest(gameRoom, me, targetOwner, "_bulk", "set", {
+        hp: s.hp,
+        barrier: s.barrier,
+        shield: s.shield
+      });
+    }
   }
+
   if (typeof update === "function") update();
 };
 document.addEventListener("contextmenu", (e) => {

@@ -1371,13 +1371,6 @@ async function executeReset() {
   window._isResetting = false;
 }
 
-  createDeckObject(true);
-
-  if (typeof syncLoop === "function") await syncLoop();
-  if (typeof update === "function") update();
-}
-
-
 function updateDicePhaseUI() {
   const m = state.matchData;
   let overlay = document.getElementById("dicePhaseOverlay");

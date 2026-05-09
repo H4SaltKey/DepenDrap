@@ -215,7 +215,12 @@ function drawFromDeckObject() {
   if (!currentRole) return;
 
   const s = state[currentRole];
-  if (!s || !s.deck || s.deck.length === 0) return;
+  if (!s || !s.deck || s.deck.length === 0) {
+    // デッキが空の場合、敗北判定
+    console.warn("[Draw] デッキが空です。敗北判定を実行します。");
+    checkGameResult();
+    return;
+  }
 
   let rawId = s.deck.pop();
   if (!rawId) return;
@@ -817,7 +822,33 @@ function updateMatchUI() {
   endBtn.style.pointerEvents = isMyTurn ? "auto" : "none";
   endBtn.style.transform = `translateY(-50%) scale(${isMyTurn ? 1 : 0.9})`;
 
-  // 3. ダイスフェーズのオーバーレイ
+  // 3. リザルト表示ボタン（勝者が決まっている場合のみ表示）
+  let resultBtn = document.getElementById("showResultBtn");
+  if (m.winner && !document.getElementById('gameResultOverlay')) {
+    if (!resultBtn) {
+      resultBtn = document.createElement("button");
+      resultBtn.id = "showResultBtn";
+      resultBtn.innerHTML = "リザルト<br>表示";
+      resultBtn.style.cssText = `
+        position: fixed; right: 40px; top: calc(50% + 120px); transform: translateY(-50%);
+        width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #7a6a40, #5a4a30);
+        border: 3px solid #1a172c; color: #e0d0a0; font-size: 14px; font-weight: 700;
+        cursor: pointer; z-index: 5000; box-shadow: 0 0 15px rgba(0,0,0,0.5), inset 0 0 8px rgba(255,255,255,0.2);
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1;
+      `;
+      resultBtn.onclick = () => {
+        window._resultDismissed = false;
+        showResultScreen(m.winner);
+      };
+      document.body.appendChild(resultBtn);
+    }
+    resultBtn.style.display = "flex";
+  } else if (resultBtn) {
+    resultBtn.style.display = "none";
+  }
+
+  // 4. ダイスフェーズのオーバーレイ
   updateDicePhaseUI();
 }
 
@@ -953,13 +984,13 @@ function checkGameResult() {
 
   // 自分または相手のデッキが空の場合、ゲーム開始直後の可能性があるためスキップ
   // （デッキは createDeckObject() が完了するまで空のまま）
-  if (me.deck.length === 0 || op.deck.length === 0) {
-    console.log("[Result] SKIP: deck not ready (me:", me.deck.length, "op:", op.deck.length, ")");
+  if (me.deck.length === 0 && op.deck.length === 0) {
+    console.log("[Result] SKIP: both decks not ready (me:", me.deck.length, "op:", op.deck.length, ")");
     return;
   }
 
-  const myLost = me.hp <= 0 || me.deck.length === 0;
-  const opLost = op.hp <= 0 || op.deck.length === 0;
+  const myLost = me.hp <= 0 || me.deck.length < 0;
+  const opLost = op.hp <= 0 || op.deck.length < 0;
 
   if (myLost || opLost) {
     console.log("[Result] TRIGGER:",
@@ -1033,16 +1064,14 @@ function showResultScreen(winner) {
   `;
   document.body.appendChild(div);
 
-  // 相手からの再戦リクエストを監視
-  watchRematchRequest();
+  // 相手からの再戦リクエストを監視（まだ監視していない場合のみ開始）
+  if (!_rematchWatcher) {
+    watchRematchRequest();
+  }
 }
 
 function closeResultScreen() {
-  // リスナーを解除してから閉じる
-  if (_rematchWatcher) {
-    _rematchWatcher.off();
-    _rematchWatcher = null;
-  }
+  // リスナーは解除せず、監視を継続（相手からの再戦申し込みを受け取るため）
   const overlay = document.getElementById('gameResultOverlay');
   if (overlay) overlay.remove();
 
@@ -1100,7 +1129,12 @@ function watchRematchRequest() {
     const btn = document.getElementById("rematchBtn");
 
     if (opReq && !myReq) {
-      // 相手が申し込んできた
+      // 相手が申し込んできた → リザルトが閉じられていたら再表示
+      if (!document.getElementById('gameResultOverlay') && state.matchData.winner) {
+        window._resultDismissed = false;
+        showResultScreen(state.matchData.winner);
+      }
+      
       if (statusEl) statusEl.textContent = "相手が再戦を申し込んでいます！";
       if (btn) {
         btn.disabled = false;
@@ -1911,12 +1945,35 @@ function setupRoomWatcher() {
     if (!snap || !snap.val()) return;
     const opData = snap.val();
     // diceValue は playerDice で管理、username は players で管理するため除外
-    const { diceValue: _d, username: _u, deck: _deck, ...rest } = opData;
+    // deck の内容は同期しないが、枚数（length）は同期する
+    const { diceValue: _d, username: _u, deck: opDeck, ...rest } = opData;
     // 相手のデータを自分の state に反映
     Object.assign(state[opKey], rest);
+    
+    // デッキ枚数のみ同期（内容は同期しない）
+    if (Array.isArray(opDeck)) {
+      // 相手のデッキ内容は見えないが、枚数だけ反映
+      if (!Array.isArray(state[opKey].deck)) {
+        state[opKey].deck = [];
+      }
+      // 枚数を合わせる（ダミーデータで埋める）
+      const currentLen = state[opKey].deck.length;
+      const targetLen = opDeck.length;
+      if (currentLen < targetLen) {
+        // 足りない分を追加
+        for (let i = currentLen; i < targetLen; i++) {
+          state[opKey].deck.push("DUMMY");
+        }
+      } else if (currentLen > targetLen) {
+        // 多い分を削除
+        state[opKey].deck.splice(targetLen);
+      }
+    }
+    
     // username は players watcher が管理するため上書きしない
     normalizeState();
     applyLevelStats(opKey);
+    updateDeckObject(); // デッキ枚数表示を更新
     update();
   });
 

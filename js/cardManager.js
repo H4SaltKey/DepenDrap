@@ -677,7 +677,9 @@ window.applyFieldCardsFromServer = function(data){
     if(item.origin) el.dataset.origin = item.origin; // 出自を復元
     el.dataset.isTemp = item.isTemp ? "true" : "false";
     
-    if(item.owner && item.owner !== window.myRole && window.myRole !== null){
+    // 相手のカードかどうかを判定（window.myRole が null の場合も考慮）
+    const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey");
+    if(item.owner && item.owner !== myRole && myRole !== null){
       el.classList.add("opponent-card");
     } else {
       el.classList.remove("opponent-card");

@@ -314,6 +314,22 @@ function drawFromDeckObject() {
 
 // ===== ステータスUI =====
 
+/**
+ * 自分の playerState を Firebase に送信（デバウンス付き）
+ * addVal/setVal/setMax から呼ばれる
+ */
+let _syncMyStateTimer = null;
+function pushMyStateDebounced() {
+  if (_syncMyStateTimer) clearTimeout(_syncMyStateTimer);
+  _syncMyStateTimer = setTimeout(async () => {
+    const gameRoom = localStorage.getItem("gameRoom");
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    if (gameRoom && firebaseClient?.db && me) {
+      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+    }
+  }, 300);
+}
+
 function addVal(owner, key, delta) {
   const s = state[owner];
   const maxLv = Number(s.levelMax) || LEVEL_MAX;
@@ -323,6 +339,7 @@ function addVal(owner, key, delta) {
     s.level = Math.min(Math.max(curLv + delta, 1), maxLv);
     s.exp = Math.min(Number(s.exp) || 0, calcExpMax(s.level) - 1);
     applyLevelStats(owner);
+    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
     update();
     return;
   }
@@ -333,6 +350,7 @@ function addVal(owner, key, delta) {
   if (key === "exp" && delta < 0 && curLv <= 1) {
     s.exp = Math.max(0, (Number(s.exp) || 0) + delta);
     syncDerivedStats(owner);
+    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
     update();
     return;
   }
@@ -350,8 +368,7 @@ function addVal(owner, key, delta) {
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
 
-  if (typeof saveImmediate === "function") saveImmediate();
-  else if (typeof save === "function") save();
+  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
   update();
 }
 
@@ -363,6 +380,7 @@ function setVal(owner, key, value) {
     s.level = Math.min(Math.max(Math.round(Number(value) || 1), 1), maxLv);
     s.exp = Math.min(Number(s.exp) || 0, calcExpMax(s.level) - 1);
     applyLevelStats(owner);
+    if (owner === (window.myRole || "player1")) pushMyStateDebounced();
     update();
     return;
   }
@@ -388,12 +406,14 @@ function setVal(owner, key, value) {
   s[key] = v;
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
+  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
   update();
 }
 
 function setMax(owner, key, value) {
   state[owner][key + "Max"] = Math.max(0, Number(value) || 0);
   syncDerivedStats(owner);
+  if (owner === (window.myRole || "player1")) pushMyStateDebounced();
   update();
 }
 
@@ -1584,9 +1604,13 @@ function setupRoomWatcher() {
   const opStateListener = opStateRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
     const opData = snap.val();
-    // 相手のデータを自分の state に反映（diceValue は playerDice で管理するため除外）
-    const { diceValue: _d, ...rest } = opData;
+    // diceValue は playerDice で管理、username は players で管理するため除外
+    const { diceValue: _d, username: _u, deck: _deck, ...rest } = opData;
+    // 相手のデータを自分の state に反映
     Object.assign(state[opKey], rest);
+    // username は players watcher が管理するため上書きしない
+    normalizeState();
+    applyLevelStats(opKey);
     update();
   });
 

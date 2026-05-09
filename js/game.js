@@ -361,6 +361,11 @@ function addVal(owner, key, delta) {
   } else if (key !== "hp" && key !== "exp") {
     v = Math.max(0, v);
   }
+  if (key === "exp" && delta !== 0) {
+    if (delta > 0) addGameLog(`[EXP] ${s.username || owner} が ${delta} EXPを獲得しました。`);
+    else if (s.exp > 0 || curLv > 1) addGameLog(`[EXP] ${s.username || owner} が ${Math.abs(delta)} EXPを失いました。`);
+  }
+  
   s[key] = v;
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
@@ -450,6 +455,9 @@ function checkLevelUp(owner) {
       s.level += 1;
       s.expMax = calcExpMax(s.level);
       applyLevelStats(owner);
+      if ([3, 5, 6].includes(s.level) && s.evolutionPath) {
+        addGameLog(`[EVOLUTION] ${s.username || owner} のレベルが ${s.level} に上がり、「${s.evolutionPath}」が強化されました！`);
+      }
     } else {
       break;
     }
@@ -666,7 +674,7 @@ function renderOwnerUI(owner) {
     </div>
 
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" style="position:relative;" onmouseenter="this.querySelector('.evoPopup').style.display='block'" onmouseleave="this.querySelector('.evoPopup').style.display='none'">
+  <div class="evoPanelWrapper" style="position:relative;">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -678,10 +686,11 @@ function renderOwnerUI(owner) {
       ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
-      display: none; position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 8px;' : 'top: 100%; margin-top: 8px;'} 
+      position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0;' : 'top: 100%; margin-top: 0;'} 
       left: 50%; transform: translateX(-50%); width: 320px;
       background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px;
       z-index: 99999; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
       ${getEvolutionPathHTML(owner)}
     </div>
@@ -713,22 +722,22 @@ function getEvolutionPathHTML(owner) {
     const xArr = [0, 1, 3, 4];
     const x = xArr[idx];
     desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
-    tableHTML = `x = [Lv1~2: 0, Lv3~4: 1, Lv5: 3, Lv6: 4]`;
+    tableHTML = `x = [0, 1, 3, 4]`;
   } else if (s.evolutionPath === '継続の道') {
     const yArr = [1, 3, 4, 6];
     const y = yArr[idx];
     desc = `ターン毎に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:10px; color:#aaa;">※：この効果によるものは含まない</span>`;
-    tableHTML = `y = [Lv1~2: 1, Lv3~4: 3, Lv5: 4, Lv6: 6]`;
+    tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '瞬発の道') {
     const zArr = [1, 3, 4, 6];
     const z = zArr[idx];
     desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
-    tableHTML = `z = [Lv1~2: 1, Lv3~4: 3, Lv5: 4, Lv6: 6]`;
+    tableHTML = `z = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '背水の道') {
     const tArr = [1, 2, 3, 4];
     const t = tArr[idx];
     desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:10px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
-    tableHTML = `t = [Lv1~2: 1, Lv3~4: 2, Lv5: 3, Lv6: 4]`;
+    tableHTML = `t = [1, 2, 3, 4]`;
   }
   
   return `
@@ -1990,6 +1999,7 @@ async function handleTurnEnd() {
   // 進化の道のターン依存変数をリセット
   state[me].evoContinuousDmgCount = 0;
   state[me].evoBackwaterExpGained = false;
+  window._turnDmgHistory = {};
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {

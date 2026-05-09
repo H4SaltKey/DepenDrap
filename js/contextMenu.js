@@ -112,6 +112,9 @@ function buildMenu(items, x, y, el){
           sub.style.top  = sy + "px";
         });
       } else {
+        row.addEventListener("pointerenter", (e) => {
+          if(currentSub){ currentSub.remove(); currentSub = null; }
+        });
         row.addEventListener("pointerdown", (e) => {
           e.stopPropagation();
           closeMenu();
@@ -461,10 +464,6 @@ function drawMultiple(count, faceDown){
 
     card.classList.toggle("visibilitySelf", vis === "self");
     card.classList.toggle("visibilityNone",  vis === "none");
-    card.classList.add("card-draw-anim"); // アニメーション追加
-    
-    // アニメーション終了後にクラスを消す
-    setTimeout(() => card.classList.remove("card-draw-anim"), 500);
 
     const lbl = card.querySelector(".cardVisibilityLabel");
     if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
@@ -472,12 +471,33 @@ function drawMultiple(count, faceDown){
 
     if(typeof placeCard === "function"){
       if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
-      // まずデッキ付近に生成してから、organizeHandsで整列する位置に一時置き
-      placeCard(document.getElementById("field"), card, { x: deckX, y: handY });
+      // アニメーション用にいったんデッキ位置に置く
+      card.style.left = deckX + "px";
+      card.style.top = deckY + "px";
+      card.dataset.y = 1600; // organizeHandsの対象になるようにフェイク設定
+      placeCard(document.getElementById("field"), card, { x: deckX, y: 1600 });
     }
   }
 
+  // ここで整理して目的地のleft/topをセット
   if (typeof window.organizeHands === "function") window.organizeHands();
+
+  // 目的地の座標を取得してアニメーション
+  const field = document.getElementById("field");
+  if (field) {
+    const cards = Array.from(field.querySelectorAll(".card:not(.deckObject)"));
+    cards.forEach(card => {
+      if (card.dataset.y == 1600 && card.dataset.owner === me) { // 今回ドローされたカード
+        const destX = parseFloat(card.style.left) || deckX;
+        const destY = parseFloat(card.style.top) || 1600;
+        card.animate([
+          { transform: `translate(${deckX - destX}px, ${deckY - destY}px) scale(0.5)`, opacity: 0 },
+          { transform: `translate(0, 0) scale(1.1)`, opacity: 1, offset: 0.8 },
+          { transform: `translate(0, 0) scale(1)`, opacity: 1 }
+        ], { duration: 500, easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' });
+      }
+    });
+  }
 
   if (isOverdraw) {
     if (typeof addGameLog === "function") {
@@ -714,7 +734,7 @@ function openStatusMenu(targetOwner, x, y) {
 }
 
 // ダメージ適用ロジック
-window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
+window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEvoDmg = false) {
   const s = state[targetOwner];
   if (!s) return;
 
@@ -736,6 +756,24 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
   
   let actualAmount = amount;
   
+  // 瞬発の道: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
+  const meRole = window.myRole || "player1";
+  const myState = state[meRole];
+  if (!isEvoDmg && actualAmount >= 6 && myState && myState.evolutionPath === '瞬発の道') {
+    const lv = myState.level || 1;
+    let idx = 0;
+    if (lv >= 6) idx = 3;
+    else if (lv >= 5) idx = 2;
+    else if (lv >= 3) idx = 1;
+    const zArr = [1, 3, 4, 6];
+    const z = zArr[idx];
+    
+    s.shield = Math.max(0, s.shield - z);
+    if (typeof addGameLog === "function") {
+      addGameLog(`[EVOLUTION] ${actor} の「瞬発の道」効果！ 直前に ${z} の脆弱ダメージを与えた！`);
+    }
+  }
+
   // 「直接攻撃」の処理と、背水の道効果の適用
   if (type === "direct_attack") {
     const meRole = window.myRole || "player1";
@@ -815,7 +853,39 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount) {
 
   if (window.addGameLog) {
     const fullType = typeLabels[type] + (subType !== "none" ? ` (${subLabels[subType]})` : "");
-    window.addGameLog(`【${fullType}】${actor} が ${victim} に ${amount} ダメージ！`);
+    if (!window._turnDmgHistory) window._turnDmgHistory = {};
+    const thKey = `${actor}->${victim}`;
+    if (!window._turnDmgHistory[thKey]) window._turnDmgHistory[thKey] = { total: 0, count: 0 };
+    
+    // このダメージ自体の記録
+    window._turnDmgHistory[thKey].total += actualAmount;
+    window._turnDmgHistory[thKey].count += 1;
+    const stats = window._turnDmgHistory[thKey];
+    
+    window.addGameLog(`【${fullType}】${actor} が ${victim} に ${actualAmount} ダメージ！ (今ターン計: ${stats.total}ダメ/${stats.count}回)`);
+  }
+
+  // 継続の道: 1以上のダメージを与える度に1ダメージ（3回目は1貫通ダメージ）
+  const meRole = window.myRole || "player1";
+  const myState2 = state[meRole];
+  if (!isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
+    const lv = myState2.level || 1;
+    let idx = 0;
+    if (lv >= 6) idx = 3;
+    else if (lv >= 5) idx = 2;
+    else if (lv >= 3) idx = 1;
+    const yArr = [1, 3, 4, 6];
+    const y = yArr[idx];
+    
+    if ((myState2.evoContinuousDmgCount || 0) < y) {
+      myState2.evoContinuousDmgCount = (myState2.evoContinuousDmgCount || 0) + 1;
+      const isThird = myState2.evoContinuousDmgCount === 3;
+      if (typeof window.addGameLog === "function") {
+        window.addGameLog(`[EVOLUTION] ${actor} の「継続の道」効果発動（${myState2.evoContinuousDmgCount}回目）！`);
+      }
+      // 再帰呼び出しで進化ダメージを適用（isEvoDmg=true）
+      window.applyCalculatedDamage(targetOwner, isThird ? "pierce" : "damage", "additional", 1, true);
+    }
   }
 
   // Firebase 同期

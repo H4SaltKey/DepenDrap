@@ -553,7 +553,7 @@ async function initCards(){
   content.style.height = FIELD_H + "px";
 
   // 最小ズームをウィンドウサイズから計算
-  FIELD_ZOOM_MIN = 0.3;
+  FIELD_ZOOM_MIN = 0.15;
   FIELD_ZOOM_MAX = 0.8;
   const slider = document.getElementById("zoomSlider");
   if(slider) {

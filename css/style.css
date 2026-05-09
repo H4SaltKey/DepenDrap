@@ -1035,3 +1035,8 @@ h3{
   margin-bottom: 0;
   margin-top: 8px;
 }
+
+.evoPanelWrapper:hover .evoPopup {
+  opacity: 1 !important;
+  visibility: visible !important;
+}

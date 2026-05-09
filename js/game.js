@@ -946,6 +946,7 @@ function updateDicePhaseUI() {
     } else {
       const iWin = (myDice < opDice);
       if (iWin) {
+        // 勝者は自動的に先攻に決定
         newHtml = `
           <div class="dice-container">
             <h2 class="dice-title" style="color: #00ffcc;">勝利</h2>
@@ -954,13 +955,12 @@ function updateDicePhaseUI() {
                <div style="font-size:24px; color:#444;">VS</div>
                <div><div style="font-size:12px; color:#888;">相手</div><div style="font-size:48px; font-weight:900; color:#888;">${opDice}</div></div>
             </div>
-            <p class="dice-subtitle">先攻・後攻を選択してください</p>
-            <div class="dice-choice-group">
-              <button class="dice-choice-btn primary" onclick="handleChooseOrder(true)">先攻</button>
-              <button class="dice-choice-btn secondary" onclick="handleChooseOrder(false)">後攻</button>
-            </div>
+            <p class="dice-subtitle">あなたが先攻です</p>
+            <div style="margin-top: 30px; font-size: 14px; color: #aaa;">試合を開始しています...</div>
           </div>
         `;
+        // 自動的に先攻を選択
+        setTimeout(() => handleChooseOrder(true), 1500);
       } else {
         newHtml = `
           <div class="dice-container">
@@ -970,9 +970,11 @@ function updateDicePhaseUI() {
                <div style="font-size:24px; color:#444;">VS</div>
                <div><div style="font-size:12px; color:#e24a4a;">相手</div><div style="font-size:64px; font-weight:900; color:#e24a4a;">${opDice}</div></div>
             </div>
-            <p class="dice-wait-msg">相手が手番（先攻・後攻）を選択しています...</p>
+            <p class="dice-wait-msg">相手が先攻です。試合を開始しています...</p>
           </div>
         `;
+        // 相手が先攻に決定（自動）
+        setTimeout(() => handleChooseOrder(false), 1500);
       }
     }
   }

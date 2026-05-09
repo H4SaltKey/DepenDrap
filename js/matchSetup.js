@@ -390,7 +390,15 @@ window.addEventListener("load", () => {
 });
 
 // ページを離れるときにリスナーをクリーンアップ
-window.addEventListener("beforeunload", () => {
+window.addEventListener("beforeunload", async () => {
+  console.log("[MatchSetup] ページを離れます");
+  
+  // ルームから退出
+  if (currentRoom && currentPlayerKey) {
+    console.log("[MatchSetup] ルームから自動退出:", currentRoom);
+    await firebaseClient.leaveRoom(currentRoom, currentPlayerKey);
+  }
+  
   if (roomUnsubscribe) roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
 });

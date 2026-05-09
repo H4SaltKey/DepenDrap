@@ -72,27 +72,40 @@
 <script>
   initCards();
 
-  // ゲーム画面で Firebase に接続（matchSetup から引き継ぎ）
-  window.myUsername = localStorage.getItem("username") || "Player";
-  FirebaseSync.init({
-    onJoinedRoom: (roomName, role) => {
-      console.log("[Game] Firebase joined:", roomName, role);
-      document.dispatchEvent(new Event("firebaseJoined"));
-    },
-    onOpponentJoined: (actor) => {
-      console.log("[Game] Opponent joined:", actor.name);
-    },
-    onOpponentLeft: (actor) => {
-      console.log("[Game] Opponent left");
-      addGameLog && addGameLog(`[SYSTEM] 対戦相手が切断しました。`);
+  // ゲーム画面で Firebase に接続
+  let gameRoomName = null;
+  let gamePlayerKey = null;
+
+  window.addEventListener("load", async () => {
+    console.log("[Game] Firebase 初期化中...");
+    
+    const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
+    if (success) {
+      console.log("[Game] ✅ Firebase 初期化成功");
+      
+      // matchSetup から ルーム情報を取得
+      gameRoomName = localStorage.getItem("gameRoom");
+      gamePlayerKey = localStorage.getItem("gamePlayerKey");
+      
+      if (gameRoomName && gamePlayerKey) {
+        console.log("[Game] ルームに再参加:", gameRoomName, "as", gamePlayerKey);
+        // ルーム情報は既に localStorage に保存されている
+        document.dispatchEvent(new Event("firebaseJoined"));
+      }
+    } else {
+      console.warn("[Game] ⚠️ Firebase 初期化失敗");
     }
   });
 
-  // matchSetup で決定したルームに再参加
-  const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
-  if (setup && setup.roomName) {
-    FirebaseSync.joinRoom(setup.roomName);
-  }
+  // ページを離れるときにルームから退出
+  window.addEventListener("beforeunload", async () => {
+    console.log("[Game] ページを離れます");
+    
+    if (gameRoomName && gamePlayerKey) {
+      console.log("[Game] ルームから自動退出:", gameRoomName);
+      await firebaseClient.leaveRoom(gameRoomName, gamePlayerKey);
+    }
+  });
 </script>
 
 </body>

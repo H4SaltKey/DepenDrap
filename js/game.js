@@ -1579,10 +1579,23 @@ function setupRoomWatcher() {
     // ゲーム状態を更新
     if (roomData.gameState) {
       console.log("[Game] ゲーム状態を更新:", roomData.gameState.matchData);
+
+      // diceValue は setupPlayerDiceWatcher が管理するため上書きしない
+      const savedDice = {
+        player1: state.player1.diceValue,
+        player2: state.player2.diceValue
+      };
+
       state.player1 = roomData.gameState.player1 || state.player1;
       state.player2 = roomData.gameState.player2 || state.player2;
       state.matchData = roomData.gameState.matchData || state.matchData;
       state.logs = roomData.gameState.logs || state.logs;
+
+      // ダイスフェーズ中は diceValue を保護
+      if (state.matchData.status === "setup_dice") {
+        state.player1.diceValue = savedDice.player1;
+        state.player2.diceValue = savedDice.player2;
+      }
       
       // localStorage に保存
       localStorage.setItem("gameState", JSON.stringify(state));

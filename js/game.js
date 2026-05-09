@@ -1065,16 +1065,39 @@ async function handleDiceRoll() {
   const roll = Math.floor(Math.random() * 100) + 1;
   const me = window.myRole || "player1";
   state.matchData.dice[me] = roll;
-  // matchData ロックなし — 保存後すぐ syncLoop で最新値を取得
+  
+  console.log("[handleDiceRoll] ダイスロール:", me, "=", roll);
   addGameLog(`[DICE] ${window.myUsername || me} がダイスを振りました: ${roll}`);
+  
+  // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
+  
+  // Firebase に保存（他のプレイヤーに通知）
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient) {
+    console.log("[handleDiceRoll] Firebase にゲーム状態を保存");
+    await firebaseClient.updateGameState(gameRoom, state);
+  }
+  
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
 
 async function handleResetDice() {
   state.matchData.dice = { player1: null, player2: null };
+  
+  console.log("[handleResetDice] ダイスをリセット");
+  
+  // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
+  
+  // Firebase に保存
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient) {
+    console.log("[handleResetDice] Firebase にゲーム状態を保存");
+    await firebaseClient.updateGameState(gameRoom, state);
+  }
+  
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
@@ -1098,7 +1121,17 @@ async function handleChooseOrder(goFirst) {
 
   console.log("[handleChooseOrder] ゲーム開始。先攻:", state.matchData.turnPlayer, "ステータス:", state.matchData.status);
   addGameLog(`[MATCH] 試合開始！先攻: ${state.matchData.turnPlayer === "player1" ? (state.player1.username || "P1") : (state.player2.username || "P2")}`);
+  
+  // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
+  
+  // Firebase に保存
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient) {
+    console.log("[handleChooseOrder] Firebase にゲーム状態を保存");
+    await firebaseClient.updateGameState(gameRoom, state);
+  }
+  
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
@@ -1138,7 +1171,17 @@ async function handleTurnEnd() {
   // 保存・同期
   console.log("[handleTurnEnd] ターン変更完了。新しいターンプレイヤー:", m.turnPlayer, "ラウンド:", m.round, "ターン:", m.turn);
   addGameLog(`[TURN] ${window.myUsername || me} がターンを終了しました。次は ${m.turnPlayer} のターンです。`);
+  
+  // ローカルに保存
   if (typeof saveImmediate === "function") await saveImmediate();
+  
+  // Firebase に保存
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient) {
+    console.log("[handleTurnEnd] Firebase にゲーム状態を保存");
+    await firebaseClient.updateGameState(gameRoom, state);
+  }
+  
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
@@ -1399,6 +1442,7 @@ async function initGame() {
  * ルームの状態を監視して、両プレイヤーが退出したかチェック
  */
 let roomWatcherUnsubscribe = null;
+let gameStateWatcherUnsubscribe = null;
 
 function setupRoomWatcher() {
   const gameRoom = localStorage.getItem("gameRoom");
@@ -1431,8 +1475,46 @@ function setupRoomWatcher() {
         roomWatcherUnsubscribe = null;
       }
       
+      // ゲーム状態監視を停止
+      if (gameStateWatcherUnsubscribe) {
+        gameStateWatcherUnsubscribe();
+        gameStateWatcherUnsubscribe = null;
+      }
+      
       // ゲーム状態をリセット
       firebaseClient.resetRoomGameState(gameRoom);
+    }
+  });
+
+  // ゲーム状態を監視（他のプレイヤーの変更を検知）
+  setupGameStateWatcher(gameRoom);
+}
+
+/**
+ * ゲーム状態を監視して、他のプレイヤーの変更を反映
+ */
+function setupGameStateWatcher(gameRoom) {
+  if (!gameRoom) return;
+
+  console.log("[Game] ゲーム状態監視開始:", gameRoom);
+
+  gameStateWatcherUnsubscribe = firebaseClient.watchGameState(gameRoom, (remoteState) => {
+    if (!remoteState) {
+      console.log("[Game] リモートゲーム状態がありません");
+      return;
+    }
+
+    console.log("[Game] リモートゲーム状態を受信:", remoteState.matchData);
+
+    // リモート状態をローカルに反映
+    if (remoteState.matchData) {
+      state.matchData = remoteState.matchData;
+      console.log("[Game] ゲーム状態を更新。ダイス:", state.matchData.dice);
+      
+      // UI を更新
+      if (typeof update === "function") {
+        update();
+      }
     }
   });
 }

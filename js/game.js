@@ -200,10 +200,20 @@ async function resetField() {
   // マッチデータの初期化
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
-    dice: { player1: null, player2: null },
     winner: null, firstPlayer: null
   };
+  // ダイス値をリセット
+  state.player1.diceValue = -1;
+  state.player2.diceValue = -1;
+  window._gameStartInitiated = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
+
+  // Firebase の playerDice と matchData もリセット
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
+    firebaseClient.writeMatchData(gameRoom, state.matchData);
+  }
 
   // アトミック保存（gameState完全上書き + フィールドクリア）
   // Firebase 経由で自動同期

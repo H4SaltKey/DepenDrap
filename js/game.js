@@ -823,8 +823,7 @@ function updateMatchUI() {
     @keyframes resultTextGlow { from { filter: drop-shadow(0 0 10px rgba(199,179,119,0.4)); } to { filter: drop-shadow(0 0 40px rgba(199,179,119,0.8)); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes dicePulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-    @keyframes diceRolling { 0% { transform: rotateX(0deg) rotateY(0deg) scale(1); } 50% { transform: rotateX(180deg) rotateY(180deg) scale(1.1); } 100% { transform: rotateX(360deg) rotateY(360deg) scale(1); } }
-    @keyframes diceResultPop { 0% { transform: scale(0) rotateZ(-180deg); opacity: 0; } 50% { transform: scale(1.15); } 100% { transform: scale(1) rotateZ(0deg); opacity: 1; } }
+    @keyframes diceRolling { 0% { transform: rotateX(0deg) rotateY(0deg) scale(1); } 50% { transform: rotateX(180deg) rotateY(180deg) scale(1.1); } 100% { transform: rotateX(360deg) rotateY(360deg) scale(1); } }    @keyframes diceResultPop { 0% { transform: scale(0) rotateZ(-180deg); opacity: 0; } 50% { transform: scale(1.15); } 100% { transform: scale(1) rotateZ(0deg); opacity: 1; } }
     @keyframes titleGlow { 0% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; } 50% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 0 0 60px currentColor; } 100% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; } }
     @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
     #gameResultOverlay {
@@ -960,8 +959,7 @@ function updateDicePhaseUI() {
     return;
   }
 
-  console.log("[updateDicePhaseUI] ダイスフェーズ表示。dice:", state.player1.diceValue, state.player2.diceValue);
-
+  // オーバーレイを作成（初回のみ）
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "dicePhaseOverlay";
@@ -976,232 +974,208 @@ function updateDicePhaseUI() {
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 
-  const player1Dice = state.player1.diceValue;
-  const player2Dice = state.player2.diceValue;
+  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const p1Dice = state.player1.diceValue;
+  const p2Dice = state.player2.diceValue;
+  const bothRolled = (p1Dice !== null && p2Dice !== null);
 
-  // baseStyle は injectGameStyles() で <head> に注入済み
-  let newHtml = "";
-
-  if (player1Dice === null && player2Dice === null) {
-    // 誰もダイスを振っていない
-    newHtml = `
-      <div class="dice-container">
-        <h2 class="dice-title">ダイスロール</h2>
-        <p class="dice-subtitle">先攻・後攻を決定します</p>
-        <div style="margin-top: 40px;">
-          <button class="dice-roll-btn" onclick="handleDiceRoll()">ダイスを振る</button>
-        </div>
-      </div>
-    `;
-  } else {
-    // 少なくとも1人がダイスを振った → 両プレイヤーを表示
-    
-    // 両プレイヤーのダイス値が決定したか確認
-    if (player1Dice !== null && player2Dice !== null) {
-      // 両プレイヤーのダイス値が決定
-      if (player1Dice === player2Dice) {
-        // 引き分け
-        newHtml = `
-          <div class="dice-container">
-            <h2 class="dice-title" style="color: #ff4444;">引き分け</h2>
-            <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
-                 <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
-               </div>
-               <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-               <div style="text-align: center;">
-                 <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
-                 <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
-               </div>
-            </div>
-            <p class="dice-subtitle" style="color: #ff4444; margin-top: 30px;">同じ値です。もう一度振ります...</p>
-            <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444; color:#fff; margin-top: 30px;">振り直し</button>
-          </div>
-        `;
-      } else {
-        const player1Wins = (player1Dice < player2Dice);
-        if (player1Wins) {
-          // プレイヤー1が先攻
-          newHtml = `
-            <div class="dice-container">
-              <h2 class="dice-title" style="color: #00ffcc; animation: titleGlow 1s ease-in-out infinite;">プレイヤー1 勝利！</h2>
-              <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-                 <div style="text-align: center;">
-                   <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
-                   <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
-                 </div>
-                 <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-                 <div style="text-align: center;">
-                   <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
-                   <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
-                 </div>
-              </div>
-              <p class="dice-subtitle" style="color: #00ffcc; margin-top: 30px; font-size: 18px;">プレイヤー1が先攻です</p>
-              <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-                <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
-              </div>
-            </div>
-          `;
-          // 自動的に先攻を選択（player1のみが実行）
-          const me = window.myRole || "player1";
-          if (me === "player1" && !window._gameStartInitiated) {
-            window._gameStartInitiated = true;
-            setTimeout(async () => {
-              await handleChooseOrder(true);
-            }, 2500);
-          }
-        } else {
-          // プレイヤー2が先攻
-          newHtml = `
-            <div class="dice-container">
-              <h2 class="dice-title" style="color: #e24a4a; animation: titleGlow 1s ease-in-out infinite;">プレイヤー2 勝利！</h2>
-              <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-                 <div style="text-align: center;">
-                   <div style="font-size:14px; color:#888; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
-                   <div class="dice-value-large" style="color: #888; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice}</div>
-                 </div>
-                 <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-                 <div style="text-align: center;">
-                   <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
-                   <div class="dice-value-large" style="color: #e24a4a; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice}</div>
-                 </div>
-              </div>
-              <p class="dice-subtitle" style="color: #e24a4a; margin-top: 30px; font-size: 18px;">プレイヤー2が先攻です</p>
-              <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-                <div style="animation: pulse 2s infinite;">試合を開始しています...</div>
-              </div>
-            </div>
-          `;
-          // 相手が先攻に決定（player1のみが実行）
-          const me = window.myRole || "player1";
-          if (me === "player1" && !window._gameStartInitiated) {
-            window._gameStartInitiated = true;
-            setTimeout(async () => {
-              await handleChooseOrder(false);
-            }, 2500);
-          }
-        }
+  // 両プレイヤーが揃ったら結果画面に切り替え
+  if (bothRolled) {
+    let resultTitle, resultMsg, p1Color, p2Color;
+    if (p1Dice === p2Dice) {
+      resultTitle = `<h2 class="dice-title" style="color:#ff4444;">引き分け</h2>`;
+      resultMsg = `<p class="dice-subtitle" style="color:#ff4444; margin-top:40px;">同じ値です。もう一度振ります...</p>
+                   <button class="dice-roll-btn" onclick="handleResetDice()" style="background:#444;color:#fff;margin-top:30px;">振り直し</button>`;
+      p1Color = "#ff4444"; p2Color = "#ff4444";
+    } else if (p1Dice < p2Dice) {
+      resultTitle = `<h2 class="dice-title" style="color:#00ffcc;animation:titleGlow 1s ease-in-out infinite;">プレイヤー1 先攻！</h2>`;
+      resultMsg = `<p class="dice-subtitle" style="color:#00ffcc;margin-top:40px;font-size:20px;font-weight:900;">プレイヤー1が先攻です</p>
+                   <div style="margin-top:30px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">試合を開始しています...</div>`;
+      p1Color = "#00ffcc"; p2Color = "#888";
+      const me = window.myRole || "player1";
+      if (me === "player1" && !window._gameStartInitiated) {
+        window._gameStartInitiated = true;
+        setTimeout(async () => { await handleChooseOrder(true); }, 2500);
       }
     } else {
-      // 1人だけがダイスを振った → 両プレイヤーを表示（片方は?）
-      newHtml = `
-        <div class="dice-container">
-          <h2 class="dice-title">ダイスロール中...</h2>
-          <div style="display:flex; justify-content:center; gap:60px; align-items:center; margin: 40px 0;">
-             <div style="text-align: center;">
-               <div style="font-size:14px; color:#00ffcc; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー1</div>
-               <div class="dice-value-large" style="color: #00ffcc; animation: diceResultPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;">${player1Dice !== null ? player1Dice : '?'}</div>
-             </div>
-             <div style="font-size:32px; color:#444; font-weight: 900;">VS</div>
-             <div style="text-align: center;">
-               <div style="font-size:14px; color:#e24a4a; letter-spacing: 2px; margin-bottom: 15px;">プレイヤー2</div>
-               <div class="dice-value-large" style="color: #e24a4a; animation: ${player2Dice === null ? 'diceRolling' : 'diceResultPop'} 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;">${player2Dice !== null ? player2Dice : '?'}</div>
-             </div>
+      resultTitle = `<h2 class="dice-title" style="color:#e24a4a;animation:titleGlow 1s ease-in-out infinite;">プレイヤー2 先攻！</h2>`;
+      resultMsg = `<p class="dice-subtitle" style="color:#e24a4a;margin-top:40px;font-size:20px;font-weight:900;">プレイヤー2が先攻です</p>
+                   <div style="margin-top:30px;font-size:12px;color:#888;letter-spacing:2px;animation:pulse 2s infinite;">試合を開始しています...</div>`;
+      p1Color = "#888"; p2Color = "#e24a4a";
+      const me = window.myRole || "player1";
+      if (me === "player1" && !window._gameStartInitiated) {
+        window._gameStartInitiated = true;
+        setTimeout(async () => { await handleChooseOrder(false); }, 2500);
+      }
+    }
+
+    const newHtml = `
+      <div class="dice-container" style="max-width:900px;width:90%;">
+        ${resultTitle}
+        <div style="display:flex;justify-content:center;gap:100px;align-items:center;margin:50px 0;">
+          <div style="text-align:center;">
+            <div style="font-size:16px;color:${p1Color};letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー1</div>
+            <div class="dice-value-large" style="color:${p1Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;">${p1Dice}</div>
           </div>
-          <p class="dice-subtitle" style="color: #00ffcc; margin-top: 30px;">相手がダイスを振るのを待っています...</p>
-          <div style="margin-top: 30px; font-size: 12px; color: #888; letter-spacing: 2px;">
-            <div style="animation: pulse 2s infinite;">● 接続中</div>
+          <div style="font-size:32px;color:#444;font-weight:900;">VS</div>
+          <div style="text-align:center;">
+            <div style="font-size:16px;color:${p2Color};letter-spacing:2px;margin-bottom:20px;font-weight:900;">プレイヤー2</div>
+            <div class="dice-value-large" style="color:${p2Color};animation:diceResultPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;">${p2Dice}</div>
           </div>
         </div>
-      `;
+        ${resultMsg}
+      </div>
+    `;
+    if (overlay.dataset.lastHtml !== newHtml) {
+      overlay.innerHTML = newHtml;
+      overlay.dataset.lastHtml = newHtml;
+    }
+    return;
+  }
+
+  // 初期状態 or 片方だけ振った状態 → 常に両プレイヤーを左右に表示
+  // ちらつき防止: 既に正しいレイアウトが表示されていれば DOM を再構築しない
+  if (!overlay.querySelector("#dice-val-player1")) {
+    overlay.innerHTML = `
+      <div class="dice-container" style="max-width:900px;width:90%;">
+        <h2 class="dice-title" style="margin-bottom:60px;">ダイスロール</h2>
+        <div style="display:flex;justify-content:center;gap:100px;align-items:flex-start;">
+
+          <div style="text-align:center;">
+            <div style="font-size:18px;color:#00ffcc;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー1</div>
+            <div id="dice-val-player1" class="dice-value-large" style="color:#00ffcc;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
+            <button id="dice-btn-player1" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
+          </div>
+
+          <div style="font-size:32px;color:#444;font-weight:900;margin-top:90px;">VS</div>
+
+          <div style="text-align:center;">
+            <div style="font-size:18px;color:#e24a4a;letter-spacing:2px;margin-bottom:30px;font-weight:900;">プレイヤー2</div>
+            <div id="dice-val-player2" class="dice-value-large" style="color:#e24a4a;min-height:160px;display:flex;align-items:center;justify-content:center;">?</div>
+            <button id="dice-btn-player2" class="dice-roll-btn" onclick="handleDiceRoll()" style="margin-top:40px;">ダイスを振る</button>
+          </div>
+
+        </div>
+        <div id="dice-status-msg" style="margin-top:50px;font-size:13px;color:#888;letter-spacing:2px;min-height:20px;"></div>
+      </div>
+    `;
+    overlay.dataset.lastHtml = "__layout__";
+  }
+
+  // 各プレイヤーの欄を個別に更新（DOM再構築なし）
+  const p1El = document.getElementById("dice-val-player1");
+  const p2El = document.getElementById("dice-val-player2");
+  const p1Btn = document.getElementById("dice-btn-player1");
+  const p2Btn = document.getElementById("dice-btn-player2");
+  const statusMsg = document.getElementById("dice-status-msg");
+
+  if (p1El && p1Dice !== null && p1El.textContent !== String(p1Dice)) {
+    p1El.style.animation = "none";
+    p1El.textContent = p1Dice;
+    void p1El.offsetWidth; // reflow
+    p1El.style.animation = "diceResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
+  }
+  if (p2El && p2Dice !== null && p2El.textContent !== String(p2Dice)) {
+    p2El.style.animation = "none";
+    p2El.textContent = p2Dice;
+    void p2El.offsetWidth;
+    p2El.style.animation = "diceResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
+  }
+
+  // 自分のボタンだけ有効、相手のボタンは非表示
+  if (p1Btn) {
+    if (playerKey === "player1") {
+      p1Btn.style.display = p1Dice !== null ? "none" : "inline-block";
+    } else {
+      p1Btn.style.display = "none";
+    }
+  }
+  if (p2Btn) {
+    if (playerKey === "player2") {
+      p2Btn.style.display = p2Dice !== null ? "none" : "inline-block";
+    } else {
+      p2Btn.style.display = "none";
     }
   }
 
-  // ちらつき防止
-  if (overlay.dataset.lastHtml !== newHtml) {
-    overlay.innerHTML = newHtml;
-    overlay.dataset.lastHtml = newHtml;
+  // ステータスメッセージ
+  if (statusMsg) {
+    if (p1Dice !== null && p2Dice === null) {
+      statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">プレイヤー2がダイスを振るのを待っています...</span>`;
+    } else if (p2Dice !== null && p1Dice === null) {
+      statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">プレイヤー1がダイスを振るのを待っています...</span>`;
+    } else {
+      statusMsg.innerHTML = "";
+    }
   }
 }
 
 async function handleDiceRoll() {
-  const roll = Math.floor(Math.random() * 100) + 1;
   const me = window.myRole || "player1";
   const playerKey = localStorage.getItem("gamePlayerKey") || me;
-  
-  console.log("[handleDiceRoll] ダイスロール開始:", me);
-  
-  // ダイスロールアニメーションを表示
+
+  // 既に振っていたら無視
+  if (state[playerKey].diceValue !== null) return;
+
+  console.log("[handleDiceRoll] ダイスロール開始:", playerKey);
+
+  // ボタンを無効化してアニメーション開始
+  const btn = document.getElementById(`dice-btn-${playerKey}`);
+  if (btn) { btn.disabled = true; btn.textContent = "振り中..."; }
   showDiceRollingAnimation();
-  
-  // アニメーション中に値を決定
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  console.log("[handleDiceRoll] ダイスロール結果:", me, "=", roll);
-  addGameLog(`[DICE] ${window.myUsername || me} がダイスを振りました: ${roll}`);
-  
-  // state に直接保存
+
+  // 1秒後に値を決定
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  const roll = Math.floor(Math.random() * 100) + 1;
+  console.log("[handleDiceRoll] ダイスロール結果:", playerKey, "=", roll);
+  addGameLog(`[DICE] ${window.myUsername || playerKey} がダイスを振りました: ${roll}`);
+
+  // アニメーション停止して値を表示
+  const diceEl = document.getElementById(`dice-val-${playerKey}`);
+  if (diceEl) {
+    diceEl.style.animation = "diceResultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
+    diceEl.textContent = roll;
+  }
+  if (btn) { btn.style.display = "none"; }
+
+  // state に保存
   state[playerKey].diceValue = roll;
-  
-  // Firebase にプレイヤーのダイス値を保存（プレイヤーごとに分けて管理）
+
+  // Firebase にプレイヤーのダイス値を保存
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient) {
-    console.log("[handleDiceRoll] Firebase にプレイヤーダイス値を保存");
     await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
-    
+
     // 両プレイヤーのダイス値を取得して比較
     const allDice = await firebaseClient.getAllPlayerDice(gameRoom);
     console.log("[handleDiceRoll] すべてのダイス値:", allDice);
-    
-    if (allDice.player1 !== null && allDice.player1 !== undefined && 
+
+    if (allDice.player1 !== null && allDice.player1 !== undefined &&
         allDice.player2 !== null && allDice.player2 !== undefined) {
-      console.log("[handleDiceRoll] 両プレイヤーのダイス値が決定。比較開始");
-      
-      // ダイス値を state に保存
+      // 両プレイヤーのダイス値が決定
       state.player1.diceValue = allDice.player1;
       state.player2.diceValue = allDice.player2;
-      
-      // ローカルに保存
       if (typeof saveImmediate === "function") await saveImmediate();
-      
-      // ゲーム状態を更新
-      const gameState = JSON.parse(JSON.stringify(state));
-      await firebaseClient.updateRoomGameState(gameRoom, gameState);
-      
-      // UI を更新
-      if (typeof update === "function") update();
+      await firebaseClient.updateRoomGameState(gameRoom, JSON.parse(JSON.stringify(state)));
     }
   }
-  
-  // ローカルに保存
+
   if (typeof saveImmediate === "function") await saveImmediate();
-  
   if (typeof syncLoop === "function") syncLoop();
   update();
 }
 
 /**
- * ダイスロールアニメーションを表示
+ * ダイスロールアニメーションを表示（自分のダイス欄のみ更新）
  */
 function showDiceRollingAnimation() {
-  let overlay = document.getElementById("dicePhaseOverlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "dicePhaseOverlay";
-    overlay.style.cssText = `
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(8, 6, 15, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(15px); flex-direction: column; color: #fff;
-      transition: opacity 0.5s ease; font-family: 'Outfit', sans-serif;
-    `;
-    document.body.appendChild(overlay);
-  }
-  overlay.style.display = "flex";
-  overlay.style.opacity = "1";
-
-  const html = `
-    <div class="dice-container">
-      <h2 class="dice-title">ダイスロール中...</h2>
-      <div class="dice-rolling-animation">
-        <div class="dice-value">?</div>
-      </div>
-      <p class="dice-subtitle" style="margin-top: 30px; color: #00ffcc;">結果を計算中...</p>
-    </div>
-  `;
-
-  overlay.innerHTML = html;
-  overlay.dataset.lastHtml = html;
+  // 自分のプレイヤーキーを取得
+  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const diceEl = document.getElementById(`dice-val-${playerKey}`);
+  if (!diceEl) return;
+  diceEl.style.animation = "diceRolling 0.15s ease-in-out infinite";
+  diceEl.textContent = "?";
 }
 
 async function handleResetDice() {

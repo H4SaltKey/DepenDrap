@@ -14,6 +14,9 @@ function resetAllGameVariables() {
   lastResetAt = 0;
   lastTurnPlayer = null;
   window._lastRound = undefined; // ラウンド通知用の記憶もリセット
+  window._isResetting = false; // リセット中フラグをクリア
+  window._resultShowing = false; // リザルト表示フラグをクリア
+  window._resultDismissed = false; // リザルト非表示フラグをクリア
   cardsReadyFired = false;
   lastStateJson = "";
   sliderActive = false;
@@ -209,6 +212,7 @@ function returnToDeck(cardId, isTemp = false) {
   else save();
 
   updateDeckObject();
+  pushMyStateDebounced(); // デッキ枚数を同期
   update();
 }
 
@@ -223,6 +227,8 @@ function drawFromDeckObject() {
     // デッキが空の状態でドローしようとした場合、敗北判定
     console.warn("[Draw] デッキが空です。敗北判定を実行します。");
     addGameLog(`[DEFEAT] ${window.myUsername || state[currentRole]?.username || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
+    // デッキ枚数を負の値にして敗北を明示
+    s.deck.length = -1;
     setTimeout(() => checkGameResult(), 100);
     return;
   }
@@ -260,6 +266,7 @@ function drawFromDeckObject() {
   else save();
 
   updateDeckObject();
+  pushMyStateDebounced(); // デッキ枚数を同期
   update();
 }
 
@@ -766,6 +773,9 @@ function updateMatchUI() {
   const m = state.matchData;
   if (!m) return;
 
+  // 盤面リセット中は通知を表示しない
+  if (window._isResetting) return;
+
   // ダイスロールが完全に終了するまで通知を表示しない
   // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
@@ -1036,8 +1046,14 @@ function showRoundNotification(round) {
 function checkGameResult() {
   if (!state.matchData) return;
 
+  // リザルト表示中は判定しない（2重表示防止）
+  if (window._resultShowing) return;
+
   // 閉じるボタンが押された後は判定しない
   if (window._resultDismissed) return;
+
+  // 盤面リセット中は判定しない
+  if (window._isResetting) return;
 
   // ゲームが開始されていない場合はスキップ
   if (!gameReady) {
@@ -1096,6 +1112,7 @@ function checkGameResult() {
     return;
   }
 
+  // 敗北条件: HP <= 0 または デッキ枚数 < 0（オーバードロー）
   const myLost = me.hp <= 0 || me.deck.length < 0;
   const opLost = op.hp <= 0 || op.deck.length < 0;
 
@@ -1124,11 +1141,25 @@ function checkGameResult() {
     if (gameRoom && firebaseClient?.db) {
       firebaseClient.writeMatchData(gameRoom, state.matchData);
     }
+    
+    // 即座にリザルトを表示
+    showResultScreen(winner);
   }
 }
 
 function showResultScreen(winner) {
-  if (document.getElementById('gameResultOverlay')) return;
+  // 既に表示中の場合は何もしない（2重表示防止）
+  if (window._resultShowing) {
+    console.log("[Result] SKIP: already showing");
+    return;
+  }
+  if (document.getElementById('gameResultOverlay')) {
+    console.log("[Result] SKIP: overlay already exists");
+    return;
+  }
+  
+  // リザルト表示中フラグを立てる
+  window._resultShowing = true;
   
   // 勝者を記憶（リザルトを閉じた後も再表示できるように）
   window._lastWinner = winner;
@@ -1185,6 +1216,9 @@ function closeResultScreen() {
   // リスナーは解除せず、監視を継続（相手からの再戦申し込みを受け取るため）
   const overlay = document.getElementById('gameResultOverlay');
   if (overlay) overlay.remove();
+  
+  // リザルト表示中フラグを解除
+  window._resultShowing = false;
 
   // winner を state と Firebase からクリア（再流入防止）
   if (state?.matchData) {
@@ -1270,6 +1304,9 @@ function watchRematchRequest() {
 }
 
 async function executeReset() {
+  // 盤面リセット中フラグを立てる
+  window._isResetting = true;
+  
   lastResetAt = Date.now();
   lastTurnPlayer = null; // ターン通知用の記憶をリセット
   window._lastRound = undefined; // ラウンド通知用の記憶をリセット
@@ -1308,6 +1345,7 @@ async function executeReset() {
   window._gameStartInitiated = false;
   window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
   window._resultDismissed = false;  // 再戦時は判定を再開
+  window._resultShowing = false;  // リザルト表示フラグをリセット
   window._lastWinner = null;  // 勝者情報をクリア
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
@@ -1323,6 +1361,15 @@ async function executeReset() {
 
   localStorage.setItem("gameState", JSON.stringify(state));
   localStorage.removeItem("fieldCards");
+
+  createDeckObject(true);
+
+  if (typeof syncLoop === "function") await syncLoop();
+  if (typeof update === "function") update();
+  
+  // リセット完了後、フラグを解除
+  window._isResetting = false;
+}
 
   createDeckObject(true);
 
@@ -1671,11 +1718,21 @@ async function handleTurnEnd() {
 /**
  * 自分の playerState として Firebase に送る内容を返す
  * diceValue は playerDice パスで管理するため除外
+ * deck の内容は送信せず、枚数のみ送信（相手には内容を見せない）
  */
 function _getMyStateForSync() {
   const me = window.myRole || "player1";
-  const { diceValue: _d, deck: _deck, ...rest } = state[me];
-  return rest;
+  const myState = state[me];
+  const { diceValue: _d, deck, ...rest } = myState;
+  
+  // デッキの内容は送信せず、枚数だけ送信（ダミーデータで埋める）
+  const deckLength = Array.isArray(deck) ? deck.length : 0;
+  const dummyDeck = Array(deckLength).fill("HIDDEN");
+  
+  return {
+    ...rest,
+    deck: dummyDeck
+  };
 }
 
 // イベント委譲（body全体で拾う）

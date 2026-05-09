@@ -613,9 +613,6 @@ function saveFieldCards(){
   const data = window.getFieldData();
   localStorage.setItem("fieldCards", JSON.stringify(data));
 }
-    body: JSON.stringify({ fieldCards: data })
-  }).catch(()=>{});
-}
 
 function restoreFieldCards(){
   const raw = localStorage.getItem("fieldCards");

@@ -54,7 +54,6 @@
 <script src="js/cardData.js?v=7"></script>
 <script src="js/deckCode.js?v=7"></script>
 <script src="js/core.js?v=7"></script>
-<script src="js/timerSync.js?v=7"></script>
 <script src="js/cardManager.js?v=7"></script>
 <script src="js/game.js?v=7"></script>
 <script src="js/menu.js?v=7"></script>
@@ -70,42 +69,44 @@
 
 <script src="js/contextMenu.js?v=6"></script>
 <script>
-  initCards();
+  (async () => {
+    await initCards();
 
-  // ゲーム画面で Firebase に接続
-  let gameRoomName = null;
-  let gamePlayerKey = null;
+    // ゲーム画面で Firebase に接続
+    let gameRoomName = null;
+    let gamePlayerKey = null;
 
-  window.addEventListener("load", async () => {
-    console.log("[Game] Firebase 初期化中...");
-    
-    const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
-    if (success) {
-      console.log("[Game] ✅ Firebase 初期化成功");
+    window.addEventListener("load", async () => {
+      console.log("[Game] Firebase 初期化中...");
       
-      // matchSetup から ルーム情報を取得
-      gameRoomName = localStorage.getItem("gameRoom");
-      gamePlayerKey = localStorage.getItem("gamePlayerKey");
+      const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
+      if (success) {
+        console.log("[Game] ✅ Firebase 初期化成功");
+        
+        // matchSetup から ルーム情報を取得
+        gameRoomName = localStorage.getItem("gameRoom");
+        gamePlayerKey = localStorage.getItem("gamePlayerKey");
+        
+        if (gameRoomName && gamePlayerKey) {
+          console.log("[Game] ルームに再参加:", gameRoomName, "as", gamePlayerKey);
+          // ルーム情報は既に localStorage に保存されている
+          document.dispatchEvent(new Event("firebaseJoined"));
+        }
+      } else {
+        console.warn("[Game] ⚠️ Firebase 初期化失敗");
+      }
+    });
+
+    // ページを離れるときにルームから退出
+    window.addEventListener("beforeunload", async () => {
+      console.log("[Game] ページを離れます");
       
       if (gameRoomName && gamePlayerKey) {
-        console.log("[Game] ルームに再参加:", gameRoomName, "as", gamePlayerKey);
-        // ルーム情報は既に localStorage に保存されている
-        document.dispatchEvent(new Event("firebaseJoined"));
+        console.log("[Game] ルームから自動退出:", gameRoomName);
+        await firebaseClient.leaveRoom(gameRoomName, gamePlayerKey);
       }
-    } else {
-      console.warn("[Game] ⚠️ Firebase 初期化失敗");
-    }
-  });
-
-  // ページを離れるときにルームから退出
-  window.addEventListener("beforeunload", async () => {
-    console.log("[Game] ページを離れます");
-    
-    if (gameRoomName && gamePlayerKey) {
-      console.log("[Game] ルームから自動退出:", gameRoomName);
-      await firebaseClient.leaveRoom(gameRoomName, gamePlayerKey);
-    }
-  });
+    });
+  })();
 </script>
 
 </body>

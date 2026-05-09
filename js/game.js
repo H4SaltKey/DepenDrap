@@ -136,17 +136,12 @@ async function resetField() {
     dice: { player1: null, player2: null },
     diceTimeLeft: 30, choiceTimeLeft: 15, winner: null, firstPlayer: null
   };
-  // GameTimer もリセット
-  if (typeof GameTimer !== "undefined") {
-    ["player1", "player2", "dice", "choice"].forEach(k => GameTimer.stop(k));
-  }
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   // アトミック保存（gameState完全上書き + フィールドクリア）
   // Firebase 経由で自動同期
   localStorage.setItem("gameState", JSON.stringify(state));
   localStorage.removeItem("fieldCards");
-  }
 
   createDeckObject(true);
 
@@ -1062,16 +1057,7 @@ async function handleChooseOrder(goFirst) {
   state.matchData.round = 1;
   state.matchData.turn = 1;
 
-  // ホストがターン開始タイムスタンプを設定
-  // state[tp].timeLeft は表示キャッシュなので参照しない
-  // 初期値は BASE_INITIAL_STATE.timeLeft から取得
-  const tp = state.matchData.turnPlayer;
-  const timeLeftMs = (state[tp].timeLeft > 0 ? state[tp].timeLeft : BASE_INITIAL_STATE.timeLeft) * 1000;
-  const endTs = GameTimer.start(tp, timeLeftMs, 1);
-  state.matchData[tp + '_endTimestamp'] = endTs;
-  state.matchData[tp + '_timerSeq']     = 1;
-
-  addGameLog(`[MATCH] 試合開始！先攻: ${tp === "player1" ? (state.player1.username || "P1") : (state.player2.username || "P2")}`);
+  addGameLog(`[MATCH] 試合開始！先攻: ${state.matchData.turnPlayer === "player1" ? (state.player1.username || "P1") : (state.player2.username || "P2")}`);
   if (typeof saveImmediate === "function") await saveImmediate();
   if (typeof syncLoop === "function") syncLoop();
   update();
@@ -1083,10 +1069,7 @@ async function handleTurnEnd() {
   if (m.turnPlayer !== me) return;
   if (m.winner) return; // 勝敗確定後は無効
 
-  // 1. 旧タイマーを先に停止（タイムアップ判定との競合を防ぐ）
-  GameTimer.stop(me);
-
-  // 2. ターン変更
+  // ターン変更
   const op = me === "player1" ? "player2" : "player1";
   const firstPlayer = m.firstPlayer || "player1";
   const isFirstPlayerTurn = (m.turnPlayer === firstPlayer);
@@ -1103,15 +1086,7 @@ async function handleTurnEnd() {
     }
   }
 
-  // 3. 新タイマー開始
-  const nextTp = m.turnPlayer;
-  const nextTimeMs = (state[nextTp].timeLeft > 0 ? state[nextTp].timeLeft : BASE_INITIAL_STATE.timeLeft) * 1000;
-  const nextSeq = (m[nextTp + '_timerSeq'] || 0) + 1;
-  const endTs = GameTimer.start(nextTp, nextTimeMs, nextSeq);
-  m[nextTp + '_endTimestamp'] = endTs;
-  m[nextTp + '_timerSeq']     = nextSeq;
-
-  // 4. 保存・同期
+  // 保存・同期
   addGameLog(`[TURN] ${window.myUsername || me} がターンを終了しました。次は ${m.turnPlayer} のターンです。`);
   if (typeof saveImmediate === "function") await saveImmediate();
   if (typeof syncLoop === "function") syncLoop();
@@ -1377,61 +1352,6 @@ window.addEventListener("cardsReady", () => {
 
 initGame();
 
-// ===== タイマー処理（timerSync.js の rAF ループから呼ばれる） =====
-// state.timeLeft への書き込みはここだけ（表示専用）
-// GameTimer が唯一の権威。state.timeLeft は読み取り専用の表示キャッシュ。
-function onTimerTick() {
-  if (!gameReady || !state.matchData) return;
-  const m = state.matchData;
-  const isTimeEnabled = JSON.parse(localStorage.getItem('settings'))?.timeLimitEnabled !== false;
-  if (!isTimeEnabled) return;
+// ===== タイマー処理は削除（時間制限機能は実装しない） =====
+// 時間制限機能は Firebase では複雑なため、MVP では実装しません
 
-  const myRole = window.myRole;
-  const opRole = myRole === 'player1' ? 'player2' : 'player1';
-
-  // ===== ダイスフェーズ =====
-  if (m.status === 'setup_dice' && !m.winner) {
-    const isAuthority = (myRole === 'player1') || (!state.player1.username && myRole === 'player2');
-    if (isAuthority) {
-      const myDice = m.dice[myRole];
-      const opDice = m.dice[opRole];
-      const bothRolled = (myDice !== null && opDice !== null);
-      if (!bothRolled) {
-        // diceTimeLeft は表示用のみ（GameTimer から取得）
-        const rem = GameTimer.getDisplayRemainingMs('dice');
-        m.diceTimeLeft = rem / 1000;
-      } else if (myDice !== opDice) {
-        const rem = GameTimer.getDisplayRemainingMs('choice');
-        m.choiceTimeLeft = rem / 1000;
-      }
-    }
-    update();
-    return;
-  }
-
-  // ===== プレイ中 =====
-  if (m.status === 'playing' && !m.winner) {
-    const tp = m.turnPlayer;
-    const isMyTurn = (myRole === tp);
-
-    if (isMyTurn) {
-      // 自分のターン：GameTimer の表示値を state に反映（表示専用）
-      const remMs = GameTimer.getDisplayRemainingMs(tp);
-      state[tp].timeLeft = remMs / 1000;
-
-      // タイムアップ検出（真の残り時間で判定）
-      if (GameTimer.isExpired(tp)) {
-        GameTimer.stop(tp);
-        state.matchData.winner = (tp === 'player1' ? 'player2' : 'player1');
-        addGameLog(`[TIME OVER] ${state[tp].username || tp} が時間切れにより敗北しました。`);
-        saveImmediate();
-      }
-    } else {
-      // 相手のターン：GameTimer の表示値（lerp補正済み）を state に反映（表示専用）
-      const remMs = GameTimer.getDisplayRemainingMs(opRole);
-      state[opRole].timeLeft = remMs / 1000;
-    }
-
-    if (typeof updateMatchUI === "function") updateMatchUI();
-  }
-}

@@ -3,8 +3,8 @@ const BASE_INITIAL_STATE = {
   level: 1,      levelMax: 6,
   exp: 0,        expMax: 2,
   hp: 20,        hpMax: 20,
-  barrier: 0,    barrierMax: 5,
-  shield: 0,     shieldMax: 0, shieldOverMax: false,
+  shield: 0,      shieldMax: 5,
+  defstack: 0,    defstackMax: 0, defstackOverMax: false,
   atk: 5,        atkMax: 999,
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
@@ -206,10 +206,10 @@ function normalizeState() {
     // matchSetup 由来の一時フラグを除去（ゲーム状態を汚染しない）
     delete state[p]._ready;
     delete state[p]._deckCode;
-    ["hp", "shield", "barrier", "exp"].forEach(k => {
+    ["hp", "shield", "defstack", "exp"].forEach(k => {
       const v  = state[p][k];
       const mx = state[p][k + "Max"] || 99;
-      if (k !== "shield" && v > mx) state[p][k] = mx;
+      if (k !== "defstack" && v > mx) state[p][k] = mx;
       if (v < 0) state[p][k] = 0;
     });
   });

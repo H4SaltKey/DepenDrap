@@ -509,7 +509,7 @@ body.isDraggingCard #field .deckObject{
   transition:width 0.1s;
 }
 
-.lorBarrierFill {
+.lorShieldFill {
   background: linear-gradient(90deg, #b0b0b0, #e0e0e0, #ffffff);
   box-shadow: 0 0 6px rgba(255,255,255,0.5);
 }
@@ -519,7 +519,7 @@ body.isDraggingCard #field .deckObject{
   box-shadow: 0 0 6px rgba(231,76,60,0.5);
 }
 
-.lorSldFill{
+.lorDefstackFill{
   background: linear-gradient(90deg, #1a3a6e, #2f80ed, #74b9ff);
   box-shadow: 0 0 6px rgba(47,128,237,0.5);
 }

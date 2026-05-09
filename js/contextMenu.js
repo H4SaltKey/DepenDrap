@@ -665,9 +665,9 @@ function showDamagePopup(targetOwner, type, subType) {
     const me = state[window.myRole || "player1"] || {};
 
     let tHP = s.hp;
-    let tShield = s.shield;
-    let tBarrier = s.barrier;
-    let tShieldMax = s.shieldMax || 0;
+    let tShield = s.defstack;
+    let tBarrier = s.shield;
+    let tShieldMax = s.defstackMax || 0;
     let actualAmount = amount;
 
     const getLvIdx = (lv) => (lv >= 6 ? 3 : lv >= 5 ? 2 : lv >= 3 ? 1 : 0);
@@ -817,7 +817,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     const zArr = [1, 3, 4, 6];
     const z = zArr[idx];
     
-    s.shield = Math.max(0, s.shield - z);
+    s.defstack = Math.max(0, s.defstack - z);
     if (typeof addGameLog === "function") {
       addGameLog(`[EVOLUTION] ${actor} の「瞬発の道」効果！ 直前に ${z} の脆弱ダメージを与えた！`);
     }
@@ -864,36 +864,36 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     if (type === "hp_reduce") {
       s.hp = Math.max(0, s.hp - 1);
     } else if (type === "fragile") {
-      s.shield = Math.max(0, s.shield - 1);
+      s.defstack = Math.max(0, s.defstack - 1);
     } else if (type === "pierce") {
-      if (s.barrier > 0) {
-        s.barrier -= 1;
+      if (s.defstack > 0) {
+        s.defstack -= 1;
       } else {
         s.hp = Math.max(0, s.hp - 1);
       }
     } else if (type === "arcana") {
-      if (s.shield > 0) {
-        s.shield = Math.max(0, s.shield - 1);
+      if (s.defstack > 0) {
+        s.defstack = Math.max(0, s.defstack - 1);
       } else {
         s.hp = Math.max(0, s.hp - 1);
       }
     } else {
       // 通常/追加/アルカナ/直接攻撃
-      if (s.shield > 0) {
+      if (s.defstack > 0) {
         // 防御力がある場合は防御力を減らす
-        s.shield -= 1;
+        s.defstack -= 1;
       } else {
         // 防御力が0の場合
         if (type === "damage" || type === "direct_attack") {
           // 通常ダメージならリバウンド特性発動
-          s.shield = s.shieldMax || 0;
+          s.defstack = s.defstackMax || 0;
         } else {
-          s.shield = 0;
+          s.defstack = 0;
         }
 
         // ダメージを次の層（障壁/HP）へ通す
-        if (s.barrier > 0) {
-          s.barrier -= 1;
+        if (s.defstack > 0) {
+          s.defstack -= 1;
         } else {
           s.hp = Math.max(0, s.hp - 1);
         }
@@ -903,8 +903,8 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
 
   // 最終的な負の値ガード（念のため）
   s.hp = Math.max(0, s.hp);
-  s.barrier = Math.max(0, s.barrier);
-  s.shield = Math.max(0, s.shield);
+  s.defstack = Math.max(0, s.defstack);
+  s.defstack = Math.max(0, s.defstack);
 
   if (window.addGameLog) {
     const fullType = typeLabels[type] + (subType !== "none" ? ` (${subLabels[subType]})` : "");
@@ -952,14 +952,14 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
   } else {
     // 相手のステータス → 確定後の値を pendingChange 経由で送る
-    // hp/barrier/shield の確定値をまとめて送信
+    // hp/shield/defstack の確定値をまとめて送信
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && window.firebaseClient?.db) {
       window.firebaseClient.sendChangeRequest(gameRoom, me, targetOwner, "_bulk", "set", {
         hp: s.hp,
-        barrier: s.barrier,
         shield: s.shield,
-        shieldOverMax: s.shieldOverMax || false
+        defstack: s.defstack,
+        defstackOverMax: s.defstackOverMax || false
       });
     }
   }

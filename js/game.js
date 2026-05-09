@@ -365,11 +365,11 @@ function addVal(owner, key, delta) {
   }
   const prev = Number(s[key]) || 0;
   let v = prev + delta;
-  if (key === "shield") {
-    if (v < 0 && prev === 0) v = s.shieldMax || 0;
+  if (key === "defstack") {
+    if (v < 0 && prev === 0) v = s.defstackMax || 0;
     v = Math.max(0, v);
-    if (delta > 0 && !s.shieldOverMax) v = Math.min(v, s.shieldMax || 0);
-    if (v <= (s.shieldMax || 0)) s.shieldOverMax = false;
+    if (delta > 0 && !s.defstackOverMax) v = Math.min(v, s.defstackMax || 0);
+    if (v <= (s.defstackMax || 0)) s.defstackOverMax = false;
   } else if (key !== "hp" && key !== "exp") {
     v = Math.max(0, v);
   }
@@ -406,13 +406,13 @@ function setVal(owner, key, value) {
   let prev = Number(s[key]) || 0;
   let v = Number(value) || 0;
 
-  if (key === "shield" && v < 0 && prev === 0) {
-    v = s.shieldMax;
+  if (key === "defstack" && v < 0 && prev === 0) {
+    v = s.defstackMax;
   } else if (key !== "hp") {
     v = Math.max(key === "exp" ? -999 : 0, v);
   }
-  if (key === "barrier") v = Math.min(v, s.barrierMax || 5);
-  if (key === "shield") { v = Math.min(v, s.shieldMax || 0); s.shieldOverMax = false; }
+  if (key === "shield") v = Math.min(v, s.shieldMax || 5);
+  if (key === "defstack") { v = Math.min(v, s.defstackMax || 0); s.defstackOverMax = false; }
 
   s[key] = v;
   if (key === "exp") checkLevelUp(owner);
@@ -431,12 +431,12 @@ function setMax(owner, key, value) {
   update();
 }
 
-// 派生ステータスの同期（shieldMax = def など）
+// 派生ステータスの同期（defstackMax = def など）
 function syncDerivedStats(owner) {
   const s = state[owner];
   if (!s) return;
-  // shieldMaxは常にdefと同じ
-  s.shieldMax = s.def || 0;
+  // defstackMaxは常にdefと同じ
+  s.defstackMax = s.def || 0;
   // expMaxはレベルから計算
   s.expMax = calcExpMax(s.level || 1);
 }
@@ -558,10 +558,10 @@ function renderOwnerUI(owner) {
   const s = state[owner];
   const isMine = owner === (window.myRole || "player1");
   const expMax = calcExpMax(s.level);
-  const shieldMax = s.def || 0;
+  const defstackMax = s.def || 0;
   const hpPct = barPct(s.hp, s.hpMax);
-  const barrierPct = barPct(s.barrier, s.barrierMax);
-  const sldPct = barPct(s.shield, shieldMax);
+  const barrierPct = barPct(s.shield, s.shieldMax);
+  const sldPct = barPct(s.defstack, defstackMax);
   const expPct = barPct(s.exp, expMax);
   const atMaxLv = s.level >= (s.levelMax || LEVEL_MAX);
   const atMinExp = s.level <= 1 && s.exp <= 0;
@@ -611,16 +611,16 @@ function renderOwnerUI(owner) {
       <div class="lorStatRow lorBarrierRow" style="transform: scale(0.85); transform-origin: left bottom; margin-bottom: -4px;">
         <span class="lorIcon" data-tooltip="シールド">${ICON_BARRIER}</span>
         <div class="lorBarOuter">
-          <div class="lorBarInner lorBarrierFill" style="width:${barrierPct}%"></div>
+          <div class="lorBarInner lorShieldFill" style="width:${barrierPct}%"></div>
         </div>
         <div class="lorValGroup">
-          ${isMine ? (s.barrier <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="-1">−</button>`) : ""}
-          <input class="lorValInput" type="number" value="${s.barrier}"
-            data-owner="${owner}" data-key="barrier" data-type="val" ${isMine ? "" : "readonly disabled"}>
+          ${isMine ? (s.shield <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>`) : ""}
+          <input class="lorValInput" type="number" value="${s.shield}"
+            data-owner="${owner}" data-key="shield" data-type="val" ${isMine ? "" : "readonly disabled"}>
           <span class="lorValSep">/</span>
-          <input class="lorMaxInput" type="number" value="${s.barrierMax}" readonly disabled
+          <input class="lorMaxInput" type="number" value="${s.shieldMax}" readonly disabled
             style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? (s.barrier >= s.barrierMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="barrier" data-delta="1">＋</button>`) : ""}
+          ${isMine ? (s.shield >= s.shieldMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
       <div class="lorStatRow">
@@ -641,16 +641,16 @@ function renderOwnerUI(owner) {
       <div class="lorStatRow" style="position: relative;">
         <span class="lorIcon" data-tooltip="防御力">${ICON_SLD}</span>
         <div class="lorBarOuter">
-          <div class="lorBarInner lorSldFill" style="width:${sldPct}%"></div>
+          <div class="lorBarInner lorDefstackFill" style="width:${sldPct}%"></div>
         </div>
         <div class="lorValGroup">
-          ${isMine ? (s.shield <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>`) : ""}
-          <input class="lorValInput" type="number" value="${s.shield}"
-            data-owner="${owner}" data-key="shield" data-type="val" ${isMine ? "" : "readonly disabled"}>
+          ${isMine ? (s.defstack <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="-1">−</button>`) : ""}
+          <input class="lorValInput" type="number" value="${s.defstack}"
+            data-owner="${owner}" data-key="defstack" data-type="val" ${isMine ? "" : "readonly disabled"}>
           <span class="lorValSep">/</span>
-          <input class="lorMaxInput" type="number" value="${shieldMax}" readonly disabled
+          <input class="lorMaxInput" type="number" value="${defstackMax}" readonly disabled
             style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? (s.shield >= shieldMax && !s.shieldOverMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
+          ${isMine ? (s.defstack >= defstackMax && !s.defstackOverMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
     </div>
@@ -1489,7 +1489,7 @@ async function executeReset() {
     const s = state[owner];
     if (!s) return;
     s.hp = 20; s.hpMax = 20;
-    s.shield = 0; s.barrier = 0; s.def = 0;
+    s.shield = 0; s.defstack = 0; s.def = 0;
     s.level = 1; s.exp = 0;
     s.pp = 0; s.ppMax = 2;
     s.diceValue = -1; // ダイス値を確実にリセット
@@ -2083,8 +2083,8 @@ document.body.addEventListener("input", (e) => {
   let prev = Number(state[owner][key]) || 0;
   let v = Number(t.value);
 
-  if (key === "shield" && v < 0 && prev === 0) {
-    v = state[owner].shieldMax;
+  if (key === "defstack" && v < 0 && prev === 0) {
+    v = state[owner].defstackMax;
     t.value = v;
   } else if (key !== "hp") {
     v = Math.max(0, v);
@@ -2118,9 +2118,9 @@ document.body.addEventListener("click", (e) => {
   if (t.dataset.action === "addInstantDef") {
     const owner = t.dataset.owner;
     const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-    const next = (Number(state[owner].shield) || 0) + (Number(state[owner].instantDef) || 0);
-    state[owner].shield = Math.max(0, next);
-    state[owner].shieldOverMax = state[owner].shield > (Number(state[owner].shieldMax) || 0);
+    const next = (Number(state[owner].defstack) || 0) + (Number(state[owner].instantDef) || 0);
+    state[owner].defstack = Math.max(0, next);
+    state[owner].defstackOverMax = state[owner].defstack > (Number(state[owner].defstackMax) || 0);
 
     if (owner === me) {
       pushMyStateDebounced();
@@ -2128,8 +2128,8 @@ document.body.addEventListener("click", (e) => {
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && firebaseClient?.db) {
         firebaseClient.sendChangeRequest(gameRoom, me, owner, "_bulk", "set", {
-          shield: state[owner].shield,
-          shieldOverMax: state[owner].shieldOverMax
+          defstack: state[owner].defstack,
+          defstackOverMax: state[owner].defstackOverMax
         });
       }
     }
@@ -2141,11 +2141,11 @@ document.body.addEventListener("click", (e) => {
     const owner = t.dataset.owner;
     const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
     const s = state[owner];
-    const cur = Number(s.shield) || 0;
-    const max = Number(s.shieldMax) || 0;
+    const cur = Number(s.defstack) || 0;
+    const max = Number(s.defstackMax) || 0;
     if (cur > max) {
-      s.shield = max;
-      s.shieldOverMax = false;
+      s.defstack = max;
+      s.defstackOverMax = false;
 
       if (owner === me) {
         pushMyStateDebounced();
@@ -2153,8 +2153,8 @@ document.body.addEventListener("click", (e) => {
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
           firebaseClient.sendChangeRequest(gameRoom, me, owner, "_bulk", "set", {
-            shield: s.shield,
-            shieldOverMax: s.shieldOverMax
+            defstack: s.defstack,
+            defstackOverMax: s.defstackOverMax
           });
         }
       }
@@ -2236,8 +2236,8 @@ function checkAndLogStateChanges(oldState, newState) {
     // else {
     //   if (s1.hp !== s2.hp) addGameLog(`${name} HP:${s1.hp}→${s2.hp}`);
     //   if (s1.exp !== s2.exp) addGameLog(`${name} EXP:${s1.exp}→${s2.exp}`);
-    //   if (s1.shield !== s2.shield || s1.shieldMax !== s2.shieldMax) {
-    //     if (s2.shield !== s1.shield) addGameLog(`${name} 防御力:${s2.shield}/${s2.shieldMax}`);
+    //   if (s1.defstack !== s2.defstack || s1.defstackMax !== s2.defstackMax) {
+    //     if (s2.defstack !== s1.defstack) addGameLog(`${name} 防御力:${s2.defstack}/${s2.defstackMax}`);
     //   }
     // }
   });

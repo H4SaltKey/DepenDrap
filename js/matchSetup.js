@@ -169,6 +169,9 @@ function watchRoom(roomName) {
       updateOpponentUI("WAITING", false);
       myReady = false;
       updateReadyUI();
+      
+      // ルームが空になったため削除
+      firebaseClient.checkAndDeleteEmptyRoom(currentRoom);
     }
 
     // Ready 状態を確認

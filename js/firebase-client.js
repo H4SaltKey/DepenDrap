@@ -278,10 +278,42 @@ class FirebaseClient {
       const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
       await playerRef.remove();
       console.log("[FirebaseClient] ✅ ルーム退出");
+      
+      // ルームが空になったか確認
+      this.checkAndDeleteEmptyRoom(roomName);
+      
       return true;
     } catch (error) {
       console.error("[FirebaseClient] ルーム退出エラー:", error.message);
       return false;
+    }
+  }
+
+  /**
+   * ルームが空になったら削除
+   */
+  async checkAndDeleteEmptyRoom(roomName) {
+    if (!this.db) return;
+
+    try {
+      const roomRef = this.db.ref(`rooms/${roomName}`);
+      const snapshot = await roomRef.once('value');
+
+      if (!snapshot.exists()) {
+        console.log("[FirebaseClient] ルームは既に削除されています");
+        return;
+      }
+
+      const roomData = snapshot.val();
+      const playerCount = Object.keys(roomData.players || {}).length;
+
+      if (playerCount === 0) {
+        console.log("[FirebaseClient] ルームが空になったため削除:", roomName);
+        await roomRef.remove();
+        console.log("[FirebaseClient] ✅ 空のルームを削除しました");
+      }
+    } catch (error) {
+      console.error("[FirebaseClient] ルーム削除エラー:", error.message);
     }
   }
 

@@ -1318,15 +1318,21 @@ async function initGame() {
       getMyState().backImage = getBackImage();
       shuffleDeck();
 
-      // 初回接続時にもダイスロールを強制表示（進行中でなければ）
-      if (state.matchData && state.matchData.status !== "setup_dice" && !state.matchData.winner) {
-        state.matchData.status = "setup_dice";
-        state.matchData.dice = { player1: null, player2: null };
-      }
-
       markGameStarted();
       save();
       addGameLog(`${window.myUsername || window.myRole} が入室しました。`);
+    }
+
+    // 新しいルームに入った場合、ダイスロールフェーズをリセット
+    // （前のルームのダイスデータが残っていないようにする）
+    const currentRoom = localStorage.getItem("gameRoom");
+    const lastRoom = window._lastGameRoom;
+    if (currentRoom && currentRoom !== lastRoom) {
+      console.log("[initGame] 新しいルームに入りました。ダイスロールをリセット");
+      state.matchData.status = "setup_dice";
+      state.matchData.dice = { player1: null, player2: null };
+      window._lastGameRoom = currentRoom;
+      save();
     }
 
     console.log("[initGame] step7: gameReady = true, calling update()");

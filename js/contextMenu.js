@@ -746,8 +746,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     };
 
     const meRole = window.myRole || "player1";
-    const sourceName = String(options.sourceName || window.currentDamageSourceName || "");
-    const canApplyEvolution = targetOwner !== meRole && !sourceName.includes("地震");
+    const canApplyEvolution = targetOwner !== meRole;
 
     // 瞬発の道: 本ダメージ前に脆弱ダメージ
     if (canApplyEvolution && actualAmount >= 6 && me.evolutionPath === "瞬発の道") {
@@ -865,8 +864,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   // 瞬発の道: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
   const meRole = window.myRole || "player1";
   const myState = state[meRole];
-  const sourceName = String(options.sourceName || window.currentDamageSourceName || "");
-  const canApplyEvolution = targetOwner !== meRole && !sourceName.includes("地震");
+  const canApplyEvolution = targetOwner !== meRole;
   if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && myState.evolutionPath === '瞬発の道') {
     const lv = myState.level || 1;
     let idx = 0;

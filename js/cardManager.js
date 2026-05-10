@@ -56,6 +56,258 @@ let fieldPanY = Number(localStorage.getItem("fieldPanY")) || 0;
 // 現在ドラッグ中のカード情報
 let draggingCard = null; // { el, offsetX, offsetY }
 let lastLocalFieldSaveAt = 0;
+let zoneOrderCounter = 0;
+let handOrderCounter = 0;
+let prevZoneLogState = null;
+
+const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];
+const ZONE_RECT = { w: CARD_W, h: CARD_H };
+
+function nextZoneOrder() {
+  zoneOrderCounter += 1;
+  return Date.now() + zoneOrderCounter;
+}
+
+function nextHandOrder() {
+  handOrderCounter += 1;
+  return (Date.now() * 1000) + handOrderCounter;
+}
+window.nextHandOrder = nextHandOrder;
+
+function getZoneAnchor(owner, type) {
+  const myRole = window.myRole || "player1";
+  const isMine = owner === myRole;
+  const midX = (FIELD_W / 2) - (CARD_W / 2);
+  const midY = (FIELD_H / 2) - (CARD_H / 2);
+  const attackerY = isMine ? (FIELD_H - CARD_H - 520) : 320;
+  const attackerX = midX;
+  if (type === "attacker") return { x: attackerX, y: attackerY };
+  if (type === "skill") {
+    return {
+      x: isMine ? (attackerX - CARD_W - 90) : (attackerX + CARD_W + 90),
+      y: attackerY
+    };
+  }
+  if (type === "grave") {
+    return {
+      x: isMine ? (FIELD_W - CARD_W - 80) : 80,
+      y: midY
+    };
+  }
+  return { x: attackerX, y: attackerY };
+}
+
+function getZoneCards(owner, type) {
+  const content = getFieldContent();
+  if (!content) return [];
+  return Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+    .filter((c) => c.dataset.owner === owner && c.dataset.zoneType === type)
+    .sort((a, b) => Number(a.dataset.zoneOrder || 0) - Number(b.dataset.zoneOrder || 0));
+}
+
+function isTopZoneCard(card) {
+  const owner = card.dataset.owner;
+  const type = card.dataset.zoneType;
+  if (!owner || !type) return true;
+  const cards = getZoneCards(owner, type);
+  return cards.length === 0 || cards[cards.length - 1] === card;
+}
+
+function placeCardInZone(card, owner, type) {
+  if (type === "attacker") {
+    const prev = getZoneCards(owner, "attacker").filter((c) => c !== card);
+    prev.forEach((c, i) => {
+      clearZoneMarker(c);
+      const a = getZoneAnchor(owner, "attacker");
+      const nx = a.x + 30 + (i * 20);
+      const ny = a.y + 30 + (i * 20);
+      c.style.left = `${nx}px`;
+      c.style.top = `${ny}px`;
+      c.dataset.x = nx;
+      c.dataset.y = ny;
+    });
+  }
+  card.dataset.zoneType = type;
+  card.dataset.zoneOwner = owner;
+  card.dataset.zoneOrder = String(nextZoneOrder());
+}
+
+function clearZoneMarker(card) {
+  delete card.dataset.zoneType;
+  delete card.dataset.zoneOwner;
+  delete card.dataset.zoneOrder;
+}
+
+function ensureBattleZoneUIs() {
+  const content = getFieldContent();
+  if (!content) return;
+  ["player1", "player2"].forEach((owner) => {
+    const isMine = owner === (window.myRole || "player1");
+    BATTLE_ZONE_TYPES.forEach((type) => {
+      const id = `battleZone_${owner}_${type}`;
+      if (document.getElementById(id)) return;
+      const el = document.createElement("div");
+      el.id = id;
+      el.className = `battleZone battleZone-${type} ${isMine ? "mine" : "enemy"}`;
+      el.dataset.owner = owner;
+      el.dataset.zoneType = type;
+      el.style.position = "absolute";
+      el.style.width = `${CARD_W}px`;
+      el.style.height = `${CARD_H}px`;
+      el.style.zIndex = "0";
+      el.style.pointerEvents = type === "attacker" ? "none" : "auto";
+      el.innerHTML = `<div class="battleZoneLabel">${type === "attacker" ? "ATK" : type === "skill" ? "SKILL" : "GRAVE"}</div><div class="battleZoneCount"></div>`;
+      if (type === "skill" || type === "grave") {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openZoneListModal(owner, type);
+        });
+      }
+      if (owner !== (window.myRole || "player1")) {
+        el.style.transform = "rotate(180deg)";
+      }
+      content.appendChild(el);
+    });
+  });
+}
+
+function updateBattleZoneUI() {
+  ensureBattleZoneUIs();
+  const currentRole = window.myRole || "player1";
+  ["player1", "player2"].forEach((owner) => {
+    BATTLE_ZONE_TYPES.forEach((type) => {
+      const el = document.getElementById(`battleZone_${owner}_${type}`);
+      if (!el) return;
+      const isMine = owner === currentRole;
+      el.classList.toggle("mine", isMine);
+      el.classList.toggle("enemy", !isMine);
+      el.style.transform = isMine ? "" : "rotate(180deg)";
+      const anchor = getZoneAnchor(owner, type);
+      el.style.left = `${anchor.x}px`;
+      el.style.top = `${anchor.y}px`;
+      const cards = getZoneCards(owner, type);
+      const countEl = el.querySelector(".battleZoneCount");
+      if (!countEl) return;
+      if (type === "grave") countEl.textContent = `${cards.length}枚`;
+      else countEl.textContent = cards.length > 0 ? "●" : "○";
+    });
+  });
+}
+
+function openZoneListModal(owner, type) {
+  const cards = getZoneCards(owner, type);
+  if (cards.length < 2) return;
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000001;display:flex;align-items:center;justify-content:center;";
+  const box = document.createElement("div");
+  box.style.cssText = "width:380px;max-height:70vh;overflow:auto;background:#1a172c;border:1px solid #c89b3c;border-radius:10px;padding:14px;color:#fff;";
+  box.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;">${type === "skill" ? "スキル場" : "墓地"} 一覧 (${cards.length}枚)</div>`;
+  cards.forEach((c, i) => {
+    const d = getCardData(c.dataset.id) || { name: c.dataset.id || "unknown" };
+    const row = document.createElement("div");
+    row.style.cssText = "padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-size:13px;";
+    row.textContent = `${i + 1}. ${d.name || c.dataset.id}`;
+    box.appendChild(row);
+  });
+  const close = document.createElement("button");
+  close.textContent = "閉じる";
+  close.style.cssText = "margin-top:10px;padding:6px 10px;background:#333;border:1px solid #666;color:#fff;border-radius:6px;cursor:pointer;";
+  close.onclick = () => modal.remove();
+  box.appendChild(close);
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+
+function logBattleZoneChanges() {
+  const myRole = window.myRole || "player1";
+  const roleLabel = (owner) => owner === myRole ? "あなた" : "相手";
+  const now = {
+    player1: {
+      attacker: getZoneCards("player1", "attacker").length > 0,
+      skill: getZoneCards("player1", "skill").length > 0,
+      grave: getZoneCards("player1", "grave").length
+    },
+    player2: {
+      attacker: getZoneCards("player2", "attacker").length > 0,
+      skill: getZoneCards("player2", "skill").length > 0,
+      grave: getZoneCards("player2", "grave").length
+    }
+  };
+  if (!prevZoneLogState) {
+    prevZoneLogState = now;
+    return;
+  }
+  ["player1", "player2"].forEach((owner) => {
+    if (prevZoneLogState[owner].attacker !== now[owner].attacker && typeof addGameLog === "function") {
+      addGameLog(`[ZONE] ${roleLabel(owner)} アタッカー場: ${now[owner].attacker ? "カードあり" : "空"}`);
+    }
+    if (prevZoneLogState[owner].skill !== now[owner].skill && typeof addGameLog === "function") {
+      addGameLog(`[ZONE] ${roleLabel(owner)} スキル場: ${now[owner].skill ? "カードあり" : "空"}`);
+    }
+    if (prevZoneLogState[owner].grave !== now[owner].grave && typeof addGameLog === "function") {
+      addGameLog(`[ZONE] ${roleLabel(owner)} 墓地: ${now[owner].grave} 枚`);
+    }
+  });
+  prevZoneLogState = now;
+}
+
+window.organizeBattleZones = function() {
+  const content = getFieldContent();
+  if (!content) return;
+  ["player1", "player2"].forEach((owner) => {
+    BATTLE_ZONE_TYPES.forEach((type) => {
+      const cards = getZoneCards(owner, type);
+      const anchor = getZoneAnchor(owner, type);
+      if (type === "attacker" && cards.length > 1) {
+        cards.slice(0, -1).forEach((c) => clearZoneMarker(c));
+      }
+      const list = getZoneCards(owner, type);
+      list.forEach((card, idx) => {
+        card.style.left = `${anchor.x}px`;
+        card.style.top = `${anchor.y}px`;
+        card.dataset.x = anchor.x;
+        card.dataset.y = anchor.y;
+        const isTop = idx === list.length - 1;
+        if (type === "attacker") {
+          card.style.display = "";
+          card.style.opacity = "1";
+        } else {
+          card.style.display = isTop ? "" : "none";
+          card.style.opacity = "1";
+        }
+      });
+    });
+  });
+  updateBattleZoneUI();
+  logBattleZoneChanges();
+};
+
+window.sendZoneCardsToGrave = function(owner, fromType) {
+  const myRole = window.myRole || "player1";
+  if (owner !== myRole) return;
+  const fromCards = getZoneCards(owner, fromType);
+  if (fromType === "attacker") {
+    const top = fromCards[fromCards.length - 1];
+    if (!top) return;
+    placeCardInZone(top, owner, "grave");
+  } else {
+    fromCards.forEach((c) => placeCardInZone(c, owner, "grave"));
+  }
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  saveFieldCards();
+};
+
+window.resetBattleZoneState = function() {
+  prevZoneLogState = null;
+  zoneOrderCounter = 0;
+  const content = getFieldContent();
+  if (!content) return;
+  content.querySelectorAll(".card[data-zone-type]").forEach((c) => {
+    clearZoneMarker(c);
+  });
+  updateBattleZoneUI();
+};
 
 function getFieldContent(){
   return document.getElementById("fieldContent") || document.getElementById("field");
@@ -377,6 +629,9 @@ function enablePointerDrag(el){
 
   el.addEventListener("pointerdown", (e)=>{
     if(e.button !== 0) return;
+    const myRole = window.myRole || "player1";
+    if (el.dataset.owner !== myRole) return;
+    if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
     e.stopPropagation();
 
     // 触った順にz-indexを上げる
@@ -388,6 +643,9 @@ function enablePointerDrag(el){
     clickStartX = e.clientX;
     clickStartY = e.clientY;
     isDragging = false;
+    el.dataset.prevX = el.dataset.x || "0";
+    el.dataset.prevY = el.dataset.y || "0";
+    el.dataset.prevZoneType = el.dataset.zoneType || "";
     document.body.classList.add("isInteractingCard");
 
     // カードのフィールド座標上での掴み位置を計算
@@ -472,12 +730,35 @@ function enablePointerDrag(el){
       const fieldX = snapToGrid(fx - offsetX);
       const fieldY = snapToGrid(fy - offsetY);
 
+      // 自分のゾーンへドロップ判定
+      const myRole2 = window.myRole || "player1";
+      const centerX = fieldX + CARD_W / 2;
+      const centerY = fieldY + CARD_H / 2;
+      const zoneHit = BATTLE_ZONE_TYPES.find((type) => {
+        const a = getZoneAnchor(myRole2, type);
+        return centerX >= a.x && centerX <= a.x + ZONE_RECT.w && centerY >= a.y && centerY <= a.y + ZONE_RECT.h;
+      });
+      if (zoneHit) {
+        placeCardInZone(el, myRole2, zoneHit);
+        if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+        saveFieldCards();
+        pointerId = null;
+        document.body.classList.remove("isInteractingCard");
+        return;
+      }
+
+      // ゾーンから出した場合は通常カードへ戻す
+      if (el.dataset.prevZoneType) {
+        clearZoneMarker(el);
+      }
+
       el.style.left = fieldX + "px";
       el.style.top  = fieldY + "px";
       el.dataset.x  = fieldX;
       el.dataset.y  = fieldY;
       
       if (typeof window.organizeHands === "function") window.organizeHands();
+      if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
       
       saveFieldCards();
 
@@ -502,6 +783,10 @@ function enablePointerDrag(el){
   // ダブルクリックでvisibility切り替え（デッキオブジェクトは除外）
   el.addEventListener("dblclick", ()=>{
     if(el.classList.contains("deckObject")) return;
+    if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && isTopZoneCard(el)) {
+      openZoneListModal(el.dataset.owner, el.dataset.zoneType);
+      return;
+    }
     cycleVisibility(el);
   });
 }
@@ -566,16 +851,18 @@ async function initCards(){
   if(!document.getElementById("myHandZoneBg")) {
     const myHandBg = document.createElement("div");
     myHandBg.id = "myHandZoneBg";
-    myHandBg.style.cssText = "position:absolute; bottom:0; left:0; width:100%; height:500px; background:rgba(0,0,0,0.15); border-top:2px dashed rgba(200,150,50,0.3); pointer-events:none; z-index:0;";
-    myHandBg.innerHTML = '<div style="position:absolute; top:20px; left:30px; font-size:24px; color:rgba(200,150,50,0.5); font-weight:bold;">手札エリア (ドロップで自動整列)</div>';
+    myHandBg.className = "handZoneBg myHandZoneBg";
+    myHandBg.innerHTML = '<div class="handZoneLabel">手札エリア (ドロップで自動整列)</div>';
     content.appendChild(myHandBg);
 
     const opHandBg = document.createElement("div");
     opHandBg.id = "opHandZoneBg";
-    opHandBg.style.cssText = "position:absolute; top:0; left:0; width:100%; height:500px; background:rgba(0,0,0,0.15); border-bottom:2px dashed rgba(200,150,50,0.3); pointer-events:none; z-index:0;";
-    opHandBg.innerHTML = '<div style="position:absolute; bottom:20px; right:30px; font-size:24px; color:rgba(200,150,50,0.5); font-weight:bold; transform: rotate(180deg);">相手の手札エリア</div>';
+    opHandBg.className = "handZoneBg opHandZoneBg";
+    opHandBg.innerHTML = '<div class="handZoneLabel">相手の手札エリア</div>';
     content.appendChild(opHandBg);
   }
+  ensureBattleZoneUIs();
+  updateBattleZoneUI();
 
   applyFieldView();
   centerField();
@@ -603,6 +890,7 @@ async function initCards(){
   }, { passive:false });
 
   restoreFieldCards();
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
   window.dispatchEvent(new Event("cardsReady"));
 }
 
@@ -625,6 +913,10 @@ window.getFieldData = function() {
       owner: card.dataset.owner || "player1",
       visibility: card.dataset.visibility || "both",
       origin: card.dataset.origin || "",
+      zoneType: card.dataset.zoneType || "",
+      zoneOwner: card.dataset.zoneOwner || "",
+      zoneOrder: Number(card.dataset.zoneOrder || 0),
+      handOrder: Number(card.dataset.handOrder || 0),
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
@@ -739,6 +1031,14 @@ window.applyFieldCardsFromServer = function(data){
     el.dataset.y = localY;
     if(item.owner) el.dataset.owner = item.owner;
     if(item.origin) el.dataset.origin = item.origin; // 出自を復元
+    if (item.zoneType) el.dataset.zoneType = item.zoneType;
+    else delete el.dataset.zoneType;
+    if (item.zoneOwner) el.dataset.zoneOwner = item.zoneOwner;
+    else delete el.dataset.zoneOwner;
+    if (item.zoneOrder) el.dataset.zoneOrder = String(item.zoneOrder);
+    else delete el.dataset.zoneOrder;
+    if (item.handOrder) el.dataset.handOrder = String(item.handOrder);
+    else delete el.dataset.handOrder;
     el.dataset.isTemp = item.isTemp ? "true" : "false";
     
     // 相手のカードかどうかを判定（window.myRole が null の場合も考慮）
@@ -759,5 +1059,6 @@ window.applyFieldCardsFromServer = function(data){
     if(label) label.textContent = labels[vis] || "";
     applyCardFace(el, vis);
   });
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
   if(normalized.repaired || domRepaired) saveFieldCards();
 };

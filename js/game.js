@@ -69,6 +69,7 @@ function resetAllGameVariables() {
   if (fieldContent) {
     fieldContent.querySelectorAll(".card, .deckObject").forEach(el => el.remove());
   }
+  if (typeof window.resetBattleZoneState === "function") window.resetBattleZoneState();
   
   console.log("[Game] ✅ ゲーム変数リセット完了");
 }
@@ -261,7 +262,8 @@ function drawFromDeckObject() {
     const label = card.querySelector(".cardVisibilityLabel");
     if (label) label.textContent = "自分のみ";
     card.style.zIndex = ++cardZCounter;
-    card.dataset.handOrder = String(Date.now());
+    const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now();
+    card.dataset.handOrder = String(nextOrder);
     placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
     if (typeof window.organizeHands === "function") window.organizeHands();
     const destX = parseFloat(card.style.left) || deckX;
@@ -1510,6 +1512,7 @@ async function executeReset() {
   if (content) {
     content.querySelectorAll(".card:not(.deckObject)").forEach(el => el.remove());
   }
+  if (typeof window.resetBattleZoneState === "function") window.resetBattleZoneState();
 
   localStorage.removeItem("fieldCards");
   localStorage.removeItem("gameStarted");

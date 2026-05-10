@@ -492,6 +492,8 @@ function drawMultiple(count, faceDown){
       // デッキ位置から手札へ移動する演出
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
+      const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : (Date.now() + i);
+      card.dataset.handOrder = String(nextOrder);
       placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
     }
   }
@@ -967,9 +969,45 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   // ダメージ処理からの更新なので、ログチェックをスキップ（既にログは出力済み）
   if (typeof update === "function") update(true);
 };
+
+function openGraveZoneMenu(owner, x, y){
+  const me = window.myRole || "player1";
+  const isMine = owner === me;
+  const items = [
+    { label: "墓地操作", disabled: true },
+    { sep: true },
+    {
+      label: "場のアタッカーカードを墓地へ送る",
+      disabled: !isMine,
+      action: () => {
+        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "attacker");
+      }
+    },
+    {
+      label: "場のスキルカードを墓地へ送る",
+      disabled: !isMine,
+      action: () => {
+        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "skill");
+      }
+    }
+  ];
+  buildMenu(items, x, y);
+}
+
 function getContextMenuTarget(target){
   if(!target || typeof target.closest !== "function") return null;
+  const battleZone = target.closest(".battleZone");
+  if (battleZone && battleZone.dataset.zoneType === "grave") {
+    return { type: "graveZone", el: battleZone };
+  }
   const card = target.closest(".card:not(.deckObject)");
+  if (card && card.dataset.zoneType === "grave") {
+    return {
+      type: "graveZone",
+      owner: card.dataset.zoneOwner || card.dataset.owner || "player1",
+      el: null
+    };
+  }
   if(card) return { type: "card", el: card };
   const deck = target.closest(".deckObject");
   if(deck) return { type: "deck", el: deck };
@@ -988,6 +1026,7 @@ function openGameContextMenu(hit, x, y){
   if(hit.type === "card") openCardMenu(hit.el, x, y);
   else if(hit.type === "deck") openDeckMenu(hit.el, x, y);
   else if(hit.type === "lorPanel") openStatusMenu(hit.el.dataset.owner, x, y);
+  else if(hit.type === "graveZone") openGraveZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
 }
 
 document.addEventListener("mousedown", (e) => {

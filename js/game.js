@@ -1,4 +1,16 @@
 let gameReady = false;
+window._bothPlayersConnected = false;
+window._soloStartMode = false;
+
+window.isGameInteractionLocked = function() {
+  const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
+  if (!isGamePage) return false;
+  return !window._soloStartMode && !window._bothPlayersConnected;
+};
+
+function applyInteractionLockState() {
+  document.body.classList.toggle("preGameLocked", window.isGameInteractionLocked());
+}
 
 // setSafeSrc は cardManager.js で定義済み（重複定義を削除）
 
@@ -17,6 +29,8 @@ function resetAllGameVariables() {
   window._isResetting = false; // リセット中フラグをクリア
   window._resultShowing = false; // リザルト表示フラグをクリア
   window._resultDismissed = false; // リザルト非表示フラグをクリア
+  window._soloStartMode = false;
+  window._bothPlayersConnected = false;
   cardsReadyFired = false;
   lastStateJson = "";
   sliderActive = false;
@@ -857,6 +871,7 @@ const ICON_IDEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" x
 </svg>`;
 
 function update(skipLogCheck = false) {
+  applyInteractionLockState();
   const currentStateStr = JSON.stringify(state);
   
   // 状態が変わっていないならDOMの再構築をスキップ（フォーカス外れやホバーの点滅を防ぐ）
@@ -1558,6 +1573,8 @@ async function executeReset() {
   window._resultDismissed = false;  // 再戦時は判定を再開
   window._resultShowing = false;  // リザルト表示フラグをリセット
   window._lastWinner = null;  // 勝者情報をクリア
+  window._soloStartMode = false;
+  window._bothPlayersConnected = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");
@@ -1695,6 +1712,7 @@ function updateEvolutionPhaseUI() {
 }
 
 window.selectEvolutionPath = async function(pathName) {
+  if (window.isGameInteractionLocked()) return;
   const me = window.myRole || "player1";
   state[me].evolutionPath = pathName;
   addGameLog(`[EVOLUTION] ${window.myUsername || state[me]?.username || me} が「${pathName}」を選択しました。`);
@@ -1914,6 +1932,10 @@ function updateDicePhaseUI() {
 //   - 読み取りは各パスの watcher が担当
 
 async function handleDiceRoll() {
+  if (window.isGameInteractionLocked()) {
+    console.warn("[handleDiceRoll] 接続待ち中のため操作不可");
+    return;
+  }
   const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
 
   console.log("[handleDiceRoll] 開始 playerKey:", playerKey,
@@ -2026,6 +2048,7 @@ async function handleChooseOrder(goFirst) {
 }
 
 async function handleTurnEnd() {
+  if (window.isGameInteractionLocked()) return;
   const m  = state.matchData;
   const me = window.myRole || "player1";
 
@@ -2090,6 +2113,7 @@ function _getMyStateForSync() {
 
 // イベント委譲（body全体で拾う）
 document.body.addEventListener("change", (e) => {
+  if (window.isGameInteractionLocked()) return;
   const t = e.target;
   if (!t.dataset.owner) return;
   if (t.dataset.type === "val") setVal(t.dataset.owner, t.dataset.key, t.value);
@@ -2101,6 +2125,7 @@ let ppRepeatTimer = null;
 let ppRepeatTarget = null;
 
 document.body.addEventListener("pointerdown", (e) => {
+  if (window.isGameInteractionLocked()) return;
   if (e.target.classList.contains("lorSlider")) sliderActive = true;
   const ppBtn = e.target.closest(".lorPpBtn");
   if (!ppBtn) return;
@@ -2130,6 +2155,7 @@ document.body.addEventListener("pointerup", (e) => {
 });
 
 document.body.addEventListener("input", (e) => {
+  if (window.isGameInteractionLocked()) return;
   const t = e.target;
   if (!t.dataset.owner || t.dataset.type !== "slider") return;
   const owner = t.dataset.owner;
@@ -2165,6 +2191,10 @@ document.body.addEventListener("input", (e) => {
 });
 
 document.body.addEventListener("click", (e) => {
+  if (window.isGameInteractionLocked()) {
+    const allowed = e.target.closest("#menuButton, #menuPanel, #optionsModal, #confirmModal");
+    if (!allowed) return;
+  }
   const evoTitle = e.target.closest(".evoPanelTitle[data-owner]");
   if (evoTitle) {
     openEvolutionPathModal(evoTitle.dataset.owner);
@@ -2365,6 +2395,13 @@ async function initGame() {
     const currentRoom = localStorage.getItem("gameRoom");
     const myKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
     const opKey = myKey === "player1" ? "player2" : "player1";
+    if (currentRoom && firebaseClient?.db) {
+      const playersSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/players`).once('value');
+      const players = playersSnap.val() || {};
+      window._bothPlayersConnected = !!players.player1 && !!players.player2;
+      applyInteractionLockState();
+    }
+
     if (!currentRoom) {
       throw new Error("gameRoom が未設定です。対戦ルーム情報を確認してください。");
     }
@@ -2524,6 +2561,8 @@ function setupRoomWatcher() {
     const players = snap.val() || {};
     if (players.player1?.username) state.player1.username = players.player1.username;
     if (players.player2?.username) state.player2.username = players.player2.username;
+    window._bothPlayersConnected = !!players.player1 && !!players.player2;
+    applyInteractionLockState();
 
     const playerCount = Object.keys(players).length;
     if (playerCount === 0) {
@@ -2707,7 +2746,23 @@ function setupRoomWatcher() {
 function stopAllWatchers() {
   if (roomWatcherUnsubscribe) { roomWatcherUnsubscribe(); roomWatcherUnsubscribe = null; }
   if (playerDiceWatcherUnsubscribe) { playerDiceWatcherUnsubscribe(); playerDiceWatcherUnsubscribe = null; }
+  window._bothPlayersConnected = false;
+  applyInteractionLockState();
 }
+
+window.startSoloGame = async function() {
+  if (window._bothPlayersConnected) return;
+  window._soloStartMode = true;
+  window._bothPlayersConnected = true;
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  const op = me === "player1" ? "player2" : "player1";
+  if (!state[op].username) state[op].username = "CPU";
+  if (state.matchData?.status === "setup_dice" && (state[op].diceValue === undefined || state[op].diceValue < 0)) {
+    state[op].diceValue = Math.floor(Math.random() * 100) + 1;
+  }
+  applyInteractionLockState();
+  update();
+};
 
 /**
  * playerDice の変更を監視する唯一の場所。

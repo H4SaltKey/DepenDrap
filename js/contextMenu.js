@@ -1061,6 +1061,9 @@ document.addEventListener("mousedown", (e) => {
 });
 
 document.addEventListener("contextmenu", (e) => {
+  if (typeof window.isGameInteractionLocked === "function" && window.isGameInteractionLocked()) {
+    return;
+  }
   const hit = getContextMenuTarget(e.target);
   if(hit){
     console.log("[ctx-debug:contextmenu]", e.button, e.target);

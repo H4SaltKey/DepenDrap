@@ -12,6 +12,7 @@
       <div class="menuItem" id="backBtn">タイトルへ戻る</div>
       <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
       <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
+      <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
       <div class="menuItem" id="optBtn">オプション</div>
     </div>
 
@@ -186,12 +187,15 @@
     const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
     const resetBtn = document.getElementById("resetFieldBtn");
     const surrenderBtn = document.getElementById("surrenderBtn");
-    if (resetBtn) resetBtn.style.display = isGamePage ? "block" : "none";
+    const soloStartBtn = document.getElementById("soloStartBtn");
+    const isLocked = typeof window.isGameInteractionLocked === "function" ? window.isGameInteractionLocked() : false;
+    if (resetBtn) resetBtn.style.display = (isGamePage && !isLocked) ? "block" : "none";
     if (surrenderBtn) {
       // playing 状態かつゲーム画面のみ表示
       const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing" && !state?.matchData?.winner;
-      surrenderBtn.style.display = (isGamePage && isPlaying) ? "block" : "none";
+      surrenderBtn.style.display = (isGamePage && !isLocked && isPlaying) ? "block" : "none";
     }
+    if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked) ? "block" : "none";
   };
 
   document.getElementById("backBtn").onclick = ()=>{
@@ -221,6 +225,11 @@
   
   document.getElementById("resetFieldBtn").onclick = ()=>{
     if(typeof window.resetField === "function") window.resetField();
+    panel.classList.add("hidden");
+  };
+
+  document.getElementById("soloStartBtn").onclick = ()=>{
+    if (typeof window.startSoloGame === "function") window.startSoloGame();
     panel.classList.add("hidden");
   };
 

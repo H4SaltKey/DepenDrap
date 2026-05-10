@@ -1187,3 +1187,21 @@ h3{
   font-size: 18px;
   cursor: pointer;
 }
+
+body.preGameLocked #field,
+body.preGameLocked #gameUiPlayerInner,
+body.preGameLocked #gameUiEnemy,
+body.preGameLocked #chatArea,
+body.preGameLocked #zoomControls,
+body.preGameLocked #turnEndBtn {
+  pointer-events: none !important;
+  opacity: 0.72;
+}
+
+body.preGameLocked #menuButton,
+body.preGameLocked #menuPanel,
+body.preGameLocked #optionsModal,
+body.preGameLocked #confirmModal {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}

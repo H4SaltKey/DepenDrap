@@ -577,7 +577,66 @@ function collectAllToDeck(){
   if(typeof update === "function") update();
 }
 
-function showDamagePopup(targetOwner, type, subType) {
+function applyDamageByRule(snapshot, type, amount) {
+  const result = {
+    hp: Number(snapshot.hp) || 0,
+    shield: Number(snapshot.shield) || 0,
+    defstack: Number(snapshot.defstack) || 0,
+    defstackMax: Math.max(0, Number(snapshot.defstackMax) || 0)
+  };
+  const hits = Math.max(0, Number(amount) || 0);
+  if (hits <= 0) return result;
+
+  const applyToShieldAndHp = (damageAmount) => {
+    let remain = Math.max(0, Number(damageAmount) || 0);
+    if (result.shield > 0) {
+      const absorbed = Math.min(result.shield, remain);
+      result.shield -= absorbed;
+      remain -= absorbed;
+    }
+    if (remain > 0) {
+      result.hp = Math.max(0, result.hp - remain);
+    }
+  };
+
+  if (type === "hp_reduce") {
+    result.hp = Math.max(0, result.hp - hits);
+    return result;
+  }
+
+  if (type === "fragile") {
+    result.defstack = Math.max(0, result.defstack - hits);
+    return result;
+  }
+
+  if (type === "pierce") {
+    applyToShieldAndHp(hits);
+    return result;
+  }
+
+  if (type === "arcana") {
+    const brokenDef = Math.min(result.defstack, hits);
+    result.defstack -= brokenDef;
+    applyToShieldAndHp(hits - brokenDef);
+    return result;
+  }
+
+  // 通常ダメージ（direct_attack含む）:
+  // 防御スタックを 0 まで減らし、0到達時のみ 1 ダメージ通過。その後防御を最大値へループ。
+  let passDamage = 0;
+  for (let i = 0; i < hits; i++) {
+    if (result.defstack > 0) {
+      result.defstack -= 1;
+      continue;
+    }
+    passDamage += 1;
+    result.defstack = result.defstackMax;
+  }
+  applyToShieldAndHp(passDamage);
+  return result;
+}
+
+function showDamagePopup(targetOwner, type, subType, options = {}) {
   const typeLabels = {
     damage: "ダメージ",
     pierce: "貫通ダメージ",
@@ -667,41 +726,37 @@ function showDamagePopup(targetOwner, type, subType) {
     const me = state[window.myRole || "player1"] || {};
 
     let tHP = s.hp;
-    let tShield = s.defstack;
+    let tDef = s.defstack;
     let tBarrier = s.shield;
-    let tShieldMax = s.defstackMax || 0;
+    const tDefMax = s.defstackMax || 0;
     let actualAmount = amount;
 
     const getLvIdx = (lv) => (lv >= 6 ? 3 : lv >= 5 ? 2 : lv >= 3 ? 1 : 0);
 
     const applyHit = (hitType, hitAmount) => {
-      for (let i = 0; i < hitAmount; i++) {
-        if (hitType === "hp_reduce") {
-          tHP = Math.max(0, tHP - 1);
-        } else if (hitType === "fragile") {
-          tShield = Math.max(0, tShield - 1);
-        } else if (hitType === "pierce") {
-          if (tBarrier > 0) tBarrier--;
-          else tHP = Math.max(0, tHP - 1);
-        } else if (hitType === "arcana") {
-          if (tShield > 0) tShield = Math.max(0, tShield - 1);
-          else tHP = Math.max(0, tHP - 1);
-        } else if (hitType === "damage" || hitType === "direct_attack") {
-          if (tBarrier > 0) tBarrier--;
-          else if (tShield > 0) tShield--;
-          else tHP = Math.max(0, tHP - 1);
-        }
-      }
+      const next = applyDamageByRule({
+        hp: tHP,
+        shield: tBarrier,
+        defstack: tDef,
+        defstackMax: tDefMax
+      }, hitType, hitAmount);
+      tHP = next.hp;
+      tBarrier = next.shield;
+      tDef = next.defstack;
     };
 
+    const meRole = window.myRole || "player1";
+    const sourceName = String(options.sourceName || window.currentDamageSourceName || "");
+    const canApplyEvolution = targetOwner !== meRole && !sourceName.includes("地震");
+
     // 瞬発の道: 本ダメージ前に脆弱ダメージ
-    if (actualAmount >= 6 && me.evolutionPath === "瞬発の道") {
+    if (canApplyEvolution && actualAmount >= 6 && me.evolutionPath === "瞬発の道") {
       const z = [1, 3, 4, 6][getLvIdx(me.level || 1)];
       applyHit("fragile", z);
     }
 
     // 背水の道: 直接攻撃時の追加
-    if (type === "direct_attack" && me.evolutionPath === "背水の道") {
+    if (canApplyEvolution && type === "direct_attack" && me.evolutionPath === "背水の道") {
       const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
       if (handCount <= 2) actualAmount += 1;
       if ((me.pp || 0) >= 2 && !me.evoBackwaterExpGained) {
@@ -714,7 +769,7 @@ function showDamagePopup(targetOwner, type, subType) {
     applyHit(type, actualAmount);
 
     // 継続の道: 本ダメージ後に追加1ダメージ（3回目は貫通）
-    if (actualAmount >= 1 && me.evolutionPath === "継続の道") {
+    if (canApplyEvolution && actualAmount >= 1 && me.evolutionPath === "継続の道") {
       const y = [1, 3, 4, 6][getLvIdx(me.level || 1)];
       const cur = me.evoContinuousDmgCount || 0;
       if (cur < y) {
@@ -742,7 +797,7 @@ function showDamagePopup(targetOwner, type, subType) {
   box.querySelector("#popupConfirm").onclick = () => {
     const val = parseInt(input.value) || 0;
     if (val >= 0) {
-      window.applyCalculatedDamage(targetOwner, type, subType, val);
+      window.applyCalculatedDamage(targetOwner, type, subType, val, false, options);
     }
     close();
   };
@@ -785,7 +840,7 @@ function openStatusMenu(targetOwner, x, y) {
 }
 
 // ダメージ適用ロジック
-window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEvoDmg = false) {
+window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEvoDmg = false, options = {}) {
   const s = state[targetOwner];
   if (!s) return;
 
@@ -810,7 +865,9 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   // 瞬発の道: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
   const meRole = window.myRole || "player1";
   const myState = state[meRole];
-  if (!isEvoDmg && actualAmount >= 6 && myState && myState.evolutionPath === '瞬発の道') {
+  const sourceName = String(options.sourceName || window.currentDamageSourceName || "");
+  const canApplyEvolution = targetOwner !== meRole && !sourceName.includes("地震");
+  if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && myState.evolutionPath === '瞬発の道') {
     const lv = myState.level || 1;
     let idx = 0;
     if (lv >= 6) idx = 3;
@@ -826,7 +883,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   }
 
   // 「直接攻撃」の処理と、背水の道効果の適用
-  if (type === "direct_attack") {
+  if (canApplyEvolution && type === "direct_attack") {
     const meRole = window.myRole || "player1";
     const myState = state[meRole];
     if (myState && myState.evolutionPath === '背水の道') {
@@ -861,47 +918,15 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     }
   }
   
-  // ダメージを1ずつ処理する（途中でリバウンドが発生する可能性があるため）
-  for (let i = 0; i < actualAmount; i++) {
-    if (type === "hp_reduce") {
-      s.hp = Math.max(0, s.hp - 1);
-    } else if (type === "fragile") {
-      s.defstack = Math.max(0, s.defstack - 1);
-    } else if (type === "pierce") {
-      if (s.defstack > 0) {
-        s.defstack -= 1;
-      } else {
-        s.hp = Math.max(0, s.hp - 1);
-      }
-    } else if (type === "arcana") {
-      if (s.defstack > 0) {
-        s.defstack = Math.max(0, s.defstack - 1);
-      } else {
-        s.hp = Math.max(0, s.hp - 1);
-      }
-    } else {
-      // 通常/追加/アルカナ/直接攻撃
-      if (s.defstack > 0) {
-        // 防御力がある場合は防御力を減らす
-        s.defstack -= 1;
-      } else {
-        // 防御力が0の場合
-        if (type === "damage" || type === "direct_attack") {
-          // 通常ダメージならリバウンド特性発動
-          s.defstack = s.defstackMax || 0;
-        } else {
-          s.defstack = 0;
-        }
-
-        // ダメージを次の層（障壁/HP）へ通す
-        if (s.defstack > 0) {
-          s.defstack -= 1;
-        } else {
-          s.hp = Math.max(0, s.hp - 1);
-        }
-      }
-    }
-  }
+  const next = applyDamageByRule({
+    hp: s.hp,
+    shield: s.shield,
+    defstack: s.defstack,
+    defstackMax: s.defstackMax
+  }, type, actualAmount);
+  s.hp = next.hp;
+  s.shield = next.shield;
+  s.defstack = next.defstack;
 
   // 最終的な負の値ガード（念のため）
   s.hp = Math.max(0, s.hp);
@@ -924,7 +949,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
 
   // 継続の道: 1以上のダメージを与える度に1ダメージ（3回目は1貫通ダメージ）
   const myState2 = state[window.myRole || "player1"];
-  if (!isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
+  if (canApplyEvolution && !isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
     const lv = myState2.level || 1;
     let idx = 0;
     if (lv >= 6) idx = 3;
@@ -940,9 +965,9 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
         window.addGameLog(`[EVOLUTION] ${actor} の「継続の道」効果発動（${myState2.evoContinuousDmgCount}回目）！`);
       }
       // 通常1ダメージを付与し、3回目のみ追加で1貫通ダメージを付与
-      window.applyCalculatedDamage(targetOwner, "damage", "additional", 1, true);
+      window.applyCalculatedDamage(targetOwner, "damage", "additional", 1, true, options);
       if (isThird) {
-        window.applyCalculatedDamage(targetOwner, "pierce", "additional", 1, true);
+        window.applyCalculatedDamage(targetOwner, "pierce", "additional", 1, true, options);
       }
     }
   }

@@ -560,6 +560,8 @@ function renderOwnerUI(owner) {
   // 副作用なし：state を変更せず、ローカル変数で計算する
   const s = state[owner];
   const isMine = owner === (window.myRole || "player1");
+  const currentPp = Number.isFinite(Number(s.pp)) ? Number(s.pp) : 0;
+  const maxPp = Number.isFinite(Number(s.ppMax)) ? Number(s.ppMax) : 2;
   const expMax = calcExpMax(s.level);
   const defstackMax = s.def || 0;
   const hpPct = barPct(s.hp, s.hpMax);
@@ -682,9 +684,9 @@ function renderOwnerUI(owner) {
     ">
       <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;" data-tooltip="ターン毎の行動ポイント">PP</div>
       <div style="display:flex; align-items:center; gap:8px;">
-        ${isMine ? (s.pp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
-        <span style="font-size:20px; font-weight:bold; color:#00ffff;">${s.pp || 0}/${s.ppMax || 2}</span>
-        ${isMine ? (s.pp >= (s.ppMax || 2) ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
+        ${isMine ? (currentPp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
+        <span style="font-size:20px; font-weight:bold; color:#00ffff;">${currentPp}/${maxPp}</span>
+        ${isMine ? (currentPp >= maxPp ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
       </div>
     </div>
 
@@ -695,10 +697,10 @@ function renderOwnerUI(owner) {
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
       width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     ">
-      <div style="font-size:10px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
-      <div style="font-size:14px; font-weight:bold; color:#f0d080; text-align:center;">${s.evolutionPath}</div>
-      ${s.evolutionPath === '継続の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
-      ${s.evolutionPath === '背水の道' ? `<div style="font-size:10px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:16px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer;" title="クリックで拡大表示">${s.evolutionPath}</div>
+      ${s.evolutionPath === '継続の道' ? `<div style="font-size:11px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+      ${s.evolutionPath === '背水の道' ? `<div style="font-size:11px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
       position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
@@ -718,6 +720,32 @@ function renderOwnerUI(owner) {
 }
 
 function getEvolutionPathTooltip(owner) { return ""; } // Obsolete, keeping to avoid undefined errors if called elsewhere
+
+function openEvolutionPathModal(owner) {
+  const html = getEvolutionPathHTML(owner);
+  if (!html) return;
+  const overlay = document.createElement("div");
+  overlay.className = "evoDetailOverlay";
+  overlay.innerHTML = `
+    <div class="evoDetailModal" role="dialog" aria-modal="true">
+      <button type="button" class="evoDetailClose" aria-label="閉じる">✕</button>
+      ${html}
+    </div>
+  `;
+  const onEsc = (e) => {
+    if (e.key !== "Escape") return;
+    close();
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onEsc);
+    overlay.remove();
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay || e.target.classList.contains("evoDetailClose")) close();
+  });
+  document.addEventListener("keydown", onEsc);
+  document.body.appendChild(overlay);
+}
 
 function getEvolutionPathHTML(owner) {
   const s = state[owner];
@@ -757,13 +785,13 @@ function getEvolutionPathHTML(owner) {
   }
   
   return `
-    <div style="font-size:14px; font-weight:bold; color:#f0d080; margin-bottom:8px; border-bottom:1px solid #5a4b27; padding-bottom:4px; text-align:center;">
+    <div style="font-size:15px; font-weight:bold; color:#f0d080; margin-bottom:8px; border-bottom:1px solid #5a4b27; padding-bottom:4px; text-align:center;">
       【${s.evolutionPath}】
     </div>
-    <div style="font-size:12px; color:#ddd; line-height:1.6; text-align:left;">
+    <div style="font-size:13px; color:#ddd; line-height:1.7; text-align:left;">
       ${desc}
     </div>
-    <div style="margin-top:12px; text-align:right; font-size:11px; color:#999; font-family:monospace;">
+    <div style="margin-top:12px; text-align:right; font-size:12px; color:#999; font-family:monospace;">
       ${tableHTML}
     </div>
   `;
@@ -2135,6 +2163,11 @@ document.body.addEventListener("input", (e) => {
 });
 
 document.body.addEventListener("click", (e) => {
+  const evoTitle = e.target.closest(".evoPanelTitle[data-owner]");
+  if (evoTitle) {
+    openEvolutionPathModal(evoTitle.dataset.owner);
+    return;
+  }
   const t = e.target.closest(".lorSmBtn, .lorInstantDefBtn, .lorResetDefBtn");
   if (!t || !t.dataset.owner) return;
   if (t.disabled) return;

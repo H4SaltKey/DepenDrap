@@ -45,6 +45,7 @@ function resetAllGameVariables() {
   localStorage.removeItem("gameState");
   localStorage.removeItem("fieldCards");
   localStorage.removeItem("gameStarted");
+  localStorage.removeItem("gameStartedRoom");
   localStorage.removeItem("gameRoom");
   localStorage.removeItem("gamePlayerKey");
   
@@ -697,14 +698,14 @@ function renderOwnerUI(owner) {
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
       width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     ">
-      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
-      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:16px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer;" title="クリックで拡大表示">${s.evolutionPath}</div>
-      ${s.evolutionPath === '継続の道' ? `<div style="font-size:11px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
-      ${s.evolutionPath === '背水の道' ? `<div style="font-size:11px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+      <div style="font-size:12px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:18px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.4px;" title="クリックで拡大表示">${s.evolutionPath}</div>
+      ${s.evolutionPath === '継続の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+      ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
       position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
-      left: 50%; transform: translateX(-50%); width: 320px;
+      left: 50%; transform: translateX(-50%); width: 420px;
       z-index: 99999; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
@@ -770,28 +771,28 @@ function getEvolutionPathHTML(owner) {
   } else if (s.evolutionPath === '継続の道') {
     const yArr = [1, 3, 4, 6];
     const y = yArr[idx];
-    desc = `ターン毎に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:10px; color:#aaa;">※：この効果によるものは含まない</span>`;
+    desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
     tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '瞬発の道') {
     const zArr = [1, 3, 4, 6];
     const z = zArr[idx];
-    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
+    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
     tableHTML = `z = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '背水の道') {
     const tArr = [1, 2, 3, 4];
     const t = tArr[idx];
-    desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:10px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
+    desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:12px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
     tableHTML = `t = [1, 2, 3, 4]`;
   }
   
   return `
-    <div style="font-size:15px; font-weight:bold; color:#f0d080; margin-bottom:8px; border-bottom:1px solid #5a4b27; padding-bottom:4px; text-align:center;">
+    <div style="font-size:18px; font-weight:bold; color:#f0d080; margin-bottom:10px; border-bottom:1px solid #5a4b27; padding-bottom:6px; text-align:center;">
       【${s.evolutionPath}】
     </div>
-    <div style="font-size:13px; color:#ddd; line-height:1.7; text-align:left;">
+    <div style="font-size:15px; color:#f2f2f2; line-height:1.85; text-align:left; letter-spacing:0.2px;">
       ${desc}
     </div>
-    <div style="margin-top:12px; text-align:right; font-size:12px; color:#999; font-family:monospace;">
+    <div style="margin-top:12px; text-align:right; font-size:13px; color:#b8b8b8; font-family:monospace;">
       ${tableHTML}
     </div>
   `;
@@ -1544,6 +1545,7 @@ async function executeReset() {
 
   localStorage.removeItem("fieldCards");
   localStorage.removeItem("gameStarted");
+  localStorage.removeItem("gameStartedRoom");
 
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
@@ -1685,7 +1687,7 @@ function updateEvolutionPhaseUI() {
         .evo-path-btn { background:rgba(20,20,30,0.8); border:1px solid #5a4b27; border-radius:8px; padding:20px; text-align:left; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
         .evo-path-btn:hover { background:rgba(40,40,50,0.9); border-color:#c7b377; transform:translateY(-2px); box-shadow:0 8px 24px rgba(199,179,119,0.25); }
         .evo-path-title { font-size:18px; font-weight:900; color:#f0d080; margin-bottom:8px; letter-spacing:1px; }
-        .evo-path-desc { font-size:13px; color:#ddd; line-height:1.5; }
+        .evo-path-desc { font-size:15px; color:#f0f0f0; line-height:1.75; letter-spacing:0.2px; }
         .evo-path-val { color:#c7b377; font-weight:bold; }
       </style>
     `;
@@ -2308,16 +2310,28 @@ function handleChatSend() {
   input.value = "";
 }
 
+let _chatEventsBound = false;
+let _gameBootstrapped = false;
+
 async function initGame() {
-  const chatInput = document.getElementById("chatInput");
-  if (chatInput) {
-    chatInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") handleChatSend();
-    });
+  if (_gameBootstrapped) {
+    console.log("[initGame] already bootstrapped - skip duplicate init");
+    return;
   }
-  const chatBtn = document.getElementById("chatSendBtn");
-  if (chatBtn) {
-    chatBtn.addEventListener("click", handleChatSend);
+  _gameBootstrapped = true;
+
+  if (!_chatEventsBound) {
+    const chatInput = document.getElementById("chatInput");
+    if (chatInput) {
+      chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleChatSend();
+      });
+    }
+    const chatBtn = document.getElementById("chatSendBtn");
+    if (chatBtn) {
+      chatBtn.addEventListener("click", handleChatSend);
+    }
+    _chatEventsBound = true;
   }
 
   try {
@@ -2351,6 +2365,9 @@ async function initGame() {
     const currentRoom = localStorage.getItem("gameRoom");
     const myKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
     const opKey = myKey === "player1" ? "player2" : "player1";
+    if (!currentRoom) {
+      throw new Error("gameRoom が未設定です。対戦ルーム情報を確認してください。");
+    }
 
     // Firebase から最新状態を復元（リロード対応）
     if (currentRoom && firebaseClient?.db) {
@@ -2453,6 +2470,12 @@ async function initGame() {
     // ルームの状態を監視（両プレイヤーが退出したかチェック）
     setupRoomWatcher();
 
+    // 初期同期: 自分の状態を正準として Firebase に送信し、
+    // リロード復帰時の不整合を抑止する。
+    if (firebaseClient?.db) {
+      await firebaseClient.writeMyState(currentRoom, myKey, _getMyStateForSync());
+    }
+
   } catch (e) {
     console.error("initGame FAILED:", e);
     console.error("Stack:", e.stack);
@@ -2479,6 +2502,13 @@ function setupRoomWatcher() {
   if (!firebaseClient || !firebaseClient.db) {
     console.warn("[Game] Firebase 未初期化 - setupRoomWatcher をスキップ");
     return;
+  }
+
+  if (roomWatcherUnsubscribe) {
+    roomWatcherUnsubscribe();
+  }
+  if (playerDiceWatcherUnsubscribe) {
+    playerDiceWatcherUnsubscribe();
   }
 
   const myKey   = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");

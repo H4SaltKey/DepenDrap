@@ -33,6 +33,7 @@ let state = {
 
 // ===== 役割管理 =====
 const GAME_STARTED_KEY = "gameStarted";
+const GAME_STARTED_ROOM_KEY = "gameStartedRoom";
 window.myRole     = null;
 window.myUsername = null;
 
@@ -240,11 +241,22 @@ function initDeckFromCode() {
 }
 
 // ===== ゲーム開始フラグ =====
-function isGameStarted()   { return localStorage.getItem(GAME_STARTED_KEY) === "true"; }
-function markGameStarted() { localStorage.setItem(GAME_STARTED_KEY, "true"); }
+function isGameStarted() {
+  const started = localStorage.getItem(GAME_STARTED_KEY) === "true";
+  if (!started) return false;
+  const room = localStorage.getItem("gameRoom");
+  const startedRoom = localStorage.getItem(GAME_STARTED_ROOM_KEY);
+  return !!room && startedRoom === room;
+}
+function markGameStarted() {
+  localStorage.setItem(GAME_STARTED_KEY, "true");
+  const room = localStorage.getItem("gameRoom");
+  if (room) localStorage.setItem(GAME_STARTED_ROOM_KEY, room);
+}
 function clearGameState()  {
   localStorage.removeItem("gameState");
   localStorage.removeItem("gameStarted");
+  localStorage.removeItem("gameStartedRoom");
   localStorage.removeItem("fieldCards");
 }
 

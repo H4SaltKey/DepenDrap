@@ -13,6 +13,7 @@ async function openLevelStatsEditor() {
       <thead>
         <tr style="border-bottom:1px solid #666;">
           <th style="padding:10px;text-align:left;">Lv</th>
+          <th style="padding:10px;text-align:left;">基礎攻撃力</th>
           <th style="padding:10px;text-align:left;">基礎防御</th>
           <th style="padding:10px;text-align:left;">瞬間防御</th>
         </tr>
@@ -33,12 +34,14 @@ async function openLevelStatsEditor() {
   
   for (let lv = 1; lv <= 6; lv++) {
     const idx = lv - 1;
+    const atkVal = (Array.isArray(stats.atk) ? stats.atk[idx] : 0) || 0;
     const defVal = (Array.isArray(stats.def) ? stats.def[idx] : 0) || 0;
     const idVal  = (Array.isArray(stats.instantDef) ? stats.instantDef[idx] : 1) || 0;
     const tr = document.createElement("tr");
     tr.style = "border-bottom:1px solid #333;";
     tr.innerHTML = `
       <td style="padding:10px;font-weight:bold;">${lv}</td>
+      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="atk" value="${atkVal}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
       <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="def" value="${defVal}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
       <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="instantDef" value="${idVal}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
     `;
@@ -47,7 +50,7 @@ async function openLevelStatsEditor() {
   
   modal.querySelector("#devCancelBtn").onclick = () => overlay.remove();
   modal.querySelector("#devSaveBtn").onclick = async () => {
-    const newStats = { def: [], instantDef: [] };
+    const newStats = { atk: [], def: [], instantDef: [] };
     modal.querySelectorAll("input").forEach(input => {
       const lv = Number(input.dataset.lv);
       const idx = lv - 1;

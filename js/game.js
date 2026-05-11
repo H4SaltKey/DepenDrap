@@ -110,12 +110,14 @@ function updateConnectionOverlay() {
   if (connected) {
     if (overlay && !overlay.classList.contains('conn-hiding')) {
       overlay.classList.add('conn-hiding');
-      // 数秒待ってからダイスロール画面に遷移
-      setTimeout(() => { 
-        if (overlay.parentNode) overlay.remove(); 
-        
-        // カウントダウンが既に表示されていない場合のみ作成
-        if (!document.getElementById('countdownOverlay')) {
+      // 接続オーバーレイを削除（同期ズレ防止のため即時削除）
+      setTimeout(() => {
+        if (overlay.parentNode) overlay.remove();
+
+        // 両プレイヤー接続確認後にカウントダウン開始（同期ズレ防止のため追加遅延）
+        setTimeout(() => {
+          // カウントダウンが既に表示されていない場合のみ作成
+          if (!document.getElementById('countdownOverlay')) {
           // カウントダウンオーバーレイを作成
           const countdownOverlay = document.createElement('div');
           countdownOverlay.id = 'countdownOverlay';
@@ -155,6 +157,7 @@ function updateConnectionOverlay() {
             }
           }, 1000);
         }
+        }, 800);
       }, 600);
     }
     return;

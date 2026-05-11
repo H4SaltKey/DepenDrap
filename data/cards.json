@@ -1,15 +1,21 @@
 [
   {
     "id": "cd0000",
-    "image": "NF404.png"
+    "image": "cd0000.png"
   },
   {
     "id": "cd0001",
-    "image": "スライド1.png"
+    "image": "asdas.png",
+    "name": "臭くないよ"
   },
   {
     "id": "cd0002",
     "image": "Gemini_Generated_Image_pq5ve3pq5ve3pq5v.png",
     "name": "臭い世"
+  },
+  {
+    "id": "cd0003",
+    "image": "IMG_20211126_140635.png",
+    "name": "スナイパーフォーカス山田"
   }
 ]

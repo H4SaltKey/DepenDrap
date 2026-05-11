@@ -213,6 +213,15 @@ if(localStorage.getItem("dev") !== "true"){
 <div class="devLayout">
   <h2>開発者モード</h2>
 
+  <!-- カード一括作成プロトコル -->
+  <section style="background:white;border:1px solid #aaa;padding:20px;">
+    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
+    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">複数のカード画像をフォルダ単位で一括アップロードし、カードデータを自動生成します。新しいフォルダが自動作成されます。</p>
+    <div style="display:flex;gap:12px;">
+      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 カードをアップロード</button>
+    </div>
+  </section>
+
   <!-- カード一覧 -->
   <section class="devCardGrid">
     <header>
@@ -235,15 +244,6 @@ if(localStorage.getItem("dev") !== "true"){
       <button id="deleteCardBtn" style="padding:8px 24px;background:#d9534f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">削除</button>
     </div>
     <div id="deleteCardMsg" style="margin-top:10px;font-size:12px;"></div>
-  </section>
-
-  <!-- カード一括作成プロトコル -->
-  <section style="background:white;border:1px solid #aaa;padding:20px;">
-    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
-    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">複数のカード画像をフォルダ単位で一括アップロードし、カードデータを自動生成します。新しいフォルダが自動作成されます。</p>
-    <div style="display:flex;gap:12px;">
-      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 カードをアップロード</button>
-    </div>
   </section>
 
   <!-- 編集パネル -->

@@ -1000,6 +1000,13 @@ function openGraveZoneMenu(owner, x, y){
     { label: "墓地操作", disabled: true },
     { sep: true },
     {
+      label: "内容を確認",
+      action: () => {
+        if (typeof window.showGraveyardContents === "function") window.showGraveyardContents(owner);
+      }
+    },
+    { sep: true },
+    {
       label: "場のアタッカーカードを墓地へ送る",
       disabled: !isMine,
       action: () => {

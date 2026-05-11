@@ -298,6 +298,154 @@ window.sendZoneCardsToGrave = function(owner, fromType) {
   saveFieldCards();
 };
 
+window.showGraveyardContents = function(owner) {
+  const graveCards = getZoneCards(owner, "grave");
+  if (graveCards.length === 0) {
+    alert("墓地は空です。");
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000000;
+    backdrop-filter: blur(4px);
+  `;
+
+  const container = document.createElement("div");
+  container.style.cssText = `
+    background: #1a172c;
+    border: 2px solid #c7b377;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    color: #e0d0a0;
+  `;
+
+  const ownerLabel = owner === (window.myRole || "player1") ? "自分" : "相手";
+  container.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="margin: 0; color: #e0d0a0;">${ownerLabel}の墓地 (${graveCards.length}枚)</h2>
+      <button id="closeGraveViewer" style="
+        background: #333;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      ">閉じる</button>
+    </div>
+    <div id="graveCardList" style="display: flex; flex-direction: column; gap: 12px;"></div>
+  `;
+
+  const cardList = container.querySelector("#graveCardList");
+  
+  // 墓地のカードを順序に表示（最新が上）
+  graveCards.slice().reverse().forEach((card, index) => {
+    const cardId = card.dataset.id;
+    const cardDiv = document.createElement("div");
+    cardDiv.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    `;
+
+    const orderLabel = document.createElement("div");
+    orderLabel.style.cssText = `
+      background: #c7b377;
+      color: #1a172c;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      flex-shrink: 0;
+    `;
+    orderLabel.textContent = graveCards.length - index;
+
+    const img = card.querySelector("img");
+    const cardImg = document.createElement("img");
+    if (img) {
+      cardImg.src = img.src;
+      cardImg.style.cssText = `
+        width: 60px;
+        height: 85px;
+        object-fit: contain;
+        border-radius: 4px;
+        border: 1px solid #555;
+      `;
+    }
+
+    const cardInfo = document.createElement("div");
+    cardInfo.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    `;
+
+    const cardName = document.createElement("div");
+    cardName.style.cssText = `
+      font-size: 16px;
+      font-weight: bold;
+      color: #e0d0a0;
+    `;
+    cardName.textContent = cardId;
+
+    const cardMeta = document.createElement("div");
+    cardMeta.style.cssText = `
+      font-size: 12px;
+      color: #888;
+    `;
+    cardMeta.textContent = `順序: ${graveCards.length - index} / ${graveCards.length}`;
+
+    cardInfo.appendChild(cardName);
+    cardInfo.appendChild(cardMeta);
+
+    cardDiv.appendChild(orderLabel);
+    if (img) cardDiv.appendChild(cardImg);
+    cardDiv.appendChild(cardInfo);
+
+    cardList.appendChild(cardDiv);
+  });
+
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+
+  container.querySelector("#closeGraveViewer").addEventListener("click", () => {
+    overlay.remove();
+  });
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+    }
+  });
+
+  document.addEventListener("keydown", function handler(e) {
+    if (e.key === "Escape") {
+      overlay.remove();
+      document.removeEventListener("keydown", handler);
+    }
+  });
+};
+
 window.resetBattleZoneState = function() {
   prevZoneLogState = null;
   zoneOrderCounter = 0;
@@ -933,12 +1081,13 @@ window.organizeHands = function() {
   const myHandCards = cards.filter(c => c.dataset.owner === myRole && Number(c.dataset.y) >= 1500);
   
   if (myHandCards.length > 0) {
-    myHandCards.sort((a, b) => {
-      const oa = Number(a.dataset.handOrder || 0);
-      const ob = Number(b.dataset.handOrder || 0);
-      if (oa !== ob) return oa - ob;
-      return Number(a.dataset.x) - Number(b.dataset.x);
-    });
+    // 手札の順序保持を削除 - 自由に並べ替え可能にする
+    // myHandCards.sort((a, b) => {
+    //   const oa = Number(a.dataset.handOrder || 0);
+    //   const ob = Number(b.dataset.handOrder || 0);
+    //   if (oa !== ob) return oa - ob;
+    //   return Number(a.dataset.x) - Number(b.dataset.x);
+    // });
     
     const spacing = 40;
     let startX = 40; // 左端詰め

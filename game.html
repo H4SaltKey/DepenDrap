@@ -54,7 +54,7 @@
 <script src="js/deckCode.js?v=8"></script>
 <script src="js/core.js?v=10"></script>
 <script src="js/cardManager.js?v=13"></script>
-<script src="js/game.js?v=35"></script>
+<script src="js/game.js?v=36"></script>
 <script src="js/menu.js?v=10"></script>
 <script src="js/devTools.js?v=3"></script>
 <script src="js/damageCalc.js?v=4"></script>
@@ -71,62 +71,54 @@
   (async () => {
     await initCards();
 
-    // ゲーム画面で Firebase に接続
-    let gameRoomName = null;
-    let gamePlayerKey = null;
-
     window.addEventListener("load", async () => {
       console.log("[Game] Firebase 初期化中...");
-      
-      const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
-      if (success) {
-        console.log("[Game] ✅ Firebase 初期化成功");
-        
-        // matchSetup から ルーム情報を取得
-        gameRoomName = localStorage.getItem("gameRoom");
-        gamePlayerKey = localStorage.getItem("gamePlayerKey");
-        
-        if (gameRoomName && gamePlayerKey) {
-          console.log("[Game] ルームに再参加:", gameRoomName, "as", gamePlayerKey);
 
-          // Firebase のルームデータから両プレイヤーの username を取得して state に紐づける
-          try {
-            const roomSnap = await firebaseClient.db.ref(`rooms/${gameRoomName}/players`).once('value');
-            if (roomSnap.exists()) {
-              const players = roomSnap.val();
-              if (players.player1 && players.player1.username) {
-                if (typeof state !== "undefined" && state.player1) {
-                  state.player1.username = players.player1.username;
-                }
-                if (gamePlayerKey === "player1") {
-                  window.myUsername = players.player1.username;
-                }
-              }
-              if (players.player2 && players.player2.username) {
-                if (typeof state !== "undefined" && state.player2) {
-                  state.player2.username = players.player2.username;
-                }
-                if (gamePlayerKey === "player2") {
-                  window.myUsername = players.player2.username;
-                }
-              }
-              console.log("[Game] プレイヤー名紐づけ完了:", {
-                player1: players.player1?.username,
-                player2: players.player2?.username
-              });
-            }
-          } catch (e) {
-            console.warn("[Game] プレイヤー名取得エラー:", e);
-          }
-
-          // 切断時に自動退出するよう onDisconnect を設定
-          await firebaseClient.setupOnDisconnect(gameRoomName, gamePlayerKey);
-
-          document.dispatchEvent(new Event("firebaseJoined"));
-        }
-      } else {
-        console.warn("[Game] ⚠️ Firebase 初期化失敗");
+      // gameRoom が存在しない場合はマッチ画面へリダイレクト（直接アクセス対策）
+      const gameRoomName  = localStorage.getItem("gameRoom");
+      const gamePlayerKey = localStorage.getItem("gamePlayerKey");
+      if (!gameRoomName || !gamePlayerKey) {
+        console.warn("[Game] gameRoom/gamePlayerKey が未設定。matchSetup へリダイレクト。");
+        location.href = "matchSetup.html";
+        return;
       }
+
+      const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
+      if (!success) {
+        console.warn("[Game] ⚠️ Firebase 初期化失敗");
+        document.dispatchEvent(new Event("firebaseJoined")); // オフラインでも initGame は走らせる
+        return;
+      }
+
+      console.log("[Game] ✅ Firebase 初期化成功");
+
+      try {
+        // rooms/players から両プレイヤーの username を取得して state に紐づける
+        const roomSnap = await firebaseClient.db.ref(`rooms/${gameRoomName}/players`).once('value');
+        if (roomSnap.exists()) {
+          const players = roomSnap.val();
+          if (players.player1?.username) {
+            if (typeof state !== "undefined" && state.player1) state.player1.username = players.player1.username;
+            if (gamePlayerKey === "player1") window.myUsername = players.player1.username;
+          }
+          if (players.player2?.username) {
+            if (typeof state !== "undefined" && state.player2) state.player2.username = players.player2.username;
+            if (gamePlayerKey === "player2") window.myUsername = players.player2.username;
+          }
+          console.log("[Game] プレイヤー名紐づけ完了:", {
+            player1: players.player1?.username,
+            player2: players.player2?.username
+          });
+        }
+
+        // onDisconnect を設定（切断時に rooms/players から自動削除）
+        await firebaseClient.setupOnDisconnect(gameRoomName, gamePlayerKey);
+
+      } catch (e) {
+        console.warn("[Game] Firebase 前処理エラー:", e);
+      }
+
+      document.dispatchEvent(new Event("firebaseJoined"));
     });
 
     // beforeunload では退出しない（リロード時に接続を維持するため）

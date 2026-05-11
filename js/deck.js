@@ -3,7 +3,7 @@ let cardsPage = 0;
 let deckPage = 0;
 
 const PAGE_SIZE = 8;
-const DECK_PAGE_SIZE = 5;
+const DECK_PAGE_SIZE = 6;
 const MAX_COPIES = 3;
 
 // URLパラメータからデッキIDを取得

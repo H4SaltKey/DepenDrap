@@ -994,11 +994,9 @@ const ICON_ATK = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xm
   <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
     fill="rgba(255,107,157,0.3)" stroke="#ff6b9d" stroke-width="1.2"/>
   <!-- 剣 -->
-  <line x1="10" y1="6" x2="10" y2="14" stroke="#ff6b9d" stroke-width="2"/>
-  <line x1="10" y1="6" x2="8" y2="8" stroke="#ff6b9d" stroke-width="1.5"/>
-  <line x1="10" y1="6" x2="12" y2="8" stroke="#ff6b9d" stroke-width="1.5"/>
-  <line x1="10" y1="14" x2="8" y2="12" stroke="#ff6b9d" stroke-width="1.5"/>
-  <line x1="10" y1="14" x2="12" y2="12" stroke="#ff6b9d" stroke-width="1.5"/>
+  <path d="M10 5 L10 13 M8 7 L12 7 M8 11 L12 11 M9 14 L11 14" 
+    stroke="#ff6b9d" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="10" cy="4" r="1" fill="#ff6b9d"/>
 </svg>`;
 
 const ICON_DEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">

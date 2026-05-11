@@ -263,7 +263,7 @@ function clearGameState()  {
 // ===== レベルステータス =====
 const LEVEL_MAX = 6;
 let LEVEL_STATS = {
-  atk:        [0, 1, 1, 2, 3, 4],
+  atk:        [0, 0, 0, 1, 2, 3],
   def:        [0, 1, 1, 2, 3, 4],
   instantDef: [1, 1, 2, 2, 3, 3]
 };

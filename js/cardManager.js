@@ -1100,14 +1100,13 @@ window.organizeHands = function() {
   const myHandCards = cards.filter(c => c.dataset.owner === myRole && Number(c.dataset.y) >= 1500);
   
   if (myHandCards.length > 0) {
-    // 手札の順序保持を削除 - 自由に並べ替え可能にする
-    // myHandCards.sort((a, b) => {
-    //   const oa = Number(a.dataset.handOrder || 0);
-    //   const ob = Number(b.dataset.handOrder || 0);
-    //   if (oa !== ob) return oa - ob;
-    //   return Number(a.dataset.x) - Number(b.dataset.x);
-    // });
-    
+    // 手札のソート規則を手札に加えた順に変更
+    myHandCards.sort((a, b) => {
+      const oa = Number(a.dataset.handOrder || 0);
+      const ob = Number(b.dataset.handOrder || 0);
+      return oa - ob;
+    });
+
     const spacing = 40;
     let startX = 40; // 左端詰め
     const handY = FIELD_H - CARD_H - 20;

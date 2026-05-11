@@ -276,6 +276,15 @@ if(localStorage.getItem("dev") !== "true"){
       <span id="levelStatsMsg" style="font-size:14px;color:#2f80ed;align-self:center;font-weight:bold;"></span>
     </div>
   </section>
+
+  <!-- カード一括作成セクション -->
+  <section style="background:white;border:1px solid #aaa;padding:20px;">
+    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
+    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">複数のカード画像をフォルダ単位で一括アップロードし、カードデータを自動生成します。</p>
+    <div style="display:flex;gap:12px;">
+      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 カードをアップロード</button>
+    </div>
+  </section>
 </div>
 
 <!-- フッター（完了ボタン削除済み） -->
@@ -285,7 +294,13 @@ if(localStorage.getItem("dev") !== "true"){
 <script src="js/deckCode.js"></script>
 <script src="js/core.js"></script>
 <script src="js/dev.js"></script>
+<script src="js/devTools.js"></script>
 <script src="js/menu.js?v=5"></script>
+
+<script>
+  // カード一括作成ボタンのイベントリスナー
+  document.getElementById("openCardBatchUploader").addEventListener("click", openCardBatchUploader);
+</script>
 
 </body>
 </html>

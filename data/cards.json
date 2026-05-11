@@ -1,21 +1,18 @@
 [
   {
-    "id": "cd0000",
-    "image": "cd0000.png"
+    "id": "cd001-001",
+    "image": "block001/card001.png"
   },
   {
-    "id": "cd0001",
-    "image": "asdas.png",
-    "name": "臭くないよ"
+    "id": "cd001-002",
+    "image": "block001/card002.png"
   },
   {
-    "id": "cd0002",
-    "image": "Gemini_Generated_Image_pq5ve3pq5ve3pq5v.png",
-    "name": "臭い世"
+    "id": "cd001-003",
+    "image": "block001/card003.png"
   },
   {
-    "id": "cd0003",
-    "image": "IMG_20211126_140635.png",
-    "name": "スナイパーフォーカス山田"
+    "id": "cd001-004",
+    "image": "block001/card004.png"
   }
 ]

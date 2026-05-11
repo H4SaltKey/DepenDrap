@@ -2307,6 +2307,18 @@ async function handleTurnEnd() {
   if (m.turnPlayer !== me) return;
   if (m.winner) return;
 
+  // 手札枚数上限のチェック
+  const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
+  const content = document.getElementById("fieldContent") || document.getElementById("field");
+  if (content) {
+    const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+    const myHandCards = cards.filter(c => c.dataset.owner === me && Number(c.dataset.y) >= 1500);
+    if (myHandCards.length > handLimit) {
+      alert(`手札が上限を超えています（${myHandCards.length}枚 / 上限${handLimit}枚）。\n手札を${myHandCards.length - handLimit}枚捨ててからターンを終了してください。`);
+      return;
+    }
+  }
+
   const op          = me === "player1" ? "player2" : "player1";
   const firstPlayer = m.firstPlayer || "player1";
 

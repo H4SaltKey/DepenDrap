@@ -995,25 +995,6 @@ async function initCards(){
     slider.value = fieldZoom;
   }
 
-  // 手札枚数上限の計算
-  function getHandLimit(owner) {
-    const baseLimit = 6;
-    const s = (typeof state !== "undefined") ? state[owner] : null;
-    if (!s || !s.evolutionPath || s.evolutionPath !== "忍耐の道") {
-      return baseLimit;
-    }
-    // 忍耐の道: 手札上限+2、最大レベル時は+3
-    const level = s.level || 1;
-    if (level >= 6) {
-      return baseLimit + 3;
-    } else if (level >= 5) {
-      return baseLimit + 2;
-    } else if (level >= 3) {
-      return baseLimit + 1;
-    }
-    return baseLimit;
-  }
-
   // 手札エリアの描画
   if(!document.getElementById("myHandZoneBg")) {
     const myHandBg = document.createElement("div");
@@ -1089,6 +1070,25 @@ window.getFieldData = function() {
     }));
 };
 
+// 手札枚数上限の計算（windowスコープ）
+window.getHandLimit = function(owner) {
+  const baseLimit = 6;
+  const s = (typeof state !== "undefined") ? state[owner] : null;
+  if (!s || !s.evolutionPath || s.evolutionPath !== "忍耐の道") {
+    return baseLimit;
+  }
+  // 忍耐の道: 手札上限+2、最大レベル時は+3
+  const level = s.level || 1;
+  if (level >= 6) {
+    return baseLimit + 3;
+  } else if (level >= 5) {
+    return baseLimit + 2;
+  } else if (level >= 3) {
+    return baseLimit + 1;
+  }
+  return baseLimit;
+};
+
 window.prevMyHandCount = -1;
 
 window.organizeHands = function() {
@@ -1133,7 +1133,7 @@ window.organizeHands = function() {
   // 手札枚数上限表示の更新
   const limitDisplay = document.getElementById("myHandLimitDisplay");
   if (limitDisplay) {
-    const limit = getHandLimit(myRole);
+    const limit = window.getHandLimit(myRole);
     limitDisplay.textContent = `${myHandCards.length}/${limit}`;
     limitDisplay.style.color = myHandCards.length > limit ? "#ff6666" : "#c7b377";
   }

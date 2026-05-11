@@ -950,8 +950,8 @@ h3{
   min-width:0;
   height:100%;
   display:grid;
-  grid-template-columns:repeat(8, minmax(0, 1fr));
-  gap:10px;
+  grid-template-columns:repeat(8, 1fr);
+  gap:8px;
   align-items:center;
   justify-items:center;
 }
@@ -997,10 +997,10 @@ h3{
   text-overflow:ellipsis;
 }
 
-/* デッキ側のカード行: 4枚均等配置で拡大 */
+/* デッキ側のカード行: 4枚均等配置で間隔縮小 */
 .cardRowDeck{
-  grid-template-columns:repeat(4, minmax(0, 1fr));
-  gap:12px;
+  grid-template-columns:repeat(4, 1fr);
+  gap:8px;
 }
 
 .deckCardCount{

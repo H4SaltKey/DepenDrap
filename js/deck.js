@@ -2,7 +2,7 @@ let deck = [];
 let cardsPage = 0;
 let deckPage = 0;
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 8;
 const DECK_PAGE_SIZE = 5;
 const MAX_COPIES = 3;
 

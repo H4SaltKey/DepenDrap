@@ -93,6 +93,8 @@ function openDeckSelectPopup() {
   document.getElementById("deckSelectPopup").classList.remove("hidden");
   // 選択中デッキのプレビューを即表示
   if (popupSelectedDeckId) renderDeckPreview(popupSelectedDeckId);
+  // ポップアップを開いた時点で現在のデッキ枚数を最新化（0枚表示バグ修正）
+  renderCurrentDeck();
 }
 
 function closeDeckSelectPopup() {

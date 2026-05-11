@@ -914,23 +914,70 @@ let lastTurnPlayer = null;
   const s = document.createElement('style');
   s.id = 'matchHeaderStyle';
   s.textContent = `
-    .match-header {
-      background: linear-gradient(180deg, rgba(20, 15, 40, 0.9) 0%, rgba(10, 8, 20, 0.7) 100%);
-      backdrop-filter: blur(10px);
-      border-bottom: 2px solid #c7b377;
-      border-left: 2px solid #c7b377;
-      border-right: 2px solid #c7b377;
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 20px;
-      padding: 10px 40px;
-      display: flex;
-      align-items: center;
-      gap: 30px;
-      box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+    /* ── コンパクト表示（通常時） ── */
+    .match-header-compact {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      z-index: 5000; pointer-events: auto;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(10, 8, 20, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(199,179,119,0.45);
+      border-top: none;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      padding: 4px 16px 5px;
+      cursor: default;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+      transition: opacity 0.2s;
+      user-select: none;
+      white-space: nowrap;
+      font-family: 'Outfit', sans-serif;
+    }
+    .match-compact-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #d0c090;
+      letter-spacing: 1px;
+    }
+    .match-compact-badge {
+      font-size: 10px;
+      font-weight: 900;
+      padding: 1px 8px;
+      border-radius: 8px;
+      letter-spacing: 1px;
+    }
+
+    /* ── 展開表示（ホバー時） ── */
+    .match-header-expanded {
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      margin-top: 4px;
+      background: linear-gradient(180deg, rgba(20,15,40,0.95) 0%, rgba(10,8,20,0.88) 100%);
+      backdrop-filter: blur(12px);
+      border: 1.5px solid #c7b377;
+      border-radius: 12px;
+      padding: 12px 36px 14px;
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.6);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-50%) translateY(-6px) scaleY(0.92);
+      transform-origin: top center;
+      transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16,1,0.3,1);
+      font-family: 'Outfit', sans-serif;
+      white-space: nowrap;
+    }
+    .match-header-compact:hover .match-header-expanded,
+    .match-header-compact:focus-within .match-header-expanded {
+      opacity: 1;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(0) scaleY(1);
+    }
+    .match-header-wrap {
+      position: relative; display: inline-flex; flex-direction: column; align-items: center;
     }
     .match-info-center { text-align: center; }
-    .match-round { font-size: 12px; color: #c7b377; letter-spacing: 3px; font-weight: bold; text-transform: uppercase; }
-    .match-turn-count { font-size: 24px; font-weight: 900; color: #fff; margin-top: -5px; }
+    .match-round { font-size: 11px; color: #c7b377; letter-spacing: 3px; font-weight: bold; text-transform: uppercase; }
+    .match-turn-count { font-size: 22px; font-weight: 900; color: #fff; margin-top: -4px; }
     .match-turn-indicator {
       font-size: 10px; letter-spacing: 2px; font-weight: 900; margin-top: 2px;
       padding: 2px 10px; border-radius: 10px;
@@ -977,7 +1024,7 @@ function updateMatchUI() {
     }
   }
 
-  // 1. ラウンド・ターン表示
+  // 1. ラウンド・ターン表示（コンパクト + ホバーで展開）
   let info = document.getElementById("matchInfoDisplay");
   if (!info) {
     info = document.createElement("div");
@@ -992,15 +1039,27 @@ function updateMatchUI() {
   }
 
   const isMyTurn = (m.turnPlayer === window.myRole);
+  const turnColor = isMyTurn ? '#00ffcc' : '#e24a4a';
+  const turnLabel = isMyTurn ? 'あなたのターン' : '相手のターン';
 
-  // <style> タグは injectMatchHeaderStyle() で初回のみ <head> に追加済み
+  // コンパクト表示: 「1-1 相手のターン」
+  const compactText = `${m.round}-${m.turn}`;
+
   const html = `
-    <div class="match-header">
-      <div class="match-info-center">
-        <div class="match-round">第 ${m.round} ラウンド</div>
-        <div class="match-turn-count">ターン ${m.turn}</div>
-        <div class="match-turn-indicator" style="background: ${isMyTurn ? '#00ffcc' : '#e24a4a'}; color: #1a172c;">
-          ${isMyTurn ? 'あなたのターン' : "相手のターン"}
+    <div class="match-header-compact" style="pointer-events: auto;">
+      <div class="match-header-wrap">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="match-compact-text">${compactText}</span>
+          <span class="match-compact-badge" style="background:${turnColor}; color:#1a172c;">${turnLabel}</span>
+        </div>
+        <div class="match-header-expanded">
+          <div class="match-info-center">
+            <div class="match-round">第 ${m.round} ラウンド</div>
+            <div class="match-turn-count">ターン ${m.turn}</div>
+            <div class="match-turn-indicator" style="background:${turnColor}; color:#1a172c; margin-top:6px;">
+              ${turnLabel}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2451,11 +2510,27 @@ async function initGame() {
     const lastRoom = window._lastGameRoom;
 
     if (currentRoom && currentRoom !== lastRoom && !isReload) {
-      console.log("[initGame] 新しいルームに入りました。ダイスロールをリセット");
+      console.log("[initGame] 新しいルームに入りました。プレイヤーステータスと進化の道を完全リセット");
+      
+      // ── プレイヤーデータを完全に再初期化（前のルームの残滓を消す）──
+      state.player1 = { ...makeCharState(), diceValue: -1 };
+      state.player2 = { ...makeCharState(), diceValue: -1 };
+      
+      // username / backImage は matchSetup から引き継ぐ
+      const matchSetupData = (() => { try { return JSON.parse(localStorage.getItem("matchSetup")) || {}; } catch { return {}; } })();
+      state[myKey].username = matchSetupData.username || matchSetupData.self || localStorage.getItem("username") || myKey;
+      state[myKey].backImage = getBackImage() || "assets/favicon.png";
+      
       state.matchData.status = "setup_dice";
-      state.player1.diceValue = -1;
-      state.player2.diceValue = -1;
+      state.matchData.round  = 1;
+      state.matchData.turn   = 1;
+      state.matchData.turnPlayer = "player1";
+      state.matchData.firstPlayer = null;
+      state.matchData.winner = null;
+      state.matchData.winnerSetAt = null;
       window._gameStartInitiated = false;
+      window._lastRound = undefined;
+      lastTurnPlayer = null;
       save();
 
       if (firebaseClient?.db) {

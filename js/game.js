@@ -110,7 +110,16 @@ function updateConnectionOverlay() {
   if (connected) {
     if (overlay && !overlay.classList.contains('conn-hiding')) {
       overlay.classList.add('conn-hiding');
-      setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 600);
+      // 数秒待ってからダイスロール画面に遷移
+      setTimeout(() => { 
+        if (overlay.parentNode) overlay.remove(); 
+        // 接続完了から3秒後にダイスフェーズUIを更新
+        setTimeout(() => {
+          if (typeof updateDicePhaseUI === 'function') {
+            updateDicePhaseUI();
+          }
+        }, 3000);
+      }, 600);
     }
     return;
   }

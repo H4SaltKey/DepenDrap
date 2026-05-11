@@ -22,6 +22,15 @@ async function initMatchSetup() {
   currentUser = localStorage.getItem("username") || "Player";
   document.getElementById("myPlayerDisplay").textContent = currentUser;
 
+  // カードデータを先にロード（decodeDeck が CARD_DB に依存するため）
+  try {
+    if (typeof CARD_DB === "undefined" || CARD_DB.length === 0) {
+      await loadCardData();
+    }
+  } catch (e) {
+    console.warn("[matchSetup] カードデータ読み込み失敗:", e);
+  }
+
   // デッキ復元:
   // 未選択を基本とし、アカウントごとの最終使用デッキがあれば自動選択
   selectedDeckId = null;

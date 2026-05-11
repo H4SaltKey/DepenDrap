@@ -10,7 +10,152 @@ window.isGameInteractionLocked = function() {
 
 function applyInteractionLockState() {
   document.body.classList.toggle("preGameLocked", window.isGameInteractionLocked());
+  updateConnectionOverlay();
 }
+
+// ===== 接続オーバーレイ =====
+
+(function injectConnectionOverlayStyles() {
+  if (document.getElementById('connOverlayStyle')) return;
+  const s = document.createElement('style');
+  s.id = 'connOverlayStyle';
+  s.textContent = `
+    /* ── 接続オーバーレイ ── */
+    #connectionOverlay {
+      position: fixed; inset: 0;
+      z-index: 9000; /* メニューボタン(9999)の下 */
+      background: rgba(8, 6, 15, 0.93);
+      backdrop-filter: blur(14px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-family: 'Outfit', -apple-system, sans-serif;
+      pointer-events: all;
+      transition: opacity 0.55s ease;
+    }
+    #connectionOverlay.conn-hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* スピナー */
+    .conn-spinner-wrap {
+      position: relative; width: 72px; height: 72px;
+      margin-bottom: 32px;
+    }
+    .conn-spinner-outer {
+      position: absolute; inset: 0;
+      border: 2px solid rgba(199,179,119,0.15);
+      border-top-color: #c7b377;
+      border-radius: 50%;
+      animation: connSpin 1s linear infinite;
+    }
+    .conn-spinner-inner {
+      position: absolute; inset: 10px;
+      border: 2px solid rgba(199,179,119,0.08);
+      border-bottom-color: rgba(199,179,119,0.5);
+      border-radius: 50%;
+      animation: connSpin 0.65s linear infinite reverse;
+    }
+    @keyframes connSpin { to { transform: rotate(360deg); } }
+
+    /* テキスト */
+    .conn-title {
+      font-size: 17px; font-weight: 700;
+      color: #e0d0a0; letter-spacing: 2px;
+      margin-bottom: 10px; text-align: center;
+    }
+    .conn-dots::after {
+      content: '';
+      animation: connDots 1.4s steps(4, end) infinite;
+    }
+    @keyframes connDots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+    .conn-sub {
+      font-size: 12px; color: #5a4e2e;
+      letter-spacing: 1px; text-align: center;
+      max-width: 240px; line-height: 1.6;
+    }
+
+    /* 状態変化アニメーション */
+    @keyframes connTitleChange {
+      0%   { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .conn-title-anim {
+      animation: connTitleChange 0.35s ease forwards;
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+/**
+ * 接続オーバーレイを表示/更新/非表示にする
+ * - gameReady=false: 「接続中」（自分の接続フェーズ）
+ * - gameReady=true, !_bothPlayersConnected: 「相手の接続を確認中」
+ * - _bothPlayersConnected: フェードアウトして削除
+ */
+function updateConnectionOverlay() {
+  // ゲームページ以外では何もしない
+  const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
+  if (!isGamePage) return;
+
+  const overlay = document.getElementById('connectionOverlay');
+  const connected = window._bothPlayersConnected || window._soloStartMode;
+
+  // 両者接続済み → フェードアウトして削除
+  if (connected) {
+    if (overlay && !overlay.classList.contains('conn-hiding')) {
+      overlay.classList.add('conn-hiding');
+      setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 600);
+    }
+    return;
+  }
+
+  // オーバーレイが存在しない → 作成
+  if (!overlay) {
+    const div = document.createElement('div');
+    div.id = 'connectionOverlay';
+    div.innerHTML = `
+      <div class="conn-spinner-wrap">
+        <div class="conn-spinner-outer"></div>
+        <div class="conn-spinner-inner"></div>
+      </div>
+      <div class="conn-title conn-title-anim" id="connTitle">
+        接続中<span class="conn-dots"></span>
+      </div>
+      <div class="conn-sub" id="connSub">サーバーに接続しています</div>
+    `;
+    document.body.appendChild(div);
+    return;
+  }
+
+  // オーバーレイが存在する → フェーズに応じてテキストを更新
+  const title = document.getElementById('connTitle');
+  const sub   = document.getElementById('connSub');
+
+  const isWaitingForOp = gameReady && !connected;
+  const newText  = isWaitingForOp ? '相手の接続を確認中' : '接続中';
+  const newSub   = isWaitingForOp ? '対戦相手の接続を待っています' : 'サーバーに接続しています';
+
+  // テキストが変わった時のみアニメーション付きで更新
+  if (title && !title.textContent.startsWith(newText)) {
+    title.classList.remove('conn-title-anim');
+    void title.offsetWidth; // reflow
+    title.innerHTML = `${newText}<span class="conn-dots"></span>`;
+    title.classList.add('conn-title-anim');
+    if (sub) sub.textContent = newSub;
+  }
+}
+
+// DOM 構築完了後に即座にオーバーレイを表示（ゲームページのみ）
+document.addEventListener('DOMContentLoaded', () => {
+  updateConnectionOverlay();
+});
+
 
 // setSafeSrc は cardManager.js で定義済み（重複定義を削除）
 

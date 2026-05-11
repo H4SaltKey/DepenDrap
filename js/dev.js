@@ -37,12 +37,31 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
 });
 
 function generateId() {
-  const nums = devCards
-    .map(c => c.id)
-    .filter(id => /^cd\d{4}$/.test(id))
-    .map(id => parseInt(id.slice(2), 10));
-  const next = nums.length > 0 ? Math.max(...nums) + 1 : 0;
-  return "cd" + String(next).padStart(4, "0");
+  // 新しいID形式に対応：cd001-001, cd001-002, ... cd002-001, ...
+  let maxBlockNum = 0;
+  let maxCardInBlock = {};
+  
+  devCards.forEach(c => {
+    const match = c.id.match(/^cd(\d{3})-(\d{3})$/);
+    if (match) {
+      const blockNum = parseInt(match[1], 10);
+      const cardNum = parseInt(match[2], 10);
+      maxBlockNum = Math.max(maxBlockNum, blockNum);
+      if (!maxCardInBlock[blockNum]) maxCardInBlock[blockNum] = 0;
+      maxCardInBlock[blockNum] = Math.max(maxCardInBlock[blockNum], cardNum);
+    }
+  });
+  
+  // 最後のブロックの次のカード番号、またはブロックが存在しない場合は新しいブロックを作成
+  const blockNum = maxBlockNum || 1;
+  const cardNum = (maxCardInBlock[blockNum] || 0) + 1;
+  
+  if (cardNum > 999) {
+    // カード数が999を超える場合は新しいブロックを作成
+    return `cd${String(blockNum + 1).padStart(3, "0")}-001`;
+  }
+  
+  return `cd${String(blockNum).padStart(3, "0")}-${String(cardNum).padStart(3, "0")}`;
 }
 
 // ===== カード選択 =====
@@ -241,3 +260,75 @@ document.getElementById("resetLevelStats").addEventListener("click", () => {
 });
 
 renderLevelStatsTable();
+
+// ===== カード削除機能 =====
+document.getElementById("deleteCardBtn").addEventListener("click", async () => {
+  const cardId = document.getElementById("deleteCardId").value.trim();
+  const msgEl = document.getElementById("deleteCardMsg");
+  
+  if (!cardId) {
+    msgEl.style.color = "#d9534f";
+    msgEl.textContent = "❌ カードIDを入力してください";
+    return;
+  }
+  
+  // カードが存在するか確認
+  const cardIndex = devCards.findIndex(c => c.id === cardId);
+  if (cardIndex === -1) {
+    msgEl.style.color = "#d9534f";
+    msgEl.textContent = `❌ カードID "${cardId}" が見つかりません`;
+    return;
+  }
+  
+  if (!confirm(`カード "${cardId}" を削除してもよろしいですか？`)) {
+    return;
+  }
+  
+  try {
+    // ローカルから削除
+    devCards.splice(cardIndex, 1);
+    
+    // cards.json から削除
+    let cardData = [];
+    try {
+      const response = await fetch("data/cards.json");
+      cardData = await response.json();
+    } catch (e) {
+      console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);
+    }
+    
+    const updatedCards = cardData.filter(c => c.id !== cardId);
+    
+    // Firebase に保存
+    if (window.firebaseClient?.db) {
+      try {
+        await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
+        console.log(`[Dev] カード "${cardId}" をサーバーから削除しました`);
+      } catch (e) {
+        console.warn(`[Dev] Firebase削除エラー、localStorageに保存します:`, e);
+      }
+    } else {
+      console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
+    }
+    
+    // localStorage に保存
+    localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
+    
+    // 画面を更新
+    renderDevCards();
+    document.getElementById("deleteCardId").value = "";
+    
+    msgEl.style.color = "#27ae60";
+    msgEl.textContent = `✅ カード "${cardId}" を削除しました`;
+    
+    // 3秒後にメッセージを消す
+    setTimeout(() => {
+      msgEl.textContent = "";
+    }, 3000);
+    
+  } catch (e) {
+    console.error("[Dev] カード削除エラー:", e);
+    msgEl.style.color = "#d9534f";
+    msgEl.textContent = `❌ エラーが発生しました: ${e.message}`;
+  }
+});

@@ -205,11 +205,9 @@ async function uploadCardsToServer(files, modal) {
     
     console.log(`[Dev] 次のブロック番号: ${blockNumStr}`);
     
-    // 2. Firebase に画像をアップロード
-    if (!window.firebaseClient?.db) {
-      alert("Firebase が初期化されていません");
-      return;
-    }
+    // 2. Firebase または localStorage を使用
+    const useFirebase = window.firebaseClient?.db ? true : false;
+    console.log(`[Dev] データベース: ${useFirebase ? 'Firebase' : 'localStorage'}`);
     
     const newCards = [];
     const totalFiles = files.length;
@@ -242,15 +240,42 @@ async function uploadCardsToServer(files, modal) {
     const updatedCards = [...cardData, ...newCards];
     
     // Firebase Realtime Database に保存
-    if (window.firebaseClient?.db) {
-      await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
-      console.log(`[Dev] ${newCards.length} 枚のカードをサーバーに保存しました`);
+    if (useFirebase) {
+      try {
+        await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
+        console.log(`[Dev] ${newCards.length} 枚のカードをサーバーに保存しました`);
+      } catch (e) {
+        console.warn(`[Dev] Firebase保存エラー、localStorageに保存します:`, e);
+      }
+    } else {
+      console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
     }
     
     // ローカルストレージにも保存（オフラインモード対応）
     localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
     
-    alert(`✅ ${newCards.length} 枚のカードを追加しました！\nブロック: cd${blockNumStr}-001 〜 cd${blockNumStr}-${String(newCards.length).padStart(3, "0")}`);
+    // カードデータを即座にリロード
+    if (typeof loadCardData === 'function') {
+      try {
+        await loadCardData();
+      } catch (e) {
+        console.warn("[Dev] カードデータリロード失敗:", e);
+      }
+    }
+    
+    alert(`✅ ${newCards.length} 枚のカードを追加しました！
+
+【新しいフォルダ】
+assets/cards/block${blockNumStr}/
+  ├─ card001.png
+  ├─ card002.png
+  ├─ card003.png
+  └─ ...
+
+【カードID】
+cd${blockNumStr}-001 〜 cd${blockNumStr}-${String(newCards.length).padStart(3, "0")}
+
+※ フォルダ内のファイルをこの構造にしてください。`);
     
     // モーダルを閉じる
     setTimeout(() => {

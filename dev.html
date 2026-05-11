@@ -226,6 +226,26 @@ if(localStorage.getItem("dev") !== "true"){
     </div>
   </section>
 
+  <!-- カード削除 -->
+  <section style="background:white;border:1px solid #aaa;padding:20px;">
+    <h3 style="margin:0 0 16px 0;">🗑️ カード削除</h3>
+    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">選択したカードをカードデータから削除します。</p>
+    <div style="display:flex;gap:12px;">
+      <input type="text" id="deleteCardId" placeholder="削除するカードID（例: cd001-001）" style="flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:4px;">
+      <button id="deleteCardBtn" style="padding:8px 24px;background:#d9534f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">削除</button>
+    </div>
+    <div id="deleteCardMsg" style="margin-top:10px;font-size:12px;"></div>
+  </section>
+
+  <!-- カード一括作成プロトコル -->
+  <section style="background:white;border:1px solid #aaa;padding:20px;">
+    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
+    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">複数のカード画像をフォルダ単位で一括アップロードし、カードデータを自動生成します。新しいフォルダが自動作成されます。</p>
+    <div style="display:flex;gap:12px;">
+      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 カードをアップロード</button>
+    </div>
+  </section>
+
   <!-- 編集パネル -->
   <section class="devEditPanel hidden" id="editPanel">
     <div class="devPreview" id="previewBox">
@@ -274,15 +294,6 @@ if(localStorage.getItem("dev") !== "true"){
       <button id="saveLevelStats" style="padding:10px 24px;background:#2f80ed;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">✓ ステータスを保存 (levelStats.json)</button>
       <button id="resetLevelStats" style="padding:10px 24px;background:#f8f9fa;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:14px;">デフォルトに戻す</button>
       <span id="levelStatsMsg" style="font-size:14px;color:#2f80ed;align-self:center;font-weight:bold;"></span>
-    </div>
-  </section>
-
-  <!-- カード一括作成セクション -->
-  <section style="background:white;border:1px solid #aaa;padding:20px;">
-    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
-    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">複数のカード画像をフォルダ単位で一括アップロードし、カードデータを自動生成します。</p>
-    <div style="display:flex;gap:12px;">
-      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 カードをアップロード</button>
     </div>
   </section>
 </div>

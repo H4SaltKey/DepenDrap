@@ -118,46 +118,46 @@ function updateConnectionOverlay() {
         setTimeout(() => {
           // カウントダウンが既に表示されていない場合のみ作成
           if (!document.getElementById('countdownOverlay')) {
-          // カウントダウンオーバーレイを作成
-          const countdownOverlay = document.createElement('div');
-          countdownOverlay.id = 'countdownOverlay';
-          countdownOverlay.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; font-family: sans-serif;
-          `;
-          countdownOverlay.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 20px; opacity: 0.8;">ゲーム開始まで</div>
-            <div id="countdownNumber" style="font-size: 72px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px rgba(0, 255, 204, 0.5);">3</div>
-            <div style="font-size: 16px; margin-top: 20px; opacity: 0.6;">準備してください...</div>
-          `;
-          document.body.appendChild(countdownOverlay);
-          
-          // カウントダウン処理
-          let countdown = 3;
-          const countdownInterval = setInterval(() => {
-            countdown--;
-            const numberEl = document.getElementById('countdownNumber');
-            if (numberEl) {
-              numberEl.textContent = countdown;
-              numberEl.style.transform = 'scale(1.2)';
-              setTimeout(() => {
-                numberEl.style.transform = 'scale(1)';
-              }, 200);
-            }
-            
-            if (countdown <= 0) {
-              clearInterval(countdownInterval);
-              countdownOverlay.remove();
-              // ダイスフェーズUIを更新
-              if (typeof updateDicePhaseUI === 'function') {
-                updateDicePhaseUI();
+            // カウントダウンオーバーレイを作成
+            const countdownOverlay = document.createElement('div');
+            countdownOverlay.id = 'countdownOverlay';
+            countdownOverlay.style.cssText = `
+              position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+              background: rgba(0, 0, 0, 0.8); z-index: 9999;
+              display: flex; flex-direction: column; align-items: center; justify-content: center;
+              color: white; font-family: sans-serif;
+            `;
+            countdownOverlay.innerHTML = `
+              <div style="font-size: 24px; margin-bottom: 20px; opacity: 0.8;">ゲーム開始まで</div>
+              <div id="countdownNumber" style="font-size: 72px; font-weight: bold; color: #00ffcc; text-shadow: 0 0 20px rgba(0, 255, 204, 0.5);">3</div>
+              <div style="font-size: 16px; margin-top: 20px; opacity: 0.6;">準備してください...</div>
+            `;
+            document.body.appendChild(countdownOverlay);
+
+            // カウントダウン処理
+            let countdown = 3;
+            const countdownInterval = setInterval(() => {
+              countdown--;
+              const numberEl = document.getElementById('countdownNumber');
+              if (numberEl) {
+                numberEl.textContent = countdown;
+                numberEl.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                  numberEl.style.transform = 'scale(1)';
+                }, 200);
               }
-            }
-          }, 1000);
-        }
-        }, 800);
+
+              if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                countdownOverlay.remove();
+                // ダイスフェーズUIを更新
+                if (typeof updateDicePhaseUI === 'function') {
+                  updateDicePhaseUI();
+                }
+              }
+            }, 1000);
+          }
+        }, 1500);
       }, 600);
     }
     return;

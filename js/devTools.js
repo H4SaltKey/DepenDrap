@@ -13,7 +13,6 @@ async function openLevelStatsEditor() {
       <thead>
         <tr style="border-bottom:1px solid #666;">
           <th style="padding:10px;text-align:left;">Lv</th>
-          <th style="padding:10px;text-align:left;">基礎攻撃</th>
           <th style="padding:10px;text-align:left;">基礎防御</th>
           <th style="padding:10px;text-align:left;">瞬間防御</th>
         </tr>
@@ -33,21 +32,22 @@ async function openLevelStatsEditor() {
   const stats = LEVEL_STATS; // core.js のグローバル
   
   for (let lv = 1; lv <= 6; lv++) {
-    const s = stats[String(lv)] || { atk: 0, def: 0, instantDef: 1 };
+    const idx = lv - 1;
+    const defVal = (Array.isArray(stats.def) ? stats.def[idx] : 0) || 0;
+    const idVal  = (Array.isArray(stats.instantDef) ? stats.instantDef[idx] : 1) || 0;
     const tr = document.createElement("tr");
     tr.style = "border-bottom:1px solid #333;";
     tr.innerHTML = `
       <td style="padding:10px;font-weight:bold;">${lv}</td>
-      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="atk" value="${s.atk}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
-      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="def" value="${s.def}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
-      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="instantDef" value="${s.instantDef}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
+      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="def" value="${defVal}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
+      <td style="padding:5px;"><input type="number" data-lv="${lv}" data-key="instantDef" value="${idVal}" style="width:60px;background:#333;color:white;border:1px solid #555;padding:4px;"></td>
     `;
     tbody.appendChild(tr);
   }
   
   modal.querySelector("#devCancelBtn").onclick = () => overlay.remove();
   modal.querySelector("#devSaveBtn").onclick = async () => {
-    const newStats = { atk: [], def: [], instantDef: [] };
+    const newStats = { def: [], instantDef: [] };
     modal.querySelectorAll("input").forEach(input => {
       const lv = Number(input.dataset.lv);
       const idx = lv - 1;

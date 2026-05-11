@@ -902,7 +902,7 @@ h3{
   box-sizing:border-box;
   padding:14px 20px 20px;
   display:grid;
-  grid-template-rows:auto minmax(0, 4fr) minmax(0, 6fr);
+  grid-template-rows:auto minmax(0, 1fr) minmax(0, 1fr);
   gap:12px;
 }
 
@@ -995,6 +995,11 @@ h3{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+}
+
+/* デッキ側のカード行: 5枚均等配置 */
+.cardRowDeck{
+  grid-template-columns:repeat(5, minmax(0, 1fr));
 }
 
 .deckCardCount{

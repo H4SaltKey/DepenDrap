@@ -7,7 +7,6 @@ const BASE_INITIAL_STATE = {
   shield: 0,      shieldMax: 5,
   // NOTE: defstack はゲーム上の「防御力（スタック）」
   defstack: 0,    defstackMax: 0, defstackOverMax: false,
-  atk: 5,        atkMax: 999,
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
   deck: [],
@@ -263,7 +262,6 @@ function clearGameState()  {
 // ===== レベルステータス =====
 const LEVEL_MAX = 6;
 let LEVEL_STATS = {
-  atk:        [0, 0, 1, 2, 2, 3],
   def:        [0, 1, 1, 2, 3, 4],
   instantDef: [1, 1, 2, 2, 3, 3]
 };
@@ -294,7 +292,6 @@ function applyLevelStats(owner, force = false) {
   if (!force && s._lastAppliedLv === lv) return;
   const idx = Math.min(lv - 1, LEVEL_MAX - 1);
   const prevDef = Number(s.def) || 0;
-  s.atk        = BASE_INITIAL_STATE.atk        + (LEVEL_STATS.atk[idx]        || 0);
   s.def        = BASE_INITIAL_STATE.def        + (LEVEL_STATS.def[idx]        || 0);
   s.instantDef = BASE_INITIAL_STATE.instantDef + (LEVEL_STATS.instantDef[idx] || 0);
   const defIncrease = (Number(s.def) || 0) - prevDef;

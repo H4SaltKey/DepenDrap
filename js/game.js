@@ -271,8 +271,8 @@ function createDeckObject(forceResetPos = false) {
     wrapper.dataset.instanceId = "deckObject_" + owner;
     wrapper.dataset.owner = owner;
 
-    // 相手のデッキ画像も表示（backImageが設定されていない場合はデフォルト画像）
-    const backImage = state[owner]?.backImage || "assets/favicon.png";
+    // 相手のデッキ画像も表示（backImageが設定されていない場合はcd0000をフォールバック）
+    const backImage = state[owner]?.backImage || "assets/cards/cd0000.png";
     const img = document.createElement("img");
     img.draggable = false;
     setSafeSrc(img, backImage);
@@ -820,9 +820,8 @@ function renderOwnerUI(owner) {
       </div>
     </div>
 
-    <!-- 右: ATK/DEF/IDEF -->
+    <!-- 右: DEF/IDEF -->
     <div class="lorRight">
-      ${lorStatChip(ICON_ATK, s.atk, owner, "atk", "基礎攻撃力")}
       ${lorStatChip(ICON_DEF, s.def, owner, "def", "基礎防御力")}
       ${lorStatChip(ICON_IDEF, s.instantDef, owner, "instantDef", "瞬間防御力")}
       ${isMine ? `
@@ -988,16 +987,7 @@ const ICON_SLD = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xm
     fill="rgba(47,128,237,0.35)" stroke="#2f80ed" stroke-width="1.2"/>
 </svg>`;
 
-const ICON_ATK = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 刀身 -->
-  <line x1="3" y1="17" x2="15" y2="5" stroke="#f0d080" stroke-width="2" stroke-linecap="round"/>
-  <!-- 先端 -->
-  <polygon points="15,5 17,3 19,5 17,7" fill="#f0d080"/>
-  <!-- 鍔 -->
-  <line x1="8" y1="12" x2="12" y2="8" stroke="#c89b3c" stroke-width="3" stroke-linecap="round"/>
-  <!-- 柄 -->
-  <line x1="3" y1="17" x2="5" y2="15" stroke="#a07840" stroke-width="3" stroke-linecap="round"/>
-</svg>`;
+
 
 const ICON_DEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
   <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"

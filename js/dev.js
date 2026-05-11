@@ -209,9 +209,6 @@ function renderLevelStatsTable(){
     tr.innerHTML = `
       <td style="text-align:center;font-weight:bold;background:#fcfcfc;">Lv${lv}</td>
       <td>
-        <input type="number" value="${(stats.atk && stats.atk[i]) ?? 0}" data-stat="atk" data-lv="${i}" class="devStatInput">
-      </td>
-      <td>
         <input type="number" value="${(stats.def && stats.def[i]) ?? 0}" data-stat="def" data-lv="${i}" class="devStatInput">
       </td>
       <td>
@@ -223,7 +220,7 @@ function renderLevelStatsTable(){
 }
 
 document.getElementById("saveLevelStats").addEventListener("click", () => {
-  const stats = { atk: [], def: [], instantDef: [] };
+  const stats = { def: [], instantDef: [] };
   document.querySelectorAll("#levelStatsBody input").forEach(input => {
     const stat = input.dataset.stat;
     const lv   = Number(input.dataset.lv);

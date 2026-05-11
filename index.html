@@ -57,24 +57,12 @@
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; height: 100vh; text-align: center;
   }
-  .title-logo {
-    font-size: 52px; font-weight: 600; letter-spacing: 4px; color: #e0d0a0;
-    text-shadow: 0 4px 20px rgba(0,0,0,0.8), 0 0 30px rgba(199,179,119,0.4), 0 0 60px rgba(199,179,119,0.2);
-    margin-bottom: 15px; padding-bottom: 15px;
-    background: linear-gradient(135deg, rgba(199,179,119,0.1) 0%, rgba(199,179,119,0.05) 100%);
-    border: 1px solid rgba(199,179,119,0.3);
-    border-radius: 8px;
-    padding: 20px 40px;
-    position: relative;
-  }
-  .title-logo::before {
-    content: '';
-    position: absolute;
-    top: -2px; left: -2px; right: -2px; bottom: -2px;
-    background: linear-gradient(45deg, rgba(199,179,119,0.3), rgba(199,179,119,0.1), rgba(199,179,119,0.3));
-    border-radius: 10px;
-    z-index: -1;
-    opacity: 0.5;
+  .title-logo-img {
+    max-width: 600px;
+    width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 4px 20px rgba(0,0,0,0.8));
   }
   .title-version {
     font-size: 18px; font-weight: 500; letter-spacing: 3px; color: #c7b377;
@@ -111,7 +99,7 @@
 </div>
 
 <div class="title-content">
-  <div class="title-logo">DepenDrapOnline</div>
+  <img src="assets/title.png" alt="DepenDrapOnline" class="title-logo-img">
   <div class="title-version">v1.1.0</div>
   <div class="title-menu">
     <button class="lorBtn title-btn" onclick="goGame()">対戦開始</button>

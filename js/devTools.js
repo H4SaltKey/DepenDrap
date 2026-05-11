@@ -74,219 +74,129 @@ async function openLevelStatsEditor() {
 // ===== カード一括作成プロトコル =====
 
 async function openCardBatchUploader() {
-  const overlay = document.createElement("div");
-  overlay.className = "devModalOverlay";
-  overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;color:white;font-family:sans-serif;";
-  
-  const modal = document.createElement("div");
-  modal.style = "background:#222;padding:20px;border-radius:10px;width:90%;max-width:600px;max-height:90%;overflow-y:auto;border:1px solid #444;";
-  
-  modal.innerHTML = `
-    <h2 style="margin-top:0">カード一括作成 (Dev)</h2>
-    <p style="color:#aaa;font-size:0.9em;margin-bottom:20px;">複数のカード画像をフォルダ単位でアップロードします。各ファイルが1枚のカードとして追加されます。</p>
-    
-    <div id="uploadArea" style="border:2px dashed #666;border-radius:8px;padding:30px;text-align:center;margin-bottom:20px;background:#1a1a1a;cursor:pointer;transition:all 0.3s;">
-      <div style="font-size:48px;margin-bottom:10px;">📁</div>
-      <div style="font-size:14px;color:#aaa;">ここにファイルをドラッグ＆ドロップするか、クリックして選択</div>
-      <input type="file" id="cardFileInput" multiple accept="image/*" style="display:none;">
-    </div>
-    
-    <div id="fileList" style="margin-bottom:20px;max-height:300px;overflow-y:auto;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:10px;"></div>
-    
-    <div id="uploadProgress" style="display:none;margin-bottom:20px;">
-      <div style="font-size:12px;margin-bottom:5px;">アップロード中...</div>
-      <div style="width:100%;height:20px;background:#333;border-radius:4px;overflow:hidden;">
-        <div id="progressBar" style="width:0%;height:100%;background:#2f80ed;transition:width 0.3s;"></div>
-      </div>
-    </div>
-    
-    <div style="display:flex;justify-content:flex-end;gap:10px;">
-      <button id="devCardCancelBtn" style="padding:8px 20px;background:#555;color:white;border:none;border-radius:4px;cursor:pointer;">キャンセル</button>
-      <button id="devCardUploadBtn" style="padding:8px 20px;background:#2f80ed;color:white;border:none;border-radius:4px;cursor:pointer;" disabled>アップロード</button>
-    </div>
-  `;
-  
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  
-  let selectedFiles = [];
-  
-  const uploadArea = modal.querySelector("#uploadArea");
-  const fileInput = modal.querySelector("#cardFileInput");
-  const fileList = modal.querySelector("#fileList");
-  const uploadBtn = modal.querySelector("#devCardUploadBtn");
-  const cancelBtn = modal.querySelector("#devCardCancelBtn");
-  
-  // ドラッグ&ドロップ処理
-  uploadArea.addEventListener("click", () => fileInput.click());
-  uploadArea.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    uploadArea.style.background = "#2a2a2a";
-    uploadArea.style.borderColor = "#2f80ed";
-  });
-  uploadArea.addEventListener("dragleave", () => {
-    uploadArea.style.background = "#1a1a1a";
-    uploadArea.style.borderColor = "#666";
-  });
-  uploadArea.addEventListener("drop", (e) => {
-    e.preventDefault();
-    uploadArea.style.background = "#1a1a1a";
-    uploadArea.style.borderColor = "#666";
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
-    if (files.length > 0) handleFileSelection(files);
-  });
-  
-  fileInput.addEventListener("change", (e) => {
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.webkitdirectory = true;
+  fileInput.multiple = true;
+  fileInput.accept = "image/*";
+  fileInput.style.display = "none";
+  document.body.appendChild(fileInput);
+
+  fileInput.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
-    if (files.length > 0) handleFileSelection(files);
+    document.body.removeChild(fileInput);
+    if (files.length === 0) {
+      alert("フォルダ内に画像ファイルが見つかりませんでした。");
+      return;
+    }
+
+    const folderName = getFolderNameFromFiles(files);
+    if (!folderName) {
+      alert("フォルダ名を取得できませんでした。assets/cards内のblockXXXフォルダを選択してください。");
+      return;
+    }
+
+    const blockMatch = folderName.match(/block(?:x)?(\d+)/i);
+    const blockNumStr = blockMatch ? String(parseInt(blockMatch[1], 10)).padStart(3, "0") : null;
+    const targetLabel = blockNumStr ? `block${blockNumStr}` : folderName;
+    const count = files.length;
+    const confirmed = confirm(`フォルダ "${targetLabel}" の画像 ${count} 枚を新規カードとして追加します。よろしいですか？`);
+    if (!confirmed) return;
+
+    await uploadCardsToServer(files, folderName, blockNumStr);
   });
-  
-  function handleFileSelection(files) {
-    selectedFiles = files;
-    fileList.innerHTML = "";
-    
-    files.forEach((file, idx) => {
-      const div = document.createElement("div");
-      div.style = "padding:8px;background:#333;margin-bottom:5px;border-radius:4px;font-size:12px;display:flex;justify-content:space-between;align-items:center;";
-      div.innerHTML = `
-        <span>${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>
-        <button style="background:#d9534f;color:white;border:none;padding:4px 8px;border-radius:2px;cursor:pointer;font-size:11px;">削除</button>
-      `;
-      div.querySelector("button").onclick = () => {
-        selectedFiles.splice(idx, 1);
-        handleFileSelection(selectedFiles);
-      };
-      fileList.appendChild(div);
-    });
-    
-    uploadBtn.disabled = files.length === 0;
-  }
-  
-  cancelBtn.onclick = () => overlay.remove();
-  uploadBtn.onclick = () => uploadCardsToServer(selectedFiles, modal);
+
+  fileInput.click();
 }
 
-async function uploadCardsToServer(files, modal) {
+function getFolderNameFromFiles(files) {
+  const first = files[0];
+  const relPath = first.webkitRelativePath || first.name;
+  const folder = relPath.split("/")[0];
+  return folder || null;
+}
+
+async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
   if (files.length === 0) {
-    alert("ファイルを選択してください");
+    alert("画像ファイルが選択されていません。");
     return;
   }
-  
-  const uploadProgress = modal.querySelector("#uploadProgress");
-  const progressBar = modal.querySelector("#progressBar");
-  const uploadBtn = modal.querySelector("#devCardUploadBtn");
-  
-  uploadProgress.style.display = "block";
-  uploadBtn.disabled = true;
-  
+
+  let cardData = [];
   try {
-    // 1. 次のブロック番号を計算
-    let cardData = [];
-    try {
-      const response = await fetch("data/cards.json");
-      cardData = await response.json();
-    } catch (e) {
-      console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);
-      cardData = [];
-    }
-    
-    // 最大ブロック番号を取得
+    const response = await fetch("data/cards.json");
+    cardData = await response.json();
+  } catch (e) {
+    console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);
+    cardData = [];
+  }
+
+  const blockMatch = folderName.match(/block(?:x)?(\d+)/i);
+  let blockNum = blockMatch ? parseInt(blockMatch[1], 10) : null;
+
+  if (!blockNum && blockNumStrOverride) {
+    blockNum = parseInt(blockNumStrOverride, 10);
+  }
+
+  if (!blockNum) {
     let maxBlockNum = 0;
     cardData.forEach(card => {
-      const match = card.id.match(/cd(\d+)/);
+      const match = card.id.match(/^cd(\d{3})-/);
       if (match) {
-        const blockNum = parseInt(match[1], 10);
-        maxBlockNum = Math.max(maxBlockNum, blockNum);
+        maxBlockNum = Math.max(maxBlockNum, parseInt(match[1], 10));
       }
     });
-    
-    const nextBlockNum = maxBlockNum + 1;
-    const blockNumStr = String(nextBlockNum).padStart(3, "0");
-    
-    console.log(`[Dev] 次のブロック番号: ${blockNumStr}`);
-    
-    // 2. Firebase または localStorage を使用
-    const useFirebase = window.firebaseClient?.db ? true : false;
-    console.log(`[Dev] データベース: ${useFirebase ? 'Firebase' : 'localStorage'}`);
-    
-    const newCards = [];
-    const totalFiles = files.length;
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const cardIdx = i + 1;
-      const cardIdxStr = String(cardIdx).padStart(3, "0");
-      const cardId = `cd${blockNumStr}-${cardIdxStr}`;
-      const imagePath = `cards/block${blockNumStr}/card${cardIdxStr}.png`;
-      
-      // Firebase Storage にアップロード
-      try {
-        // デモ用：ローカルで画像パスを設定（実装時に Firebase Storage を使用）
-        newCards.push({
-          id: cardId,
-          image: imagePath
-        });
-        console.log(`[Dev] カード追加: ${cardId} (${file.name})`);
-      } catch (e) {
-        console.error(`[Dev] ${cardId} のアップロード失敗:`, e);
-      }
-      
-      // プログレス表示
-      const progress = Math.round((i + 1) / totalFiles * 100);
-      progressBar.style.width = progress + "%";
-    }
-    
-    // 3. cards.json に追加
-    const updatedCards = [...cardData, ...newCards];
-    
-    // Firebase Realtime Database に保存
-    if (useFirebase) {
-      try {
-        await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
-        console.log(`[Dev] ${newCards.length} 枚のカードをサーバーに保存しました`);
-      } catch (e) {
-        console.warn(`[Dev] Firebase保存エラー、localStorageに保存します:`, e);
-      }
-    } else {
-      console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
-    }
-    
-    // ローカルストレージにも保存（オフラインモード対応）
-    localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
-    
-    // カードデータを即座にリロード
-    if (typeof loadCardData === 'function') {
-      try {
-        await loadCardData();
-      } catch (e) {
-        console.warn("[Dev] カードデータリロード失敗:", e);
-      }
-    }
-    
-    alert(`✅ ${newCards.length} 枚のカードを追加しました！
-
-【新しいフォルダ】
-assets/cards/block${blockNumStr}/
-  ├─ card001.png
-  ├─ card002.png
-  ├─ card003.png
-  └─ ...
-
-【カードID】
-cd${blockNumStr}-001 〜 cd${blockNumStr}-${String(newCards.length).padStart(3, "0")}
-
-※ フォルダ内のファイルをこの構造にしてください。`);
-    
-    // モーダルを閉じる
-    setTimeout(() => {
-      modal.parentElement.remove();
-    }, 500);
-    
-  } catch (e) {
-    console.error("[Dev] カード一括作成エラー:", e);
-    alert("❌ エラーが発生しました: " + e.message);
-  } finally {
-    uploadProgress.style.display = "none";
-    uploadBtn.disabled = false;
+    blockNum = maxBlockNum + 1;
   }
+
+  const blockNumStr = String(blockNum).padStart(3, "0");
+  const folderLabel = blockMatch ? `block${blockNumStr}` : folderName;
+
+  const existingBlockCards = cardData.filter(c => c.id.startsWith(`cd${blockNumStr}-`));
+  if (existingBlockCards.length > 0) {
+    const continueConfirm = confirm(`同じブロック番号 cd${blockNumStr} のカードが既に ${existingBlockCards.length} 件存在します。続行しますか？`);
+    if (!continueConfirm) return;
+  }
+
+  const sortedFiles = files.slice().sort((a, b) => {
+    const aPath = a.webkitRelativePath || a.name;
+    const bPath = b.webkitRelativePath || b.name;
+    return aPath.localeCompare(bPath, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  const newCards = [];
+  sortedFiles.forEach((file, index) => {
+    const cardIdxStr = String(index + 1).padStart(3, "0");
+    const cardId = `cd${blockNumStr}-${cardIdxStr}`;
+    const imageName = (file.webkitRelativePath || file.name).split("/").pop();
+    const imagePath = `${folderLabel}/${imageName}`;
+    newCards.push({ id: cardId, image: imagePath });
+    console.log(`[Dev] カード追加: ${cardId} (${imagePath})`);
+  });
+
+  const updatedCards = [...cardData, ...newCards];
+
+  const useFirebase = !!window.firebaseClient?.db;
+  if (useFirebase) {
+    try {
+      await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
+      console.log(`[Dev] ${newCards.length} 枚のカードをサーバーに保存しました`);
+    } catch (e) {
+      console.warn(`[Dev] Firebase保存エラー、localStorageに保存します:`, e);
+    }
+  } else {
+    console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
+  }
+
+  localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
+
+  if (typeof loadCardData === 'function') {
+    try {
+      await loadCardData();
+    } catch (e) {
+      console.warn("[Dev] カードデータリロード失敗:", e);
+    }
+  }
+
+  alert(`✅ ${newCards.length} 枚のカードを追加しました！\n\n【フォルダ】\n${folderLabel}\n\n【カードID】\n${newCards[0].id} 〜 ${newCards[newCards.length - 1].id}`);
 }

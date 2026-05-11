@@ -332,3 +332,73 @@ document.getElementById("deleteCardBtn").addEventListener("click", async () => {
     msgEl.textContent = `❌ エラーが発生しました: ${e.message}`;
   }
 });
+
+// ===== 編集パネル内のカード削除 =====
+document.getElementById("deleteSelectedCardBtn").addEventListener("click", async () => {
+  const cardId = document.getElementById("editId").value.trim();
+  const msgEl = document.getElementById("editMessage");
+  
+  if (!cardId) {
+    msgEl.style.color = "#d9534f";
+    msgEl.textContent = "❌ カードIDが取得できません";
+    return;
+  }
+  
+  if (!confirm(`カード "${cardId}" を削除してもよろしいですか？\n\nこの操作は取り消せません。`)) {
+    return;
+  }
+  
+  try {
+    // ローカルから削除
+    const cardIndex = devCards.findIndex(c => c.id === cardId);
+    if (cardIndex !== -1) {
+      devCards.splice(cardIndex, 1);
+    }
+    
+    // cards.json から削除
+    let cardData = [];
+    try {
+      const response = await fetch("data/cards.json");
+      cardData = await response.json();
+    } catch (e) {
+      console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);
+    }
+    
+    const updatedCards = cardData.filter(c => c.id !== cardId);
+    
+    // Firebase に保存
+    if (window.firebaseClient?.db) {
+      try {
+        await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
+        console.log(`[Dev] カード "${cardId}" をサーバーから削除しました`);
+      } catch (e) {
+        console.warn(`[Dev] Firebase削除エラー、localStorageに保存します:`, e);
+      }
+    } else {
+      console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
+    }
+    
+    // localStorage に保存
+    localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
+    
+    // 画面を更新
+    renderDevCards();
+    
+    // 編集パネルを閉じる
+    document.getElementById("editPanel").classList.add("hidden");
+    selectedId = null;
+    
+    msgEl.style.color = "#27ae60";
+    msgEl.textContent = `✅ カード "${cardId}" を削除しました`;
+    
+    // 3秒後にメッセージを消す
+    setTimeout(() => {
+      msgEl.textContent = "";
+    }, 3000);
+    
+  } catch (e) {
+    console.error("[Dev] カード削除エラー:", e);
+    msgEl.style.color = "#d9534f";
+    msgEl.textContent = `❌ エラーが発生しました: ${e.message}`;
+  }
+});

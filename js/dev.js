@@ -16,7 +16,10 @@ async function initDev() {
       image: c.image
         ? c.image.replace("assets/cards/", "")
         : "",
-      name: c.name || ""
+      name: c.name || "",
+      attribute: c.attribute || "近接",
+      type: c.type || "アタッカー",
+      tags: Array.isArray(c.tags) ? c.tags.join(", ") : (typeof c.tags === "string" ? c.tags : "")
     }));
   } catch(e) {
     devCards = [];
@@ -30,7 +33,14 @@ initDev();
 // ===== カード追加 =====
 document.getElementById("addCardBtn").addEventListener("click", () => {
   const id = generateId();
-  devCards.push({ id, image: "", name: "" });
+  devCards.push({
+    id,
+    image: "",
+    name: "",
+    attribute: "近接",
+    type: "アタッカー",
+    tags: ""
+  });
   devPage = Math.floor((devCards.length - 1) / PAGE_SIZE);
   renderDevCards();
   selectCard(id);
@@ -72,6 +82,11 @@ function selectCard(id) {
 
   document.getElementById("editPanel").classList.remove("hidden");
   document.getElementById("editId").value = card.id;
+  document.getElementById("editTags").value = card.tags || "";
+  const attrInput = document.getElementById(`editAttribute_${card.attribute || "近接"}`);
+  if (attrInput) attrInput.checked = true;
+  const typeInput = document.getElementById(`editCardType_${card.type || "アタッカー"}`);
+  if (typeInput) typeInput.checked = true;
 
   const pending = pendingImages[id];
   if (pending) {
@@ -100,6 +115,37 @@ function clearPreview() {
   document.getElementById("previewImg").src = "";
   document.getElementById("previewImg").style.display = "none";
   document.getElementById("previewPlaceholder").style.display = "";
+}
+
+function normalizeTags(value) {
+  if (Array.isArray(value)) {
+    return value.map(tag => String(tag || "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(/[,、\s]+/).map(tag => tag.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function updateSelectedField(key, value) {
+  if (!selectedId) return;
+  const card = devCards.find(c => c.id === selectedId);
+  if (!card) return;
+  card[key] = value;
+  renderDevCards();
+}
+
+// イベント: 編集パネルの属性 / 種類 / タグ
+[...document.querySelectorAll('input[name="editAttribute"]'), ...document.querySelectorAll('input[name="editCardType"]')].forEach(input => {
+  input.addEventListener('change', () => {
+    updateSelectedField(input.name === 'editAttribute' ? 'attribute' : 'type', input.value);
+  });
+});
+const editTagsInput = document.getElementById('editTags');
+if (editTagsInput) {
+  editTagsInput.addEventListener('input', () => {
+    updateSelectedField('tags', editTagsInput.value);
+  });
 }
 
 // ===== 画像選択 =====
@@ -163,6 +209,18 @@ function renderDevCards() {
     nameDiv.textContent = card.name || card.id;
     el.appendChild(nameDiv);
 
+    const metaDiv = document.createElement("div");
+    metaDiv.style = "font-size:11px;color:#555;margin-top:4px;line-height:1.2;text-align:center;";
+    metaDiv.textContent = `${card.attribute || "近接"} / ${card.type || "アタッカー"}`;
+    el.appendChild(metaDiv);
+
+    if (card.tags) {
+      const tagsDiv = document.createElement("div");
+      tagsDiv.style = "font-size:10px;color:#777;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;";
+      tagsDiv.textContent = card.tags;
+      el.appendChild(tagsDiv);
+    }
+
     el.addEventListener("click", () => selectCard(card.id));
     container.appendChild(el);
   });
@@ -198,8 +256,13 @@ document.getElementById("doneBtn").addEventListener("click", () => {
   }
 
   const output = devCards.map(c => {
-    const entry = { id: c.id, image: c.image || "" };
-    // nameフィールドは除去（データ構造の変更）
+    const entry = {
+      id: c.id,
+      image: c.image || "",
+      attribute: c.attribute || "近接",
+      type: c.type || "アタッカー",
+      tags: normalizeTags(c.tags)
+    };
     return entry;
   });
 

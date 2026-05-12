@@ -250,6 +250,22 @@ if(localStorage.getItem("dev") !== "true"){
         <label>画像ファイル名</label><br>
         <input type="text" id="editImageName" readonly placeholder="画像を選択してください">
       </div>
+      <div>
+        <label>属性</label><br>
+        <label style="margin-right:10px;"><input type="radio" name="editAttribute" id="editAttribute_近接" value="近接"> 近接</label>
+        <label style="margin-right:10px;"><input type="radio" name="editAttribute" id="editAttribute_遠隔" value="遠隔"> 遠隔</label>
+        <label><input type="radio" name="editAttribute" id="editAttribute_魔法" value="魔法"> 魔法</label>
+      </div>
+      <div>
+        <label>種類</label><br>
+        <label style="margin-right:10px;"><input type="radio" name="editCardType" id="editCardType_アタッカー" value="アタッカー"> アタッカー</label>
+        <label style="margin-right:10px;"><input type="radio" name="editCardType" id="editCardType_スキル" value="スキル"> スキル</label>
+        <label><input type="radio" name="editCardType" id="editCardType_サポート" value="サポート"> サポート</label>
+      </div>
+      <div>
+        <label>検索用タグ</label><br>
+        <input type="text" id="editTags" placeholder="例: 火力, 範囲, 支援">
+      </div>
       <button class="selectImageBtn" id="selectImageBtn">📁 画像を選択（PNG）</button>
       <input type="file" id="imageFileInput" accept="image/png" style="display:none;">
       <div class="devEditMessage" id="editMessage"></div>

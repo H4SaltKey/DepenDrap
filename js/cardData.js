@@ -10,6 +10,9 @@ async function loadCardData(){
   CARD_DB = cards.map(card => ({
     ...card,
     name: card.name || "",
+    attribute: card.attribute || "近接",
+    type: card.type || "アタッカー",
+    tags: normalizeCardTags(card.tags),
     image: normalizeCardImagePath(card.image || "")
   }));
   CARD_INDEX = Object.fromEntries(CARD_DB.map(card => [card.id, card]));
@@ -26,6 +29,16 @@ function normalizeCardImagePath(path) {
     return p;
   }
   return "assets/cards/" + p;
+}
+
+function normalizeCardTags(tags) {
+  if (Array.isArray(tags)) {
+    return tags.map(tag => String(tag || "").trim()).filter(Boolean);
+  }
+  if (typeof tags === "string") {
+    return tags.split(/[,、\s]+/).map(tag => tag.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 function getCardIds(){

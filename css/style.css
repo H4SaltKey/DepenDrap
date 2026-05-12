@@ -916,7 +916,7 @@ h3{
   box-sizing:border-box;
   padding:12px 16px 16px;
   display:grid;
-  grid-template-rows:auto 0.32fr 0.68fr;
+  grid-template-rows:auto auto 1fr;
   gap:8px;
 }
 
@@ -970,41 +970,26 @@ h3{
 
 .cardCatalog{
   display:grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
   gap:16px;
-  align-items:start;
 }
 .cardCatalogMain{
   display:grid;
   gap:12px;
 }
-.cardCatalogSide{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
+.cardListControls{
+  min-height:0;
+  display:grid;
+  grid-template-columns:40px minmax(0, 1fr) 40px;
+  gap:8px;
+  align-items:center;
 }
-.cardControls{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  padding:14px;
-  border:1px solid #ddd;
-  border-radius:12px;
-  background:#fafafa;
+.cardListControls .pageButton{
+  width:100%;
+  height:40px;
 }
-.cardControlsHeader{
-  font-weight:700;
-  color:#333;
-}
-.cardStatus{
-  min-height:28px;
-  font-size:13px;
-  color:#555;
-}
-.pageControls{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+
+.deckArea{
+  min-height:280px;
 }
 
 .contextMenu {

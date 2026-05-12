@@ -18,7 +18,10 @@
   <section class="deckSection cardCatalog">
     <div class="cardCatalogMain">
       <header>
-        <h3>カード一覧</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+          <h3>カード一覧</h3>
+          <div id="deckMessage" style="font-size:13px;color:#555;"></div>
+        </div>
       </header>
       <div class="deckFilters">
         <div class="filterGroup">
@@ -40,18 +43,12 @@
           <label><input type="radio" name="filterType" value="サポート"> サポート</label>
         </div>
       </div>
-      <div id="cards" class="cardRow"></div>
-    </div>
-    <aside class="cardCatalogSide">
-      <div class="cardControls">
-        <div class="cardControlsHeader">操作</div>
-        <div id="deckMessage" class="cardStatus"></div>
-        <div class="pageControls">
-          <button class="pageButton" id="cardsPrev" type="button">‹</button>
-          <button class="pageButton" id="cardsNext" type="button">›</button>
-        </div>
+      <div class="pagedRow cardListControls">
+        <button class="pageButton" id="cardsPrev" type="button">‹</button>
+        <div id="cards" class="cardRow"></div>
+        <button class="pageButton" id="cardsNext" type="button">›</button>
       </div>
-    </aside>
+    </div>
   </section>
 
   <section class="deckSection deckArea" id="deckDropZone">

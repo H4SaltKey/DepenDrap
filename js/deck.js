@@ -185,10 +185,10 @@ function openDeckContextMenu(x, y, id, action) {
   const menu = document.getElementById("deckContextMenu");
   if (!menu) return;
   const options = action === "add" ? [1, 2, 3] : [1, 2, 3];
-  menu.innerHTML = options.map(count => {
+  menu.innerHTML = `<div class="context-item" data-action="zoom">拡大表示</div>` + options.map(count => {
     const label = action === "add" ? `+${count}枚追加` : `-${count}枚削除`;
     return `<div class="context-item" data-count="${count}">${label}</div>`;
-  }).join("") + `<div class="context-item" data-action="zoom">拡大表示</div>`;
+  }).join("");
 
   menu.classList.remove("hidden");
   menu.style.display = "block";

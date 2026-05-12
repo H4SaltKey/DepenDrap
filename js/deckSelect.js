@@ -186,9 +186,6 @@ function selectDeck(id) {
 
   // カード一覧
   renderDetailCards(cards);
-
-  // スリーブ画像表示
-  showBackImagePreview(deck.backImage);
 }
 
 function renderDetailCards(cards) {
@@ -360,25 +357,8 @@ function saveBackImage(dataUrl) {
   }
 }
 
-function showBackImagePreview(dataUrl) {
-  const img = document.getElementById("backImagePreviewImg");
-  const none = document.getElementById("backImagePreviewNone");
-  if (dataUrl) {
-    img.src = dataUrl;
-    img.style.display = "";
-    none.style.display = "none";
-  } else {
-    img.src = "";
-    img.style.display = "none";
-    none.style.display = "";
-  }
-}
-
 function setupBackImageUI() {
   document.getElementById("btnSetBackImage").addEventListener("click", () => {
-    document.getElementById("backImageInput").click();
-  });
-  document.getElementById("backImagePreview").addEventListener("click", () => {
     document.getElementById("backImageInput").click();
   });
 
@@ -388,15 +368,9 @@ function setupBackImageUI() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       saveBackImage(ev.target.result);
-      showBackImagePreview(ev.target.result);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  });
-
-  document.getElementById("btnClearBackImage").addEventListener("click", () => {
-    saveBackImage("");
-    showBackImagePreview("");
   });
 }
 

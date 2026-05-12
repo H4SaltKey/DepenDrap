@@ -222,6 +222,10 @@ function renderDevCards() {
     }
 
     el.addEventListener("click", () => selectCard(card.id));
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      openDevContextMenu(e.pageX, e.pageY, card.id);
+    });
     container.appendChild(el);
   });
 
@@ -238,6 +242,59 @@ function clampPage(page, total) {
   const max = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
   return Math.max(0, Math.min(max, page));
 }
+
+function openDevContextMenu(x, y, id) {
+  const menu = document.getElementById("devContextMenu");
+  if (!menu) return;
+  menu.innerHTML = `<div class="context-item" data-action="zoom">拡大表示</div>`;
+  menu.style.display = "block";
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  Array.from(menu.children).forEach(item => {
+    item.addEventListener("click", () => {
+      showCardZoom(id);
+      hideDevContextMenu();
+    });
+  });
+}
+
+function hideDevContextMenu() {
+  const menu = document.getElementById("devContextMenu");
+  if (menu) menu.style.display = "none";
+}
+
+function showCardZoom(id) {
+  const card = devCards.find(c => c.id === id) || getCardData(id);
+  if (!card) return;
+  const modal = document.getElementById("cardZoomModal");
+  if (!modal) return;
+  const image = document.getElementById("cardZoomImage");
+  const info = document.getElementById("cardZoomInfo");
+  const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/404.png";
+  image.src = src;
+  image.onerror = () => { image.src = "assets/404.png"; };
+  const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
+  info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
+  modal.classList.remove("hidden");
+}
+
+function hideCardZoom() {
+  const modal = document.getElementById("cardZoomModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+window.addEventListener("click", (e) => {
+  const menu = document.getElementById("devContextMenu");
+  if (!menu || menu.style.display !== "block") return;
+  if (e.target.closest && e.target.closest("#devContextMenu")) return;
+  hideDevContextMenu();
+});
+
+window.addEventListener("scroll", hideDevContextMenu);
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideCardZoom();
+});
 
 function updatePager(total) {
   const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);

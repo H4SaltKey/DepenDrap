@@ -300,6 +300,15 @@ if(localStorage.getItem("dev") !== "true"){
   </section>
 </div>
 
+<div id="devContextMenu" class="contextMenu hidden"></div>
+<div id="cardZoomModal" class="cardZoomModal hidden" onclick="if(event.target === this) hideCardZoom();">
+  <div class="cardZoomContent">
+    <img id="cardZoomImage" src="" alt="拡大カード画像">
+    <div class="cardZoomInfo" id="cardZoomInfo"></div>
+    <button class="cardZoomClose" type="button" onclick="hideCardZoom()">閉じる</button>
+  </div>
+</div>
+
 <!-- フッター（完了ボタン削除済み） -->
 <div class="devFooter" style="display:none;"></div>
 

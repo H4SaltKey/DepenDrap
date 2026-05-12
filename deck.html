@@ -82,7 +82,14 @@
   </section>
 </main>
 
-<div id="deckContextMenu" style="position:fixed;top:0;left:0;z-index:10000;display:none;border-radius:6px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.35);background:rgba(12,11,18,0.98);"></div>
+<div id="deckContextMenu" class="contextMenu hidden"></div>
+<div id="cardZoomModal" class="cardZoomModal hidden" onclick="if(event.target === this) hideCardZoom();">
+  <div class="cardZoomContent">
+    <img id="cardZoomImage" src="" alt="拡大カード画像">
+    <div class="cardZoomInfo" id="cardZoomInfo"></div>
+    <button class="cardZoomClose" type="button" onclick="hideCardZoom()">閉じる</button>
+  </div>
+</div>
 
 <script src="js/cardData.js"></script>
 <script src="js/deckCode.js"></script>

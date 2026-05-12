@@ -188,7 +188,7 @@ function openDeckContextMenu(x, y, id, action) {
   menu.innerHTML = options.map(count => {
     const label = action === "add" ? `+${count}枚追加` : `-${count}枚削除`;
     return `<div class="context-item" data-count="${count}">${label}</div>`;
-  }).join("");
+  }).join("") + `<div class="context-item" data-action="zoom">拡大表示</div>`;
 
   menu.style.display = "block";
   menu.style.left = `${x}px`;
@@ -211,11 +211,16 @@ function openDeckContextMenu(x, y, id, action) {
 
   menu.querySelectorAll(".context-item").forEach(item => {
     item.addEventListener("click", () => {
-      const count = Number(item.dataset.count);
-      if (action === "add") {
-        for (let i = 0; i < count; i++) addCard(id);
+      const actionType = item.dataset.action || "count";
+      if (actionType === "zoom") {
+        showCardZoom(id);
       } else {
-        for (let i = 0; i < count; i++) removeCard(id);
+        const count = Number(item.dataset.count);
+        if (action === "add") {
+          for (let i = 0; i < count; i++) addCard(id);
+        } else {
+          for (let i = 0; i < count; i++) removeCard(id);
+        }
       }
       hideDeckContextMenu();
     });
@@ -226,6 +231,29 @@ function hideDeckContextMenu() {
   const menu = document.getElementById("deckContextMenu");
   if (menu) menu.style.display = "none";
 }
+
+function showCardZoom(id) {
+  const card = getCardData(id);
+  if (!card) return;
+  const modal = document.getElementById("cardZoomModal");
+  if (!modal) return;
+  const image = document.getElementById("cardZoomImage");
+  const info = document.getElementById("cardZoomInfo");
+  image.src = card.image ? encodeURI(card.image) : "assets/404.png";
+  image.onerror = () => { image.src = "assets/404.png"; };
+  const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
+  info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
+  modal.classList.remove("hidden");
+}
+
+function hideCardZoom() {
+  const modal = document.getElementById("cardZoomModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideCardZoom();
+});
 
 window.addEventListener("click", (e) => {
   const menu = document.getElementById("deckContextMenu");

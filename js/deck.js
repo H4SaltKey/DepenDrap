@@ -166,6 +166,25 @@ function animateCardTransition(sourceEl, targetRect, onFinish) {
   }, { once: true });
 }
 
+function animateCountActions(sourceEl, targetRect, count, action) {
+  if (!sourceEl || !targetRect || count <= 1) {
+    action();
+    return;
+  }
+
+  let current = 0;
+  const step = () => {
+    animateCardTransition(sourceEl, targetRect, () => {
+      action();
+      current += 1;
+      if (current < count) {
+        setTimeout(step, 90);
+      }
+    });
+  };
+  step();
+}
+
 // ===== カード要素生成 =====
 function createCardElement(id, count, source) {
   const card = getCardData(id);
@@ -350,7 +369,7 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
             width: sourceEl.offsetWidth,
             height: sourceEl.offsetHeight
           } : null;
-          animateCardTransition(sourceEl, targetRect, performAction);
+          animateCountActions(sourceEl, targetRect, count, performAction);
         } else {
           performAction();
         }

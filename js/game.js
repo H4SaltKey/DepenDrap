@@ -5,6 +5,8 @@ window._soloStartMode = false;
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
   if (!isGamePage) return false;
+  const status = state?.matchData?.status;
+  if (status === "ready_check") return true; // 準備フェーズ中は操作ロック
   return !window._soloStartMode && !window._bothPlayersConnected;
 };
 
@@ -150,9 +152,10 @@ function updateConnectionOverlay() {
               if (countdown <= 0) {
                 clearInterval(countdownInterval);
                 countdownOverlay.remove();
-                // ダイスフェーズUIを更新
-                if (typeof updateDicePhaseUI === 'function') {
-                  updateDicePhaseUI();
+                // 準備フェーズを開始
+                state.matchData.status = "ready_check";
+                if (typeof updateReadyCheckUI === 'function') {
+                  updateReadyCheckUI();
                 }
               }
             }, 1000);
@@ -275,16 +278,18 @@ function resetAllGameVariables() {
   state = {
     player1: {
       ...makeCharState(),
-      diceValue: -1
+      diceValue: -1,
+      ready: false
     },
     player2: {
       ...makeCharState(),
-      diceValue: -1
+      diceValue: -1,
+      ready: false
     },
     matchData: {
       round: 1, turn: 1,
       turnPlayer: "player1",
-      status: "setup_dice",
+      status: "ready_check",
       winner: null, firstPlayer: null
     },
     logs: []
@@ -301,6 +306,9 @@ function resetAllGameVariables() {
   // UI をリセット
   const overlay = document.getElementById("dicePhaseOverlay");
   if (overlay) overlay.style.display = "none";
+  
+  const readyOverlay = document.getElementById("readyCheckOverlay");
+  if (readyOverlay) readyOverlay.style.display = "none";
   
   const matchInfo = document.getElementById("matchInfoDisplay");
   if (matchInfo) matchInfo.innerHTML = "";
@@ -1132,6 +1140,16 @@ function update(skipLogCheck = false) {
   // マッチ進行UIの更新
   updateMatchUI();
 
+  // 準備フェーズUIの更新
+  if (typeof updateReadyCheckUI === 'function') {
+    updateReadyCheckUI();
+  }
+
+  // ダイスフェーズUIの更新
+  if (typeof updateDicePhaseUI === 'function') {
+    updateDicePhaseUI();
+  }
+
   if (typeof updateDeckObject === "function") updateDeckObject();
   
   // チャットログの更新
@@ -1857,11 +1875,13 @@ async function executeReset() {
   localStorage.removeItem("gameStartedRoom");
 
   state.matchData = {
-    round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
+    round: 1, turn: 1, turnPlayer: "player1", status: "ready_check",
     winner: null, winnerSetAt: null, firstPlayer: null
   };
   state.player1.diceValue = -1;
+  state.player1.ready = false;
   state.player2.diceValue = -1;
+  state.player2.ready = false;
   window._gameStartInitiated = false;
   window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
   window._resultDismissed = false;  // 再戦時は判定を再開
@@ -2022,6 +2042,105 @@ window.selectEvolutionPath = async function(pathName) {
   
   update();
 };
+
+function updateReadyCheckUI() {
+  const m = state.matchData;
+  let overlay = document.getElementById("readyCheckOverlay");
+
+  if (m.status !== "ready_check") {
+    if (overlay) {
+      overlay.style.opacity = "0";
+      setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
+    }
+    return;
+  }
+
+  // オーバーレイを作成（初回のみ）
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "readyCheckOverlay";
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8, 6, 15, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(15px); flex-direction: column; color: #fff;
+      transition: opacity 0.5s ease; font-family: 'Outfit', sans-serif;
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = "flex";
+  overlay.style.opacity = "1";
+
+  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const p1Ready = state.player1.ready;
+  const p2Ready = state.player2.ready;
+  const bothReady = p1Ready && p2Ready;
+
+  const p1Name = state.player1.username || "プレイヤー1";
+  const p2Name = state.player2.username || "プレイヤー2";
+
+  const p1Label = (playerKey === "player1") ? "あなた" : "あいて";
+  const p2Label = (playerKey === "player2") ? "あなた" : "あいて";
+
+  overlay.innerHTML = `
+    <div class="ready-container" style="max-width:900px;width:90%;">
+      <h2 class="ready-title" style="margin-bottom:60px;">準備確認</h2>
+      <div style="display:flex;justify-content:center;gap:100px;align-items:flex-start;">
+        <div style="text-align:center;">
+          <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:8px;font-weight:900;">${p1Label}</div>
+          <div style="font-size:14px;color:#c7b377;letter-spacing:1px;margin-bottom:22px;font-weight:700;">${p1Name}</div>
+          <div class="ready-status" style="color:${p1Ready ? '#4fc3f7' : '#fff'};min-height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;">
+            ${p1Ready ? '準備完了' : '準備中...'}
+          </div>
+          ${playerKey === "player1" && !p1Ready ? '<button class="ready-btn" onclick="handleReadyConfirm()">準備完了</button>' : ''}
+        </div>
+        <div style="font-size:32px;color:#444;font-weight:900;margin-top:60px;">VS</div>
+        <div style="text-align:center;">
+          <div style="font-size:18px;color:#fff;letter-spacing:2px;margin-bottom:8px;font-weight:900;">${p2Label}</div>
+          <div style="font-size:14px;color:#c7b377;letter-spacing:1px;margin-bottom:22px;font-weight:700;">${p2Name}</div>
+          <div class="ready-status" style="color:${p2Ready ? '#4fc3f7' : '#fff'};min-height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;">
+            ${p2Ready ? '準備完了' : '準備中...'}
+          </div>
+          ${playerKey === "player2" && !p2Ready ? '<button class="ready-btn" onclick="handleReadyConfirm()">準備完了</button>' : ''}
+        </div>
+      </div>
+      <div style="margin-top:40px;font-size:13px;color:#fff;letter-spacing:2px;text-align:center;">
+        ${bothReady ? '<span style="color:#4fc3f7;">両プレイヤー準備完了。ダイスロールを開始します...</span>' : '両プレイヤーが準備完了するまでお待ちください。'}
+      </div>
+    </div>
+    <style>
+      .ready-btn {
+        background: #4fc3f7;
+        color: #fff;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .ready-btn:hover {
+        background: #29b6f6;
+        transform: scale(1.05);
+      }
+      .ready-title {
+        font-size: 28px;
+        font-weight: 900;
+        color: #e0d0a0;
+        letter-spacing: 4px;
+        text-align: center;
+      }
+    </style>
+  `;
+
+  // 両方が準備完了したら自動でダイスフェーズへ移行
+  if (bothReady) {
+    setTimeout(() => {
+      state.matchData.status = "setup_dice";
+      updateDicePhaseUI();
+    }, 2000);
+  }
+}
 
 function updateDicePhaseUI() {
   const m = state.matchData;
@@ -2217,6 +2336,21 @@ function updateDicePhaseUI() {
   }
 }
 
+async function handleReadyConfirm() {
+  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  if (state[playerKey].ready) return; // 既に準備完了
+
+  state[playerKey].ready = true;
+  update();
+
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db) {
+    await firebaseClient.writeMyState(gameRoom, playerKey, _getMyStateForSync());
+  }
+
+  updateReadyCheckUI();
+}
+
 // ===== ダイスフェーズ =====
 // 設計原則（新）:
 //   - 自分のデータは rooms/{room}/playerState/{myKey} にのみ書く
@@ -2297,7 +2431,19 @@ function showDiceRollingAnimation() {
 async function handleResetDice() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom || !firebaseClient) return;
+
+  // ローカルでリセット
+  state.player1.diceValue = -1;
+  state.player1.ready = false;
+  state.player2.diceValue = -1;
+  state.player2.ready = false;
+  update();
+
+  // Firebaseでリセット
   await firebaseClient.resetPlayerDice(gameRoom);
+
+  // UI更新
+  updateDicePhaseUI();
 }
 
 async function handleChooseOrder(goFirst) {

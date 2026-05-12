@@ -5,7 +5,8 @@ window._soloStartMode = false;
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
   if (!isGamePage) return false;
-  return !window._soloStartMode && !window._bothPlayersConnected;
+  const status = state.matchData?.status;
+  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "order_phase" || status === "reconnect_complete");
 };
 
 function applyInteractionLockState() {
@@ -1137,8 +1138,13 @@ function update(skipLogCheck = false) {
   updateMatchUI();
 
   // 準備フェーズUIの更新
-  if (typeof updateOrderDecideUI === 'function') {
-    updateOrderDecideUI();
+  if (typeof updateReadyCheckUI === 'function') {
+    updateReadyCheckUI();
+  }
+
+  // 順番決めフェーズUIの更新
+  if (typeof updateOrderPhaseUI === 'function') {
+    updateOrderPhaseUI();
   }
 
   // ダイスフェーズUIの更新
@@ -2037,9 +2043,9 @@ window.selectEvolutionPath = async function(pathName) {
   update();
 };
 
-function updateOrderDecideUI() {
+function updateReadyCheckUI() {
   const m = state.matchData;
-  let overlay = document.getElementById("orderDecideOverlay");
+  let overlay = document.getElementById("readyCheckOverlay");
 
   if (m.status !== "ready_check") {
     if (overlay) {
@@ -2052,7 +2058,7 @@ function updateOrderDecideUI() {
   // オーバーレイを作成（初回のみ）
   if (!overlay) {
     overlay = document.createElement("div");
-    overlay.id = "orderDecideOverlay";
+    overlay.id = "readyCheckOverlay";
     overlay.style.cssText = `
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(8, 6, 15, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;
@@ -2064,15 +2070,7 @@ function updateOrderDecideUI() {
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 
-  const p1Name = state.player1.username || "プレイヤー1";
-  const p2Name = state.player2.username || "プレイヤー2";
   const waitingForConnection = !window._bothPlayersConnected;
-  const currentPhase = waitingForConnection ? "connecting" : "order";
-
-  if (overlay.dataset.phase !== currentPhase) {
-    overlay.dataset.phase = currentPhase;
-    overlay.dataset.startedOrderDelay = "false";
-  }
 
   if (waitingForConnection) {
     overlay.innerHTML = `
@@ -2092,6 +2090,83 @@ function updateOrderDecideUI() {
     return;
   }
 
+  // 接続完了：自動で次のフェーズへ移行済みなので、ここは表示されないはず
+  overlay.innerHTML = `
+    <div class="order-container" style="max-width:900px;width:90%;">
+      <h2 class="order-title" style="margin-bottom:20px;">接続完了</h2>
+      <div style="font-size:16px;color:#c7b377;margin-bottom:24px;text-align:center;">接続が確認されました。次のフェーズへ移行します。</div>
+    </div>
+    <style>
+      .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
+    </style>
+  `;
+}
+
+
+function startDiceRoll() {
+  state.matchData.status = "setup_dice";
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.writeMatchData(gameRoom, state.matchData);
+  }
+  update();
+}
+
+
+function updateOrderPhaseUI() {
+  const m = state.matchData;
+  let overlay = document.getElementById("orderPhaseOverlay");
+
+  if (m.status !== "order_phase" && m.status !== "reconnect_complete") {
+    if (overlay) {
+      overlay.style.opacity = "0";
+      setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
+    }
+    return;
+  }
+
+  // オーバーレイを作成（初回のみ）
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "orderPhaseOverlay";
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8, 6, 15, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(15px); flex-direction: column; color: #fff;
+      transition: opacity 0.5s ease; font-family: 'Outfit', sans-serif;
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = "flex";
+  overlay.style.opacity = "1";
+
+  if (m.status === "reconnect_complete") {
+    overlay.innerHTML = `
+      <div class="order-container" style="max-width:900px;width:90%;">
+        <h2 class="order-title" style="margin-bottom:20px;">再接続完了</h2>
+        <div style="font-size:16px;color:#c7b377;margin-bottom:24px;text-align:center;">ゲームに再接続しました。ゲームを再開します。</div>
+      </div>
+      <style>
+        @keyframes connSpin { to { transform: rotate(360deg); } }
+        .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
+      </style>
+    `;
+    // 自動で次のフェーズへ
+    setTimeout(() => {
+      state.matchData.status = "setup_dice";
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+      update();
+    }, 2000);
+    return;
+  }
+
+  // order_phase: 順番決め
+  const p1Name = state.player1.username || "プレイヤー1";
+  const p2Name = state.player2.username || "プレイヤー2";
+
   overlay.innerHTML = `
     <div class="order-container" style="max-width:900px;width:90%;">
       <h2 class="order-title" style="margin-bottom:60px;">順番決めフェーズ</h2>
@@ -2109,19 +2184,17 @@ function updateOrderDecideUI() {
       <div style="margin-top:40px;font-size:13px;color:#fff;letter-spacing:2px;text-align:center;">
         ダイスロールで先攻・後攻を決めます...
       </div>
+      <div style="margin-top:20px;text-align:center;">
+        <button class="dice-choice-btn primary" onclick="startDiceRoll()">ダイスロール開始</button>
+      </div>
     </div>
     <style>
       .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
+      .dice-choice-btn { padding: 10px 20px; margin: 0 10px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+      .dice-choice-btn.primary { background: #4fc3f7; color: #fff; }
+      .dice-choice-btn.secondary { background: #e24a4a; color: #fff; }
     </style>
   `;
-
-  if (overlay.dataset.startedOrderDelay !== "true") {
-    overlay.dataset.startedOrderDelay = "true";
-    setTimeout(() => {
-      state.matchData.status = "setup_dice";
-      updateDicePhaseUI();
-    }, 2000);
-  }
 }
 
 
@@ -2428,7 +2501,7 @@ async function handleChooseOrder(goFirst) {
 
   // ゲーム開始時刻を記録（古い winner を無視するため）
   // 3秒の猶予を持たせて、Firebase から古い winner が流れてきても無視できるようにする
-  window._gameStartedAt = Date.now() + 3000;
+  // window._gameStartedAt = Date.now() + 3000; // 削除
   window._resultDismissed = false;  // 新しいゲーム開始時は判定を有効化
 
   const firstPlayerName = state.matchData.turnPlayer === "player1"
@@ -2947,12 +3020,13 @@ async function initGame() {
     // ── 4. セッション記録・winner クリア・gameReady セット ──
     sessionStorage.setItem("wasInGame", currentRoom);
     window._lastGameRoom = currentRoom;
+    window._isReload = isReload;
 
     // 古い winner を必ずクリア（前回ゲームの残滓・stale 防止）
     state.matchData.winner    = null;
     state.matchData.winnerSetAt = null;
     // 3秒の猶予: Firebase から流れてくる古い winner を stale として無視できるようにする
-    window._gameStartedAt = Date.now() + 3000;
+    // window._gameStartedAt = Date.now() + 3000; // 削除
 
     console.log("[initGame] gameReady = true");
     gameReady = true;
@@ -3029,6 +3103,12 @@ function setupRoomWatcher() {
     if (players.player2?.username) state.player2.username = players.player2.username;
     window._bothPlayersConnected = !!players.player1 && !!players.player2;
     applyInteractionLockState();
+
+    // 両プレイヤーが接続したら、ready_check から次のフェーズへ
+    if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
+      state.matchData.status = window._isReload ? "reconnect_complete" : "order_phase";
+      firebaseClient.writeMatchData(gameRoom, state.matchData);
+    }
 
     const playerCount = Object.keys(players).length;
     if (playerCount === 0) {

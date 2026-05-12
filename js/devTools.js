@@ -90,38 +90,60 @@ async function openCardBatchUploader() {
       return;
     }
 
-    const folderName = getFolderNameFromFiles(files);
-    if (!folderName) {
-      alert("フォルダ名を取得できませんでした。assets/cards内のblockXXXフォルダを選択してください。");
-      return;
+    const rootFolderName = getRootFolderNameFromFiles(files);
+    const isDirectBlock = rootFolderName && /^block\d+$/i.test(rootFolderName);
+
+    let blockFolders;
+    if (isDirectBlock) {
+      // 直接 block999 フォルダーが選択された場合
+      blockFolders = [{ name: rootFolderName, files }];
+    } else {
+      // サブフォルダーから block999 を検索
+      blockFolders = getBlockFoldersFromFiles(files);
+      if (blockFolders.length === 0) {
+        alert("選択したフォルダー内に 'block999' 形式のフォルダーが見つかりませんでした。");
+        return;
+      }
     }
 
-    const blockMatch = folderName.match(/block(?:x)?(\d+)/i);
-    const blockNumStr = blockMatch ? String(parseInt(blockMatch[1], 10)).padStart(3, "0") : null;
-    const targetLabel = blockNumStr ? `block${blockNumStr}` : folderName;
-    const count = files.length;
-    const confirmed = confirm(`フォルダ "${targetLabel}" の画像 ${count} 枚を新規カードとして追加します。よろしいですか？`);
+    const totalImages = blockFolders.reduce((sum, folder) => sum + folder.files.length, 0);
+    const confirmed = confirm(`${blockFolders.length} 個のブロックフォルダーから ${totalImages} 枚の画像をカードデータに追加/更新します。よろしいですか？`);
     if (!confirmed) return;
 
-    await uploadCardsToServer(files, folderName, blockNumStr);
+    await uploadCardsToServerFromBlocks(blockFolders);
   });
 
   fileInput.click();
 }
 
-function getFolderNameFromFiles(files) {
+function getRootFolderNameFromFiles(files) {
   const first = files[0];
   const relPath = first.webkitRelativePath || first.name;
-  const folder = relPath.split("/")[0];
-  return folder || null;
+  const parts = relPath.split("/");
+  return parts.length >= 1 ? parts[0] : null;
 }
 
-async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
-  if (files.length === 0) {
-    alert("画像ファイルが選択されていません。");
-    return;
-  }
+function getBlockFoldersFromFiles(files) {
+  const folderMap = {};
+  files.forEach(file => {
+    const relPath = file.webkitRelativePath || file.name;
+    const parts = relPath.split("/");
+    if (parts.length >= 2) {
+      const subFolder = parts[1];
+      const blockMatch = subFolder.match(/^block(\d+)$/i);
+      if (blockMatch) {
+        const blockNum = blockMatch[1];
+        if (!folderMap[blockNum]) {
+          folderMap[blockNum] = { name: subFolder, files: [] };
+        }
+        folderMap[blockNum].files.push(file);
+      }
+    }
+  });
+  return Object.values(folderMap);
+}
 
+async function uploadCardsToServerFromBlocks(blockFolders) {
   let cardData = [];
   try {
     const response = await fetch(CARD_DATA_URL);
@@ -131,56 +153,50 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
     cardData = [];
   }
 
-  const blockMatch = folderName.match(/block(?:x)?(\d+)/i);
-  let blockNum = blockMatch ? parseInt(blockMatch[1], 10) : null;
+  // 既存カードを image でマップ化
+  const cardMap = {};
+  cardData.forEach(card => {
+    cardMap[card.image] = card;
+  });
 
-  if (!blockNum && blockNumStrOverride) {
-    blockNum = parseInt(blockNumStrOverride, 10);
-  }
+  let updatedCount = 0;
+  let addedCount = 0;
 
-  if (!blockNum) {
-    let maxBlockNum = 0;
-    cardData.forEach(card => {
-      const match = card.id.match(/^cd(\d{3})-/);
-      if (match) {
-        maxBlockNum = Math.max(maxBlockNum, parseInt(match[1], 10));
+  for (const folder of blockFolders) {
+    const blockNumStr = folder.name.match(/^block(\d+)$/i)[1].padStart(3, "0");
+    const sortedFiles = folder.files.slice().sort((a, b) => {
+      const aPath = a.webkitRelativePath || a.name;
+      const bPath = b.webkitRelativePath || b.name;
+      return aPath.localeCompare(bPath, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    sortedFiles.forEach((file, index) => {
+      const imageName = (file.webkitRelativePath || file.name).split("/").pop();
+      const imagePath = `${folder.name}/${imageName}`;
+      const cardIdxStr = String(index + 1).padStart(3, "0");
+      const cardId = `cd${blockNumStr}-${cardIdxStr}`;
+
+      if (cardMap[imagePath]) {
+        // 上書き
+        cardMap[imagePath].id = cardId; // IDも更新（必要に応じて）
+        updatedCount++;
+        console.log(`[Dev] カード更新: ${cardId} (${imagePath})`);
+      } else {
+        // 新規追加
+        const newCard = { id: cardId, image: imagePath };
+        cardData.push(newCard);
+        cardMap[imagePath] = newCard;
+        addedCount++;
+        console.log(`[Dev] カード追加: ${cardId} (${imagePath})`);
       }
     });
-    blockNum = maxBlockNum + 1;
   }
-
-  const blockNumStr = String(blockNum).padStart(3, "0");
-  const folderLabel = blockMatch ? `block${blockNumStr}` : folderName;
-
-  const existingBlockCards = cardData.filter(c => c.id.startsWith(`cd${blockNumStr}-`));
-  if (existingBlockCards.length > 0) {
-    const continueConfirm = confirm(`同じブロック番号 cd${blockNumStr} のカードが既に ${existingBlockCards.length} 件存在します。続行しますか？`);
-    if (!continueConfirm) return;
-  }
-
-  const sortedFiles = files.slice().sort((a, b) => {
-    const aPath = a.webkitRelativePath || a.name;
-    const bPath = b.webkitRelativePath || b.name;
-    return aPath.localeCompare(bPath, undefined, { numeric: true, sensitivity: 'base' });
-  });
-
-  const newCards = [];
-  sortedFiles.forEach((file, index) => {
-    const cardIdxStr = String(index + 1).padStart(3, "0");
-    const cardId = `cd${blockNumStr}-${cardIdxStr}`;
-    const imageName = (file.webkitRelativePath || file.name).split("/").pop();
-    const imagePath = `${folderLabel}/${imageName}`;
-    newCards.push({ id: cardId, image: imagePath });
-    console.log(`[Dev] カード追加: ${cardId} (${imagePath})`);
-  });
-
-  const updatedCards = [...cardData, ...newCards];
 
   const useFirebase = !!window.firebaseClient?.db;
   if (useFirebase) {
     try {
-      await window.firebaseClient.db.ref(`cardDatabase/cards`).set(updatedCards);
-      console.log(`[Dev] ${newCards.length} 枚のカードをサーバーに保存しました`);
+      await window.firebaseClient.db.ref(`cardDatabase/cards`).set(cardData);
+      console.log(`[Dev] カードデータをサーバーに保存しました (追加: ${addedCount}, 更新: ${updatedCount})`);
     } catch (e) {
       console.warn(`[Dev] Firebase保存エラー、localStorageに保存します:`, e);
     }
@@ -188,7 +204,7 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
     console.log(`[Dev] Firebase が利用不可のため、localStorageに保存します`);
   }
 
-  localStorage.setItem("cardDatabase", JSON.stringify(updatedCards));
+  localStorage.setItem("cardDatabase", JSON.stringify(cardData));
 
   if (typeof loadCardData === 'function') {
     try {
@@ -199,7 +215,7 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
   }
 
   // cards.json をダウンロード
-  const jsonBlob = new Blob([JSON.stringify(updatedCards, null, 2)], { type: 'application/json' });
+  const jsonBlob = new Blob([JSON.stringify(cardData, null, 2)], { type: 'application/json' });
   const downloadUrl = URL.createObjectURL(jsonBlob);
   const downloadLink = document.createElement('a');
   downloadLink.href = downloadUrl;
@@ -209,5 +225,7 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
   document.body.removeChild(downloadLink);
   URL.revokeObjectURL(downloadUrl);
 
-  alert(`${newCards.length} 枚のカードを追加しました。cards.json がダウンロードされました。`);
+  alert(`カードデータを更新しました (追加: ${addedCount}, 更新: ${updatedCount})。cards.json がダウンロードされました。`);
 }
+
+

@@ -19,6 +19,7 @@ async function initDev() {
       tags: Array.isArray(c.tags) ? c.tags.join(", ") : (typeof c.tags === "string" ? c.tags : "")
     }));
   } catch(e) {
+    console.error("開発者モードのカード読み込みに失敗しました", e);
     devCards = [];
   }
   renderDevCards();

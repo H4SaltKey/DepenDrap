@@ -1027,15 +1027,7 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     gap:1px;
-    flex:0 0 68vh;
-    max-height: calc(100vh - 32px);
-    min-height:260px;
-    min-width:0;
-}
-
-.cardCatalogMain{
-    display:flex;
-    flex-direction:column;
+    flex:0 0 58vh;
     gap:1px;
     min-height:0;
     flex:1 1 0;

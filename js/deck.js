@@ -144,6 +144,14 @@ function animateCardTransition(sourceEl, targetRect, onFinish) {
   clone.style.opacity = "1";
   document.body.appendChild(clone);
 
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clone.remove();
+    onFinish();
+  };
+
   requestAnimationFrame(() => {
     const deltaX = targetRect.left - srcRect.left;
     const deltaY = targetRect.top - srcRect.top;
@@ -151,13 +159,11 @@ function animateCardTransition(sourceEl, targetRect, onFinish) {
     clone.style.opacity = "0.92";
   });
 
-  const cleanupAnimation = () => {
-    clone.remove();
-    onFinish();
-  };
-
-  clone.addEventListener("transitionend", cleanupAnimation, { once: true });
-  setTimeout(cleanupAnimation, 260);
+  const timeoutId = setTimeout(finish, 260);
+  clone.addEventListener("transitionend", () => {
+    clearTimeout(timeoutId);
+    finish();
+  }, { once: true });
 }
 
 // ===== カード要素生成 =====
@@ -220,13 +226,16 @@ function createCardElement(id, count, source) {
 
     // Update position on drag
     const movePreview = (evt) => {
-      dragPreview.style.left = (evt.clientX + 12) + "px";
-      dragPreview.style.top = (evt.clientY + 12) + "px";
+      const offsetX = Math.round(dragPreview.offsetWidth / 2);
+      const offsetY = Math.round(dragPreview.offsetHeight / 2);
+      dragPreview.style.left = (evt.clientX - offsetX) + "px";
+      dragPreview.style.top = (evt.clientY - offsetY) + "px";
     };
     
     const cleanup = () => {
       const current = document.getElementById("dragPreview");
       if (current) current.remove();
+      document.removeEventListener("drag", movePreview);
       document.removeEventListener("dragover", movePreview);
       document.removeEventListener("dragend", cleanup);
       document.removeEventListener("drop", cleanup);
@@ -235,6 +244,7 @@ function createCardElement(id, count, source) {
       el.removeEventListener("dragend", cleanup);
     };
 
+    document.addEventListener("drag", movePreview);
     document.addEventListener("dragover", movePreview);
     document.addEventListener("dragend", cleanup);
     document.addEventListener("drop", cleanup);
@@ -277,16 +287,16 @@ function createCardElement(id, count, source) {
   el.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     if (source === "cards") {
-      openDeckContextMenu(e.pageX, e.pageY, id, "add");
+      openDeckContextMenu(e.pageX, e.pageY, id, "add", el);
     } else {
-      openDeckContextMenu(e.pageX, e.pageY, id, "remove");
+      openDeckContextMenu(e.pageX, e.pageY, id, "remove", el);
     }
   });
 
   return el;
 }
 
-function openDeckContextMenu(x, y, id, action) {
+function openDeckContextMenu(x, y, id, action, sourceEl = null) {
   const menu = document.getElementById("deckContextMenu");
   if (!menu) return;
   const options = action === "add" ? [1, 2, 3] : [1, 2, 3];
@@ -322,10 +332,27 @@ function openDeckContextMenu(x, y, id, action) {
         showCardZoom(id);
       } else {
         const count = Number(item.dataset.count);
-        if (action === "add") {
-          for (let i = 0; i < count; i++) addCard(id);
+        const performAction = () => {
+          if (action === "add") {
+            for (let i = 0; i < count; i++) addCard(id);
+          } else {
+            for (let i = 0; i < count; i++) removeCard(id);
+          }
+        };
+
+        if (sourceEl && count > 0) {
+          const targetRow = action === "add" ? document.getElementById("deck") : document.getElementById("cards");
+          const targetRect = targetRow ? {
+            left: targetRow.getBoundingClientRect().left + Math.max(0, (targetRow.getBoundingClientRect().width - sourceEl.offsetWidth) / 2),
+            top: action === "add"
+              ? targetRow.getBoundingClientRect().top + Math.max(10, targetRow.getBoundingClientRect().height - sourceEl.offsetHeight - 10)
+              : targetRow.getBoundingClientRect().top + Math.max(10, 10),
+            width: sourceEl.offsetWidth,
+            height: sourceEl.offsetHeight
+          } : null;
+          animateCardTransition(sourceEl, targetRect, performAction);
         } else {
-          for (let i = 0; i < count; i++) removeCard(id);
+          performAction();
         }
       }
       hideDeckContextMenu();

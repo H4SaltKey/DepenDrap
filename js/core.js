@@ -95,6 +95,56 @@ window.resetPlayerState = resetPlayerState;
 
 let saveTimeout = null;
 
+function isQuotaExceededError(err) {
+  return err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014);
+}
+
+function createSafeLocalStateCopy() {
+  try {
+    const copy = JSON.parse(JSON.stringify(state));
+    if (Array.isArray(copy.logs) && copy.logs.length > 20) {
+      copy.logs = copy.logs.slice(-20);
+    }
+    if (copy.player1 && Array.isArray(copy.player1.deck) && copy.player1.deck.length > 20) {
+      copy.player1.deck = copy.player1.deck.slice(0, 20);
+    }
+    if (copy.player2 && Array.isArray(copy.player2.deck) && copy.player2.deck.length > 20) {
+      copy.player2.deck = copy.player2.deck.slice(0, 20);
+    }
+    return JSON.stringify(copy);
+  } catch (e) {
+    return null;
+  }
+}
+
+function safeLocalSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    if (!isQuotaExceededError(e)) throw e;
+    console.warn(`[Storage] Quota exceeded while writing ${key}. Trying fallback.`);
+    try {
+      localStorage.removeItem("gameState");
+      localStorage.removeItem("fieldCards");
+      localStorage.removeItem("gameStarted");
+      localStorage.removeItem("gameStartedRoom");
+    } catch (_) {}
+    const fallbackJson = createSafeLocalStateCopy();
+    if (!fallbackJson) return false;
+    try {
+      localStorage.setItem(key, fallbackJson);
+      return true;
+    } catch (err) {
+      if (isQuotaExceededError(err)) {
+        console.warn(`[Storage] Fallback save failed for ${key}, giving up.`);
+        return false;
+      }
+      throw err;
+    }
+  }
+}
+
 // 自分のデータをサーバーに送信（200msデバウンス）
 function saveDebounced() {
   if (saveTimeout) clearTimeout(saveTimeout);
@@ -104,14 +154,14 @@ function saveDebounced() {
 // 自分のデータをサーバーに即時送信（await可能）
 function saveImmediate() {
   if (saveTimeout) clearTimeout(saveTimeout);
-  localStorage.setItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", JSON.stringify(state));
   return _pushMyState();
 }
 
 // gameState + fieldCards を同時キャッシュ
 function saveAllImmediate(customFieldCards = null) {
   if (saveTimeout) clearTimeout(saveTimeout);
-  localStorage.setItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", JSON.stringify(state));
   if (typeof lastLocalFieldSaveAt !== "undefined") window.lastLocalFieldSaveAt = Date.now();
   const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : []);
 
@@ -122,7 +172,7 @@ function saveAllImmediate(customFieldCards = null) {
 
 // localStorage のみ（UI更新用、サーバーには送らない）
 function saveLocal() {
-  localStorage.setItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", JSON.stringify(state));
 }
 
 // 後方互換
@@ -135,7 +185,7 @@ function save() {
 // Firebase 接続中は Firebase 経由で送信
 function _pushMyState() {
   // ローカルストレージにのみ保存
-  localStorage.setItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", JSON.stringify(state));
   return Promise.resolve();
 }
 

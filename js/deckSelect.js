@@ -344,39 +344,8 @@ function updateGridColumns() {
   cardList.style.gridTemplateColumns = `repeat(${cardCols}, 1fr)`;
 }
 
-// ===== スリーブ画像管理 =====
-function saveBackImage(dataUrl) {
-  if (!selectedDeckId) return;
-  const list = loadDeckList();
-  const deck = list.find(d => d.id === selectedDeckId);
-  if (deck) {
-    deck.backImage = dataUrl;
-    saveDeckList(list);
-    // 詳細パネルを更新
-    selectDeck(selectedDeckId);
-  }
-}
-
-function setupBackImageUI() {
-  document.getElementById("btnSetBackImage").addEventListener("click", () => {
-    document.getElementById("backImageInput").click();
-  });
-
-  document.getElementById("backImageInput").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      saveBackImage(ev.target.result);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  });
-}
-
 // 初期化時とリサイズ時に列数を更新
 window.addEventListener('resize', updateGridColumns);
 window.addEventListener('load', () => {
   setTimeout(updateGridColumns, 100); // DOMが完全にレンダリングされた後に実行
-  setupBackImageUI();
 });

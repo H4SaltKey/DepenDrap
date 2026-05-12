@@ -222,6 +222,7 @@ function renderDevCards() {
   });
 
   updateScrollButtons();
+}
 
 function openDevContextMenu(x, y, id) {
   const menu = document.getElementById("devContextMenu");

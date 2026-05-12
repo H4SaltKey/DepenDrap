@@ -127,6 +127,45 @@ function showDeckMessage(text) {
   }, 1600);
 }
 
+function animateCardTransition(sourceEl, targetRect, onFinish) {
+  if (!sourceEl || !targetRect) {
+    onFinish();
+    return;
+  }
+
+  const srcRect = sourceEl.getBoundingClientRect();
+  const clone = sourceEl.cloneNode(true);
+  clone.style.position = "fixed";
+  clone.style.left = `${srcRect.left}px`;
+  clone.style.top = `${srcRect.top}px`;
+  clone.style.width = `${srcRect.width}px`;
+  clone.style.height = `${srcRect.height}px`;
+  clone.style.margin = "0";
+  clone.style.padding = "0";
+  clone.style.boxSizing = "border-box";
+  clone.style.pointerEvents = "none";
+  clone.style.zIndex = "100000";
+  clone.style.transition = "transform 220ms ease, opacity 220ms ease";
+  clone.style.transform = "none";
+  clone.style.opacity = "1";
+  document.body.appendChild(clone);
+
+  requestAnimationFrame(() => {
+    const deltaX = targetRect.left - srcRect.left;
+    const deltaY = targetRect.top - srcRect.top;
+    clone.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+    clone.style.opacity = "0.92";
+  });
+
+  const cleanupAnimation = () => {
+    clone.remove();
+    onFinish();
+  };
+
+  clone.addEventListener("transitionend", cleanupAnimation, { once: true });
+  setTimeout(cleanupAnimation, 260);
+}
+
 // ===== カード要素生成 =====
 function createCardElement(id, count, source) {
   const card = getCardData(id);
@@ -212,9 +251,33 @@ function createCardElement(id, count, source) {
 
   el.addEventListener("click", (e) => {
     if (e.button !== 0) return;
-    if (source === "cards") addCard(id);
-    else removeCard(id);
-    hideDeckContextMenu();
+    const deckRow = document.getElementById("deck");
+    const cardsRow = document.getElementById("cards");
+    if (source === "cards") {
+      const deckRect = deckRow ? deckRow.getBoundingClientRect() : null;
+      const targetRect = deckRect ? {
+        left: deckRect.left + Math.max(0, (deckRect.width - el.offsetWidth) / 2),
+        top: deckRect.top + Math.max(10, deckRect.height - el.offsetHeight - 10),
+        width: el.offsetWidth,
+        height: el.offsetHeight
+      } : null;
+      animateCardTransition(el, targetRect, () => {
+        addCard(id);
+        hideDeckContextMenu();
+      });
+    } else {
+      const cardsRect = cardsRow ? cardsRow.getBoundingClientRect() : null;
+      const targetRect = cardsRect ? {
+        left: cardsRect.left + Math.max(0, (cardsRect.width - el.offsetWidth) / 2),
+        top: cardsRect.top + Math.max(10, 10),
+        width: el.offsetWidth,
+        height: el.offsetHeight
+      } : null;
+      animateCardTransition(el, targetRect, () => {
+        removeCard(id);
+        hideDeckContextMenu();
+      });
+    }
   });
 
   el.addEventListener("contextmenu", (e) => {

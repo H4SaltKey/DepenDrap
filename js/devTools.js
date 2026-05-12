@@ -192,6 +192,18 @@ async function uploadCardsToServerFromBlocks(blockFolders) {
     });
   }
 
+  cardData.sort((a, b) => {
+    const aMatch = a.id.match(/^cd(\d+)-(\d+)$/i);
+    const bMatch = b.id.match(/^cd(\d+)-(\d+)$/i);
+    if (!aMatch || !bMatch) return a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' });
+    const aA = Number(aMatch[1]);
+    const bA = Number(bMatch[1]);
+    if (aA !== bA) return aA - bA;
+    const aB = Number(aMatch[2]);
+    const bB = Number(bMatch[2]);
+    return aB - bB;
+  });
+
   const useFirebase = !!window.firebaseClient?.db;
   if (useFirebase) {
     try {

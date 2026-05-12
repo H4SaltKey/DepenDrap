@@ -393,11 +393,22 @@ function setupFilters() {
       const isHidden = filterPanel.classList.toggle("hidden");
       filterToggle.setAttribute("aria-expanded", String(!isHidden));
       if (!isHidden) {
-        const rect = filterToggle.getBoundingClientRect();
-        filterPanel.style.top = `${rect.bottom + 8}px`;
-        filterPanel.style.left = `${rect.left}px`;
-        filterPanel.style.right = "auto";
-        filterPanel.style.maxHeight = `calc(100vh - ${rect.bottom + 20}px)`;
+        requestAnimationFrame(() => {
+          const rect = filterToggle.getBoundingClientRect();
+          const panelWidth = filterPanel.offsetWidth;
+          const panelHeight = filterPanel.offsetHeight;
+          let left = rect.left;
+          if (left + panelWidth > window.innerWidth - 10) {
+            left = Math.max(10, window.innerWidth - panelWidth - 10);
+          }
+          let top = rect.bottom + 8;
+          if (top + panelHeight > window.innerHeight - 10) {
+            top = Math.max(10, rect.top - panelHeight - 8);
+          }
+          filterPanel.style.left = `${left}px`;
+          filterPanel.style.top = `${top}px`;
+          filterPanel.style.right = "auto";
+        });
       }
     });
   }

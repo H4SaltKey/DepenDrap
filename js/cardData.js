@@ -1,8 +1,9 @@
+const CARD_DATA_URL = new URL("../data/cards.json", document.baseURI).href;
 let CARD_DB = [];
 let CARD_INDEX = {};
 
 async function loadCardData(){
-  const res = await fetch("data/cards.json");
+  const res = await fetch(CARD_DATA_URL);
   if(!res.ok) throw new Error("cards.json の読み込みに失敗しました");
   const cards = await res.json();
 

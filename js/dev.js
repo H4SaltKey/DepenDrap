@@ -282,7 +282,7 @@ if (deleteCardBtn) {
     // cards.json から削除
     let cardData = [];
     try {
-      const response = await fetch("data/cards.json");
+      const response = await fetch(CARD_DATA_URL);
       cardData = await response.json();
     } catch (e) {
       console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);
@@ -349,7 +349,7 @@ document.getElementById("deleteSelectedCardBtn").addEventListener("click", async
     // cards.json から削除
     let cardData = [];
     try {
-      const response = await fetch("data/cards.json");
+      const response = await fetch(CARD_DATA_URL);
       cardData = await response.json();
     } catch (e) {
       console.warn("[Dev] cards.jsonの読み込みに失敗しました:", e);

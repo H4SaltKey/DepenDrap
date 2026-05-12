@@ -54,20 +54,23 @@
   <section class="deckSection deckArea" id="deckDropZone">
     <header>
       <h3>デッキ</h3>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <span style="font-size:13px;">デッキコード: <span id="deckCode"></span></span>
-        <button id="btnLoadCode" style="font-size:12px;padding:3px 10px;cursor:pointer;">コードから読み込み</button>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:12px;color:#555;">裏面画像:</span>
-          <div id="backImagePreview" style="
-            width:28px;height:40px;border:1px solid #aaa;background:#eee;
-            overflow:hidden;display:flex;align-items:center;justify-content:center;
-            font-size:9px;color:#aaa;cursor:pointer;flex-shrink:0;" title="クリックして画像を選択">
-            <img id="backImagePreviewImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+      <div class="deckHeaderControls">
+        <div class="deckCodeBox">
+          <label for="deckCodeInput">デッキコード</label>
+          <div class="deckCodeInner">
+            <input id="deckCodeInput" type="text" readonly>
+            <button id="copyDeckCodeBtn" type="button">コピー</button>
+          </div>
+        </div>
+        <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
+        <div class="backImageControls">
+          <span>裏面画像:</span>
+          <div id="backImagePreview" class="backImagePreview" title="クリックして画像を選択">
+            <img id="backImagePreviewImg" src="" alt="" style="display:none;">
             <span id="backImagePreviewNone">なし</span>
           </div>
-          <button id="btnSetBackImage" style="font-size:12px;padding:3px 8px;cursor:pointer;">選択</button>
-          <button id="btnClearBackImage" style="font-size:12px;padding:3px 8px;cursor:pointer;color:#c00;">✕</button>
+          <button id="btnSetBackImage" class="smallBtn" type="button">選択</button>
+          <button id="btnClearBackImage" class="smallBtn dangerBtn" type="button">✕</button>
           <input type="file" id="backImageInput" accept="image/*" style="display:none;">
         </div>
       </div>

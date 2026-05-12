@@ -297,7 +297,8 @@ function render() {
 
   const code = encodeDeck(deck);
   saveCurrentDeckCode(code);
-  document.getElementById("deckCode").innerText = code;
+  const codeInput = document.getElementById("deckCodeInput");
+  if (codeInput) codeInput.value = code;
   updatePagerButtons(cardIds.length, deckEntries.length);
 }
 
@@ -485,6 +486,22 @@ document.getElementById("codeImportConfirm").addEventListener("click", () => {
 });
 
 document.getElementById("codeImportInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") document.getElementById("codeImportConfirm").click();
-  if (e.key === "Escape") document.getElementById("codeImportCancel").click();
-});
+    if (e.key === "Enter") document.getElementById("codeImportConfirm").click();
+    if (e.key === "Escape") document.getElementById("codeImportCancel").click();
+  });
+
+  const copyBtn = document.getElementById("copyDeckCodeBtn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      const codeInput = document.getElementById("deckCodeInput");
+      if (!codeInput) return;
+      codeInput.select();
+      codeInput.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(codeInput.value).then(() => {
+        copyBtn.textContent = "コピー済み";
+        setTimeout(() => { copyBtn.textContent = "コピー"; }, 1200);
+      }).catch(() => {
+        document.execCommand("copy");
+      });
+    });
+  }

@@ -1,14 +1,10 @@
 let deck = [];
-let cardsPage = 0;
-let deckPage = 0;
 let cardFilters = {
   tag: "",
   attribute: "all",
   type: "all"
 };
 
-const PAGE_SIZE = 8;
-const DECK_PAGE_SIZE = 6;
 const MAX_COPIES = 3;
 
 // URLパラメータからデッキIDを取得
@@ -129,16 +125,6 @@ function showDeckMessage(text) {
   setTimeout(() => {
     if (deckMessage.innerText === text) deckMessage.innerText = "";
   }, 1600);
-}
-
-// ===== ページング =====
-function clampPage(page, totalItems, pageSize = PAGE_SIZE) {
-  const maxPage = Math.max(0, Math.ceil(totalItems / pageSize) - 1);
-  return Math.max(0, Math.min(maxPage, page));
-}
-
-function getPageItems(items, page, pageSize = PAGE_SIZE) {
-  return items.slice(page * pageSize, page * pageSize + pageSize);
 }
 
 // ===== カード要素生成 =====
@@ -276,37 +262,47 @@ function render() {
   const cardIds = getFilteredCardIds();
   const deckEntries = getDeckEntries();
 
-  cardsPage = clampPage(cardsPage, cardIds.length);
-  deckPage = clampPage(deckPage, deckEntries.length, DECK_PAGE_SIZE);
   cardsDiv.innerHTML = "";
   deckDiv.innerHTML = "";
 
-  getPageItems(cardIds, cardsPage, PAGE_SIZE).forEach(id => {
-    cardsDiv.appendChild(createCardElement(id, 0, "cards"));
-  });
-  for (let i = cardsDiv.children.length; i < PAGE_SIZE; i++) {
-    cardsDiv.appendChild(document.createElement("div")).className = "deckCard empty";
-  }
-
-  getPageItems(deckEntries, deckPage, DECK_PAGE_SIZE).forEach(entry => {
-    deckDiv.appendChild(createCardElement(entry.id, entry.count, "deck"));
-  });
-  for (let i = deckDiv.children.length; i < DECK_PAGE_SIZE; i++) {
-    deckDiv.appendChild(document.createElement("div")).className = "deckCard empty";
-  }
+  cardIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
+  deckEntries.forEach(entry => deckDiv.appendChild(createCardElement(entry.id, entry.count, "deck")));
 
   const code = encodeDeck(deck);
   saveCurrentDeckCode(code);
   const codeInput = document.getElementById("deckCodeInput");
   if (codeInput) codeInput.value = code;
-  updatePagerButtons(cardIds.length, deckEntries.length);
+
+  updateCardsScrollButtons();
+  updateDeckScrollButtons();
 }
 
-function updatePagerButtons(cardTotal, deckTotal) {
-  document.getElementById("cardsPrev").disabled = cardsPage <= 0;
-  document.getElementById("cardsNext").disabled = cardsPage >= Math.ceil(cardTotal / PAGE_SIZE) - 1;
-  document.getElementById("deckPrev").disabled = deckPage <= 0;
-  document.getElementById("deckNext").disabled = deckPage >= Math.ceil(deckTotal / DECK_PAGE_SIZE) - 1;
+function scrollContainer(container, amount) {
+  if (!container) return;
+  container.scrollBy({
+    left: amount,
+    behavior: "smooth"
+  });
+}
+
+function updateCardsScrollButtons() {
+  const cardsDiv = document.getElementById("cards");
+  const cardsPrev = document.getElementById("cardsPrev");
+  const cardsNext = document.getElementById("cardsNext");
+  if (!cardsDiv || !cardsPrev || !cardsNext) return;
+  const max = cardsDiv.scrollWidth - cardsDiv.clientWidth;
+  cardsPrev.disabled = cardsDiv.scrollLeft <= 0;
+  cardsNext.disabled = cardsDiv.scrollLeft >= max - 1;
+}
+
+function updateDeckScrollButtons() {
+  const deckDiv = document.getElementById("deck");
+  const deckPrev = document.getElementById("deckPrev");
+  const deckNext = document.getElementById("deckNext");
+  if (!deckDiv || !deckPrev || !deckNext) return;
+  const max = deckDiv.scrollWidth - deckDiv.clientWidth;
+  deckPrev.disabled = deckDiv.scrollLeft <= 0;
+  deckNext.disabled = deckDiv.scrollLeft >= max - 1;
 }
 
 // ===== ドロップゾーン =====
@@ -324,7 +320,6 @@ function setupFilters() {
   if (tagInput) {
     tagInput.addEventListener("input", (e) => {
       cardFilters.tag = e.target.value;
-      cardsPage = 0;
       render();
     });
   }
@@ -332,7 +327,6 @@ function setupFilters() {
   document.querySelectorAll('input[name="filterAttribute"]').forEach(radio => {
     radio.addEventListener("change", (e) => {
       cardFilters.attribute = e.target.value;
-      cardsPage = 0;
       render();
     });
   });
@@ -340,17 +334,42 @@ function setupFilters() {
   document.querySelectorAll('input[name="filterType"]').forEach(radio => {
     radio.addEventListener("change", (e) => {
       cardFilters.type = e.target.value;
-      cardsPage = 0;
       render();
     });
   });
 }
 
 function setupDeckBuilder() {
-  document.getElementById("cardsPrev").onclick = () => { cardsPage--; render(); };
-  document.getElementById("cardsNext").onclick = () => { cardsPage++; render(); };
-  document.getElementById("deckPrev").onclick  = () => { deckPage--;  render(); };
-  document.getElementById("deckNext").onclick  = () => { deckPage++;  render(); };
+  const cardsDiv = document.getElementById("cards");
+  const deckDiv = document.getElementById("deck");
+  const cardsPrev = document.getElementById("cardsPrev");
+  const cardsNext = document.getElementById("cardsNext");
+  const deckPrev = document.getElementById("deckPrev");
+  const deckNext = document.getElementById("deckNext");
+
+  if (cardsPrev && cardsDiv) {
+    cardsPrev.onclick = () => scrollContainer(cardsDiv, -Math.max(cardsDiv.clientWidth * 0.75, 240));
+  }
+  if (cardsNext && cardsDiv) {
+    cardsNext.onclick = () => scrollContainer(cardsDiv, Math.max(cardsDiv.clientWidth * 0.75, 240));
+  }
+  if (deckPrev && deckDiv) {
+    deckPrev.onclick = () => scrollContainer(deckDiv, -Math.max(deckDiv.clientWidth * 0.75, 240));
+  }
+  if (deckNext && deckDiv) {
+    deckNext.onclick = () => scrollContainer(deckDiv, Math.max(deckDiv.clientWidth * 0.75, 240));
+  }
+
+  if (cardsDiv) {
+    cardsDiv.addEventListener("scroll", updateCardsScrollButtons);
+  }
+  if (deckDiv) {
+    deckDiv.addEventListener("scroll", updateDeckScrollButtons);
+  }
+  window.addEventListener("resize", () => {
+    updateCardsScrollButtons();
+    updateDeckScrollButtons();
+  });
 
   setupFilters();
 

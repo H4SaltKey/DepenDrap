@@ -1152,7 +1152,7 @@ body.deckPage{
     overflow-x:auto;
     overflow-y:hidden;
 
-    padding:10px;
+    padding:6px;
 
     height:100%;
 
@@ -1184,6 +1184,12 @@ body.deckPage{
 .cardRow .card:hover{
     transform:
         translateY(-4px);
+}
+
+.cardRow .card img{
+    width:100%;
+    height:auto;
+    display:block;
 }
 
 /* ========================================

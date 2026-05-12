@@ -192,13 +192,20 @@ function createCardElement(id, count, source) {
     };
     
     const cleanup = () => {
-      dragPreview.remove();
+      const current = document.getElementById("dragPreview");
+      if (current) current.remove();
       document.removeEventListener("dragover", movePreview);
       document.removeEventListener("dragend", cleanup);
+      document.removeEventListener("drop", cleanup);
+      document.removeEventListener("dragleave", cleanup);
+      document.removeEventListener("dragcancel", cleanup);
     };
 
     document.addEventListener("dragover", movePreview);
     document.addEventListener("dragend", cleanup);
+    document.addEventListener("drop", cleanup);
+    document.addEventListener("dragleave", cleanup);
+    document.addEventListener("dragcancel", cleanup);
   });
 
   el.addEventListener("click", (e) => {
@@ -383,8 +390,22 @@ function setupFilters() {
     filterToggle.addEventListener("click", () => {
       const isHidden = filterPanel.classList.toggle("hidden");
       filterToggle.setAttribute("aria-expanded", String(!isHidden));
+      if (!isHidden) {
+        const rect = filterToggle.getBoundingClientRect();
+        filterPanel.style.top = `${rect.bottom + 8}px`;
+        filterPanel.style.left = `${rect.left}px`;
+        filterPanel.style.right = "auto";
+        filterPanel.style.maxHeight = `calc(100vh - ${rect.bottom + 20}px)`;
+      }
     });
   }
+
+  document.addEventListener("click", (event) => {
+    if (!filterPanel.classList.contains("hidden") && !filterPanel.contains(event.target) && event.target !== filterToggle) {
+      filterPanel.classList.add("hidden");
+      filterToggle.setAttribute("aria-expanded", "false");
+    }
+  });
 
   document.querySelectorAll('input[name="filterAttribute"]').forEach(radio => {
     radio.addEventListener("change", (e) => {

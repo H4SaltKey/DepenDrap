@@ -965,9 +965,9 @@ h3{
   min-width:0;
   height:100%;
   display:grid;
-  grid-template-columns:repeat(8, 1fr);
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
   grid-template-rows:repeat(2, 1fr);
-  gap:4px;
+  gap:2px;
   align-items:center;
   justify-items:center;
 }
@@ -1013,10 +1013,10 @@ h3{
   text-overflow:ellipsis;
 }
 
-/* デッキ側のカード行: 6枚均等配置 */
+/* デッキ側のカード行: 自動調整 */
 .cardRowDeck{
-  grid-template-columns:repeat(6, 1fr);
-  gap:4px;
+  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
+  gap:2px;
 }
 
 .deckCardCount{

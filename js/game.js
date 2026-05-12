@@ -1898,7 +1898,7 @@ async function executeReset() {
     await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
   }
 
-  localStorage.setItem("gameState", JSON.stringify(state));
+  localStorage.setItem("gameState", JSON.stringify(createMinimalLocalState()));
   localStorage.removeItem("fieldCards");
 
   createDeckObject(true);

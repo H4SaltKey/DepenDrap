@@ -99,19 +99,38 @@ function isQuotaExceededError(err) {
   return err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014);
 }
 
+function createMinimalLocalState() {
+  const makePlayerSnapshot = (playerState) => ({
+    username: playerState.username,
+    backImage: playerState.backImage,
+    level: playerState.level,
+    exp: playerState.exp,
+    hp: playerState.hp,
+    hpMax: playerState.hpMax,
+    shield: playerState.shield,
+    defstack: playerState.defstack,
+    defstackMax: playerState.defstackMax,
+    atk: playerState.atk,
+    def: playerState.def,
+    instantDef: playerState.instantDef,
+    diceValue: playerState.diceValue,
+    deckCount: Array.isArray(playerState.deck) ? playerState.deck.length : 0,
+    evolutionPath: playerState.evolutionPath || null,
+    evoContinuousDmgCount: playerState.evoContinuousDmgCount || 0,
+    evoBackwaterExpGained: playerState.evoBackwaterExpGained || false
+  });
+
+  return {
+    player1: makePlayerSnapshot(state.player1),
+    player2: makePlayerSnapshot(state.player2),
+    matchData: state.matchData,
+    logs: Array.isArray(state.logs) ? state.logs.slice(-20) : []
+  };
+}
+
 function createSafeLocalStateCopy() {
   try {
-    const copy = JSON.parse(JSON.stringify(state));
-    if (Array.isArray(copy.logs) && copy.logs.length > 20) {
-      copy.logs = copy.logs.slice(-20);
-    }
-    if (copy.player1 && Array.isArray(copy.player1.deck) && copy.player1.deck.length > 20) {
-      copy.player1.deck = copy.player1.deck.slice(0, 20);
-    }
-    if (copy.player2 && Array.isArray(copy.player2.deck) && copy.player2.deck.length > 20) {
-      copy.player2.deck = copy.player2.deck.slice(0, 20);
-    }
-    return JSON.stringify(copy);
+    return JSON.stringify(createMinimalLocalState());
   } catch (e) {
     return null;
   }
@@ -154,14 +173,14 @@ function saveDebounced() {
 // 自分のデータをサーバーに即時送信（await可能）
 function saveImmediate() {
   if (saveTimeout) clearTimeout(saveTimeout);
-  safeLocalSetItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", createSafeLocalStateCopy());
   return _pushMyState();
 }
 
 // gameState + fieldCards を同時キャッシュ
 function saveAllImmediate(customFieldCards = null) {
   if (saveTimeout) clearTimeout(saveTimeout);
-  safeLocalSetItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", createSafeLocalStateCopy());
   if (typeof lastLocalFieldSaveAt !== "undefined") window.lastLocalFieldSaveAt = Date.now();
   const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : []);
 
@@ -172,7 +191,7 @@ function saveAllImmediate(customFieldCards = null) {
 
 // localStorage のみ（UI更新用、サーバーには送らない）
 function saveLocal() {
-  safeLocalSetItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", createSafeLocalStateCopy());
 }
 
 // 後方互換
@@ -185,7 +204,7 @@ function save() {
 // Firebase 接続中は Firebase 経由で送信
 function _pushMyState() {
   // ローカルストレージにのみ保存
-  safeLocalSetItem("gameState", JSON.stringify(state));
+  safeLocalSetItem("gameState", createSafeLocalStateCopy());
   return Promise.resolve();
 }
 

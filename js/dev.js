@@ -143,15 +143,25 @@ function renderDevCards() {
     el.dataset.id = card.id;
 
     const pending = pendingImages[card.id];
-    const imgSrc = pending
-      ? pending.dataUrl
-      : card.image
-        ? "assets/cards/" + card.image
-        : "";
+    const imagePath = pending ? pending.dataUrl : (card.image ? `assets/cards/${card.image}` : "");
 
-    el.innerHTML = imgSrc
-      ? `<img src="${imgSrc}" alt=""><div class="deckCardName">${card.name || card.id}</div>`
-      : `<div style="width:100%;height:100%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:11px;color:#aaa;min-height:0;">画像なし</div><div class="deckCardName">${card.name || card.id}</div>`;
+    if (imagePath) {
+      const img = document.createElement("img");
+      img.src = pending ? imagePath : encodeURI(imagePath);
+      img.alt = card.name || card.id;
+      img.onerror = () => { img.src = "assets/404.png"; };
+      el.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.style = "width:100%;height:100%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:11px;color:#aaa;min-height:0;";
+      placeholder.textContent = "画像なし";
+      el.appendChild(placeholder);
+    }
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "deckCardName";
+    nameDiv.textContent = card.name || card.id;
+    el.appendChild(nameDiv);
 
     el.addEventListener("click", () => selectCard(card.id));
     container.appendChild(el);

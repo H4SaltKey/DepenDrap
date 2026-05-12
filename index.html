@@ -232,5 +232,18 @@
   });
 </script>
 
+<!-- 開発者モードパスワードモーダル -->
+<div id="devPassModal" class="hidden">
+  <div class="modalContent">
+    <h3>開発者モード</h3>
+    <input type="password" id="devPasswordInput" placeholder="パスワードを入力" autocomplete="off" spellcheck="false">
+    <div id="devPassError" style="color:red; margin:5px 0;"></div>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button onclick="confirmDevPass()">確認</button>
+      <button onclick="closeDevPassModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

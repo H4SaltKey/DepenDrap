@@ -20,11 +20,12 @@ body.deckPage{
   border:1px solid #333;
   padding:4px;
   margin:3px;
-  width:68px;
-  aspect-ratio:210 / 297;
+  width:130px;
+  height:182px;
+  flex:0 0 130px;
   text-align:center;
   cursor:pointer;
-  object-fit:contain;
+  overflow:hidden;
   flex-shrink:0;
   transition: all 0.15s ease;
 }
@@ -37,7 +38,8 @@ body.deckPage{
 .card img{
   width:100%;
   height:100%;
-  object-fit:contain;
+  object-fit:cover;
+  display:block;
 }
 
 /* 戻るボタン（インライン） */
@@ -1235,7 +1237,7 @@ body.deckPage{
     grid-template-rows:
         repeat(2, minmax(0, auto));
     grid-auto-flow:column;
-    grid-auto-columns:minmax(76px, 88px);
+    grid-auto-columns:130px;
     gap:8px;
     padding:8px 12px;
     scroll-behavior:smooth;
@@ -1247,15 +1249,12 @@ body.deckPage{
 
 #cards.cardRow .card{
     width:100%;
-    min-width:88px;
-    max-width:100px;
     flex-shrink:0;
 }
 
 #deck.cardRow .card{
     width:100%;
-    min-width:88px;
-    max-width:110px;
+    flex-shrink:0;
 }
 
 #cards.cardRow::-webkit-scrollbar {
@@ -1275,7 +1274,7 @@ body.deckPage{
     display:flex;
     flex-wrap:nowrap;
     align-items:flex-start;
-    gap:12px;
+    gap:8px;
     overflow-x:auto;
     overflow-y:hidden;
     padding:8px 12px;

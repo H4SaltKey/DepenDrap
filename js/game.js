@@ -2066,6 +2066,31 @@ function updateOrderDecideUI() {
 
   const p1Name = state.player1.username || "プレイヤー1";
   const p2Name = state.player2.username || "プレイヤー2";
+  const waitingForConnection = !window._bothPlayersConnected;
+  const currentPhase = waitingForConnection ? "connecting" : "order";
+
+  if (overlay.dataset.phase !== currentPhase) {
+    overlay.dataset.phase = currentPhase;
+    overlay.dataset.startedOrderDelay = "false";
+  }
+
+  if (waitingForConnection) {
+    overlay.innerHTML = `
+      <div class="order-container" style="max-width:900px;width:90%;">
+        <h2 class="order-title" style="margin-bottom:20px;">接続確認中</h2>
+        <div style="font-size:16px;color:#c7b377;margin-bottom:24px;text-align:center;">相手プレイヤーとの接続を確認しています。しばらくお待ちください。</div>
+        <div class="conn-spinner-wrap" style="position:relative;width:72px;height:72px;margin:0 auto 16px;">
+          <div style="position:absolute;inset:0;border:2px solid rgba(199,179,119,0.15);border-top-color:#c7b377;border-radius:50%;animation:connSpin 1s linear infinite;"></div>
+          <div style="position:absolute;inset:10px;border:2px solid rgba(199,179,119,0.08);border-bottom-color:rgba(199,179,119,0.5);border-radius:50%;animation:connSpin 0.65s linear infinite reverse;"></div>
+        </div>
+      </div>
+      <style>
+        @keyframes connSpin { to { transform: rotate(360deg); } }
+        .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
+      </style>
+    `;
+    return;
+  }
 
   overlay.innerHTML = `
     <div class="order-container" style="max-width:900px;width:90%;">
@@ -2082,26 +2107,23 @@ function updateOrderDecideUI() {
         </div>
       </div>
       <div style="margin-top:40px;font-size:13px;color:#fff;letter-spacing:2px;text-align:center;">
-        ダイスロールで順番を決めます...
+        ダイスロールで先攻・後攻を決めます...
       </div>
     </div>
     <style>
-      .order-title {
-        font-size: 28px;
-        font-weight: 900;
-        color: #e0d0a0;
-        letter-spacing: 4px;
-        text-align: center;
-      }
+      .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
     </style>
   `;
 
-  // 2秒後にダイスロールフェーズへ移行
-  setTimeout(() => {
-    state.matchData.status = "setup_dice";
-    updateDicePhaseUI();
-  }, 2000);
+  if (overlay.dataset.startedOrderDelay !== "true") {
+    overlay.dataset.startedOrderDelay = "true";
+    setTimeout(() => {
+      state.matchData.status = "setup_dice";
+      updateDicePhaseUI();
+    }, 2000);
+  }
 }
+
 
 function updateDicePhaseUI() {
   const m = state.matchData;
@@ -2805,7 +2827,7 @@ async function initGame() {
       // matchData を初期状態にリセット
       state.matchData = {
         round: 1, turn: 1, turnPlayer: "player1",
-        status: "setup_dice", winner: null, winnerSetAt: null, firstPlayer: null
+        status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null
       };
 
       // 各種フラグをクリア

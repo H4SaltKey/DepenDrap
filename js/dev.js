@@ -78,7 +78,7 @@ function selectCard(id) {
     showPreview(pending.dataUrl);
     document.getElementById("editImageName").value = pending.fileName;
   } else if (card.image) {
-    showPreview("assets/cards/" + card.image);
+    showPreview(encodeURI("assets/cards/" + card.image));
     document.getElementById("editImageName").value = card.image;
   } else {
     clearPreview();

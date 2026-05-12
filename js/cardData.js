@@ -16,9 +16,13 @@ async function loadCardData(){
 }
 
 function normalizeCardImagePath(path) {
-  const p = String(path || "").trim();
+  let p = String(path || "").trim();
   if (!p) return "assets/404.png";
-  if (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("/") || p.startsWith("assets/") || p.startsWith("asset/")) {
+  p = p.normalize ? p.normalize("NFC") : p;
+  if (p.startsWith("asset/")) {
+    p = p.replace(/^asset\//, "assets/");
+  }
+  if (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("/") || p.startsWith("assets/")) {
     return p;
   }
   return "assets/cards/" + p;

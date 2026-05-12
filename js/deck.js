@@ -130,8 +130,9 @@ function createCardElement(id, count, source) {
   el.dataset.id = id;
   el.dataset.source = source;
 
+  const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
   el.innerHTML = `
-    <img src="${card.image}" alt="">
+    <img src="${imageSrc}" alt="">
     ${card.name ? `<div class="deckCardName">${card.name}</div>` : ""}
     ${count ? `<div class="deckCardCount">×${count}</div>` : ""}
   `;

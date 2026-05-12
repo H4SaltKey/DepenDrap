@@ -199,6 +199,7 @@ function createCardElement(id, count, source) {
       document.removeEventListener("drop", cleanup);
       document.removeEventListener("dragleave", cleanup);
       document.removeEventListener("dragcancel", cleanup);
+      el.removeEventListener("dragend", cleanup);
     };
 
     document.addEventListener("dragover", movePreview);
@@ -206,6 +207,7 @@ function createCardElement(id, count, source) {
     document.addEventListener("drop", cleanup);
     document.addEventListener("dragleave", cleanup);
     document.addEventListener("dragcancel", cleanup);
+    el.addEventListener("dragend", cleanup);
   });
 
   el.addEventListener("click", (e) => {

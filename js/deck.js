@@ -152,6 +152,10 @@ function createCardElement(id, count, source) {
     const emptyImage = new Image();
     e.dataTransfer.setDragImage(emptyImage, 0, 0);
 
+    // Remove any stale preview first
+    const existingPreview = document.getElementById("dragPreview");
+    if (existingPreview) existingPreview.remove();
+
     // Create and show custom drag preview
     const dragPreview = document.createElement("div");
     dragPreview.id = "dragPreview";
@@ -160,18 +164,19 @@ function createCardElement(id, count, source) {
       pointer-events: none;
       z-index: 99999;
       display: none;
-      opacity: 0.85;
-      border: 1px solid #c7b377;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      background: rgba(10,10,16,0.95);
+      opacity: 0.9;
+      border: 1px solid rgba(199,179,119,0.35);
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      background: rgba(10,10,16,0.92);
     `;
     dragPreview.innerHTML = el.innerHTML;
-    const scale = 0.82;
+    const scale = 0.6;
     dragPreview.style.width = Math.round(el.offsetWidth * scale) + "px";
     dragPreview.style.height = Math.round(el.offsetHeight * scale) + "px";
-    document.body.appendChild(dragPreview);
+    dragPreview.style.overflow = "hidden";
     dragPreview.style.display = "block";
+    document.body.appendChild(dragPreview);
 
     // Update position on drag
     const movePreview = (evt) => {

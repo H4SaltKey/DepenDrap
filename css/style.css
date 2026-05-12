@@ -1006,11 +1006,13 @@ body.deckPage{
 }
 
 .cardCatalog{
-    flex:1 1 auto;
+    flex:0 0 68vh;
+    max-height: calc(100vh - 32px);
 }
 
 .deckArea{
-    flex:0 1 auto;
+    flex:0 0 28vh;
+    min-height:220px;
 }
 
 /* ========================================
@@ -1025,7 +1027,8 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     gap:1px;
-    flex:1 1 0;
+    flex:0 0 68vh;
+    max-height: calc(100vh - 32px);
     min-height:260px;
     min-width:0;
 }
@@ -1225,7 +1228,7 @@ body.deckPage{
 
 .pagedRow{
     display:flex;
-    align-items:center;
+    align-items:stretch;
     justify-content:space-between;
     gap:10px;
     min-height:0;
@@ -1241,7 +1244,7 @@ body.deckPage{
 .cardListViewport{
     display:flex;
     flex-direction:column;
-    flex:1 1 0;
+    flex:1 1 auto;
     min-height:0;
     min-width:0;
     overflow:hidden;
@@ -1254,11 +1257,11 @@ body.deckPage{
 
 .cardListScroll{
     display:flex;
-    flex:1 1 0;
+    flex:1 1 auto;
     min-height:0;
     min-width:0;
     overflow-x:auto;
-    overflow-y:hidden;
+    overflow-y:auto;
     padding:12px 0 20px;
     align-items:flex-start;
     box-sizing: border-box;
@@ -1404,7 +1407,7 @@ body.deckPage{
     gap:2px;
     background:#111;
     border:1px solid rgba(255,255,255,0.12);
-    flex:0 0 38vh;
+    flex:0 0 28vh;
     min-height:220px;
 }
 

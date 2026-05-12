@@ -1242,7 +1242,7 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     flex:1 1 0;
-    min-height:260px;
+    min-height:780px;
     min-width:0;
     overflow:hidden;
     background: rgba(8, 8, 14, 0.95);
@@ -1255,7 +1255,7 @@ body.deckPage{
 .cardListScroll{
     display:flex;
     flex:1 1 0;
-    min-height:240px;
+    min-height:720px;
     min-width:0;
     overflow-x:auto;
     overflow-y:hidden;

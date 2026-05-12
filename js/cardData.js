@@ -9,10 +9,18 @@ async function loadCardData(){
   CARD_DB = cards.map(card => ({
     ...card,
     name: card.name || "",
-    image: card.image.startsWith("assets/") ? card.image : "assets/cards/" + card.image
+    image: normalizeCardImagePath(card.image || "")
   }));
-
   CARD_INDEX = Object.fromEntries(CARD_DB.map(card => [card.id, card]));
+}
+
+function normalizeCardImagePath(path) {
+  const p = String(path || "").trim();
+  if (!p) return "assets/404.png";
+  if (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("/") || p.startsWith("assets/") || p.startsWith("asset/")) {
+    return p;
+  }
+  return "assets/cards/" + p;
 }
 
 function getCardIds(){

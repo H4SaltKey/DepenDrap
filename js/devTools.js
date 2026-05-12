@@ -211,6 +211,3 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
 
   alert(`${newCards.length} 枚のカードを追加しました。cards.json がダウンロードされました。`);
 }
-
-  alert(`✅ ${newCards.length} 枚のカードを追加しました！\n\n【フォルダ】\n${folderLabel}\n\n【カードID】\n${newCards[0].id} 〜 ${newCards[newCards.length - 1].id}`);
-}

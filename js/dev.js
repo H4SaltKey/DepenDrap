@@ -251,23 +251,25 @@ document.getElementById("resetLevelStats").addEventListener("click", () => {
 renderLevelStatsTable();
 
 // ===== カード削除機能 =====
-document.getElementById("deleteCardBtn").addEventListener("click", async () => {
-  const cardId = document.getElementById("deleteCardId").value.trim();
-  const msgEl = document.getElementById("deleteCardMsg");
-  
-  if (!cardId) {
-    msgEl.style.color = "#d9534f";
-    msgEl.textContent = "❌ カードIDを入力してください";
-    return;
-  }
-  
-  // カードが存在するか確認
-  const cardIndex = devCards.findIndex(c => c.id === cardId);
-  if (cardIndex === -1) {
-    msgEl.style.color = "#d9534f";
-    msgEl.textContent = `❌ カードID "${cardId}" が見つかりません`;
-    return;
-  }
+const deleteCardBtn = document.getElementById("deleteCardBtn");
+if (deleteCardBtn) {
+  deleteCardBtn.addEventListener("click", async () => {
+    const cardId = document.getElementById("deleteCardId").value.trim();
+    const msgEl = document.getElementById("deleteCardMsg");
+    
+    if (!cardId) {
+      msgEl.style.color = "#d9534f";
+      msgEl.textContent = "❌ カードIDを入力してください";
+      return;
+    }
+    
+    // カードが存在するか確認
+    const cardIndex = devCards.findIndex(c => c.id === cardId);
+    if (cardIndex === -1) {
+      msgEl.style.color = "#d9534f";
+      msgEl.textContent = `❌ カードID "${cardId}" が見つかりません`;
+      return;
+    }
   
   if (!confirm(`カード "${cardId}" を削除してもよろしいですか？`)) {
     return;

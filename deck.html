@@ -10,7 +10,7 @@
 <button class="back-btn" onclick="location.href='deckSelect.html'">保存して戻る</button>
 
 <main class="deckBuilder">
-  <header style="display:flex;align-items:center;gap:14px;padding-left:200px;padding-top:5px;">
+  <header style="display:flex;align-items:center;gap:14px;padding:6px 14px 4px 14px;">
     <h2 style="margin:0;color:#e0d0a0;">デッキ構築</h2>
     <span id="deckTitle" style="font-size:15px;color:#a09070;"></span>
   </header>
@@ -29,25 +29,29 @@
       <!-- フィルター -->
       <div class="deckFilters">
 
-        <div class="filterGroup">
-          <label for="filterTagInput">タグ検索</label><br>
+        <div class="filterGroup filterTagGroup">
+          <label for="filterTagInput">タグ検索</label>
           <input type="text" id="filterTagInput" placeholder="例: 火力, 範囲, 支援">
         </div>
 
-        <div class="filterGroup">
-          <label>属性</label><br>
-          <label><input type="radio" name="filterAttribute" value="all" checked> 全て</label>
-          <label><input type="radio" name="filterAttribute" value="近接"> 近接</label>
-          <label><input type="radio" name="filterAttribute" value="遠隔"> 遠隔</label>
-          <label><input type="radio" name="filterAttribute" value="魔法"> 魔法</label>
-        </div>
-
-        <div class="filterGroup">
-          <label>種類</label><br>
-          <label><input type="radio" name="filterType" value="all" checked> 全て</label>
-          <label><input type="radio" name="filterType" value="アタッカー"> アタッカー</label>
-          <label><input type="radio" name="filterType" value="スキル"> スキル</label>
-          <label><input type="radio" name="filterType" value="サポート"> サポート</label>
+        <div class="filterControl">
+          <button id="toggleFilterButton" class="smallBtn filterToggleBtn" type="button" aria-expanded="false">フィルター</button>
+          <div id="filterPanel" class="filterPanel hidden">
+            <div class="filterGroup">
+              <label>属性でフィルター</label>
+              <label><input type="radio" name="filterAttribute" value="all" checked> 全て</label>
+              <label><input type="radio" name="filterAttribute" value="近接"> 近接</label>
+              <label><input type="radio" name="filterAttribute" value="遠隔"> 遠隔</label>
+              <label><input type="radio" name="filterAttribute" value="魔法"> 魔法</label>
+            </div>
+            <div class="filterGroup">
+              <label>カードタイプでフィルター</label>
+              <label><input type="radio" name="filterType" value="all" checked> 全て</label>
+              <label><input type="radio" name="filterType" value="アタッカー"> アタッカー</label>
+              <label><input type="radio" name="filterType" value="スキル"> スキル</label>
+              <label><input type="radio" name="filterType" value="サポート"> サポート</label>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -78,12 +82,12 @@
           <label for="deckCodeInput">デッキコード</label>
           <div class="deckCodeInner">
             <input id="deckCodeInput" type="text" readonly>
-            <button id="copyDeckCodeBtn" type="button">コピー</button>
+            <button id="copyDeckCodeBtn" type="button">コードをコピー</button>
           </div>
         </div>
         <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
         <div class="backImageControls">
-          <span>裏面画像:</span>
+          <span>スリーブアート:</span>
           <div id="backImagePreview" class="backImagePreview" title="クリックして画像を選択">
             <img id="backImagePreviewImg" src="" alt="" style="display:none;">
             <span id="backImagePreviewNone">なし</span>

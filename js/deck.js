@@ -324,6 +324,15 @@ function setupFilters() {
     });
   }
 
+  const filterToggle = document.getElementById("toggleFilterButton");
+  const filterPanel = document.getElementById("filterPanel");
+  if (filterToggle && filterPanel) {
+    filterToggle.addEventListener("click", () => {
+      const isHidden = filterPanel.classList.toggle("hidden");
+      filterToggle.setAttribute("aria-expanded", String(!isHidden));
+    });
+  }
+
   document.querySelectorAll('input[name="filterAttribute"]').forEach(radio => {
     radio.addEventListener("change", (e) => {
       cardFilters.attribute = e.target.value;
@@ -402,21 +411,14 @@ function saveBackImage(dataUrl) {
 function showBackImagePreview(dataUrl) {
   const img = document.getElementById("backImagePreviewImg");
   const none = document.getElementById("backImagePreviewNone");
-  if (dataUrl) {
-    img.onerror = () => {
-      // 裏面画像の読み込みに失敗した場合、404.png をフォールバック表示
-      img.src = "assets/404.png";
-      img.onerror = null;
-    };
-    img.src = dataUrl;
-    img.style.display = "";
-    none.style.display = "none";
-  } else {
-    img.src = "";
+  const source = dataUrl || "assets/404.png";
+  img.onerror = () => {
+    img.src = "assets/404.png";
     img.onerror = null;
-    img.style.display = "none";
-    none.style.display = "";
-  }
+  };
+  img.src = source;
+  img.style.display = "";
+  none.style.display = "none";
 }
 
 function setupBackImageUI() {
@@ -518,7 +520,7 @@ document.getElementById("codeImportInput").addEventListener("keydown", (e) => {
       codeInput.setSelectionRange(0, 99999);
       navigator.clipboard.writeText(codeInput.value).then(() => {
         copyBtn.textContent = "コピー済み";
-        setTimeout(() => { copyBtn.textContent = "コピー"; }, 1200);
+        setTimeout(() => { copyBtn.textContent = "コードをコピー"; }, 1200);
       }).catch(() => {
         document.execCommand("copy");
       });

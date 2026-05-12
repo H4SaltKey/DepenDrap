@@ -920,7 +920,8 @@ input[type=number]::-webkit-outer-spin-button{
 
 body.deckPage{
     margin:0;
-    background:var(--bg);
+    background:#0c0b12;
+    color:#f4f1d6;
 
     overflow:hidden;
 
@@ -953,22 +954,13 @@ body.deckPage{
 ======================================== */
 
 .deckSection{
-    background:var(--panel);
-
-    border:
-        1px solid var(--border);
-
-    border-radius:
-        var(--radius);
-
-    box-shadow:
-        var(--shadow);
-
+    background: rgba(14, 14, 22, 0.95);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
     overflow:hidden;
-
     display:flex;
     flex-direction:column;
-
     min-height:0;
 }
 
@@ -978,9 +970,9 @@ body.deckPage{
 
 .cardCatalog{
     padding:8px;
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(18, 18, 28, 0.95);
     border-radius: 18px;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
     display:flex;
     flex-direction:column;
     gap:0;
@@ -1014,7 +1006,7 @@ body.deckPage{
     font-size:20px;
     font-weight:700;
 
-    color:#222;
+    color:#f4f1d6;
 }
 
 /* ========================================
@@ -1023,50 +1015,52 @@ body.deckPage{
 
 .deckFilters{
     display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    padding:4px 0;
+    align-items:flex-end;
+    gap:10px;
+    padding:4px 0 6px;
     border-bottom:1px solid rgba(255,255,255,0.12);
-    align-items:flex-start;
-    flex-shrink:0;
+    flex-wrap:wrap;
+    justify-content:space-between;
 }
 
 .filterGroup{
     display:flex;
     flex-direction:column;
     gap:3px;
-    flex:0 1 auto;
-    min-width:fit-content;
+    flex:0 1 320px;
+    min-width:180px;
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:10px 12px;
 }
 
 .filterGroup label:first-child{
-    font-size:11px;
+    font-size:12px;
     font-weight:700;
     color:#f2e1b7;
-    margin-bottom:1px;
-    white-space:nowrap;
+    margin-bottom:2px;
 }
 
 .filterGroup label:not(:first-child){
     display:flex;
     align-items:center;
-    gap:4px;
-    font-size:11px;
+    gap:6px;
+    font-size:12px;
     color:#f8f1da;
     cursor:pointer;
-    padding:2px 0;
-    white-space:nowrap;
+    padding:4px 0;
 }
 
 .filterGroup input[type="text"]{
     width:100%;
-    font-size:11px;
-    padding:4px 6px;
-    border:1px solid rgba(255,255,255,0.18);
-    border-radius:6px;
+    font-size:12px;
+    padding:6px 8px;
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:8px;
     background:rgba(255,255,255,0.92);
     color:#1c1a16;
-    height:24px;
+    height:28px;
     box-sizing:border-box;
 }
 
@@ -1074,6 +1068,34 @@ body.deckPage{
     accent-color:#d8c394;
 }
 
+.filterControl{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    min-width:220px;
+    align-items:flex-end;
+}
+
+.filterPanel{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    width:100%;
+    background: rgba(20,20,34,0.9);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:10px;
+}
+
+.filterPanel.hidden{
+    display:none !important;
+}
+
+.filterToggleBtn{
+    min-width:128px;
+    padding:8px 14px;
+    white-space:nowrap;
+}
 /* ========================================
    カードエリア
 ======================================== */
@@ -1101,12 +1123,13 @@ body.deckPage{
     overflow:hidden;
 
     min-width:0;
+    min-height:250px;
 
-    background: rgba(10, 10, 15, 0.05);
+    background: rgba(8, 8, 14, 0.95);
     border-radius: 18px;
     padding: 10px;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 
 #cards.cardRow{
@@ -1117,9 +1140,9 @@ body.deckPage{
 
     grid-auto-flow:column;
 
-    grid-auto-columns:140px;
+    grid-auto-columns:120px;
 
-    gap:12px;
+    gap:10px;
 
     padding:4px;
 
@@ -1127,6 +1150,16 @@ body.deckPage{
     overflow-y:hidden;
 
     scroll-behavior:smooth;
+}
+
+#cards.cardRow .card{
+    width:120px;
+    min-width:120px;
+}
+
+#deck.cardRow .card{
+    width:140px;
+    min-width:140px;
 }
 
 #cards.cardRow::-webkit-scrollbar {
@@ -1228,11 +1261,12 @@ body.deckPage{
 ======================================== */
 
 .deckArea{
-    padding:8px;
+    padding:10px;
     display:grid;
     grid-template-rows:auto 1fr;
     gap:6px;
-    background: rgba(15, 12, 8, 0.05);
+    background:#111;
+    border:1px solid rgba(255,255,255,0.12);
 }
 
 /* ========================================
@@ -1245,10 +1279,15 @@ body.deckPage{
 
 .deckHeaderControls{
     display:flex;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
     justify-content:flex-end;
     gap:8px;
     align-items:center;
+    flex-shrink:0;
+    width:100%;
+}
+
+.deckHeaderControls > *{
     flex-shrink:0;
 }
 
@@ -1256,9 +1295,9 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     gap:2px;
-    flex:1 1 auto;
+    flex:1 1 240px;
     min-width:180px;
-    max-width:320px;
+    max-width:340px;
 }
 
 .deckCodeBox > label{
@@ -1269,7 +1308,7 @@ body.deckPage{
 
 .deckCodeInner{
     display:flex;
-    gap:4px;
+    gap:6px;
     align-items:center;
 }
 
@@ -1282,18 +1321,20 @@ body.deckPage{
     padding:6px 8px;
     color:#1c1a16;
     font-size:12px;
-    height:28px;
+    height:32px;
     box-sizing:border-box;
 }
 
 .smallBtn{
     font-size:11px;
-    padding:6px 10px;
-    border:1px solid rgba(255,255,255,0.14);
-    background: rgba(32, 28, 35, 0.8);
+    padding:6px 12px;
+    border:1px solid rgba(255,255,255,0.18);
+    background: rgba(32, 28, 35, 0.9);
     color:#f6f1de;
     border-radius:10px;
-    height:28px;
+    height:32px;
+    min-width:116px;
+    white-space:nowrap;
     box-sizing:border-box;
 }
 
@@ -1307,6 +1348,8 @@ body.deckPage{
     gap:6px;
     flex-wrap:wrap;
     justify-content:flex-end;
+    font-size:11px;
+    color:#f4f1d6;
 }
 
 .backImagePreview{
@@ -1314,6 +1357,13 @@ body.deckPage{
     height:40px;
     border:1px solid rgba(255,255,255,0.18);
     background:#1e1a20;
+}
+
+.backImagePreview img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
 }
 
 /* ========================================

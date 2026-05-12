@@ -935,6 +935,39 @@ h3{
   gap:6px;
 }
 
+.deckFilters{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  padding: 8px 0;
+}
+.deckFilters .filterGroup{
+  display:flex;
+  flex-wrap: wrap;
+  gap:8px;
+  align-items: center;
+  font-size:13px;
+}
+.deckFilters .filterGroup input[type="text"]{
+  width:100%;
+  padding:6px 8px;
+  border:1px solid #ccc;
+  border-radius:4px;
+  font-size:13px;
+  box-sizing:border-box;
+}
+.deckFilters .filterGroup label{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:13px;
+}
+@media(min-width:900px){
+  .deckFilters{
+    grid-template-columns: 1fr 2fr 2fr;
+  }
+}
+
 .deckSection header{
   display:flex;
   justify-content:space-between;

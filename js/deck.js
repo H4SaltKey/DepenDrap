@@ -1,6 +1,11 @@
 let deck = [];
 let cardsPage = 0;
 let deckPage = 0;
+let cardFilters = {
+  tag: "",
+  attribute: "all",
+  type: "all"
+};
 
 const PAGE_SIZE = 8;
 const DECK_PAGE_SIZE = 6;
@@ -91,6 +96,21 @@ function sortDeck() {
 
 function getSortedCardIds() {
   return getDeckCardIds();
+}
+
+function getFilteredCardIds() {
+  const queryTag = cardFilters.tag.trim().toLowerCase();
+  return getSortedCardIds().filter(id => {
+    const card = getCardData(id);
+    if (!card) return false;
+    if (cardFilters.attribute !== "all" && card.attribute !== cardFilters.attribute) return false;
+    if (cardFilters.type !== "all" && card.type !== cardFilters.type) return false;
+    if (queryTag) {
+      const tags = Array.isArray(card.tags) ? card.tags : String(card.tags || "").split(/[,、\s]+/);
+      if (!tags.some(tag => String(tag || "").toLowerCase().includes(queryTag))) return false;
+    }
+    return true;
+  });
 }
 
 function getDeckCount(id) {
@@ -221,7 +241,7 @@ window.addEventListener("resize", hideDeckContextMenu);
 function render() {
   const cardsDiv = document.getElementById("cards");
   const deckDiv = document.getElementById("deck");
-  const cardIds = getSortedCardIds();
+  const cardIds = getFilteredCardIds();
   const deckEntries = getDeckEntries();
 
   cardsPage = clampPage(cardsPage, cardIds.length);
@@ -266,11 +286,40 @@ function setupDropZone(el, onDrop) {
 }
 
 // ===== セットアップ =====
+function setupFilters() {
+  const tagInput = document.getElementById("filterTagInput");
+  if (tagInput) {
+    tagInput.addEventListener("input", (e) => {
+      cardFilters.tag = e.target.value;
+      cardsPage = 0;
+      render();
+    });
+  }
+
+  document.querySelectorAll('input[name="filterAttribute"]').forEach(radio => {
+    radio.addEventListener("change", (e) => {
+      cardFilters.attribute = e.target.value;
+      cardsPage = 0;
+      render();
+    });
+  });
+
+  document.querySelectorAll('input[name="filterType"]').forEach(radio => {
+    radio.addEventListener("change", (e) => {
+      cardFilters.type = e.target.value;
+      cardsPage = 0;
+      render();
+    });
+  });
+}
+
 function setupDeckBuilder() {
   document.getElementById("cardsPrev").onclick = () => { cardsPage--; render(); };
   document.getElementById("cardsNext").onclick = () => { cardsPage++; render(); };
   document.getElementById("deckPrev").onclick  = () => { deckPage--;  render(); };
   document.getElementById("deckNext").onclick  = () => { deckPage++;  render(); };
+
+  setupFilters();
 
   setupDropZone(document.getElementById("deck"), (id, source) => {
     if (source === "cards") addCard(id);

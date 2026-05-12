@@ -146,6 +146,46 @@ function createCardElement(id, count, source) {
   el.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", id);
     e.dataTransfer.setData("source", source);
+    e.dataTransfer.effectAllowed = "move";
+
+    // Hide default ghost image
+    const emptyImage = new Image();
+    e.dataTransfer.setDragImage(emptyImage, 0, 0);
+
+    // Create and show custom drag preview
+    const dragPreview = document.createElement("div");
+    dragPreview.id = "dragPreview";
+    dragPreview.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 99999;
+      display: none;
+      opacity: 0.85;
+      border: 1px solid #c7b377;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      background: rgba(10,10,16,0.95);
+    `;
+    dragPreview.innerHTML = el.innerHTML;
+    dragPreview.style.width = el.offsetWidth + "px";
+    dragPreview.style.height = el.offsetHeight + "px";
+    document.body.appendChild(dragPreview);
+    dragPreview.style.display = "block";
+
+    // Update position on drag
+    const movePreview = (evt) => {
+      dragPreview.style.left = (evt.clientX - 34) + "px";
+      dragPreview.style.top = (evt.clientY - 57) + "px";
+    };
+    
+    const cleanup = () => {
+      dragPreview.remove();
+      document.removeEventListener("dragover", movePreview);
+      document.removeEventListener("dragend", cleanup);
+    };
+
+    document.addEventListener("dragover", movePreview);
+    document.addEventListener("dragend", cleanup);
   });
 
   el.addEventListener("click", (e) => {

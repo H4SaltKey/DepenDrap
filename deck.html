@@ -7,12 +7,14 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="deckPage">
-<button class="back-btn" onclick="location.href='deckSelect.html'">保存して戻る</button>
 
 <main class="deckBuilder">
   <header class="deckPageHeader">
-    <h2>デッキ構築</h2>
-    <span id="deckTitle"></span>
+    <button class="back-btn-inline" onclick="location.href='deckSelect.html'">保存して戻る</button>
+    <div class="title-group">
+      <h2>デッキ構築</h2>
+      <span id="deckTitle"></span>
+    </div>
   </header>
 
   <section class="deckSection cardCatalog">
@@ -70,19 +72,19 @@
   </section>
 
   <section class="deckSection deckArea" id="deckDropZone">
-    <header>
+    <div class="deckToolbar">
       <h3>デッキ</h3>
       <div class="deckHeaderControls">
         <div class="deckCodeBox">
           <label for="deckCodeInput">デッキコード</label>
           <div class="deckCodeInner">
             <input id="deckCodeInput" type="text" readonly>
-            <button id="copyDeckCodeBtn" type="button">コードをコピー</button>
+            <button id="copyDeckCodeBtn" type="button">コピー</button>
           </div>
         </div>
         <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
         <div class="backImageControls">
-          <span>スリーブアート:</span>
+          <span>スリーブ:</span>
           <div id="backImagePreview" class="backImagePreview" title="クリックして画像を選択">
             <img id="backImagePreviewImg" src="" alt="" style="display:none;">
             <span id="backImagePreviewNone">なし</span>
@@ -92,7 +94,7 @@
           <input type="file" id="backImageInput" accept="image/*" style="display:none;">
         </div>
       </div>
-    </header>
+    </div>
     <div id="codeImportRow" class="hidden" style="gap:6px;align-items:center;padding:4px 0;">
       <input type="text" id="codeImportInput" placeholder="デッキコードを入力" style="flex:1;font-size:13px;padding:4px 6px;border:1px solid #aaa;">
       <button id="codeImportConfirm" style="padding:4px 12px;font-size:13px;background:#2f80ed;color:white;border:none;border-radius:3px;cursor:pointer;">適用</button>

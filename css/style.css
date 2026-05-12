@@ -18,19 +18,56 @@ body.deckPage{
 .card{
   display:inline-block;
   border:1px solid #333;
-  padding:5px;
-  margin:5px;
-  width:80px;
+  padding:4px;
+  margin:3px;
+  width:68px;
   aspect-ratio:210 / 297;
   text-align:center;
   cursor:pointer;
   object-fit:contain;
+  flex-shrink:0;
+  transition: all 0.15s ease;
+}
+
+.card:hover{
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .card img{
   width:100%;
   height:100%;
   object-fit:contain;
+}
+
+/* 戻るボタン（インライン） */
+.back-btn-inline {
+  background: rgba(10, 8, 20, 0.9);
+  border: 1px solid #c7b377;
+  color: #e0d0a0;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.back-btn-inline:hover {
+  background: rgba(199, 179, 119, 0.25);
+  border-color: #fff;
+  transform: translateX(-2px);
+}
+.back-btn-inline::before {
+  content: "←";
+  font-size: 14px;
 }
 
 /* 戻るボタン */
@@ -967,11 +1004,11 @@ body.deckPage{
 }
 
 .cardCatalog{
-    flex:1.65 1 0;
+    flex:0 1 48vh;
 }
 
 .deckArea{
-    flex:0.9 1 0;
+    flex:0 1 34vh;
 }
 
 /* ========================================
@@ -1008,21 +1045,29 @@ body.deckPage{
     display:flex;
     align-items:center;
     justify-content:flex-start;
-    gap:10px;
-    padding-left:120px;
-    padding-top:10px;
-    padding-bottom:4px;
-    min-height:52px;
+    gap:16px;
+    padding:12px 16px;
+    flex-shrink:0;
+    min-height:56px;
+    background: linear-gradient(180deg, rgba(14, 14, 22, 0.98), rgba(12, 12, 18, 0.95));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.title-group {
+    display:flex;
+    align-items:baseline;
+    gap:12px;
 }
 
 .deckPageHeader h2{
     margin:0;
     color:#e0d0a0;
     font-size:20px;
+    font-weight:700;
 }
 
 .deckPageHeader span{
-    font-size:15px;
+    font-size:14px;
     color:#a09070;
 }
 
@@ -1190,14 +1235,15 @@ body.deckPage{
     grid-template-rows:
         repeat(2, minmax(0, auto));
     grid-auto-flow:column;
-    grid-auto-columns:minmax(88px, 100px);
-    gap:6px;
-    padding:2px;
+    grid-auto-columns:minmax(76px, 88px);
+    gap:8px;
+    padding:8px 12px;
     scroll-behavior:smooth;
     min-height:0;
     min-width:0;
     width:max-content;
 }
+
 
 #cards.cardRow .card{
     width:100%;
@@ -1232,13 +1278,14 @@ body.deckPage{
     gap:12px;
     overflow-x:auto;
     overflow-y:hidden;
-    padding:6px;
+    padding:8px 12px;
     height:100%;
     min-height:220px;
     min-width:0;
     scroll-behavior:smooth;
     flex:1 1 0;
 }
+
 
 #deck.cardRow::-webkit-scrollbar {
     height:10px;
@@ -1326,33 +1373,105 @@ body.deckPage{
    デッキコード
 ======================================== */
 
+.deckToolbar {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    padding:8px 6px;
+    flex-shrink:0;
+    min-width:0;
+}
+
+.deckToolbar h3 {
+    margin:0;
+    font-size:16px;
+    color:#f4f1d6;
+    white-space:nowrap;
+    flex-shrink:0;
+}
+
 .deckHeaderControls{
     display:flex;
     flex-wrap:wrap;
-    justify-content:flex-start;
-    gap:6px;
-    align-items:flex-start;
-    flex-shrink:0;
-    width:100%;
+    gap:8px;
+    align-items:center;
+    flex:1 1 auto;
+    min-width:0;
 }
 
-.deckHeaderControls > *{
+.deckHeaderControls > * {
     flex-shrink:0;
+    white-space:nowrap;
+}
+
+.backImageControls {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-shrink:0;
+}
+
+.backImagePreview {
+    width:32px;
+    height:45px;
+    border:1px solid rgba(255,255,255,0.2);
+    border-radius:4px;
+    background:rgba(0,0,0,0.3);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    color:#888;
+    cursor:pointer;
+}
+
+.backImagePreview img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:2px;
 }
 
 .deckCodeBox{
     display:flex;
     flex-direction:column;
     gap:2px;
-    flex:1 1 240px;
-    min-width:180px;
-    max-width:340px;
+    flex:0 1 auto;
+    min-width:auto;
 }
 
 .deckCodeBox > label{
     font-size:11px;
     font-weight:600;
     color:#f2e1b7;
+}
+
+.deckCodeInner {
+    display:flex;
+    gap:4px;
+    align-items:center;
+}
+
+.deckCodeInner input {
+    font-size:12px;
+    height:32px;
+    padding:4px 8px;
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:6px;
+    background:rgba(255,255,255,0.12);
+    color:#f4f1d6;
+    box-sizing:border-box;
+    white-space:nowrap;
+    overflow-x:auto;
+    min-width:140px;
+    max-width:200px;
+}
+
+.deckCodeInner button {
+    padding:6px 12px;
+    font-size:12px;
+    white-space:nowrap;
 }
 
 .deckCodeInner{

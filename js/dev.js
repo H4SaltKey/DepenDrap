@@ -23,6 +23,8 @@ async function initDev() {
     devCards = [];
   }
   renderDevCards();
+  const cardsScroll = getCardsScrollContainer();
+  if (cardsScroll) cardsScroll.addEventListener("scroll", updateScrollButtons);
   renderLevelStatsTable();
 }
 
@@ -196,22 +198,33 @@ function renderDevCards() {
       el.appendChild(placeholder);
     }
 
+    const overlay = document.createElement("div");
+    overlay.className = "devCardOverlay";
+
     const nameDiv = document.createElement("div");
     nameDiv.className = "deckCardName";
     nameDiv.textContent = card.name || card.id;
-    el.appendChild(nameDiv);
+    overlay.appendChild(nameDiv);
 
     const metaDiv = document.createElement("div");
-    metaDiv.style = "font-size:11px;color:#555;margin-top:4px;line-height:1.2;text-align:center;";
-    metaDiv.textContent = `${card.attribute || "近接"} / ${card.type || "アタッカー"}`;
-    el.appendChild(metaDiv);
+    metaDiv.className = "deckCardMeta";
+    const attr = card.attribute || "近接";
+    const type = card.type || "アタッカー";
+    metaDiv.innerHTML = `
+      <span class="attr attr-${attr}">${attr}</span>
+      <span class="slash">/</span>
+      <span class="type type-${type}">${type}</span>
+    `;
+    overlay.appendChild(metaDiv);
 
     if (card.tags) {
       const tagsDiv = document.createElement("div");
-      tagsDiv.style = "font-size:10px;color:#777;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;";
+      tagsDiv.className = "deckCardTags";
       tagsDiv.textContent = card.tags;
-      el.appendChild(tagsDiv);
+      overlay.appendChild(tagsDiv);
     }
+
+    el.appendChild(overlay);
 
     el.addEventListener("click", () => selectCard(card.id));
     el.addEventListener("contextmenu", (e) => {
@@ -249,6 +262,11 @@ function hideDevContextMenu() {
   }
 }
 
+function getCardsScrollContainer() {
+  const cards = document.getElementById("cards");
+  return cards ? cards.parentElement : null;
+}
+
 function showCardZoom(id) {
   const card = devCards.find(c => c.id === id) || getCardData(id);
   if (!card) return;
@@ -282,7 +300,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 function updateScrollButtons() {
-  const cardsDiv = document.getElementById("cards");
+  const cardsDiv = getCardsScrollContainer();
   const cardsPrev = document.getElementById("cardsPrev");
   const cardsNext = document.getElementById("cardsNext");
   if (!cardsDiv || !cardsPrev || !cardsNext) return;
@@ -300,11 +318,11 @@ function scrollContainer(container, amount) {
 }
 
 document.getElementById("cardsPrev").addEventListener("click", () => {
-  const cardsDiv = document.getElementById("cards");
+  const cardsDiv = getCardsScrollContainer();
   if (cardsDiv) scrollContainer(cardsDiv, -Math.max(cardsDiv.clientWidth * 0.75, 240));
 });
 document.getElementById("cardsNext").addEventListener("click", () => {
-  const cardsDiv = document.getElementById("cards");
+  const cardsDiv = getCardsScrollContainer();
   if (cardsDiv) scrollContainer(cardsDiv, Math.max(cardsDiv.clientWidth * 0.75, 240));
 });
 

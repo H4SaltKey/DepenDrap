@@ -450,61 +450,6 @@ function showDeckTitle() {
   if (titleEl && entry) titleEl.textContent = entry.name;
 }
 
-// ===== 裏面画像 =====
-function saveBackImage(dataUrl) {
-  if (!DECK_ID) return;
-  const list = loadDeckList();
-  const entry = list.find(d => d.id === DECK_ID);
-  if (entry) {
-    entry.backImage = dataUrl || "";
-    saveDeckList(list);
-  }
-}
-
-function showBackImagePreview(dataUrl) {
-  const img = document.getElementById("backImagePreviewImg");
-  const none = document.getElementById("backImagePreviewNone");
-  const source = dataUrl || "assets/404.png";
-  img.onerror = () => {
-    img.src = "assets/404.png";
-    img.onerror = null;
-  };
-  img.src = source;
-  img.style.display = "";
-  none.style.display = "none";
-}
-
-function setupBackImageUI() {
-  const entry = getCurrentDeckEntry();
-  if (entry && entry.backImage) {
-    showBackImagePreview(entry.backImage);
-  }
-
-  document.getElementById("btnSetBackImage").addEventListener("click", () => {
-    document.getElementById("backImageInput").click();
-  });
-  document.getElementById("backImagePreview").addEventListener("click", () => {
-    document.getElementById("backImageInput").click();
-  });
-
-  document.getElementById("backImageInput").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      saveBackImage(ev.target.result);
-      showBackImagePreview(ev.target.result);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  });
-
-  document.getElementById("btnClearBackImage").addEventListener("click", () => {
-    saveBackImage("");
-    showBackImagePreview("");
-  });
-}
-
 // ===== 起動 =====
 loadCardData()
   .catch(() => {})
@@ -513,7 +458,6 @@ loadCardData()
     sortDeck();
     setupDeckBuilder();
     showDeckTitle();
-    setupBackImageUI();
     render();
   });
 

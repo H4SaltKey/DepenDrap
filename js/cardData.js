@@ -1,4 +1,4 @@
-const CARD_DATA_URL = new URL("../data/cards.json", document.baseURI).href;
+const CARD_DATA_URL = new URL("data/cards.json", document.baseURI).href;
 let CARD_DB = [];
 let CARD_INDEX = {};
 

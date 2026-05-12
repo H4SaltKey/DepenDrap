@@ -1237,7 +1237,7 @@ body.deckPage{
     grid-template-rows:
         repeat(2, minmax(0, auto));
     grid-auto-flow:column;
-    grid-auto-columns:130px;
+    grid-auto-columns:110px;
     gap:8px;
     padding:8px 12px;
     scroll-behavior:smooth;
@@ -1696,21 +1696,21 @@ button{
 
 .deckCard{
   position:relative;
-  width:140px;
-  min-width:140px;
-  aspect-ratio:210 / 297;
-  border:1px solid rgba(255,255,255,0.18);
-  background: linear-gradient(180deg, #faf5ed 0%, #e5d8c4 100%);
-  padding:8px;
+  width:110px;
+  min-width:110px;
+  height:154px;
+  border:1px solid rgba(255,255,255,0.08);
+  background: rgba(16, 18, 28, 0.95);
+  padding:6px;
   box-sizing:border-box;
   display:grid;
   grid-template-rows:1fr auto;
-  gap:8px;
+  gap:6px;
   cursor:grab;
   user-select:none;
   overflow:hidden;
-  border-radius:16px;
-  box-shadow: 0 20px 40px rgba(5, 5, 10, 0.12);
+  border-radius:12px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
 }
 
 .deckCard.empty{
@@ -1725,7 +1725,7 @@ button{
   object-fit:cover;
   min-height:0;
   min-width:0;
-  border-radius:12px;
+  border-radius:10px;
 }
 
 .deckCardName{

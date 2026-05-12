@@ -167,15 +167,16 @@ function createCardElement(id, count, source) {
       background: rgba(10,10,16,0.95);
     `;
     dragPreview.innerHTML = el.innerHTML;
-    dragPreview.style.width = el.offsetWidth + "px";
-    dragPreview.style.height = el.offsetHeight + "px";
+    const scale = 0.82;
+    dragPreview.style.width = Math.round(el.offsetWidth * scale) + "px";
+    dragPreview.style.height = Math.round(el.offsetHeight * scale) + "px";
     document.body.appendChild(dragPreview);
     dragPreview.style.display = "block";
 
     // Update position on drag
     const movePreview = (evt) => {
-      dragPreview.style.left = (evt.clientX - 34) + "px";
-      dragPreview.style.top = (evt.clientY - 57) + "px";
+      dragPreview.style.left = (evt.clientX + 12) + "px";
+      dragPreview.style.top = (evt.clientY + 12) + "px";
     };
     
     const cleanup = () => {

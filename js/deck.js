@@ -254,6 +254,11 @@ function createCardElement(id, count, source) {
     const deckRow = document.getElementById("deck");
     const cardsRow = document.getElementById("cards");
     if (source === "cards") {
+      if (getDeckCount(id) >= MAX_COPIES) {
+        showDeckMessage("同じカードは3枚までです。");
+        hideDeckContextMenu();
+        return;
+      }
       const deckRect = deckRow ? deckRow.getBoundingClientRect() : null;
       const targetRect = deckRect ? {
         left: deckRect.left + Math.max(0, (deckRect.width - el.offsetWidth) / 2),

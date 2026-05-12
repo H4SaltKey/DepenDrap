@@ -180,6 +180,27 @@ function selectDeck(id) {
 
   // カード一覧
   renderDetailCards(cards);
+  renderDetailDeckList();
+}
+
+function renderDetailDeckList() {
+  const container = document.getElementById("detailDeckList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const decks = loadDeckList();
+  if (decks.length === 0) {
+    container.innerHTML = `<div style="color:#aaa;font-size:13px;">登録されたデッキがありません。</div>`;
+    return;
+  }
+
+  decks.forEach(deck => {
+    const item = document.createElement("div");
+    item.className = "detailDeckListItem" + (deck.id === selectedDeckId ? " selected" : "");
+    item.textContent = deck.name || "名前なしデッキ";
+    item.addEventListener("click", () => selectDeck(deck.id));
+    container.appendChild(item);
+  });
 }
 
 function renderDetailCards(cards) {

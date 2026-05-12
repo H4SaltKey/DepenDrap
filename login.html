@@ -171,6 +171,96 @@
     .mode-toggle button:hover {
       color: #e0d0a0;
     }
+
+    /* 開発者パスワードモーダル */
+    .modalOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .modalOverlay.hidden {
+      display: none;
+    }
+
+    .modalBox {
+      background: rgba(20,18,32,0.98);
+      border: 1px solid #c7b377;
+      border-radius: 10px;
+      padding: 22px;
+      width: min(100%, 380px);
+      max-width: 380px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+    }
+
+    .modalTitle {
+      margin: 0 0 14px 0;
+      font-size: 18px;
+      letter-spacing: 1px;
+      color: #e0d0a0;
+    }
+
+    .modalBody {
+      display: grid;
+      gap: 12px;
+    }
+
+    .modalBody p {
+      margin: 0;
+      color: #d9c88d;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .modalBody input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #5a4b27;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    .modalActions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .modalActions button {
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .modalActions .cancelBtn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: #f4f1d6;
+    }
+
+    .modalActions .confirmBtn {
+      background: #c7b377;
+      border: none;
+      color: #1a172c;
+      font-weight: bold;
+    }
+
+    .modalError {
+      color: #ff6b6b;
+      font-size: 13px;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
@@ -201,6 +291,21 @@
 
   <div class="mode-toggle">
     <p id="toggleText">アカウントをお持ちでない場合は「REGISTER」をクリック</p>
+  </div>
+</div>
+
+<div id="devPassModal" class="modalOverlay hidden">
+  <div class="modalBox">
+    <div class="modalTitle">開発者モード</div>
+    <div class="modalBody">
+      <p>開発者モードのパスワードを入力してください。</p>
+      <input type="password" id="devPasswordInput" autocomplete="off" spellcheck="false" placeholder="パスワードを入力">
+      <div class="modalError" id="devPassError"></div>
+    </div>
+    <div class="modalActions">
+      <button type="button" class="cancelBtn" id="devPassCancel">キャンセル</button>
+      <button type="button" class="confirmBtn" id="devPassConfirm">開発者モードへ</button>
+    </div>
   </div>
 </div>
 

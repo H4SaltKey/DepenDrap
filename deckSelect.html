@@ -235,6 +235,50 @@
     gap: 6px;
   }
 
+  .detailDeckListWrap {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+  }
+
+  .detailDeckListWrap h4 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: #d9c88d;
+  }
+
+  .detailDeckList {
+    display: grid;
+    gap: 8px;
+  }
+
+  .detailDeckListItem {
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    color: #f4f1d6;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .detailDeckListItem:hover {
+    background: rgba(255,255,255,0.12);
+    transform: translateX(2px);
+  }
+
+  .detailDeckListItem.selected {
+    background: rgba(199, 179, 119, 0.2);
+    border-color: rgba(199, 179, 119, 0.45);
+  }
+
   .deckDetailCardItem {
     position: relative;
     aspect-ratio: 210 / 297;
@@ -352,6 +396,11 @@
 
         <div class="deckDetailCards" id="detailCardsWrap">
           <div class="deckDetailCardList" id="detailCardList"></div>
+        </div>
+
+        <div class="detailDeckListWrap">
+          <h4>他のデッキ</h4>
+          <div class="detailDeckList" id="detailDeckList"></div>
         </div>
 
         <div class="deckDetailActions">

@@ -142,13 +142,80 @@ function createCardElement(id, count, source) {
     e.dataTransfer.setData("source", source);
   });
 
-  el.addEventListener("dblclick", () => {
+  el.addEventListener("click", (e) => {
+    if (e.button !== 0) return;
     if (source === "cards") addCard(id);
     else removeCard(id);
+    hideDeckContextMenu();
+  });
+
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (source === "cards") {
+      openDeckContextMenu(e.pageX, e.pageY, id, "add");
+    } else {
+      openDeckContextMenu(e.pageX, e.pageY, id, "remove");
+    }
   });
 
   return el;
 }
+
+function openDeckContextMenu(x, y, id, action) {
+  const menu = document.getElementById("deckContextMenu");
+  if (!menu) return;
+  const options = action === "add" ? [1, 2, 3] : [1, 2, 3];
+  menu.innerHTML = options.map(count => {
+    const label = action === "add" ? `+${count}枚追加` : `-${count}枚削除`;
+    return `<div class="context-item" data-count="${count}">${label}</div>`;
+  }).join("");
+
+  menu.style.display = "block";
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+  menu.style.minWidth = "140px";
+  menu.style.color = "#f4f1d6";
+  menu.style.fontSize = "13px";
+  menu.style.lineHeight = "1.7";
+  menu.style.border = "1px solid rgba(255,255,255,0.12)";
+  menu.style.background = "rgba(12,11,18,0.98)";
+  menu.style.backdropFilter = "blur(10px)";
+  menu.style.padding = "4px 0";
+  menu.style.boxSizing = "border-box";
+
+  Array.from(menu.children).forEach(item => {
+    item.style.padding = "8px 12px";
+    item.style.cursor = "pointer";
+    item.style.whiteSpace = "nowrap";
+  });
+
+  menu.querySelectorAll(".context-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const count = Number(item.dataset.count);
+      if (action === "add") {
+        for (let i = 0; i < count; i++) addCard(id);
+      } else {
+        for (let i = 0; i < count; i++) removeCard(id);
+      }
+      hideDeckContextMenu();
+    });
+  });
+}
+
+function hideDeckContextMenu() {
+  const menu = document.getElementById("deckContextMenu");
+  if (menu) menu.style.display = "none";
+}
+
+window.addEventListener("click", (e) => {
+  const menu = document.getElementById("deckContextMenu");
+  if (!menu || menu.style.display !== "block") return;
+  if (e.target.closest && e.target.closest("#deckContextMenu")) return;
+  hideDeckContextMenu();
+});
+
+window.addEventListener("scroll", hideDeckContextMenu);
+window.addEventListener("resize", hideDeckContextMenu);
 
 // ===== 描画 =====
 function render() {

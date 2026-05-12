@@ -155,13 +155,47 @@
   }
 
   function enterDev() {
-    const pass = prompt("パスワードを入力にゃん");
-    if (pass === "ねこ") { localStorage.setItem("dev","true"); location.href = "dev.html"; }
-    else showToast("パスワードが違います。");
+    document.getElementById("devPasswordInput").value = "";
+    document.getElementById("devPassError").textContent = "";
+    document.getElementById("devPassModal").classList.remove("hidden");
+    setTimeout(() => document.getElementById("devPasswordInput").focus(), 50);
+  }
+
+  function closeDevPassModal() {
+    document.getElementById("devPassModal").classList.add("hidden");
+  }
+
+  function confirmDevPass() {
+    const pass = document.getElementById("devPasswordInput").value.trim();
+    if (pass === "ねこ") {
+      localStorage.setItem("dev","true");
+      location.href = "dev.html";
+    } else {
+      document.getElementById("devPassError").textContent = "パスワードが違います。";
+    }
   }
 
   function goGame() { location.href = "matchSetup.html"; }
   function goDeck()  { location.href = "deckSelect.html"; }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const confirmBtn = document.getElementById("devPassConfirm");
+    const cancelBtn = document.getElementById("devPassCancel");
+    const modal = document.getElementById("devPassModal");
+    const input = document.getElementById("devPasswordInput");
+
+    if (confirmBtn && cancelBtn && modal && input) {
+      confirmBtn.addEventListener("click", confirmDevPass);
+      cancelBtn.addEventListener("click", closeDevPassModal);
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeDevPassModal();
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") confirmDevPass();
+        if (e.key === "Escape") closeDevPassModal();
+      });
+    }
+  });
 
   // Firebase を初期化
   window.addEventListener("load", async () => {

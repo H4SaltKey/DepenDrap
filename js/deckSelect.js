@@ -1,6 +1,5 @@
 // ===== デッキリスト管理 =====
 // localStorage "deckList" に [{id, name, code}] を保存
-const MAX_DECKS = 50;
 
 function loadDeckList() {
   try {
@@ -16,7 +15,6 @@ function saveDeckList(list) {
 
 function createNewDeck() {
   const list = loadDeckList();
-  if (list.length >= MAX_DECKS) return null;
 
   const id = "deck_" + Date.now();
   const entry = { id, name: "新しいデッキ", code: "empty", backImage: "" };
@@ -68,20 +66,18 @@ function renderGrid() {
   });
 
   // 「新規作成」スロット
-  if (list.length < MAX_DECKS) {
-    const addEl = document.createElement("div");
-    addEl.className = "deckThumb addNew";
-    addEl.title = "新しいデッキを作成";
-    addEl.textContent = "+";
-    addEl.addEventListener("click", () => {
-      const newDeck = createNewDeck();
+  const addEl = document.createElement("div");
+  addEl.className = "deckThumb addNew";
+  addEl.title = "新しいデッキを作成";
+  addEl.textContent = "+";
+  addEl.addEventListener("click", () => {
+    const newDeck = createNewDeck();
       if (newDeck) {
         renderGrid();
         selectDeck(newDeck.id);
       }
     });
     grid.appendChild(addEl);
-  }
 }
 
 function createDeckThumb(deck) {
@@ -303,10 +299,6 @@ document.getElementById("importConfirm").addEventListener("click", () => {
 
   // 新規デッキとして追加
   const list = loadDeckList();
-  if (list.length >= MAX_DECKS) {
-    errorEl.textContent = "デッキ数が上限（50）に達しています。";
-    return;
-  }
 
   const id = "deck_" + Date.now();
   const entry = { id, name: "インポートデッキ", code, backImage: "" };

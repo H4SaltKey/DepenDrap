@@ -5,8 +5,6 @@ let cardFilters = {
   type: "all"
 };
 
-const MAX_COPIES = 3;
-
 // URLパラメータからデッキIDを取得
 const DECK_ID = new URLSearchParams(location.search).get("deckId");
 
@@ -68,10 +66,6 @@ async function loadDeck() {
 
 // ===== カード操作 =====
 function addCard(id) {
-  if (getDeckCount(id) >= MAX_COPIES) {
-    showDeckMessage("同じカードは3枚までです。");
-    return;
-  }
   deck.push(id);
   sortDeck();
   render();
@@ -254,11 +248,6 @@ function createCardElement(id, count, source) {
     const deckRow = document.getElementById("deck");
     const cardsRow = document.getElementById("cards");
     if (source === "cards") {
-      if (getDeckCount(id) >= MAX_COPIES) {
-        showDeckMessage("同じカードは3枚までです。");
-        hideDeckContextMenu();
-        return;
-      }
       const deckRect = deckRow ? deckRow.getBoundingClientRect() : null;
       const targetRect = deckRect ? {
         left: deckRect.left + Math.max(0, (deckRect.width - el.offsetWidth) / 2),

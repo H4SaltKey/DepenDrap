@@ -897,296 +897,368 @@ input[type=number]::-webkit-outer-spin-button{
 
 #cards,
 #deck,
-#deckMessage,
-#deckCode,
-h1,
-h3{
-  position:relative;
-  z-index:20;
+:root{
+    --bg:#ece8df;
+
+    --panel:#f7f3ea;
+    --panel2:#f2ede2;
+
+    --border:#b8aa8a;
+
+    --gold:#d8c394;
+    --goldDark:#9e8657;
+
+    --shadow:
+        0 2px 8px rgba(0,0,0,.08);
+
+    --radius:14px;
 }
 
-#codeImportRow:not(.hidden){
-  display:flex;
-}
+/* ========================================
+   body
+======================================== */
 
-.deckBuilder{
-    display:flex;
-    flex-direction:column;
-    height:100vh;
+body.deckPage{
+    margin:0;
+    background:var(--bg);
 
     overflow:hidden;
 
-    gap:8px;
-    padding:8px;
+    font-family:
+        "Yu Gothic",
+        sans-serif;
+}
+
+/* ========================================
+   メイン
+======================================== */
+
+.deckBuilder{
+    display:grid;
+
+    grid-template-rows:
+        1fr 280px;
+
+    gap:12px;
+
+    height:100vh;
+
+    padding:14px;
 
     box-sizing:border-box;
 }
 
-/* =========================
-   上：カード一覧
-========================= */
-
-.cardCatalog{
-    flex:0 0 62%;
-
-    display:flex;
-    flex-direction:column;
-
-    overflow:hidden;
-
-    margin:0;
-    padding:0;
-}
-
-.cardCatalogMain{
-    display:flex;
-    flex-direction:column;
-
-    height:100%;
-
-    gap:6px;
-}
-
-/* =========================
-   下：デッキ
-========================= */
-
-.deckArea{
-    flex:0 0 38%;
-
-    display:flex;
-    flex-direction:column;
-
-    overflow:hidden;
-
-    margin:0;
-    padding:0;
-}
-
-/* =========================
-   セクション共通
-========================= */
+/* ========================================
+   共通パネル
+======================================== */
 
 .deckSection{
+    background:var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius:
+        var(--radius);
+
+    box-shadow:
+        var(--shadow);
+
+    overflow:hidden;
+
+    display:flex;
+    flex-direction:column;
+
     min-height:0;
 }
 
-/* =========================
+/* ========================================
+   上側：カード一覧
+======================================== */
+
+.cardCatalog{
+    padding:10px;
+}
+
+/* ========================================
+   タイトル
+======================================== */
+
+.deckSection header{
+    padding-bottom:8px;
+}
+
+.deckSection h3{
+    margin:0;
+
+    font-size:20px;
+    font-weight:700;
+
+    color:#222;
+}
+
+/* ========================================
    フィルター
-========================= */
+======================================== */
 
 .deckFilters{
     display:flex;
+
     flex-wrap:wrap;
 
     gap:18px;
 
-    padding:0 6px;
-    margin:0;
+    padding:6px 0 12px 0;
+
+    border-bottom:
+        1px solid #ddd;
 }
 
-/* =========================
-   カード列エリア
-========================= */
+/* ========================================
+   カードエリア
+======================================== */
 
 .pagedRow{
-    flex:1;
-    min-height:0;
-
-    display:flex;
-    align-items:center;
-
-    gap:6px;
-
-    overflow:hidden;
-}
-
-/* =========================
-   viewport
-========================= */
-
-.cardListViewport{
-    flex:1;
-
-    min-width:0;
-    min-height:0;
-
-    overflow:hidden;
-
-    display:flex;
-}
-
-/* =========================
-   一覧側カード列
-   2列表示
-========================= */
-
-#cards.cardRow{
     flex:1;
 
     display:grid;
 
     grid-template-columns:
-        repeat(auto-fill, minmax(120px, 1fr));
-
-    grid-template-rows:
-        repeat(2, 1fr);
+        52px 1fr 52px;
 
     gap:10px;
 
-    overflow-y:auto;
-    overflow-x:hidden;
+    min-height:0;
 
-    padding:4px;
-    margin:0;
-
-    align-content:start;
+    align-items:center;
 }
 
-/* =========================
-   デッキ側カード列
-========================= */
+/* ========================================
+   viewport
+======================================== */
+
+.cardListViewport{
+    overflow:hidden;
+
+    min-width:0;
+    min-height:0;
+
+    height:100%;
+}
+
+/* ========================================
+   一覧カード
+======================================== */
+
+#cards.cardRow{
+    height:100%;
+
+    display:grid;
+
+    justify-content:center;
+
+    align-content:start;
+
+    gap:12px;
+
+    padding:8px;
+
+    overflow-y:auto;
+
+    /* 画面サイズで自動変化 */
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(120px, 1fr)
+        );
+
+    grid-auto-rows:
+        min-content;
+}
+
+/* ========================================
+   デッキカード
+======================================== */
 
 #deck.cardRow{
-    flex:1;
-
     display:flex;
-    flex-wrap:nowrap;
+
+    align-items:flex-start;
 
     gap:10px;
 
     overflow-x:auto;
     overflow-y:hidden;
 
-    padding:4px;
-    margin:0;
+    padding:10px;
+
+    height:100%;
 }
 
-/* =========================
-   ページボタン
-========================= */
+/* ========================================
+   カード画像
+======================================== */
+
+.cardRow .card{
+    width:
+        clamp(110px, 8vw, 150px);
+
+    flex-shrink:0;
+
+    transition:
+        transform .15s ease;
+}
+
+.cardRow .card:hover{
+    transform:
+        translateY(-4px);
+}
+
+/* ========================================
+   ボタン
+======================================== */
 
 .pageButton{
-    flex:0 0 40px;
-
+    width:52px;
     height:160px;
 
-    margin:0;
-    padding:0;
+    border:none;
 
-    font-size:28px;
+    border-radius:12px;
+
+    background:var(--panel2);
+
+    border:
+        1px solid var(--border);
 
     cursor:pointer;
+
+    font-size:30px;
+
+    transition:
+        .15s ease;
 }
 
-/* =========================
-   見出し余白削減
-========================= */
-
-.deckSection header{
-    margin:0;
-    padding:4px 6px;
+.pageButton:hover{
+    background:#e7ddca;
 }
 
-.deckSection h3{
-    margin:0;
+/* ========================================
+   下側：デッキ
+======================================== */
+
+.deckArea{
+    padding:10px;
+
+    display:grid;
+
+    grid-template-rows:
+        auto 1fr;
+
+    gap:10px;
 }
 
-/* =========================
-   デッキコード周り
-========================= */
+/* ========================================
+   デッキヘッダー
+======================================== */
 
 .deckHeaderControls{
     display:flex;
+
     align-items:center;
 
     gap:10px;
 
     flex-wrap:wrap;
-
-    margin:0;
-    padding:0;
 }
 
-/* =========================
-   無駄余白削減
-========================= */
-
-.cardRow img{
-    display:block;
-}
-
-.filterGroup{
-    margin:0;
-    padding:0;
-}
-
-.deckHeaderControls{
-  display:flex;
-  flex-wrap: wrap;
-  gap:10px;
-  align-items:center;
-}
+/* ========================================
+   デッキコード
+======================================== */
 
 .deckCodeBox{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  min-width:280px;
+    display:flex;
+    flex-direction:column;
+
+    gap:4px;
 }
 
 .deckCodeInner{
-  display:flex;
-  gap:6px;
-  align-items:center;
+    display:flex;
+    gap:6px;
 }
 
-#deckCodeInput{
-  flex:1;
-  min-width:0;
-  font-size:12px;
-  padding:8px 10px;
-  border:1px solid #aaa;
-  border-radius:6px;
-  background:#f8f8f8;
-  color:#333;
-  overflow-x:auto;
-  white-space:nowrap;
+/* ========================================
+   入力
+======================================== */
+
+input[type="text"]{
+    border:
+        1px solid var(--border);
+
+    border-radius:8px;
+
+    padding:8px 10px;
+
+    background:white;
 }
 
-#deckCodeInput::-webkit-scrollbar {
-  height:6px;
+/* ========================================
+   ボタン共通
+======================================== */
+
+button{
+    border:none;
+
+    border-radius:10px;
+
+    padding:8px 14px;
+
+    cursor:pointer;
+
+    transition:
+        .15s ease;
 }
 
-#deckCodeInput::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
-  border-radius:3px;
+/* ========================================
+   保存ボタン
+======================================== */
+
+.back-btn{
+    position:fixed;
+
+    top:16px;
+    left:16px;
+
+    z-index:100;
+
+    background:#34323c;
+
+    color:#f5e7b7;
+
+    border:
+        1px solid #8e7c58;
+
+    box-shadow:
+        0 4px 12px rgba(0,0,0,.2);
 }
 
-.smallBtn{
-  font-size:12px;
-  padding:6px 10px;
-  border:1px solid #aaa;
-  border-radius:6px;
-  background:#f4f4f4;
-  cursor:pointer;
+/* ========================================
+   スクロールバー
+======================================== */
+
+::-webkit-scrollbar{
+    width:10px;
+    height:10px;
 }
 
-.smallBtn:hover{
-  background:#e8e8e8;
+::-webkit-scrollbar-thumb{
+    background:#c8b38a;
+    border-radius:999px;
 }
 
-.dangerBtn{
-  background:#f8d7da;
-  border-color:#f5c2c7;
-  color:#842029;
-}
-
-.backImageControls{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
+::-webkit-scrollbar-track{
+    background:transparent;
 }
 
 .backImagePreview{
@@ -1280,42 +1352,6 @@ h3{
   background: #1a6fd4;
 }
 
-.deckSection header{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  align-items:center;
-  padding-bottom:4px;
-}
-
-.pagedRow{
-  min-height:0;
-  display:grid;
-  grid-template-columns:32px 1fr 32px;
-  gap:6px;
-  align-items:center;
-}
-
-.pageButton{
-  width:32px;
-  height:60px;
-  font-size:24px;
-}
-
-.pageButton:disabled{
-  opacity:0.28;
-}
-
-.cardRow{
-  min-width:0;
-  height:100%;
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
-  grid-template-rows:repeat(2, 1fr);
-  gap:2px;
-  align-items:center;
-  justify-items:center;
-}
 
 .deckCard{
   position:relative;

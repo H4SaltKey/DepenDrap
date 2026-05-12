@@ -195,8 +195,8 @@ async function renderDeckPreview(deckId) {
     div.className = "pvCard";
 
     const img = document.createElement("img");
-    img.src = cardInfo ? cardInfo.image : "assets/cards/cd0000.png";
-    img.onerror = () => { img.src = "assets/cards/cd0000.png"; };
+    img.src = cardInfo ? cardInfo.image : "assets/404.png";
+    img.onerror = () => { img.src = "assets/404.png"; };
 
     div.appendChild(img);
     if (count > 1) {

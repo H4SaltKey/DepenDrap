@@ -72,7 +72,6 @@ function selectCard(id) {
 
   document.getElementById("editPanel").classList.remove("hidden");
   document.getElementById("editId").value = card.id;
-  document.getElementById("editName").value = card.name || "";
 
   const pending = pendingImages[id];
   if (pending) {
@@ -126,16 +125,6 @@ document.getElementById("imageFileInput").addEventListener("change", (e) => {
   };
   reader.readAsDataURL(file);
   e.target.value = "";
-});
-
-// ===== カード名の変更を即時反映 =====
-document.getElementById("editName").addEventListener("input", () => {
-  if (!selectedId) return;
-  const card = devCards.find(c => c.id === selectedId);
-  if (card) {
-    card.name = document.getElementById("editName").value;
-    renderDevCards();
-  }
 });
 
 // ===== カード一覧レンダリング =====
@@ -200,7 +189,7 @@ document.getElementById("doneBtn").addEventListener("click", () => {
 
   const output = devCards.map(c => {
     const entry = { id: c.id, image: c.image || "" };
-    if (c.name) entry.name = c.name;
+    // nameフィールドは除去（データ構造の変更）
     return entry;
   });
 

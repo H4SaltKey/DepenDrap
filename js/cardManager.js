@@ -12,10 +12,10 @@ const CARD_H = 453;
 function setSafeSrc(img, src) {
   if (!img) return;
   img.onerror = () => {
-    img.src = "assets/cards/cd0000.png";
+    img.src = "assets/404.png";
     img.onerror = null;
   };
-  img.src = src || "assets/cards/cd0000.png";
+  img.src = src || "assets/404.png";
 }
 
 function toServerX(localX){

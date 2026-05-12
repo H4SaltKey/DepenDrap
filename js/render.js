@@ -8,7 +8,8 @@ function renderField(player){
     const card = cards[obj.id];
     const el = document.createElement("img");
 
-    el.src = card.image || "assets/cards/placeholder.png";
+    el.src = card.image || "assets/404.png";
+    el.onerror = () => { el.src = "assets/404.png"; };
     el.className = "card";
     el.style.left = obj.x + "px";
     el.style.top = obj.y + "px";

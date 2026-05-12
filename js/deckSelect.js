@@ -315,3 +315,29 @@ document.getElementById("importCodeInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("importConfirm").click();
   if (e.key === "Escape") document.getElementById("importModal").classList.add("hidden");
 });
+
+// ===== 画面サイズ変更時のグリッド調整 =====
+function updateGridColumns() {
+  const deckGrid = document.querySelector('.deckGrid');
+  const cardList = document.querySelector('.deckDetailCardList');
+  
+  if (!deckGrid || !cardList) return;
+  
+  // デッキグリッドの列数調整（最小2列、最大8列）
+  const deckGridWidth = deckGrid.offsetWidth;
+  const minDeckCardWidth = 120; // デッキカードの最小幅
+  const deckCols = Math.max(2, Math.min(8, Math.floor(deckGridWidth / minDeckCardWidth)));
+  deckGrid.style.gridTemplateColumns = `repeat(${deckCols}, 1fr)`;
+  
+  // カード一覧の列数調整（最小3列、最大10列）
+  const cardListWidth = cardList.offsetWidth;
+  const minCardWidth = 60; // カード一覧の最小幅
+  const cardCols = Math.max(3, Math.min(10, Math.floor(cardListWidth / minCardWidth)));
+  cardList.style.gridTemplateColumns = `repeat(${cardCols}, 1fr)`;
+}
+
+// 初期化時とリサイズ時に列数を更新
+window.addEventListener('resize', updateGridColumns);
+window.addEventListener('load', () => {
+  setTimeout(updateGridColumns, 100); // DOMが完全にレンダリングされた後に実行
+});

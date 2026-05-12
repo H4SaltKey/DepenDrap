@@ -198,5 +198,19 @@ async function uploadCardsToServer(files, folderName, blockNumStrOverride) {
     }
   }
 
+  // cards.json をダウンロード
+  const jsonBlob = new Blob([JSON.stringify(updatedCards, null, 2)], { type: 'application/json' });
+  const downloadUrl = URL.createObjectURL(jsonBlob);
+  const downloadLink = document.createElement('a');
+  downloadLink.href = downloadUrl;
+  downloadLink.download = 'cards.json';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(downloadUrl);
+
+  alert(`${newCards.length} 枚のカードを追加しました。cards.json がダウンロードされました。`);
+}
+
   alert(`✅ ${newCards.length} 枚のカードを追加しました！\n\n【フォルダ】\n${folderLabel}\n\n【カードID】\n${newCards[0].id} 〜 ${newCards[newCards.length - 1].id}`);
 }

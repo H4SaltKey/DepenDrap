@@ -235,17 +235,6 @@ if(localStorage.getItem("dev") !== "true"){
     </div>
   </section>
 
-  <!-- カード削除 -->
-  <section style="background:white;border:1px solid #aaa;padding:20px;">
-    <h3 style="margin:0 0 16px 0;">🗑️ カード削除</h3>
-    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">選択したカードをカードデータから削除します。</p>
-    <div style="display:flex;gap:12px;">
-      <input type="text" id="deleteCardId" placeholder="削除するカードID（例: cd001-001）" style="flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:4px;">
-      <button id="deleteCardBtn" style="padding:8px 24px;background:#d9534f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">削除</button>
-    </div>
-    <div id="deleteCardMsg" style="margin-top:10px;font-size:12px;"></div>
-  </section>
-
   <!-- 編集パネル -->
   <section class="devEditPanel hidden" id="editPanel">
     <div class="devPreview" id="previewBox">
@@ -253,10 +242,6 @@ if(localStorage.getItem("dev") !== "true"){
       <img id="previewImg" style="display:none;" alt="プレビュー">
     </div>
     <div class="devEditFields">
-      <div>
-        <label>カード名</label><br>
-        <input type="text" id="editName" placeholder="カード名（任意）">
-      </div>
       <div>
         <label>カードID</label><br>
         <input type="text" id="editId" readonly>

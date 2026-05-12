@@ -361,8 +361,8 @@ function createDeckObject(forceResetPos = false) {
     wrapper.dataset.instanceId = "deckObject_" + owner;
     wrapper.dataset.owner = owner;
 
-    // 相手のデッキ画像も表示（backImageが設定されていない場合はcd0000をフォールバック）
-    const backImage = state[owner]?.backImage || "assets/cards/cd0000.png";
+    // 相手のデッキ画像も表示（backImageが設定されていない場合は404.pngをフォールバック）
+    const backImage = state[owner]?.backImage || "assets/404.png";
     const img = document.createElement("img");
     img.draggable = false;
     setSafeSrc(img, backImage);

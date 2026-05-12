@@ -235,9 +235,8 @@ function showBackImagePreview(dataUrl) {
   const none = document.getElementById("backImagePreviewNone");
   if (dataUrl) {
     img.onerror = () => {
-      // 裏面画像の読み込みに失敗した場合、cd0000 をフォールバック表示
-      const cd0000 = getCardData && getCardData("cd0000");
-      img.src = cd0000 ? cd0000.image : "assets/cards/cd0000.png";
+      // 裏面画像の読み込みに失敗した場合、404.png をフォールバック表示
+      img.src = "assets/404.png";
       img.onerror = null;
     };
     img.src = dataUrl;

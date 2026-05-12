@@ -940,20 +940,19 @@ body.deckPage{
 ======================================== */
 
 .deckBuilder{
-    display:grid;
-    grid-template-rows:
-        52px
-        minmax(0, 1.65fr)
-        minmax(0, 0.9fr);
-    gap:6px;
+    display:flex;
+    flex-direction:column;
     height:100vh;
+    overflow:hidden;
+    gap:6px;
     padding:8px 8px 6px;
     box-sizing:border-box;
 }
 
-/* ========================================
-   共通パネル
-======================================== */
+.deckBuilder > .deckPageHeader{
+    flex:0 0 auto;
+    min-height:52px;
+}
 
 .deckSection{
     background: rgba(14, 14, 22, 0.95);
@@ -963,7 +962,16 @@ body.deckPage{
     overflow:hidden;
     display:flex;
     flex-direction:column;
+    flex:1 1 0;
     min-height:0;
+}
+
+.cardCatalog{
+    flex:1.65 1 0;
+}
+
+.deckArea{
+    flex:0.9 1 0;
 }
 
 /* ========================================
@@ -1137,18 +1145,13 @@ body.deckPage{
 ======================================== */
 
 .pagedRow{
-    flex:1;
-
-    display:grid;
-
-    grid-template-columns:
-        52px 1fr 52px;
-
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
     gap:10px;
-
     min-height:0;
-
-    align-items:stretch;
+    width:100%;
+    min-width:0;
 }
 
 /* ========================================
@@ -1156,9 +1159,12 @@ body.deckPage{
 ======================================== */
 
 .cardListViewport{
-    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    flex:1 1 0;
+    min-height:0;
     min-width:0;
-    min-height:210px;
+    overflow:hidden;
     background: rgba(8, 8, 14, 0.95);
     border-radius: 12px;
     padding: 6px;
@@ -1178,12 +1184,16 @@ body.deckPage{
     overflow-y:hidden;
     scroll-behavior:smooth;
     min-height:0;
+    min-width:0;
+    width:max-content;
+    flex:1 1 0;
 }
 
 #cards.cardRow .card{
     width:100%;
     min-width:88px;
     max-width:100px;
+    flex-shrink:0;
 }
 
 #deck.cardRow .card{
@@ -1207,19 +1217,17 @@ body.deckPage{
 
 #deck.cardRow{
     display:flex;
-
+    flex-wrap:nowrap;
     align-items:flex-start;
-
     gap:12px;
-
     overflow-x:auto;
     overflow-y:hidden;
-
     padding:6px;
-
     height:100%;
-
+    min-height:0;
+    min-width:0;
     scroll-behavior:smooth;
+    flex:1 1 0;
 }
 
 #deck.cardRow::-webkit-scrollbar {

@@ -1109,12 +1109,14 @@ body.deckPage{
 
 .deckFilters{
     display:flex;
-    align-items:flex-end;
-    gap:8px;
+    align-items:center;
+    gap:10px;
     padding:0;
     border:none;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
     justify-content:flex-start;
+    overflow-x:auto;
+    min-width:0;
 }
 
 .filterGroup{
@@ -1127,6 +1129,25 @@ body.deckPage{
     border:1px solid rgba(255,255,255,0.08);
     border-radius:10px;
     padding:6px 8px;
+}
+
+.filterGroup.filterTagGroup{
+    flex-direction:row;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    flex:0 1 auto;
+    padding:6px 10px;
+}
+
+.filterGroup.filterTagGroup label:first-child{
+    margin-bottom:0;
+}
+
+.filterGroup.filterTagGroup input[type="text"]{
+    width:180px;
+    min-width:120px;
+    flex:1 1 auto;
 }
 
 .filterGroup label:first-child{
@@ -1434,22 +1455,27 @@ body.deckPage{
 
 .deckCodeBox{
     display:flex;
-    flex-direction:column;
-    gap:2px;
-    flex:0 1 auto;
-    min-width:auto;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+    min-width:0;
+    flex-shrink:0;
 }
 
 .deckCodeBox > label{
     font-size:11px;
     font-weight:600;
     color:#f2e1b7;
+    white-space:nowrap;
+    margin:0;
 }
 
 .deckCodeInner {
     display:flex;
     gap:4px;
     align-items:center;
+    flex:0 0 auto;
+    min-width:0;
 }
 
 .deckCodeInner input {
@@ -1463,20 +1489,16 @@ body.deckPage{
     box-sizing:border-box;
     white-space:nowrap;
     overflow-x:auto;
+    flex:0 1 160px;
     min-width:140px;
-    max-width:200px;
+    max-width:180px;
 }
 
 .deckCodeInner button {
     padding:6px 12px;
     font-size:12px;
     white-space:nowrap;
-}
-
-.deckCodeInner{
-    display:flex;
-    gap:6px;
-    align-items:center;
+    flex:0 0 auto;
 }
 
 #deckCodeInput{

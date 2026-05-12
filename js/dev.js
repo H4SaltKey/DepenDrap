@@ -333,6 +333,7 @@ if (deleteCardBtn) {
     msgEl.textContent = `❌ エラーが発生しました: ${e.message}`;
   }
 });
+}
 
 // ===== 編集パネル内のカード削除 =====
 document.getElementById("deleteSelectedCardBtn").addEventListener("click", async () => {

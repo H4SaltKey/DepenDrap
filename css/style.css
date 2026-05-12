@@ -981,8 +981,8 @@ body.deckPage{
 .deckBuilder{
     display:flex;
     flex-direction:column;
-    height:100vh;
-    overflow:hidden;
+    min-height:100vh;
+    overflow:auto;
     gap:6px;
     padding:8px 8px 6px;
     box-sizing:border-box;
@@ -1006,11 +1006,11 @@ body.deckPage{
 }
 
 .cardCatalog{
-    flex:0 1 43vh;
+    flex:1 1 auto;
 }
 
 .deckArea{
-    flex:0 1 39vh;
+    flex:0 1 auto;
 }
 
 /* ========================================
@@ -1242,7 +1242,7 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     flex:1 1 0;
-    min-height:780px;
+    min-height:0;
     min-width:0;
     overflow:hidden;
     background: rgba(8, 8, 14, 0.95);
@@ -1255,7 +1255,7 @@ body.deckPage{
 .cardListScroll{
     display:flex;
     flex:1 1 0;
-    min-height:720px;
+    min-height:0;
     min-width:0;
     overflow-x:auto;
     overflow-y:hidden;

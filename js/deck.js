@@ -148,8 +148,9 @@ function createCardElement(id, count, source) {
     e.dataTransfer.setData("source", source);
     e.dataTransfer.effectAllowed = "move";
 
-    // Hide default ghost image
+    // Hide default ghost image with transparent image
     const emptyImage = new Image();
+    emptyImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 transparent gif
     e.dataTransfer.setDragImage(emptyImage, 0, 0);
 
     // Remove any stale preview first
@@ -175,6 +176,12 @@ function createCardElement(id, count, source) {
     dragPreview.style.width = Math.round(el.offsetWidth * scale) + "px";
     dragPreview.style.height = Math.round(el.offsetHeight * scale) + "px";
     dragPreview.style.overflow = "hidden";
+    // Scale images inside the preview
+    dragPreview.querySelectorAll('img').forEach(img => {
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+    });
     dragPreview.style.display = "block";
     document.body.appendChild(dragPreview);
 

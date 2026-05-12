@@ -19,7 +19,7 @@ function createNewDeck() {
   if (list.length >= MAX_DECKS) return null;
 
   const id = "deck_" + Date.now();
-  const entry = { id, name: "新しいデッキ", code: "empty" };
+  const entry = { id, name: "新しいデッキ", code: "empty", backImage: "" };
   list.push(entry);
   saveDeckList(list);
   return entry;
@@ -186,6 +186,9 @@ function selectDeck(id) {
 
   // カード一覧
   renderDetailCards(cards);
+
+  // スリーブ画像表示
+  showBackImagePreview(deck.backImage);
 }
 
 function renderDetailCards(cards) {
@@ -309,7 +312,7 @@ document.getElementById("importConfirm").addEventListener("click", () => {
   }
 
   const id = "deck_" + Date.now();
-  const entry = { id, name: "インポートデッキ", code };
+  const entry = { id, name: "インポートデッキ", code, backImage: "" };
   list.push(entry);
   saveDeckList(list);
 
@@ -344,8 +347,62 @@ function updateGridColumns() {
   cardList.style.gridTemplateColumns = `repeat(${cardCols}, 1fr)`;
 }
 
+// ===== スリーブ画像管理 =====
+function saveBackImage(dataUrl) {
+  if (!selectedDeckId) return;
+  const list = loadDeckList();
+  const deck = list.find(d => d.id === selectedDeckId);
+  if (deck) {
+    deck.backImage = dataUrl;
+    saveDeckList(list);
+    // 詳細パネルを更新
+    selectDeck(selectedDeckId);
+  }
+}
+
+function showBackImagePreview(dataUrl) {
+  const img = document.getElementById("backImagePreviewImg");
+  const none = document.getElementById("backImagePreviewNone");
+  if (dataUrl) {
+    img.src = dataUrl;
+    img.style.display = "";
+    none.style.display = "none";
+  } else {
+    img.src = "";
+    img.style.display = "none";
+    none.style.display = "";
+  }
+}
+
+function setupBackImageUI() {
+  document.getElementById("btnSetBackImage").addEventListener("click", () => {
+    document.getElementById("backImageInput").click();
+  });
+  document.getElementById("backImagePreview").addEventListener("click", () => {
+    document.getElementById("backImageInput").click();
+  });
+
+  document.getElementById("backImageInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      saveBackImage(ev.target.result);
+      showBackImagePreview(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  });
+
+  document.getElementById("btnClearBackImage").addEventListener("click", () => {
+    saveBackImage("");
+    showBackImagePreview("");
+  });
+}
+
 // 初期化時とリサイズ時に列数を更新
 window.addEventListener('resize', updateGridColumns);
 window.addEventListener('load', () => {
   setTimeout(updateGridColumns, 100); // DOMが完全にレンダリングされた後に実行
+  setupBackImageUI();
 });

@@ -266,15 +266,23 @@ if(localStorage.getItem("dev") !== "true"){
   </section>
 
   <!-- カード一覧 -->
-  <section class="devCardGrid">
-    <header>
-      <h3>カード一覧</h3>
-      <button id="addCardBtn">＋ カード追加</button>
-    </header>
-    <div class="pagedRow">
-      <button class="pageButton" id="devPrev" type="button">‹</button>
-      <div id="devCards" class="cardRow"></div>
-      <button class="pageButton" id="devNext" type="button">›</button>
+  <section class="deckSection cardCatalog">
+    <div class="cardCatalogMain">
+      <header class="cardListHeader">
+        <div class="cardListTitleRow">
+          <h3>カード一覧</h3>
+          <button id="addCardBtn">＋ カード追加</button>
+        </div>
+      </header>
+      <div class="pagedRow cardListControls">
+        <button class="pageButton" id="cardsPrev" type="button">‹</button>
+        <div class="cardListViewport">
+          <div class="cardListScroll">
+            <div id="cards" class="cardRow"></div>
+          </div>
+        </div>
+        <button class="pageButton" id="cardsNext" type="button">›</button>
+      </div>
     </div>
   </section>
 

@@ -2,9 +2,6 @@
 let devCards = [];
 let pendingImages = {};
 let selectedId = null;
-let devPage = 0;
-
-const PAGE_SIZE = 10;
 
 // ===== 初期化 =====
 async function initDev() {
@@ -25,7 +22,7 @@ async function initDev() {
     devCards = [];
   }
   renderDevCards();
-  renderLevelStatsTable(); // ここで描画
+  renderLevelStatsTable();
 }
 
 initDev();
@@ -41,7 +38,6 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
     type: "アタッカー",
     tags: ""
   });
-  devPage = Math.floor((devCards.length - 1) / PAGE_SIZE);
   renderDevCards();
   selectCard(id);
 });
@@ -175,15 +171,10 @@ document.getElementById("imageFileInput").addEventListener("change", (e) => {
 
 // ===== カード一覧レンダリング =====
 function renderDevCards() {
-  const container = document.getElementById("devCards");
+  const container = document.getElementById("cards");
   container.innerHTML = "";
 
-  const total = devCards.length;
-  devPage = clampPage(devPage, total);
-
-  const pageItems = devCards.slice(devPage * PAGE_SIZE, (devPage + 1) * PAGE_SIZE);
-
-  pageItems.forEach(card => {
+  devCards.forEach(card => {
     const el = document.createElement("div");
     el.className = "deckCard" + (card.id === selectedId ? " selected" : "");
     el.dataset.id = card.id;
@@ -229,19 +220,7 @@ function renderDevCards() {
     container.appendChild(el);
   });
 
-  for (let i = pageItems.length; i < PAGE_SIZE; i++) {
-    const empty = document.createElement("div");
-    empty.className = "deckCard empty";
-    container.appendChild(empty);
-  }
-
-  updatePager(total);
-}
-
-function clampPage(page, total) {
-  const max = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
-  return Math.max(0, Math.min(max, page));
-}
+  updateScrollButtons();
 
 function openDevContextMenu(x, y, id) {
   const menu = document.getElementById("devContextMenu");
@@ -300,14 +279,34 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") hideCardZoom();
 });
 
-function updatePager(total) {
-  const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
-  document.getElementById("devPrev").disabled = devPage <= 0;
-  document.getElementById("devNext").disabled = devPage >= maxPage;
+function updateScrollButtons() {
+  const cardsDiv = document.getElementById("cards");
+  const cardsPrev = document.getElementById("cardsPrev");
+  const cardsNext = document.getElementById("cardsNext");
+  if (!cardsDiv || !cardsPrev || !cardsNext) return;
+  const max = cardsDiv.scrollWidth - cardsDiv.clientWidth;
+  cardsPrev.disabled = cardsDiv.scrollLeft <= 0;
+  cardsNext.disabled = cardsDiv.scrollLeft >= max - 1;
 }
 
-document.getElementById("devPrev").addEventListener("click", () => { devPage--; renderDevCards(); });
-document.getElementById("devNext").addEventListener("click", () => { devPage++; renderDevCards(); });
+function scrollContainer(container, amount) {
+  if (!container) return;
+  container.scrollBy({
+    left: amount,
+    behavior: "smooth"
+  });
+}
+
+document.getElementById("cardsPrev").addEventListener("click", () => {
+  const cardsDiv = document.getElementById("cards");
+  if (cardsDiv) scrollContainer(cardsDiv, -Math.max(cardsDiv.clientWidth * 0.75, 240));
+});
+document.getElementById("cardsNext").addEventListener("click", () => {
+  const cardsDiv = document.getElementById("cards");
+  if (cardsDiv) scrollContainer(cardsDiv, Math.max(cardsDiv.clientWidth * 0.75, 240));
+});
+
+window.addEventListener("resize", updateScrollButtons);
 
 // ===== 完了ボタン：cards.jsonをダウンロード =====
 document.getElementById("doneBtn").addEventListener("click", () => {

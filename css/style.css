@@ -1006,12 +1006,12 @@ body.deckPage{
 }
 
 .cardCatalog{
-    flex:0 0 75vh;
+    flex:0 0 80vh;
     max-height: calc(100vh - 32px);
 }
 
 .deckArea{
-    flex:0 0 25vh;
+    flex:0 0 30vh;
     min-height:220px;
 }
 
@@ -1272,7 +1272,7 @@ body.deckPage{
     grid-template-rows:
         repeat(2, minmax(0, auto));
     grid-auto-flow:column;
-    grid-auto-columns:92px;
+    grid-auto-columns:97px;
     gap:8px;
     padding:8px 10px 14px;
     scroll-behavior:smooth;
@@ -1327,9 +1327,9 @@ body.deckPage{
 }
 
 #cards.cardRow .deckCard{
-    width:92px;
-    min-width:92px;
-    height:132px;
+    width:97px;
+    min-width:97px;
+    height:139px;
 }
 
 
@@ -1422,6 +1422,7 @@ body.deckPage{
 .deckToolbar {
     display:flex;
     align-items:center;
+    justify-content:flex-end;
     gap:12px;
     flex-wrap:wrap;
     padding:8px 6px;

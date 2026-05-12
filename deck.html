@@ -16,35 +16,42 @@
   </header>
 
   <section class="deckSection cardCatalog">
-    <header>
-      <h3>カード一覧</h3>
-      <div id="deckMessage"></div>
-    </header>
-    <div class="deckFilters">
-      <div class="filterGroup">
-        <label for="filterTagInput">タグ検索</label><br>
-        <input type="text" id="filterTagInput" placeholder="例: 火力, 範囲, 支援">
+    <div class="cardCatalogMain">
+      <header>
+        <h3>カード一覧</h3>
+      </header>
+      <div class="deckFilters">
+        <div class="filterGroup">
+          <label for="filterTagInput">タグ検索</label><br>
+          <input type="text" id="filterTagInput" placeholder="例: 火力, 範囲, 支援">
+        </div>
+        <div class="filterGroup">
+          <label>属性</label><br>
+          <label><input type="radio" name="filterAttribute" value="all" checked> 全て</label>
+          <label><input type="radio" name="filterAttribute" value="近接"> 近接</label>
+          <label><input type="radio" name="filterAttribute" value="遠隔"> 遠隔</label>
+          <label><input type="radio" name="filterAttribute" value="魔法"> 魔法</label>
+        </div>
+        <div class="filterGroup">
+          <label>種類</label><br>
+          <label><input type="radio" name="filterType" value="all" checked> 全て</label>
+          <label><input type="radio" name="filterType" value="アタッカー"> アタッカー</label>
+          <label><input type="radio" name="filterType" value="スキル"> スキル</label>
+          <label><input type="radio" name="filterType" value="サポート"> サポート</label>
+        </div>
       </div>
-      <div class="filterGroup">
-        <label>属性</label><br>
-        <label><input type="radio" name="filterAttribute" value="all" checked> 全て</label>
-        <label><input type="radio" name="filterAttribute" value="近接"> 近接</label>
-        <label><input type="radio" name="filterAttribute" value="遠隔"> 遠隔</label>
-        <label><input type="radio" name="filterAttribute" value="魔法"> 魔法</label>
-      </div>
-      <div class="filterGroup">
-        <label>種類</label><br>
-        <label><input type="radio" name="filterType" value="all" checked> 全て</label>
-        <label><input type="radio" name="filterType" value="アタッカー"> アタッカー</label>
-        <label><input type="radio" name="filterType" value="スキル"> スキル</label>
-        <label><input type="radio" name="filterType" value="サポート"> サポート</label>
-      </div>
-    </div>
-    <div class="pagedRow">
-      <button class="pageButton" id="cardsPrev" type="button">‹</button>
       <div id="cards" class="cardRow"></div>
-      <button class="pageButton" id="cardsNext" type="button">›</button>
     </div>
+    <aside class="cardCatalogSide">
+      <div class="cardControls">
+        <div class="cardControlsHeader">操作</div>
+        <div id="deckMessage" class="cardStatus"></div>
+        <div class="pageControls">
+          <button class="pageButton" id="cardsPrev" type="button">‹</button>
+          <button class="pageButton" id="cardsNext" type="button">›</button>
+        </div>
+      </div>
+    </aside>
   </section>
 
   <section class="deckSection deckArea" id="deckDropZone">

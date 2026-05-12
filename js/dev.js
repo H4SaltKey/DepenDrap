@@ -247,6 +247,7 @@ function openDevContextMenu(x, y, id) {
   const menu = document.getElementById("devContextMenu");
   if (!menu) return;
   menu.innerHTML = `<div class="context-item" data-action="zoom">拡大表示</div>`;
+  menu.classList.remove("hidden");
   menu.style.display = "block";
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
@@ -261,7 +262,10 @@ function openDevContextMenu(x, y, id) {
 
 function hideDevContextMenu() {
   const menu = document.getElementById("devContextMenu");
-  if (menu) menu.style.display = "none";
+  if (menu) {
+    menu.style.display = "none";
+    menu.classList.add("hidden");
+  }
 }
 
 function showCardZoom(id) {

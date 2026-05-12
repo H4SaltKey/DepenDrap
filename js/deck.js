@@ -190,6 +190,7 @@ function openDeckContextMenu(x, y, id, action) {
     return `<div class="context-item" data-count="${count}">${label}</div>`;
   }).join("") + `<div class="context-item" data-action="zoom">拡大表示</div>`;
 
+  menu.classList.remove("hidden");
   menu.style.display = "block";
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
@@ -229,7 +230,10 @@ function openDeckContextMenu(x, y, id, action) {
 
 function hideDeckContextMenu() {
   const menu = document.getElementById("deckContextMenu");
-  if (menu) menu.style.display = "none";
+  if (menu) {
+    menu.style.display = "none";
+    menu.classList.add("hidden");
+  }
 }
 
 function showCardZoom(id) {

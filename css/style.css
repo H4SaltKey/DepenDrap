@@ -1425,10 +1425,19 @@ body.deckPage{
     white-space:nowrap;
 }
 
+.deckDetails {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:6px 16px 10px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    flex-wrap:wrap;
+}
+
 .backImageControls {
     display:flex;
     align-items:center;
-    gap:6px;
+    gap:8px;
     flex-shrink:0;
 }
 

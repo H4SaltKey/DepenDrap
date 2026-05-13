@@ -842,44 +842,25 @@ function lorStatChip(icon, val, owner, key, title = "") {
   </div>`;
 }
 
-// ===== アイコン =====
-const ICON_BARRIER = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
-    stroke="#7ca8ff" stroke-width="1.6" fill="rgba(124,168,255,0.14)" stroke-linejoin="round"/>
-  <path d="M8.5 11h7" stroke="#7ca8ff" stroke-width="1.6" stroke-linecap="round"/>
-</svg>`;
+/** Lucide（game.html で lucide.min.js を読み込み、update 末尾で createIcons） */
+function lorLucide(name, cls = "") {
+  const extra = cls ? ` ${cls}` : "";
+  return `<i data-lucide="${name}" class="lorLucide${extra}" width="20" height="20"></i>`;
+}
 
-const ICON_HP = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"
-    fill="#ff6b9d" stroke="#ff3570" stroke-width="1.6" stroke-linejoin="round"/>
-</svg>`;
-
-const ICON_SLD = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
-    fill="rgba(96,160,255,0.18)" stroke="#4f7cff" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M9.5 10.5l5-5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
-  <path d="M12 8.5l-1.5 4 4-1.5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-const ICON_ATK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M5.5 18.5 19 5l-2-2-4.5 4.5L10 5 8 7l4.5 4.5L6 18.5l-0.5 0.5 1.5 1.5 2-2 4.5-4.5 4.5 4.5 1.5-1.5L13 9l2-2-1.5-1.5-4.5 4.5-4.5 4.5Z"
-    fill="rgba(255,107,157,0.18)" stroke="#ff6b9d" stroke-width="1.6" stroke-linejoin="round"/>
-</svg>`;
-
-const ICON_DEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
-    fill="rgba(96,160,255,0.16)" stroke="#4f7cff" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M12 7v6" stroke="#4f7cff" stroke-width="1.6" stroke-linecap="round"/>
-  <path d="M9 10h6" stroke="#4f7cff" stroke-width="1.6" stroke-linecap="round"/>
-</svg>`;
-
-const ICON_IDEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
-    fill="rgba(240,208,128,0.18)" stroke="#f0d080" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M8 11.5 11 8l2 2 2 2-4 4-2-2-1.5-1.5Z"
-    fill="rgba(240,208,128,0.32)"/>
-  <path d="M12 8.5v2.5" stroke="#f0d080" stroke-width="1.6" stroke-linecap="round"/>
-</svg>`;
+// ===== アイコン（Lucide 名） =====
+// シールド: 丸いエネルギーフィールド → orbit
+const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
+// HP: ハート
+const ICON_HP = lorLucide("heart", "lorLxHp");
+// 合計防御力: 剣＋盾のクロス（重ね表示）
+const ICON_SLD = `<span class="lorLxCross" aria-hidden="true">${lorLucide("sword", "lorLxSldS")}${lorLucide("shield", "lorLxSldH")}</span>`;
+// 基礎攻撃力: 剣
+const ICON_ATK = lorLucide("sword", "lorLxAtk");
+// 基礎防御力: 盾
+const ICON_DEF = lorLucide("shield", "lorLxDef");
+// 瞬間防御力: シールドバッシュ（衝撃）→ hammer
+const ICON_IDEF = lorLucide("hammer", "lorLxIdef");
 
 function update(skipLogCheck = false) {
   applyInteractionLockState();
@@ -927,6 +908,14 @@ function update(skipLogCheck = false) {
   
   // チャットログの更新
   if (typeof updateGameLogs === "function") updateGameLogs(state.logs);
+
+  if (typeof lucide !== "undefined" && lucide && typeof lucide.createIcons === "function") {
+    try {
+      lucide.createIcons({ attrs: { "stroke-width": "1.75", width: "20", height: "20" } });
+    } catch (e) {
+      /* Lucide 未読込時は無視 */
+    }
+  }
 
   // update() からは localStorage のみ保存（サーバーへの過剰POSTを防ぐ）
   saveLocal();
@@ -1221,6 +1210,43 @@ function updateMatchUI() {
     .dice-choice-btn.primary { background: #c7b377; border: none; color: #1a172c; }
     .dice-choice-btn.secondary { background: transparent; border: 1px solid #c7b377; color: #c7b377; }
     .dice-choice-btn:hover { transform: translateY(-3px); filter: brightness(1.2); }
+    /* Lucide（ステータス行アイコン） */
+    .lorIcon, .lorChipIcon { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+    .lorLucide, .lorLucide svg { width: 20px !important; height: 20px !important; flex-shrink: 0; }
+    .lorLxBarrier { color: #8ab8ff; stroke: #8ab8ff; }
+    .lorLxHp { color: #ff6b9d; stroke: #ff6b9d; }
+    .lorLxAtk { color: #ff8aab; stroke: #ff8aab; }
+    .lorLxDef { color: #6a9cff; stroke: #6a9cff; }
+    .lorLxIdef { color: #f0d080; stroke: #f0d080; }
+    .lorLxCross {
+      position: relative;
+      display: inline-flex;
+      width: 22px;
+      height: 20px;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+    }
+    .lorLxCross .lorLxSldS {
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 16px !important;
+      height: 16px !important;
+      transform: rotate(-38deg);
+      color: #ff6b9d;
+      stroke: #ff6b9d;
+    }
+    .lorLxCross .lorLxSldH {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 13px !important;
+      height: 13px !important;
+      transform: translate(1px, 1px);
+      color: #4f7cff;
+      stroke: #4f7cff;
+    }
   `;
   document.head.appendChild(s);
 })();
@@ -1823,7 +1849,11 @@ function startFirstDrawPhase() {
     return;
   }
   window._firstDrawPhaseStarted = true;
-  takeOut(5);
+  if (typeof window.takeOut === "function") {
+    window.takeOut(5);
+  } else {
+    console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
+  }
 }
 
 /**

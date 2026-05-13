@@ -68,6 +68,9 @@ function resetAllGameVariables() {
   // UI をリセット
   const overlay = document.getElementById("dicePhaseOverlay");
   if (overlay) overlay.remove();
+
+  const firstDrawOv = document.getElementById("firstDrawPhaseOverlay");
+  if (firstDrawOv) firstDrawOv.remove();
   
   const orderOverlay = document.getElementById("orderDecideOverlay");
   if (orderOverlay) orderOverlay.style.display = "none";
@@ -1722,6 +1725,10 @@ function updateEvolutionPhaseUI() {
       window._evoPhaseTransitioning = true;
       setTimeout(async () => {
         m.status = "setup_first_draw";
+        m.firstDrawP1Ready = false;
+        m.firstDrawP2Ready = false;
+        window._firstDrawPhaseStarted = false;
+        window._firstDrawAdvanceSent = false;
         addGameLog(`[MATCH] 進化選択が完了しました。ファーストドローフェーズに移行します。`);
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
@@ -1809,17 +1816,62 @@ function updateEvolutionPhaseUI() {
 function startFirstDrawPhase() {
   const m = state.matchData;
   if (m.status !== "setup_first_draw" || window._firstDrawPhaseStarted) return;
+  const me = window.myRole || "player1";
+  const myReady = me === "player1" ? !!m.firstDrawP1Ready : !!m.firstDrawP2Ready;
+  if (myReady) {
+    window._firstDrawPhaseStarted = true;
+    return;
+  }
   window._firstDrawPhaseStarted = true;
-  if (window.myRole === m.turnPlayer) {
-    takeOut(5);
+  takeOut(5);
+}
+
+/**
+ * ファーストドロー: 双方が確定したら playing へ（各クライアントから idempotent に遷移可）
+ */
+function tryAdvanceFirstDrawToPlayingIfBothReady() {
+  const m = state.matchData;
+  if (!m || m.status !== "setup_first_draw") return;
+  if (!m.firstDrawP1Ready || !m.firstDrawP2Ready) return;
+  if (window._firstDrawAdvanceSent) return;
+  window._firstDrawAdvanceSent = true;
+  const gameRoom = localStorage.getItem("gameRoom");
+  const next = { ...m, status: "playing" };
+  state.matchData = next;
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.writeMatchData(gameRoom, next).catch((e) => {
+      console.warn("[FirstDraw] playing への遷移エラー:", e);
+      window._firstDrawAdvanceSent = false;
+    });
+  } else {
+    window._firstDrawAdvanceSent = false;
   }
 }
 
 function updateFirstDrawPhaseUI() {
   const m = state.matchData;
   if (m.status !== "setup_first_draw") {
-    const overlay = document.getElementById("firstDrawPhaseOverlay");
-    if (overlay) overlay.remove();
+    window._firstDrawPhaseStarted = false;
+    window._firstDrawAdvanceSent = false;
+    const overlayGone = document.getElementById("firstDrawPhaseOverlay");
+    if (overlayGone) {
+      delete overlayGone.dataset.shellBuilt;
+      delete overlayGone.dataset.cardsBound;
+      delete overlayGone.dataset.localFirstDrawLocked;
+      overlayGone.remove();
+    }
+    return;
+  }
+
+  tryAdvanceFirstDrawToPlayingIfBothReady();
+  if (state.matchData.status !== "setup_first_draw") {
+    const ovEarly = document.getElementById("firstDrawPhaseOverlay");
+    if (ovEarly) {
+      delete ovEarly.dataset.shellBuilt;
+      delete ovEarly.dataset.cardsBound;
+      delete ovEarly.dataset.localFirstDrawLocked;
+      ovEarly.remove();
+    }
     return;
   }
 
@@ -1838,48 +1890,60 @@ function updateFirstDrawPhaseUI() {
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 
-  const me = window.myRole || "player1";
-  const isMyTurn = me === m.turnPlayer;
-  const contentHTML = `
+  if (!overlay.dataset.shellBuilt) {
+    overlay.innerHTML = `
     <div style="width:100%;max-width:900px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
       <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
-      <p style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:18px;text-align:center;">
-        山札から5枚取り出して3枚を選択し、手札に加えます。残り2枚は山札下へ戻します。
+      <p id="firstDrawPhaseSub" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:10px;text-align:center;">
+        3枚を選択して手札へ加える。残りは山札へ戻る。
       </p>
+      <p id="firstDrawPhaseProgress" style="color:#889;font-size:12px;line-height:1.5;margin-bottom:12px;text-align:center;"></p>
       <div id="firstDrawPhaseMessage" style="color:#aaa;font-size:14px;text-align:center;margin-bottom:18px;"></div>
-      <div id="firstDrawPhaseCards" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;"></div>
+      <div id="firstDrawPhaseCards" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;min-height:140px;"></div>
       <div style="text-align:center;">
         <button id="firstDrawPhaseConfirm" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:16px;cursor:pointer;" disabled>3枚選択して確定</button>
       </div>
     </div>
   `;
-  overlay.innerHTML = contentHTML;
-
-  const messageEl = overlay.querySelector("#firstDrawPhaseMessage");
-  const cardArea = overlay.querySelector("#firstDrawPhaseCards");
-  const confirmBtn = overlay.querySelector("#firstDrawPhaseConfirm");
-
-  if (!isMyTurn) {
-    messageEl.textContent = "先攻プレイヤーがファーストドローを選択しています...";
-    cardArea.innerHTML = "";
-    confirmBtn.style.display = "none";
-    startFirstDrawPhase();
-    return;
+    overlay.dataset.shellBuilt = "1";
   }
 
-  messageEl.textContent = "5枚の中から3枚を選択してください。";
-  confirmBtn.style.display = "inline-flex";
-  confirmBtn.disabled = true;
-  cardArea.innerHTML = "";
-
   startFirstDrawPhase();
+
+  const me = window.myRole || "player1";
+  const p1r = !!m.firstDrawP1Ready;
+  const p2r = !!m.firstDrawP2Ready;
+  const myReady = me === "player1" ? p1r : p2r;
+
+  const messageEl = overlay.querySelector("#firstDrawPhaseMessage");
+  const progressEl = overlay.querySelector("#firstDrawPhaseProgress");
+  const cardArea = overlay.querySelector("#firstDrawPhaseCards");
+  const confirmBtn = overlay.querySelector("#firstDrawPhaseConfirm");
+  if (!messageEl || !cardArea || !confirmBtn) return;
+
+  if (progressEl) {
+    progressEl.textContent =
+      "進捗: プレイヤー1 " + (p1r ? "完了" : "未完了") + "　／　プレイヤー2 " + (p2r ? "完了" : "未完了") + "（先後に関係なく同時に選択。双方完了まで待機）";
+  }
+
+  if (myReady && !(p1r && p2r)) {
+    messageEl.textContent = "選択を確定しました。相手の完了を待っています…";
+    confirmBtn.style.display = "none";
+  } else if (!myReady) {
+    messageEl.textContent = "5枚の中から3枚を選択してください。";
+    confirmBtn.style.display = "inline-flex";
+  } else {
+    messageEl.textContent = "双方の準備が完了しました。";
+    confirmBtn.style.display = "none";
+  }
+
+  if (overlay.dataset.cardsBound === "1" || myReady) return;
 
   const field = getFieldContent();
   if (!field) return;
   const candidates = Array.from(field.querySelectorAll(`.card[data-owner="${me}"][data-visibility="none"]`));
   if (candidates.length === 0) {
-    messageEl.textContent = "ファーストドローのカードが見つかりません。";
-    confirmBtn.disabled = true;
+    messageEl.textContent = "山札から5枚が配置されるまでお待ちください…";
     return;
   }
 
@@ -1889,9 +1953,12 @@ function updateFirstDrawPhaseUI() {
     clone.style.width = "90px";
     clone.style.height = "130px";
     clone.style.cursor = "pointer";
+    clone.style.flexShrink = "0";
+    clone.style.position = "relative";
     clone.style.transition = "transform 0.2s ease, border-color 0.2s ease";
-    clone.dataset.firstDrawIndex = index;
+    clone.dataset.firstDrawIndex = String(index);
     clone.addEventListener("click", () => {
+      if (overlay.dataset.localFirstDrawLocked === "1") return;
       const idx = selected.indexOf(index);
       if (idx >= 0) {
         selected.splice(idx, 1);
@@ -1909,8 +1976,11 @@ function updateFirstDrawPhaseUI() {
   });
 
   confirmBtn.onclick = async () => {
-    if (selected.length !== 3) return;
-    const chosen = selected.map(i => candidates[i]).filter(Boolean);
+    if (selected.length !== 3 || overlay.dataset.localFirstDrawLocked === "1") return;
+    overlay.dataset.localFirstDrawLocked = "1";
+    confirmBtn.disabled = true;
+
+    const chosen = selected.map((i) => candidates[i]).filter(Boolean);
     const unchosen = candidates.filter((_, i) => !selected.includes(i));
 
     const deckObj = field.querySelector(`.deckObject[data-owner="${me}"]`);
@@ -1924,13 +1994,13 @@ function updateFirstDrawPhaseUI() {
       const lbl = card.querySelector(".cardVisibilityLabel");
       if (lbl) lbl.textContent = "自分のみ";
       if (typeof applyCardFace === "function") applyCardFace(card, "self");
-      const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now() + idx;
+      const nextOrder = typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now() + idx;
       card.dataset.handOrder = String(nextOrder);
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
     });
 
-    unchosen.forEach(card => {
+    unchosen.forEach((card) => {
       const rawId = card.dataset.id;
       if (rawId) {
         const isTemp = card.dataset.isTemp === "true";
@@ -1953,19 +2023,29 @@ function updateFirstDrawPhaseUI() {
 
     if (typeof addGameLog === "function") {
       const playerName = window.myUsername || me;
-      addGameLog(`${playerName} が 手札を3枚増やした`);
+      addGameLog(`${playerName} が 手札を3枚選び、残りを山札に戻しました`);
     }
 
-    m.status = "playing";
     const gameRoom = localStorage.getItem("gameRoom");
+    const readyKey = me === "player1" ? "firstDrawP1Ready" : "firstDrawP2Ready";
     if (gameRoom && firebaseClient?.db) {
-      await firebaseClient.writeMatchData(gameRoom, m);
-      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+      try {
+        await firebaseClient.db.ref(`rooms/${gameRoom}/matchData`).update({ [readyKey]: true });
+      } catch (e) {
+        console.warn("[FirstDraw] ready フラグ送信エラー:", e);
+      }
     }
+    state.matchData[readyKey] = true;
 
-    overlay.remove();
+    cardArea.innerHTML = "";
+    overlay.dataset.cardsBound = "1";
+    if (gameRoom && firebaseClient?.db) {
+      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(() => {});
+    }
     update();
   };
+
+  overlay.dataset.cardsBound = "1";
 }
 
 window.selectEvolutionPath = async function(pathName) {
@@ -3384,6 +3464,9 @@ document.addEventListener("firebaseJoined", () => {
 // 時間制限機能は Firebase では複雑なため、MVP では実装しません
 
 // ===== R1T1処理 =====
+/** R1T1 用の追加 UI（未実装）。盤面への5枚配置のみ startR1T1 が担当。 */
+function showR1T1Selection(_n) {}
+
 function startR1T1() {
   const me = window.myRole || "player1";
   const myState = state[me];

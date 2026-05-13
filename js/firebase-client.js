@@ -1,5 +1,5 @@
 /**
- * firebase-client.js v3.2
+ * firebase-client.js v3.3
  * シンプルで堅牢な Firebase Realtime Database クライアント
  * Compat: onAuthStateChanged で user 確定後にのみ DB 接続（authStateReady は使用しない）
  */
@@ -13,6 +13,26 @@ class FirebaseClient {
     this.sessionId = this.generateSessionId();
     this.listeners = new Map();
     this.connectionCheckInterval = null;
+  }
+
+  /**
+   * 匿名認証が Console で無効なときの案内（auth/configuration-not-found 等）
+   */
+  logAnonymousAuthConsoleHint(app, err) {
+    const code = err && err.code ? err.code : "";
+    const projectId = app && app.options && app.options.projectId ? app.options.projectId : "(projectId)";
+    if (code === "auth/configuration-not-found" || code === "auth/operation-not-allowed") {
+      console.error(
+        "[FirebaseClient] 原因: Firebase Authentication で「匿名」が無効です（コードではなく Console 設定）。"
+      );
+      console.error(
+        "[FirebaseClient] 手順: Firebase Console → プロジェクト「" +
+          projectId +
+          "」→ Authentication → Sign-in method → 匿名（Anonymous）→ 有効化 → 保存 → ページ再読み込み"
+      );
+    } else {
+      console.error("[FirebaseClient] Firebase Console → Authentication → Sign-in method → 匿名 を有効にしてください。");
+    }
   }
 
   /**
@@ -61,7 +81,7 @@ class FirebaseClient {
       return true;
     } catch (e) {
       console.error("[FirebaseClient] 匿名ログイン失敗:", e.code || "", e.message);
-      console.error("[FirebaseClient] Firebase Console → Authentication → 匿名 を有効にしてください。");
+      this.logAnonymousAuthConsoleHint(app, e);
       return false;
     }
   }

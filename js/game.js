@@ -815,9 +815,7 @@ function lorInstantDefStatRow(owner, s) {
   const val = Number(s.instantDef) || 0;
   return `
   <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
-    <span class="lorIdefIconWrap">
-      ${lorLucide("shield-alert", "lorLxIdef")}
-    </span>
+    <span class="lorChipIcon">${lorLucide("shield-alert", "lorLxIdef")}</span>
     ${isEditable ? `
       <input class="lorChipInput" type="number" value="${val}"
         data-owner="${owner}" data-key="instantDef" data-type="val"
@@ -1191,41 +1189,20 @@ function updateMatchUI() {
     .lorLxAtk { color: #ff8aab; stroke: #ff8aab; }
     .lorLxDef { color: #6a9cff; stroke: #6a9cff; }
     .lorLxIdef { color: #7eb8ff; stroke: #7eb8ff; }
+    .lorLxDefTot { color: #5eb0ff; stroke: #5eb0ff; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
     .lorLxDefTot svg {
-      fill: #2f80ed;
-      stroke: #173c66;
-      color: #2f80ed;
+      fill: #3d9eef;
+      stroke: #1e5cb8;
+      color: #5eb0ff;
     }
-    .lorLxDefTot {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      vertical-align: middle;
-    }
-    .lorIdefChip .lorIdefIconWrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-    }
+    .lorIdefChip .lorChipIcon .lorLucide,
+    .lorIdefChip .lorChipIcon svg { width: 16px !important; height: 16px !important; }
     .lorHpBarOuter {
       border-color: rgba(231, 76, 60, 0.42) !important;
     }
     .lorHpFill {
       background: rgba(231, 76, 60, 0.92) !important;
       box-shadow: none !important;
-    }
-    .handLimitDisplay {
-      font-size: 14px !important;
-      font-weight: 800 !important;
-      padding: 6px 12px !important;
-      border-radius: 8px !important;
-      background: rgba(0,0,0,0.5) !important;
-      border: 1px solid rgba(0,255,204,0.35) !important;
-      color: #e0f0ea !important;
-      margin-top: 6px !important;
     }
     .card.handCardLift {
       transform: translateY(-16px);
@@ -1243,23 +1220,33 @@ function updateMatchUI() {
       border: 2px solid rgba(199,179,119,0.5);
       border-radius: 12px;
       padding: 22px 26px;
-      max-width: 420px;
+      max-width: 480px;
       color: #f0f0f0;
       font-family: 'Outfit', sans-serif;
       text-align: center;
       box-shadow: 0 12px 40px rgba(0,0,0,0.6);
     }
-    .zonePpModalBox .zonePpLine1 { font-size: 15px; line-height: 1.7; margin-bottom: 14px; }
-    .zonePpRow { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
-    .zonePpRow input {
+    .zonePpCostSentence { font-size: 15px; line-height: 1.75; margin-bottom: 20px; text-align: center; color: #eae6f5; }
+    .zonePpCostSentence b { color: #f0d080; }
+    .zonePpInlineCtrl { display: inline-flex; align-items: center; gap: 6px; margin: 0 6px; vertical-align: middle; }
+    .zonePpInlineCtrl input {
       width: 52px; text-align: center; font-size: 18px; font-weight: 800;
       border-radius: 6px; border: 1px solid #5a4b27; background: #1a172c; color: #fff;
     }
-    .zonePpRow button {
+    .zonePpInlineCtrl button {
       min-width: 40px; height: 40px; font-size: 20px; font-weight: 900;
       border-radius: 8px; border: 1px solid #c7b377; background: rgba(199,179,119,0.2); color: #f0d080; cursor: pointer;
     }
-    .zonePpCancel { margin-top: 4px; font-size: 14px; color: #aaa; cursor: pointer; text-decoration: underline; }
+    .zonePpActions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    .zonePpBtnPrimary {
+      padding: 11px 28px; background: linear-gradient(180deg, #d4b76a, #a8893a); border: none; border-radius: 10px;
+      font-weight: 900; cursor: pointer; color: #1a172c; font-size: 15px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
+    .zonePpBtnSecondary {
+      padding: 11px 22px; background: transparent; border: 1px solid rgba(200,200,220,0.45); border-radius: 10px;
+      font-weight: 700; cursor: pointer; color: #ccc; font-size: 14px;
+    }
+    .zonePpBtnSecondary:hover { border-color: #f0d080; color: #f0d080; }
     #ctxDamageMenuHint {
       position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
       z-index: 6000; pointer-events: none;

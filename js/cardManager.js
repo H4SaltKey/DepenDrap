@@ -62,6 +62,32 @@ let prevZoneLogState = null;
 
 const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];
 const ZONE_RECT = { w: CARD_W, h: CARD_H };
+/** アタッカー／スキル／墓地へのドロップ吸着を強める（矩形を拡張してヒット判定） */
+const ZONE_SNAP_PAD = 110;
+const DRAG_Z_TOP = "38000";
+
+function battleZoneHitTypeAt(centerX, centerY, owner) {
+  for (let i = 0; i < BATTLE_ZONE_TYPES.length; i++) {
+    const type = BATTLE_ZONE_TYPES[i];
+    const a = getZoneAnchor(owner, type);
+    const p = ZONE_SNAP_PAD;
+    if (
+      centerX >= a.x - p &&
+      centerX <= a.x + ZONE_RECT.w + p &&
+      centerY >= a.y - p &&
+      centerY <= a.y + ZONE_RECT.h + p
+    ) {
+      return type;
+    }
+  }
+  return undefined;
+}
+
+function restoreCardDragZIndex(cardEl) {
+  if (!cardEl || cardEl.dataset._dragSavedZIndex === undefined) return;
+  cardEl.style.zIndex = cardEl.dataset._dragSavedZIndex;
+  delete cardEl.dataset._dragSavedZIndex;
+}
 const HAND_ZONE_Y_MIN = 1460;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
 
@@ -914,21 +940,28 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
   const labelZone = zoneType === "attacker" ? "アタッカー" : "スキル";
   overlay.innerHTML = `
     <div class="zonePpModalBox" role="dialog" aria-modal="true">
-      <div class="zonePpLine1">PPを <strong>減少</strong>／<strong>増加</strong>ボタンと数値（0〜2）で指定し、<b>${labelZone}</b>場に出します。</div>
-      <div class="zonePpRow">
-        <button type="button" id="zonePpDec">−</button>
-        <input id="zonePpCostInput" type="number" min="0" max="2" value="0" inputmode="numeric" />
-        <button type="button" id="zonePpInc">＋</button>
+      <div class="zonePpCostSentence">
+        <span>PPを</span>
+        <span class="zonePpInlineCtrl">
+          <button type="button" id="zonePpDec" aria-label="PPを減らす">−</button>
+          <input id="zonePpCostInput" type="number" min="0" max="2" value="1" inputmode="numeric" />
+          <button type="button" id="zonePpInc" aria-label="PPを増やす">＋</button>
+        </span>
+        <span>枚消費して、このカードを<b>${labelZone}</b>場に出す。</span>
       </div>
-      <div style="margin-bottom:14px;"><button type="button" id="zonePpOk" style="padding:10px 22px;background:#c7b377;border:none;border-radius:8px;font-weight:800;cursor:pointer;color:#1a172c;">場に出す</button></div>
-      <div class="zonePpCancel" id="zonePpCancel" role="button" tabindex="0">キャンセル</div>
+      <div class="zonePpActions">
+        <button type="button" id="zonePpOk" class="zonePpBtnPrimary">確定</button>
+        <button type="button" id="zonePpCancel" class="zonePpBtnSecondary">キャンセル</button>
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
 
   const inp = overlay.querySelector("#zonePpCostInput");
   const clamp = (v) => Math.max(0, Math.min(2, v));
-  const setV = (v) => { inp.value = String(clamp(v)); };
+  const setV = (v) => {
+    inp.value = String(clamp(v));
+  };
   overlay.querySelector("#zonePpDec").onclick = () => setV((parseInt(inp.value, 10) || 0) - 1);
   overlay.querySelector("#zonePpInc").onclick = () => setV((parseInt(inp.value, 10) || 0) + 1);
 
@@ -937,15 +970,14 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
     if (typeof onDone === "function") onDone();
   };
 
-  overlay.querySelector("#zonePpCancel").onclick = () => {
+  const cancel = () => {
     restoreCardElToPrev(cardEl);
     close();
   };
+
+  overlay.querySelector("#zonePpCancel").onclick = cancel;
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      restoreCardElToPrev(cardEl);
-      close();
-    }
+    if (e.target === overlay) cancel();
   });
 
   overlay.querySelector("#zonePpOk").onclick = () => {
@@ -1054,9 +1086,10 @@ function enablePointerDrag(el){
     if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
     e.stopPropagation();
 
-    // 触った順にz-indexを上げる
-    if(!el.classList.contains("deckObject")){
-      el.style.zIndex = ++cardZCounter;
+    // 触った順に z-index を上げる（ドラッグ終了時に元へ戻す）
+    if (!el.classList.contains("deckObject")) {
+      el.dataset._dragSavedZIndex = el.style.zIndex || "";
+      el.style.zIndex = String(++cardZCounter);
     }
 
     pointerId = e.pointerId;
@@ -1088,6 +1121,7 @@ function enablePointerDrag(el){
       isDragging = true;
       draggingCard = el;
       el.style.opacity = "0.85";
+      el.style.zIndex = DRAG_Z_TOP;
       document.body.classList.add("isDraggingCard");
     }
 
@@ -1105,6 +1139,7 @@ function enablePointerDrag(el){
     el.style.top  = fieldY + "px";
 
     if (isDragging) {
+      el.style.zIndex = DRAG_Z_TOP;
       updateHandReorderGuides(el, fieldX, fieldY);
     }
   });
@@ -1114,170 +1149,165 @@ function enablePointerDrag(el){
 
     clearHandReorderGuides();
 
-    el.style.opacity = "";
-    document.body.classList.remove("isDraggingCard");
+    const wasDragging = isDragging;
+    let deferInteractionUnlock = false;
 
-    if(isDragging){
-      isDragging = false;
-      draggingCard = null;
+    try {
+      el.style.opacity = "";
+      document.body.classList.remove("isDraggingCard");
 
-      // 自分のデッキオブジェクトへのドロップ判定
-      const myRole = (typeof window.getMyRole === "function") ? window.getMyRole() : "player1";
-      const deckObj = getFieldContent().querySelector(`.deckObject[data-owner="${myRole}"]`);
-      if(deckObj){
-        const deckRect = deckObj.getBoundingClientRect();
-        const cardRect = el.getBoundingClientRect();
-        const overlapW = Math.max(0, Math.min(cardRect.right, deckRect.right) - Math.max(cardRect.left, deckRect.left));
-        const overlapH = Math.max(0, Math.min(cardRect.bottom, deckRect.bottom) - Math.max(cardRect.top, deckRect.top));
-        const overlapArea = overlapW * overlapH;
-        const cardArea = cardRect.width * cardRect.height;
-        const overlapRatio = overlapArea / cardArea;
+      if (wasDragging) {
+        isDragging = false;
+        draggingCard = null;
 
-        if(overlapRatio >= 0.8 && el.dataset.id){
-          el.remove();
-          saveFieldCards();
-          if(typeof returnToDeck === "function"){
-            const isTemp = el.dataset.isTemp === "true";
-            returnToDeck(el.dataset.id, isTemp);
+        const myRole = (typeof window.getMyRole === "function") ? window.getMyRole() : "player1";
+        const deckObj = getFieldContent().querySelector(`.deckObject[data-owner="${myRole}"]`);
+        if(deckObj){
+          const deckRect = deckObj.getBoundingClientRect();
+          const cardRect = el.getBoundingClientRect();
+          const overlapW = Math.max(0, Math.min(cardRect.right, deckRect.right) - Math.max(cardRect.left, deckRect.left));
+          const overlapH = Math.max(0, Math.min(cardRect.bottom, deckRect.bottom) - Math.max(cardRect.top, deckRect.top));
+          const overlapArea = overlapW * overlapH;
+          const cardArea = cardRect.width * cardRect.height;
+          const overlapRatio = overlapArea / cardArea;
+
+          if(overlapRatio >= 0.8 && el.dataset.id){
+            el.remove();
+            saveFieldCards();
+            if(typeof returnToDeck === "function"){
+              const isTemp = el.dataset.isTemp === "true";
+              returnToDeck(el.dataset.id, isTemp);
+            }
+            document.body.classList.remove("isInteractingCard");
+            return;
           }
-          document.body.classList.remove("isDraggingCard");
+        }
+
+        const field = document.getElementById("field");
+        const fieldRect = field.getBoundingClientRect();
+        
+        const fx = (e.clientX - fieldRect.left - fieldPanX) / fieldZoom;
+        const fy = (e.clientY - fieldRect.top  - fieldPanY) / fieldZoom;
+        
+        const fieldX = snapToGrid(fx - offsetX);
+        const fieldY = snapToGrid(fy - offsetY);
+
+        const myRole2 = window.myRole || "player1";
+        const centerX = fieldX + CARD_W / 2;
+        const centerY = fieldY + CARD_H / 2;
+        const zoneHit = battleZoneHitTypeAt(centerX, centerY, myRole2);
+        if (zoneHit === "attacker" || zoneHit === "skill") {
+          pointerId = null;
+          deferInteractionUnlock = true;
+          showBattleZonePpCostModal({
+            zoneType: zoneHit,
+            cardEl: el,
+            owner: myRole2,
+            onDone: () => {
+              document.body.classList.remove("isInteractingCard");
+            }
+          });
+          return;
+        }
+        if (zoneHit) {
+          placeCardInZone(el, myRole2, zoneHit);
+          if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+          saveFieldCards();
+          pointerId = null;
           document.body.classList.remove("isInteractingCard");
           return;
         }
-      }
 
-      // グリッドにスナップして確定
-      const field = document.getElementById("field");
-      const fieldRect = field.getBoundingClientRect();
-      
-      const fx = (e.clientX - fieldRect.left - fieldPanX) / fieldZoom;
-      const fy = (e.clientY - fieldRect.top  - fieldPanY) / fieldZoom;
-      
-      const fieldX = snapToGrid(fx - offsetX);
-      const fieldY = snapToGrid(fy - offsetY);
+        if (el.dataset.prevZoneType) {
+          clearZoneMarker(el);
+        }
 
-      // 自分のゾーンへドロップ判定
-      const myRole2 = window.myRole || "player1";
-      const centerX = fieldX + CARD_W / 2;
-      const centerY = fieldY + CARD_H / 2;
-      const zoneHit = BATTLE_ZONE_TYPES.find((type) => {
-        const a = getZoneAnchor(myRole2, type);
-        return centerX >= a.x && centerX <= a.x + ZONE_RECT.w && centerY >= a.y && centerY <= a.y + ZONE_RECT.h;
-      });
-      if (zoneHit === "attacker" || zoneHit === "skill") {
-        pointerId = null;
-        showBattleZonePpCostModal({
-          zoneType: zoneHit,
-          cardEl: el,
-          owner: myRole2,
-          onDone: () => {
-            document.body.classList.remove("isInteractingCard");
-          }
-        });
-        return;
-      }
-      if (zoneHit) {
-        placeCardInZone(el, myRole2, zoneHit);
-        if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
-        saveFieldCards();
-        pointerId = null;
-        document.body.classList.remove("isInteractingCard");
-        return;
-      }
+        const handLineY = FIELD_H - CARD_H - 20;
+        let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
+        const handBg = document.getElementById("myHandZoneBg");
+        if (handBg && field) {
+          const fr = field.getBoundingClientRect();
+          const cxc = fieldX + CARD_W / 2;
+          const cyc = fieldY + CARD_H / 2;
+          const br = handBg.getBoundingClientRect();
+          const padX = 90;
+          const padY = 110;
+          const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
+          const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
+          const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;
+          const hy1 = (br.bottom - fr.top - fieldPanY) / fieldZoom + padY;
+          if (cxc >= hx0 && cxc <= hx1 && cyc >= hy0 && cyc <= hy1) inHandDrop = true;
+        }
+        const treatAsHand = inHandDrop || fieldY >= HAND_ZONE_Y_MIN;
 
-      // ゾーンから出した場合は通常カードへ戻す
-      if (el.dataset.prevZoneType) {
-        clearZoneMarker(el);
-      }
-
-      const handLineY = FIELD_H - CARD_H - 20;
-      let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
-      const handBg = document.getElementById("myHandZoneBg");
-      if (handBg && field) {
-        const fr = field.getBoundingClientRect();
-        const cxc = fieldX + CARD_W / 2;
-        const cyc = fieldY + CARD_H / 2;
-        const br = handBg.getBoundingClientRect();
-        const padX = 90;
-        const padY = 110;
-        const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
-        const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
-        const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;
-        const hy1 = (br.bottom - fr.top - fieldPanY) / fieldZoom + padY;
-        if (cxc >= hx0 && cxc <= hx1 && cyc >= hy0 && cyc <= hy1) inHandDrop = true;
-      }
-      const treatAsHand = inHandDrop || fieldY >= HAND_ZONE_Y_MIN;
-
-      const placeY = treatAsHand ? handLineY : fieldY;
-      const placeX = fieldX;
-      el.style.left = placeX + "px";
-      el.style.top  = placeY + "px";
-      el.dataset.x  = placeX;
-      el.dataset.y  = placeY;
-      
-      // 手札エリアでのドラッグ移動の場合、handOrder を更新
-      if (el.dataset.owner === myRole2 && treatAsHand) {
-        const content = getFieldContent();
-        if (content) {
-          const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-          const otherHandCards = cards.filter(c => 
-            c.dataset.owner === myRole2 && 
-            Number(c.dataset.y) >= HAND_ZONE_Y_MIN && 
-            c !== el
-          );
-          
-          if (otherHandCards.length > 0) {
-            // ドロップ位置 x 座標に基づいて、どのカードの前か後ろかを判定
-            otherHandCards.sort((a, b) => {
-              const xa = Number(a.dataset.x || 0);
-              const xb = Number(b.dataset.x || 0);
-              return xa - xb;
-            });
+        const placeY = treatAsHand ? handLineY : fieldY;
+        const placeX = fieldX;
+        el.style.left = placeX + "px";
+        el.style.top  = placeY + "px";
+        el.dataset.x  = placeX;
+        el.dataset.y  = placeY;
+        
+        if (el.dataset.owner === myRole2 && treatAsHand) {
+          const content = getFieldContent();
+          if (content) {
+            const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+            const otherHandCards = cards.filter(c => 
+              c.dataset.owner === myRole2 && 
+              Number(c.dataset.y) >= HAND_ZONE_Y_MIN && 
+              c !== el
+            );
             
-            const dropX = fieldX + CARD_W / 2; // ドロップされたカードの中心 X 座標
-            let insertAfterCard = null;
-            
-            for (let i = 0; i < otherHandCards.length; i++) {
-              const cardCenterX = Number(otherHandCards[i].dataset.x || 0) + CARD_W / 2;
-              if (dropX > cardCenterX) {
-                insertAfterCard = otherHandCards[i];
-              } else {
-                break;
+            if (otherHandCards.length > 0) {
+              otherHandCards.sort((a, b) => {
+                const xa = Number(a.dataset.x || 0);
+                const xb = Number(b.dataset.x || 0);
+                return xa - xb;
+              });
+              
+              const dropX = fieldX + CARD_W / 2;
+              let insertAfterCard = null;
+              
+              for (let i = 0; i < otherHandCards.length; i++) {
+                const cardCenterX = Number(otherHandCards[i].dataset.x || 0) + CARD_W / 2;
+                if (dropX > cardCenterX) {
+                  insertAfterCard = otherHandCards[i];
+                } else {
+                  break;
+                }
               }
-            }
-            
-            // handOrder を計算
-            if (insertAfterCard) {
-              // insertAfterCard の直後に挿入
-              const afterOrder = Number(insertAfterCard.dataset.handOrder || 0);
-              const nextCardInOrder = otherHandCards.find(c => Number(c.dataset.handOrder || 0) > afterOrder);
-              if (nextCardInOrder) {
-                const nextOrder = Number(nextCardInOrder.dataset.handOrder || 0);
-                el.dataset.handOrder = String((afterOrder + nextOrder) / 2);
+              
+              if (insertAfterCard) {
+                const afterOrder = Number(insertAfterCard.dataset.handOrder || 0);
+                const nextCardInOrder = otherHandCards.find(c => Number(c.dataset.handOrder || 0) > afterOrder);
+                if (nextCardInOrder) {
+                  const nextOrder = Number(nextCardInOrder.dataset.handOrder || 0);
+                  el.dataset.handOrder = String((afterOrder + nextOrder) / 2);
+                } else {
+                  el.dataset.handOrder = String(afterOrder + 1000);
+                }
               } else {
-                el.dataset.handOrder = String(afterOrder + 1000);
+                const firstCard = otherHandCards[0];
+                const firstOrder = Number(firstCard.dataset.handOrder || 0);
+                el.dataset.handOrder = String(firstOrder - 1000);
               }
-            } else {
-              // 最初に挿入
-              const firstCard = otherHandCards[0];
-              const firstOrder = Number(firstCard.dataset.handOrder || 0);
-              el.dataset.handOrder = String(firstOrder - 1000);
             }
           }
         }
-      }
-      
-      if (typeof window.organizeHands === "function") window.organizeHands();
-      if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
-      
-      saveFieldCards();
+        
+        if (typeof window.organizeHands === "function") window.organizeHands();
+        if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+        
+        saveFieldCards();
 
-    } else {
-      // ドラッグなし = クリック → ダブルクリックはブラウザが検出
+      }
+    } finally {
+      restoreCardDragZIndex(el);
     }
 
-    pointerId = null;
-    document.body.classList.remove("isInteractingCard");
+    if (!deferInteractionUnlock) {
+      pointerId = null;
+      document.body.classList.remove("isInteractingCard");
+    }
   });
 
   el.addEventListener("pointerenter", () => {
@@ -1303,6 +1333,7 @@ function enablePointerDrag(el){
     draggingCard = null;
     document.body.classList.remove("isDraggingCard");
     document.body.classList.remove("isInteractingCard");
+    restoreCardDragZIndex(el);
     pointerId = null;
   });
 

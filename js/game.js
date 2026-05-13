@@ -1022,7 +1022,8 @@ function updateMatchUI() {
     window._lastRound = m.round;
     
     // R1T1処理（ラウンド1のみ）
-    if (m.round === 1) {
+    // ファーストドローフェーズで既に5枚取り出し→手札3枚を済ませた場合は二重ドローしない（firstDrawDone は playing 移行時に true）
+    if (m.round === 1 && m.firstDrawDone !== true) {
       setTimeout(() => startR1T1(), 1000);
     }
     
@@ -1751,6 +1752,7 @@ function updateEvolutionPhaseUI() {
       window._evoPhaseTransitioning = true;
       setTimeout(async () => {
         m.status = "setup_first_draw";
+        m.firstDrawDone = false;
         m.firstDrawP1Ready = false;
         m.firstDrawP2Ready = false;
         window._firstDrawPhaseStarted = false;
@@ -1866,7 +1868,7 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   if (window._firstDrawAdvanceSent) return;
   window._firstDrawAdvanceSent = true;
   const gameRoom = localStorage.getItem("gameRoom");
-  const next = { ...m, status: "playing" };
+  const next = { ...m, status: "playing", firstDrawDone: true };
   state.matchData = next;
   if (gameRoom && firebaseClient?.db) {
     firebaseClient.writeMatchData(gameRoom, next).catch((e) => {
@@ -3498,6 +3500,11 @@ document.addEventListener("firebaseJoined", () => {
 function showR1T1Selection(_n) {}
 
 function startR1T1() {
+  const m = state.matchData;
+  if (m && m.firstDrawDone === true) {
+    console.log("[R1T1] ファーストドロー済みのためスキップします。");
+    return;
+  }
   const me = window.myRole || "player1";
   const myState = state[me];
   if (!myState || myState.deck.length < 5) {

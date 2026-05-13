@@ -229,7 +229,7 @@ function renderDevCards() {
     el.addEventListener("click", () => selectCard(card.id));
     el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      openDevContextMenu(e.pageX, e.pageY, card.id);
+      openDevContextMenu(e.clientX, e.clientY, card.id);
     });
     container.appendChild(el);
   });

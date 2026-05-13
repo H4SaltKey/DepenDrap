@@ -1,490 +1,856 @@
 [
   {
     "id": "cd001-001",
-    "image": "block001/スライド1.png"
+    "image": "block001/スライド1.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-002",
-    "image": "block001/スライド2.png"
+    "image": "block001/スライド2.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-003",
-    "image": "block001/スライド3.png"
+    "image": "block001/スライド3.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-004",
-    "image": "block001/スライド4.png"
+    "image": "block001/スライド4.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-005",
-    "image": "block001/スライド5.png"
+    "image": "block001/スライド5.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-006",
-    "image": "block001/スライド6.png"
+    "image": "block001/スライド6.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-007",
-    "image": "block001/スライド7.png"
+    "image": "block001/スライド7.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-008",
-    "image": "block001/スライド8.png"
+    "image": "block001/スライド8.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-009",
-    "image": "block001/スライド9.png"
+    "image": "block001/スライド9.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-010",
-    "image": "block001/スライド10.png"
+    "image": "block001/スライド10.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-011",
-    "image": "block001/スライド11.png"
+    "image": "block001/スライド11.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-012",
-    "image": "block001/スライド12.png"
+    "image": "block001/スライド12.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-013",
-    "image": "block001/スライド13.png"
+    "image": "block001/スライド13.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-014",
-    "image": "block001/スライド14.png"
+    "image": "block001/スライド14.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-015",
-    "image": "block001/スライド15.png"
+    "image": "block001/スライド15.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-016",
-    "image": "block001/スライド16.png"
+    "image": "block001/スライド16.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-017",
-    "image": "block001/スライド17.png"
+    "image": "block001/スライド17.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-018",
-    "image": "block001/スライド18.png"
+    "image": "block001/スライド18.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-019",
-    "image": "block001/スライド19.png"
+    "image": "block001/スライド19.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-020",
-    "image": "block001/スライド20.png"
+    "image": "block001/スライド20.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-021",
-    "image": "block001/スライド21.png"
+    "image": "block001/スライド21.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-022",
-    "image": "block001/スライド22.png"
+    "image": "block001/スライド22.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-023",
-    "image": "block001/スライド23.png"
+    "image": "block001/スライド23.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-024",
-    "image": "block001/スライド24.png"
+    "image": "block001/スライド24.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-025",
-    "image": "block001/スライド25.png"
+    "image": "block001/スライド25.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-026",
-    "image": "block001/スライド26.png"
+    "image": "block001/スライド26.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-027",
-    "image": "block001/スライド27.png"
+    "image": "block001/スライド27.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-028",
-    "image": "block001/スライド28.png"
+    "image": "block001/スライド28.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-029",
-    "image": "block001/スライド29.png"
+    "image": "block001/スライド29.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-030",
-    "image": "block001/スライド30.png"
+    "image": "block001/スライド30.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-031",
-    "image": "block001/スライド31.png"
+    "image": "block001/スライド31.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-032",
-    "image": "block001/スライド32.png"
+    "image": "block001/スライド32.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-033",
-    "image": "block001/スライド33.png"
+    "image": "block001/スライド33.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-034",
-    "image": "block001/スライド34.png"
+    "image": "block001/スライド34.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd001-035",
-    "image": "block001/スライド35.png"
+    "image": "block001/スライド35.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd001-036",
-    "image": "block001/スライド36.png"
+    "image": "block001/スライド36.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-001",
-    "image": "block002/スライド1.png"
+    "image": "block002/スライド1.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-002",
-    "image": "block002/スライド2.png"
+    "image": "block002/スライド2.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-003",
-    "image": "block002/スライド3.png"
+    "image": "block002/スライド3.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-004",
-    "image": "block002/スライド4.png"
+    "image": "block002/スライド4.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-005",
-    "image": "block002/スライド5.png"
+    "image": "block002/スライド5.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-006",
-    "image": "block002/スライド6.png"
+    "image": "block002/スライド6.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-007",
-    "image": "block002/スライド7.png"
+    "image": "block002/スライド7.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-008",
-    "image": "block002/スライド8.png"
+    "image": "block002/スライド8.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-009",
-    "image": "block002/スライド9.png"
+    "image": "block002/スライド9.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-010",
-    "image": "block002/スライド10.png"
+    "image": "block002/スライド10.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-011",
-    "image": "block002/スライド11.png"
+    "image": "block002/スライド11.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-012",
-    "image": "block002/スライド12.png"
+    "image": "block002/スライド12.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-013",
-    "image": "block002/スライド13.png"
+    "image": "block002/スライド13.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-014",
-    "image": "block002/スライド14.png"
+    "image": "block002/スライド14.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-015",
-    "image": "block002/スライド15.png"
+    "image": "block002/スライド15.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-016",
-    "image": "block002/スライド16.png"
+    "image": "block002/スライド16.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd002-017",
-    "image": "block002/スライド17.png"
+    "image": "block002/スライド17.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd003-001",
-    "image": "block003/スライド1.png"
+    "image": "block003/スライド1.png",
+    "attribute": "遠隔",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-002",
-    "image": "block003/スライド2.png"
+    "image": "block003/スライド2.png",
+    "attribute": "遠隔",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-003",
-    "image": "block003/スライド3.png"
+    "image": "block003/スライド3.png",
+    "attribute": "遠隔",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-004",
-    "image": "block003/スライド4.png"
+    "image": "block003/スライド4.png",
+    "attribute": "近接",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-005",
-    "image": "block003/スライド5.png"
+    "image": "block003/スライド5.png",
+    "attribute": "近接",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-006",
-    "image": "block003/スライド6.png"
+    "image": "block003/スライド6.png",
+    "attribute": "近接",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-007",
-    "image": "block003/スライド7.png"
+    "image": "block003/スライド7.png",
+    "attribute": "魔法",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-008",
-    "image": "block003/スライド8.png"
+    "image": "block003/スライド8.png",
+    "attribute": "魔法",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd003-009",
-    "image": "block003/スライド9.png"
+    "image": "block003/スライド9.png",
+    "attribute": "魔法",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd004-001",
-    "image": "block004/スライド1.png"
+    "image": "block004/スライド1.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-002",
-    "image": "block004/スライド2.png"
+    "image": "block004/スライド2.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-003",
-    "image": "block004/スライド3.png"
+    "image": "block004/スライド3.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-004",
-    "image": "block004/スライド4.png"
+    "image": "block004/スライド4.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-005",
-    "image": "block004/スライド5.png"
+    "image": "block004/スライド5.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-006",
-    "image": "block004/スライド6.png"
+    "image": "block004/スライド6.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-007",
-    "image": "block004/スライド7.png"
+    "image": "block004/スライド7.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-008",
-    "image": "block004/スライド8.png"
+    "image": "block004/スライド8.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-009",
-    "image": "block004/スライド9.png"
+    "image": "block004/スライド9.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-010",
-    "image": "block004/スライド10.png"
+    "image": "block004/スライド10.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-011",
-    "image": "block004/スライド11.png"
+    "image": "block004/スライド11.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-012",
-    "image": "block004/スライド12.png"
+    "image": "block004/スライド12.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-013",
-    "image": "block004/スライド13.png"
+    "image": "block004/スライド13.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-014",
-    "image": "block004/スライド14.png"
+    "image": "block004/スライド14.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-015",
-    "image": "block004/スライド15.png"
+    "image": "block004/スライド15.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-016",
-    "image": "block004/スライド16.png"
+    "image": "block004/スライド16.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-017",
-    "image": "block004/スライド17.png"
+    "image": "block004/スライド17.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-018",
-    "image": "block004/スライド18.png"
+    "image": "block004/スライド18.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-019",
-    "image": "block004/スライド19.png"
+    "image": "block004/スライド19.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-020",
-    "image": "block004/スライド20.png"
+    "image": "block004/スライド20.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-021",
-    "image": "block004/スライド21.png"
+    "image": "block004/スライド21.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-022",
-    "image": "block004/スライド22.png"
+    "image": "block004/スライド22.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-023",
-    "image": "block004/スライド23.png"
+    "image": "block004/スライド23.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-024",
-    "image": "block004/スライド24.png"
+    "image": "block004/スライド24.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd004-025",
-    "image": "block004/スライド25.png"
+    "image": "block004/スライド25.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd004-026",
-    "image": "block004/スライド26.png"
+    "image": "block004/スライド26.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-001",
-    "image": "block005/スライド1.png"
+    "image": "block005/スライド1.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-002",
-    "image": "block005/スライド2.png"
+    "image": "block005/スライド2.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-003",
-    "image": "block005/スライド3.png"
+    "image": "block005/スライド3.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-004",
-    "image": "block005/スライド4.png"
+    "image": "block005/スライド4.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-005",
-    "image": "block005/スライド5.png"
+    "image": "block005/スライド5.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-006",
-    "image": "block005/スライド6.png"
+    "image": "block005/スライド6.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-007",
-    "image": "block005/スライド7.png"
+    "image": "block005/スライド7.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-008",
-    "image": "block005/スライド8.png"
+    "image": "block005/スライド8.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-009",
-    "image": "block005/スライド9.png"
+    "image": "block005/スライド9.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-010",
-    "image": "block005/スライド10.png"
+    "image": "block005/スライド10.png",
+    "attribute": "近接",
+    "type": "サポート",
+    "tags": []
   },
   {
     "id": "cd005-011",
-    "image": "block005/スライド11.png"
+    "image": "block005/スライド11.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-012",
-    "image": "block005/スライド12.png"
+    "image": "block005/スライド12.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-013",
-    "image": "block005/スライド13.png"
+    "image": "block005/スライド13.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-014",
-    "image": "block005/スライド14.png"
+    "image": "block005/スライド14.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-015",
-    "image": "block005/スライド15.png"
+    "image": "block005/スライド15.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-016",
-    "image": "block005/スライド16.png"
+    "image": "block005/スライド16.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-017",
-    "image": "block005/スライド17.png"
+    "image": "block005/スライド17.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-018",
-    "image": "block005/スライド18.png"
+    "image": "block005/スライド18.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-019",
-    "image": "block005/スライド19.png"
+    "image": "block005/スライド19.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-020",
-    "image": "block005/スライド20.png"
+    "image": "block005/スライド20.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd005-021",
-    "image": "block005/スライド21.png"
+    "image": "block005/スライド21.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd005-022",
-    "image": "block005/スライド22.png"
+    "image": "block005/スライド22.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-001",
-    "image": "block006/スライド1.png"
+    "image": "block006/スライド1.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-002",
-    "image": "block006/スライド2.png"
+    "image": "block006/スライド2.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-003",
-    "image": "block006/スライド3.png"
+    "image": "block006/スライド3.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-004",
-    "image": "block006/スライド4.png"
+    "image": "block006/スライド4.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-005",
-    "image": "block006/スライド5.png"
+    "image": "block006/スライド5.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-006",
-    "image": "block006/スライド6.png"
+    "image": "block006/スライド6.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-007",
-    "image": "block006/スライド7.png"
+    "image": "block006/スライド7.png",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-008",
-    "image": "block006/スライド8.png"
+    "image": "block006/スライド8.png",
+    "attribute": "近接",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-009",
-    "image": "block006/スライド9.png"
+    "image": "block006/スライド9.png",
+    "attribute": "遠隔",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-010",
-    "image": "block006/スライド10.png"
+    "image": "block006/スライド10.png",
+    "attribute": "遠隔",
+    "type": "スキル",
+    "tags": []
   },
   {
     "id": "cd006-011",
-    "image": "block006/スライド11.png"
+    "image": "block006/スライド11.png",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "tags": []
   },
   {
     "id": "cd006-012",
-    "image": "block006/スライド12.png"
+    "image": "block006/スライド12.png",
+    "attribute": "魔法",
+    "type": "スキル",
+    "tags": []
   }
 ]

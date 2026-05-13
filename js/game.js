@@ -610,6 +610,12 @@ function renderOwnerUI(owner) {
       <div style="text-align:center; font-size:14px; color:#e0d0a0; margin-bottom:6px; font-weight:bold; letter-spacing:1px;">
         ${s.username ? s.username : (owner === "player1" ? "Player 1" : "Player 2")}
       </div>
+      ${(() => {
+        const hc = typeof countOwnerHandCardsOnField === "function" ? countOwnerHandCardsOnField(owner) : 0;
+        const lim = typeof window.getHandLimit === "function" ? window.getHandLimit(owner) : 6;
+        const cls = isMine ? "lorHandCountPill lorHandCountPill--mine" : "lorHandCountPill lorHandCountPill--opp";
+        return `<div class="${cls}" title="手札枚数 / 上限">手札 <strong>${hc}</strong> / ${lim}</div>`;
+      })()}
       <div class="lorLevelBlock">
         <div class="lorLevelLabel">LV</div>
         <div class="lorLevelGem">
@@ -694,7 +700,7 @@ function renderOwnerUI(owner) {
     <div class="lorRight">
       ${lorStatChip(ICON_ATK, s.atk, owner, "atk", "基礎攻撃力")}
       ${lorStatChip(ICON_DEF, s.def, owner, "def", "基礎防御力")}
-      ${lorStatChip(ICON_IDEF, s.instantDef, owner, "instantDef", "瞬間防御力")}
+      ${lorInstantDefStatRow(owner, s)}
       ${isMine ? `
         <div class="lorActionGroup">
           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button">瞬間防御</button>
@@ -802,7 +808,7 @@ function getEvolutionPathHTML(owner) {
     const y = yArr[idx];
     desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
     tableHTML = `y = [1, 3, 4, 6]`;
-  } else if (s.evolutionPath === '瞬発の道') {
+  } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
     const zArr = [1, 3, 4, 6];
     const z = zArr[idx];
     desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
@@ -827,6 +833,14 @@ function getEvolutionPathHTML(owner) {
   `;
 }
 
+function countOwnerHandCardsOnField(owner) {
+  const c = typeof getFieldContent === "function" ? getFieldContent() : null;
+  if (!c) return 0;
+  return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
+    (el) => el.dataset.owner === owner && Number(el.dataset.y) >= 1500
+  ).length;
+}
+
 function lorStatChip(icon, val, owner, key, title = "") {
   const isEditable = window.devMode;
   return `
@@ -835,6 +849,35 @@ function lorStatChip(icon, val, owner, key, title = "") {
     ${isEditable ? `
       <input class="lorChipInput" type="number" value="${val}"
         data-owner="${owner}" data-key="${key}" data-type="val"
+        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
+    ` : `
+      <span class="lorChipVal">${val}</span>
+    `}
+  </div>`;
+}
+
+/** 瞬間防御力: 盾 + 右上ゲージ */
+function lorInstantDefStatRow(owner, s) {
+  const isEditable = window.devMode;
+  const val = Number(s.instantDef) || 0;
+  const maxRef = Math.max(1, Number(s.instantDefMax) || 999);
+  const pct = Math.min(100, (val / maxRef) * 100);
+  const arcLen = 44;
+  const dash = `${(pct / 100) * arcLen} ${arcLen}`;
+  return `
+  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
+    <span class="lorIdefIconWrap">
+      ${lorLucide("shield", "lorLxDef lorIdefShield")}
+      <span class="lorIdefGauge" aria-hidden="true">
+        <svg viewBox="0 0 36 28" width="34" height="26" class="lorIdefGaugeSvg">
+          <path d="M4 22 A16 16 0 0 1 32 22" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M4 22 A16 16 0 0 1 32 22" fill="none" stroke="#f0d080" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${dash}"/>
+        </svg>
+      </span>
+    </span>
+    ${isEditable ? `
+      <input class="lorChipInput" type="number" value="${val}"
+        data-owner="${owner}" data-key="instantDef" data-type="val"
         style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
     ` : `
       <span class="lorChipVal">${val}</span>
@@ -853,8 +896,8 @@ function lorLucide(name, cls = "") {
 const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
 // HP: ハート
 const ICON_HP = lorLucide("heart", "lorLxHp");
-// 合計防御力: 剣＋盾のクロス（重ね表示）
-const ICON_SLD = `<span class="lorLxCross" aria-hidden="true">${lorLucide("sword", "lorLxSldS")}${lorLucide("shield", "lorLxSldH")}</span>`;
+// 合計防御力: 剣と盾を横並び（IO イメージ）
+const ICON_SLD = `<span class="lorIoDef" aria-hidden="true">${lorLucide("sword", "lorIoS")}${lorLucide("shield", "lorIoH")}</span>`;
 // 基礎攻撃力: 剣
 const ICON_ATK = lorLucide("sword", "lorLxAtk");
 // 基礎防御力: 盾
@@ -1025,6 +1068,12 @@ function updateMatchUI() {
     // ファーストドローフェーズで既に5枚取り出し→手札3枚を済ませた場合は二重ドローしない（firstDrawDone は playing 移行時に true）
     if (m.round === 1 && m.firstDrawDone !== true) {
       setTimeout(() => startR1T1(), 1000);
+    }
+
+    // ファーストドロー済みの R1-1: 先攻の最初のターンでもターン開始ドロー（1枚）を行う
+    if (m.round === 1 && m.turn === 1 && m.firstDrawDone === true) {
+      const isMeFirst = m.turnPlayer === window.myRole;
+      if (isMeFirst) setTimeout(() => startTurnDraw(), 850);
     }
     
     // lastTurnPlayerを即座に更新（2重表示を防ぐ）
@@ -1835,9 +1884,9 @@ function updateEvolutionPhaseUI() {
             <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。<br>さらに追加で、それぞれ3回目の発動に限り、1の貫通ダメージを与える。<br><span style="font-size:11px; color:#aaa;">※：この効果によるものは含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
           </button>
 
-          <!-- 瞬発の道 -->
-          <button class="evo-path-btn" onclick="selectEvolutionPath('瞬発の道')">
-            <div class="evo-path-title">瞬発の道</div>
+          <!-- 奇撃の道 -->
+          <button class="evo-path-btn" onclick="selectEvolutionPath('奇撃の道')">
+            <div class="evo-path-title">奇撃の道</div>
             <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与える。<br><span class="evo-path-val">z=[1/3/4/6]</span></div>
           </button>
 
@@ -1859,6 +1908,20 @@ function updateEvolutionPhaseUI() {
   }
 }
 
+/** 先攻は5枚、後攻は6枚をファーストドローで提示 */
+function getFirstDrawRevealCount(me, m) {
+  const fp = m && m.firstPlayer != null ? m.firstPlayer : "player1";
+  return me === fp ? 5 : 6;
+}
+
+/** 山札のランダムな位置に1枚挿入（インデックス 0..deck.length のいずれか） */
+function insertCardIntoDeckAtRandom(owner, storeId) {
+  const d = state[owner]?.deck;
+  if (!d || storeId == null || storeId === "") return;
+  const idx = Math.floor(Math.random() * (d.length + 1));
+  d.splice(idx, 0, storeId);
+}
+
 function startFirstDrawPhase() {
   const m = state.matchData;
   if (m.status !== "setup_first_draw" || window._firstDrawPhaseStarted) return;
@@ -1870,7 +1933,8 @@ function startFirstDrawPhase() {
   }
   window._firstDrawPhaseStarted = true;
   if (typeof window.takeOut === "function") {
-    window.takeOut(5);
+    const n = getFirstDrawRevealCount(me, m);
+    window.takeOut(n, { visibility: "self" });
   } else {
     console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
   }
@@ -1961,6 +2025,7 @@ function updateFirstDrawPhaseUI() {
   startFirstDrawPhase();
 
   const me = window.myRole || "player1";
+  const pickN = getFirstDrawRevealCount(me, m);
   const p1r = !!m.firstDrawP1Ready;
   const p2r = !!m.firstDrawP2Ready;
   const myReady = me === "player1" ? p1r : p2r;
@@ -1980,7 +2045,7 @@ function updateFirstDrawPhaseUI() {
     messageEl.textContent = "選択を確定しました。相手の完了を待っています…";
     confirmBtn.style.display = "none";
   } else if (!myReady) {
-    messageEl.textContent = "5枚すべてタップで選択できます。チェックが付いた枚数がちょうど3枚のときだけ「確定」が押せます。";
+    messageEl.textContent = `${pickN}枚すべてタップで選択できます。チェックが付いた枚数がちょうど3枚のときだけ「確定」が押せます。`;
     confirmBtn.style.display = "inline-flex";
   } else {
     messageEl.textContent = "双方の準備が完了しました。";
@@ -1991,11 +2056,13 @@ function updateFirstDrawPhaseUI() {
 
   const field = getFieldContent();
   if (!field) return;
-  const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="none"]`));
-  if (candidates.length === 0) {
-    messageEl.textContent = "山札から5枚が配置されるまでお待ちください…";
+  const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="self"]`));
+  if (candidates.length < pickN) {
+    messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…`;
     return;
   }
+
+  const useCandidates = candidates.slice(0, pickN);
 
   const selected = [];
   const syncPickUi = () => {
@@ -2008,7 +2075,7 @@ function updateFirstDrawPhaseUI() {
           : `確定するには ${selected.length - 3} 枚の選択を外してください（現在 ${selected.length}/3）`;
   };
 
-  candidates.forEach((card, index) => {
+  useCandidates.forEach((card, index) => {
     const outer = document.createElement("div");
     outer.className = "firstDrawCardOuter";
     outer.dataset.firstDrawIndex = String(index);
@@ -2046,12 +2113,16 @@ function updateFirstDrawPhaseUI() {
     overlay.dataset.localFirstDrawLocked = "1";
     confirmBtn.disabled = true;
 
-    const chosen = selected.map((i) => candidates[i]).filter(Boolean);
-    const unchosen = candidates.filter((_, i) => !selected.includes(i));
+    const chosen = selected.map((i) => useCandidates[i]).filter(Boolean);
+    const unchosen = useCandidates.filter((_, i) => !selected.includes(i));
 
     const deckObj = field.querySelector(`.deckObject[data-owner="${me}"]`);
     const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
     const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+    const handSlotY =
+      typeof FIELD_H !== "undefined" && typeof CARD_H !== "undefined"
+        ? FIELD_H - CARD_H - 20
+        : 1527;
 
     chosen.forEach((card, idx) => {
       card.dataset.visibility = "self";
@@ -2062,6 +2133,8 @@ function updateFirstDrawPhaseUI() {
       if (typeof applyCardFace === "function") applyCardFace(card, "self");
       const nextOrder = typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now() + idx;
       card.dataset.handOrder = String(nextOrder);
+      card.dataset.y = String(handSlotY);
+      card.dataset.x = String(40 + idx * 100);
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
     });
@@ -2071,7 +2144,7 @@ function updateFirstDrawPhaseUI() {
       if (rawId) {
         const isTemp = card.dataset.isTemp === "true";
         const storeId = isTemp ? `TEMP:${rawId}` : rawId;
-        state[me].deck.unshift(storeId);
+        insertCardIntoDeckAtRandom(me, storeId);
       }
       card.remove();
     });
@@ -2089,7 +2162,7 @@ function updateFirstDrawPhaseUI() {
 
     if (typeof addGameLog === "function") {
       const playerName = window.myUsername || me;
-      addGameLog(`${playerName} が 手札を3枚選び、残りを山札に戻しました`);
+      addGameLog(`${playerName} が 手札を3枚選び、残り${pickN - 3}枚を山札のランダムな位置に戻しました`);
     }
 
     const gameRoom = localStorage.getItem("gameRoom");
@@ -3630,7 +3703,7 @@ function startTurnDraw() {
 
   // PP +1（上限まで）
   const currentPp = Number(myState.pp) || 0;
-  const maxPp = Number(myState.ppMax) || 10;
+  const maxPp = Number(myState.ppMax) || 2;
   myState.pp = Math.min(currentPp + 1, maxPp);
 
   // 手札整列

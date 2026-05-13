@@ -679,7 +679,13 @@ function drawToHand(count){
   if(typeof update === "function") update();
 }
 
-function takeOut(count){
+/**
+ * @param {number} count
+ * @param {{ visibility?: "none"|"self" }} [opts] 省略時は "none"。ファーストドローは { visibility: "self" }
+ */
+function takeOut(count, opts){
+  opts = opts || {};
+  const visMode = opts.visibility === "self" ? "self" : "none";
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
@@ -711,7 +717,7 @@ function takeOut(count){
     const card = (typeof createCard === "function") ? createCard(rawId) : null;
     if(!card) continue;
 
-    const vis = "none";
+    const vis = visMode;
     card.dataset.visibility = vis;
     card.dataset.owner = me;
     card.dataset.origin = me; 

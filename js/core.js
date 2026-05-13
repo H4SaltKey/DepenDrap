@@ -10,7 +10,7 @@ const BASE_INITIAL_STATE = {
   atk: 1,        atkMax: 999,
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
-  pp: 0,         ppMax: 10,
+  pp: 0,         ppMax: 2,
   deck: [],
   backImage: null
 };

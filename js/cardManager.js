@@ -906,7 +906,6 @@ function enablePointerDrag(el){
       el.dataset.y  = fieldY;
       
       // 手札エリアでのドラッグ移動の場合、handOrder を更新
-      const myRole2 = window.myRole || "player1";
       if (el.dataset.owner === myRole2 && fieldY >= 1500) {
         // このカードが手札エリアにドロップされた
         const content = getFieldContent();

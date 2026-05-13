@@ -165,9 +165,8 @@ function ensureBattleZoneUIs() {
   });
 }
 
-let zoneHoverPanel = null;
+let zoneHoverPreviewCards = {};
 let zoneHoverHideTimer = null;
-let zoneHoverActiveKey = null;
 
 function cancelZoneHoverHide() {
   if (zoneHoverHideTimer) {
@@ -179,31 +178,11 @@ function cancelZoneHoverHide() {
 function scheduleZoneHoverHide() {
   cancelZoneHoverHide();
   zoneHoverHideTimer = setTimeout(() => {
-    hideZoneHoverPanel();
+    hideZonePreviewCards();
   }, 120);
 }
 
-function ensureZoneHoverPanel() {
-  if (zoneHoverPanel) return zoneHoverPanel;
-  const panel = document.createElement("div");
-  panel.className = "zoneHoverPanel";
-  panel.style.position = "absolute";
-  panel.style.pointerEvents = "auto";
-  panel.style.display = "none";
-  panel.style.zIndex = "10005";
-  panel.style.background = "transparent";
-  panel.addEventListener("pointerenter", () => {
-    cancelZoneHoverHide();
-  });
-  panel.addEventListener("pointerleave", () => {
-    scheduleZoneHoverHide();
-  });
-  document.body.appendChild(panel);
-  zoneHoverPanel = panel;
-  return panel;
-}
-
-function createZoneHoverPreviewCard(originalCard) {
+function createZoneHoverPreviewCard(originalCard, cardIndex, totalCards, overlapRate, anchor) {
   const cardId = originalCard.dataset.id;
   const data = getCardData(cardId) || {};
   const preview = document.createElement("div");
@@ -211,12 +190,24 @@ function createZoneHoverPreviewCard(originalCard) {
   preview.dataset.id = cardId;
   preview.dataset.originalInstanceId = originalCard.dataset.instanceId || "";
   preview.dataset.zoneHoverPreview = "true";
+  preview.dataset.previewIndex = String(cardIndex);
   preview.style.position = "absolute";
+  preview.style.width = `${CARD_W}px`;
+  preview.style.height = `${CARD_H}px`;
   preview.style.pointerEvents = "auto";
-  preview.style.overflow = "hidden";
+  preview.style.cursor = "pointer";
   preview.style.background = "#111";
   preview.style.border = "1px solid rgba(255,255,255,0.08)";
   preview.style.boxSizing = "border-box";
+  preview.style.overflow = "hidden";
+  preview.style.zIndex = String(500 + cardIndex);
+
+  const step = CARD_W * (1 - overlapRate);
+  const offsetX = anchor.x - step * (totalCards - 1 - cardIndex);
+  preview.dataset.x = String(offsetX);
+  preview.dataset.y = String(anchor.y);
+  preview.style.left = `${offsetX}px`;
+  preview.style.top = `${anchor.y}px`;
 
   const img = document.createElement("img");
   setSafeSrc(img, data.image || originalCard.querySelector("img")?.src || "");
@@ -224,6 +215,7 @@ function createZoneHoverPreviewCard(originalCard) {
   img.style.width = "100%";
   img.style.height = "100%";
   img.style.objectFit = "contain";
+  img.style.pointerEvents = "none";
 
   const label = document.createElement("div");
   label.className = "cardVisibilityLabel";
@@ -231,6 +223,29 @@ function createZoneHoverPreviewCard(originalCard) {
 
   preview.appendChild(img);
   preview.appendChild(label);
+
+  preview.addEventListener("pointerenter", () => {
+    preview.style.zIndex = "5999";
+    cancelZoneHoverHide();
+  });
+  preview.addEventListener("pointerleave", () => {
+    preview.style.zIndex = String(500 + cardIndex);
+    scheduleZoneHoverHide();
+  });
+  preview.addEventListener("contextmenu", (e) => {
+    const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
+    if (!original) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof openCardMenu === "function") openCardMenu(original, e.clientX, e.clientY);
+  });
+  preview.addEventListener("click", (e) => {
+    const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
+    if (!original) return;
+    e.stopPropagation();
+    if (typeof showCardZoom === "function") showCardZoom(original);
+  });
+
   return preview;
 }
 
@@ -239,7 +254,7 @@ function attachZoneHoverListeners(card, owner, type) {
   card.dataset.zoneHoverAttached = "true";
   card.addEventListener("pointerenter", () => {
     if (getZoneCards(owner, type).length > 1) {
-      showZoneHoverPanel(owner, type);
+      showZonePreviewCards(owner, type);
     }
   });
   card.addEventListener("pointerleave", () => {
@@ -247,79 +262,35 @@ function attachZoneHoverListeners(card, owner, type) {
   });
 }
 
-function showZoneHoverPanel(owner, type) {
+function showZonePreviewCards(owner, type) {
   const cards = getZoneCards(owner, type);
   if (cards.length < 2) {
-    hideZoneHoverPanel();
+    hideZonePreviewCards();
     return;
   }
 
-  const panel = ensureZoneHoverPanel();
-  panel.innerHTML = "";
-  panel.style.display = "block";
-  panel.dataset.owner = owner;
-  panel.dataset.type = type;
+  hideZonePreviewCards();
+  const content = getFieldContent();
+  if (!content) return;
 
-  const field = document.getElementById("field");
-  const fieldRect = field ? field.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
   const anchor = getZoneAnchor(owner, type);
-  const pageX = fieldRect.left + (anchor.x + fieldPanX) * fieldZoom;
-  const pageY = fieldRect.top + (anchor.y + fieldPanY) * fieldZoom;
-
-  const previewWidth = 220;
-  const previewHeight = Math.round(previewWidth * CARD_H / CARD_W);
   const overlapRate = Math.min(0.95, 0.65 + Math.max(0, cards.length - 1) * 0.02);
-  const step = previewWidth * (1 - overlapRate);
-  const totalWidth = previewWidth + step * (cards.length - 1);
+  const previewCards = [];
 
-  panel.style.width = `${totalWidth}px`;
-  panel.style.height = `${previewHeight}px`;
-  panel.style.left = `${pageX + CARD_W * fieldZoom - totalWidth - 10}px`;
-  panel.style.top = `${pageY}px`;
-
-  cards.forEach((originalCard, index) => {
-    const preview = createZoneHoverPreviewCard(originalCard);
-    preview.style.left = `${index * step}px`;
-    preview.style.top = "0px";
-    preview.style.width = `${previewWidth}px`;
-    preview.style.height = `${previewHeight}px`;
-    preview.style.cursor = "pointer";
-    preview.style.zIndex = String(10 + index);
-
-    preview.addEventListener("pointerenter", () => {
-      preview.classList.add("zoneHoverPreviewActive");
-      preview.style.zIndex = "9999";
-      cancelZoneHoverHide();
-    });
-    preview.addEventListener("pointerleave", () => {
-      preview.classList.remove("zoneHoverPreviewActive");
-      preview.style.zIndex = String(10 + index);
-      scheduleZoneHoverHide();
-    });
-    preview.addEventListener("contextmenu", (e) => {
-      const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
-      if (!original) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (typeof openCardMenu === "function") openCardMenu(original, e.clientX, e.clientY);
-    });
-    preview.addEventListener("click", (e) => {
-      const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
-      if (!original) return;
-      e.stopPropagation();
-      if (typeof showCardZoom === "function") showCardZoom(original);
-    });
-
-    panel.appendChild(preview);
+  cards.slice(0, -1).forEach((card, index) => {
+    const preview = createZoneHoverPreviewCard(card, index, cards.length, overlapRate, anchor);
+    content.appendChild(preview);
+    previewCards.push(preview);
   });
 
-  zoneHoverActiveKey = `${owner}:${type}`;
+  zoneHoverPreviewCards[`${owner}:${type}`] = previewCards;
 }
 
-function hideZoneHoverPanel() {
-  if (!zoneHoverPanel) return;
-  zoneHoverPanel.style.display = "none";
-  zoneHoverActiveKey = null;
+function hideZonePreviewCards() {
+  Object.values(zoneHoverPreviewCards).flat().forEach(el => {
+    if (el && el.parentNode) el.remove();
+  });
+  zoneHoverPreviewCards = {};
 }
 
 function updateBattleZoneUI() {

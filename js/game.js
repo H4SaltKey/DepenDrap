@@ -853,46 +853,38 @@ function lorStatChip(icon, val, owner, key, title = "") {
 }
 
 // ===== アイコン =====
-const ICON_BARRIER = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
-    fill="rgba(255,255,255,0.4)" stroke="#ffffff" stroke-width="1.2"/>
+const ICON_BARRIER = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
+    stroke="#7ca8ff" stroke-width="1.6" fill="rgba(124,168,255,0.14)" stroke-linejoin="round"/>
+  <path d="M8.5 11h7" stroke="#7ca8ff" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
 
-const ICON_HP = `<svg viewBox="0 0 20 20" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 17 C10 17 2 12 2 6.5 A4 4 0 0 1 10 5 A4 4 0 0 1 18 6.5 C18 12 10 17 10 17Z"
-    fill="#ff6b9d" stroke="#ff3377" stroke-width="0.8"/>
+const ICON_HP = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"
+    fill="#ff6b9d" stroke="#ff3570" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
 
-const ICON_SLD = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
-    fill="rgba(47,128,237,0.35)" stroke="#2f80ed" stroke-width="1.2"/>
+const ICON_SLD = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
+    fill="rgba(47,128,237,0.2)" stroke="#2f80ed" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
 
-
-
-const ICON_ATK = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
-    fill="rgba(255,107,157,0.3)" stroke="#ff6b9d" stroke-width="1.2"/>
-  <!-- 剣 -->
-  <path d="M10 5 L10 13 M8 7 L12 7 M8 11 L12 11 M9 14 L11 14" 
-    stroke="#ff6b9d" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="10" cy="4" r="1" fill="#ff6b9d"/>
+const ICON_ATK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 18l8-8 4 4-8 8-4-4Z"
+    fill="rgba(255,107,157,0.18)" stroke="#ff6b9d" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M7.5 9.5l5 5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M12 8l3 3" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
 
-const ICON_DEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
-    fill="rgba(47,128,237,0.3)" stroke="#2f80ed" stroke-width="1.2"/>
-  <!-- 縦線 -->
-  <line x1="10" y1="6" x2="10" y2="15" stroke="#2f80ed" stroke-width="1" opacity="0.6"/>
-  <!-- 横線 -->
-  <line x1="6" y1="10" x2="14" y2="10" stroke="#2f80ed" stroke-width="1" opacity="0.6"/>
+const ICON_DEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
+    fill="rgba(240,208,128,0.16)" stroke="#f0d080" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M9 12.5l2.5 2.5L15 10" stroke="#f0d080" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
-const ICON_IDEF = `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M10 2 L17 5 L17 11 Q17 16.5 10 19 Q3 16.5 3 11 L3 5 Z"
-    fill="rgba(47,128,237,0.2)" stroke="#74b9ff" stroke-width="1.2"/>
-  <!-- 稲妻 -->
-  <polygon points="11,4 8,10.5 10.5,10.5 9,17 13,9.5 10.5,9.5" fill="#f0d080"/>
+const ICON_IDEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M13 2 3 14h6l-1 8 10-12h-6l1-8Z"
+    fill="rgba(240,208,128,0.18)" stroke="#f0d080" stroke-width="1.6" stroke-linejoin="round"/>
 </svg>`;
 
 function update(skipLogCheck = false) {

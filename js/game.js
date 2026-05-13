@@ -610,12 +610,6 @@ function renderOwnerUI(owner) {
       <div style="text-align:center; font-size:14px; color:#e0d0a0; margin-bottom:6px; font-weight:bold; letter-spacing:1px;">
         ${s.username ? s.username : (owner === "player1" ? "Player 1" : "Player 2")}
       </div>
-      ${(() => {
-        const hc = typeof countOwnerHandCardsOnField === "function" ? countOwnerHandCardsOnField(owner) : 0;
-        const lim = typeof window.getHandLimit === "function" ? window.getHandLimit(owner) : 6;
-        const cls = isMine ? "lorHandCountPill lorHandCountPill--mine" : "lorHandCountPill lorHandCountPill--opp";
-        return `<div class="${cls}" title="手札枚数 / 上限">手札 <strong>${hc}</strong> / ${lim}</div>`;
-      })()}
       <div class="lorLevelBlock">
         <div class="lorLevelLabel">LV</div>
         <div class="lorLevelGem">
@@ -664,9 +658,9 @@ function renderOwnerUI(owner) {
           ${isMine ? (s.shield >= s.shieldMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
         </div>
       </div>
-      <div class="lorStatRow">
+      <div class="lorStatRow lorHpRow">
         <span class="lorIcon" data-tooltip="HP">${ICON_HP}</span>
-        <div class="lorBarOuter">
+        <div class="lorBarOuter lorHpBarOuter">
           <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
         </div>
         <div class="lorValGroup">
@@ -837,7 +831,7 @@ function countOwnerHandCardsOnField(owner) {
   const c = typeof getFieldContent === "function" ? getFieldContent() : null;
   if (!c) return 0;
   return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
-    (el) => el.dataset.owner === owner && Number(el.dataset.y) >= 1500
+    (el) => el.dataset.owner === owner && Number(el.dataset.y) >= (typeof window.HAND_ZONE_Y_MIN === "number" ? window.HAND_ZONE_Y_MIN : 1460)
   ).length;
 }
 
@@ -856,35 +850,6 @@ function lorStatChip(icon, val, owner, key, title = "") {
   </div>`;
 }
 
-/** 瞬間防御力: 盾 + 右上ゲージ */
-function lorInstantDefStatRow(owner, s) {
-  const isEditable = window.devMode;
-  const val = Number(s.instantDef) || 0;
-  const maxRef = Math.max(1, Number(s.instantDefMax) || 999);
-  const pct = Math.min(100, (val / maxRef) * 100);
-  const arcLen = 44;
-  const dash = `${(pct / 100) * arcLen} ${arcLen}`;
-  return `
-  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
-    <span class="lorIdefIconWrap">
-      ${lorLucide("shield", "lorLxDef lorIdefShield")}
-      <span class="lorIdefGauge" aria-hidden="true">
-        <svg viewBox="0 0 36 28" width="34" height="26" class="lorIdefGaugeSvg">
-          <path d="M4 22 A16 16 0 0 1 32 22" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3.5" stroke-linecap="round"/>
-          <path d="M4 22 A16 16 0 0 1 32 22" fill="none" stroke="#f0d080" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${dash}"/>
-        </svg>
-      </span>
-    </span>
-    ${isEditable ? `
-      <input class="lorChipInput" type="number" value="${val}"
-        data-owner="${owner}" data-key="instantDef" data-type="val"
-        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
-    ` : `
-      <span class="lorChipVal">${val}</span>
-    `}
-  </div>`;
-}
-
 /** Lucide（game.html で lucide.min.js を読み込み、update 末尾で createIcons） */
 function lorLucide(name, cls = "") {
   const extra = cls ? ` ${cls}` : "";
@@ -896,14 +861,31 @@ function lorLucide(name, cls = "") {
 const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
 // HP: ハート
 const ICON_HP = lorLucide("heart", "lorLxHp");
-// 合計防御力: 剣と盾を横並び（IO イメージ）
-const ICON_SLD = `<span class="lorIoDef" aria-hidden="true">${lorLucide("sword", "lorIoS")}${lorLucide("shield", "lorIoH")}</span>`;
+// 合計防御力: 塗りつぶし盾（防御バーと同色）
+const ICON_SLD = lorLucide("shield", "lorLxDefTot");
 // 基礎攻撃力: 剣
 const ICON_ATK = lorLucide("sword", "lorLxAtk");
-// 基礎防御力: 盾
-const ICON_DEF = lorLucide("shield", "lorLxDef");
-// 瞬間防御力: シールドバッシュ（衝撃）→ hammer
-const ICON_IDEF = lorLucide("hammer", "lorLxIdef");
+// 基礎防御力: shield-ellipsis
+const ICON_DEF = lorLucide("shield-ellipsis", "lorLxDef");
+
+/** 瞬間防御力: shield-alert のみ */
+function lorInstantDefStatRow(owner, s) {
+  const isEditable = window.devMode;
+  const val = Number(s.instantDef) || 0;
+  return `
+  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
+    <span class="lorIdefIconWrap">
+      ${lorLucide("shield-alert", "lorLxIdef")}
+    </span>
+    ${isEditable ? `
+      <input class="lorChipInput" type="number" value="${val}"
+        data-owner="${owner}" data-key="instantDef" data-type="val"
+        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
+    ` : `
+      <span class="lorChipVal">${val}</span>
+    `}
+  </div>`;
+}
 
 function update(skipLogCheck = false) {
   applyInteractionLockState();
@@ -1267,36 +1249,85 @@ function updateMatchUI() {
     .lorLxHp { color: #ff6b9d; stroke: #ff6b9d; }
     .lorLxAtk { color: #ff8aab; stroke: #ff8aab; }
     .lorLxDef { color: #6a9cff; stroke: #6a9cff; }
-    .lorLxIdef { color: #f0d080; stroke: #f0d080; }
-    .lorLxCross {
-      position: relative;
+    .lorLxIdef { color: #7eb8ff; stroke: #7eb8ff; }
+    .lorLxDefTot svg {
+      fill: #2f80ed;
+      stroke: #173c66;
+      color: #2f80ed;
+    }
+    .lorLxDefTot {
       display: inline-flex;
-      width: 22px;
-      height: 20px;
       align-items: center;
       justify-content: center;
       vertical-align: middle;
     }
-    .lorLxCross .lorLxSldS {
-      position: absolute;
-      left: 0;
-      top: 1px;
-      width: 16px !important;
-      height: 16px !important;
-      transform: rotate(-38deg);
-      color: #ff6b9d;
-      stroke: #ff6b9d;
+    .lorIdefChip .lorIdefIconWrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
     }
-    .lorLxCross .lorLxSldH {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      width: 13px !important;
-      height: 13px !important;
-      transform: translate(1px, 1px);
-      color: #4f7cff;
-      stroke: #4f7cff;
+    .lorHpBarOuter {
+      border-color: rgba(231, 76, 60, 0.42) !important;
     }
+    .lorHpFill {
+      background: rgba(231, 76, 60, 0.92) !important;
+      box-shadow: none !important;
+    }
+    .handLimitDisplay {
+      font-size: 14px !important;
+      font-weight: 800 !important;
+      padding: 6px 12px !important;
+      border-radius: 8px !important;
+      background: rgba(0,0,0,0.5) !important;
+      border: 1px solid rgba(0,255,204,0.35) !important;
+      color: #e0f0ea !important;
+      margin-top: 6px !important;
+    }
+    .card.handCardLift {
+      transform: translateY(-16px);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    }
+    .zonePpModalOverlay {
+      position: fixed; inset: 0; z-index: 12000;
+      background: rgba(0,0,0,0.55);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .zonePpModalBox {
+      background: rgba(14,12,24,0.98);
+      border: 2px solid rgba(199,179,119,0.5);
+      border-radius: 12px;
+      padding: 22px 26px;
+      max-width: 420px;
+      color: #f0f0f0;
+      font-family: 'Outfit', sans-serif;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    }
+    .zonePpModalBox .zonePpLine1 { font-size: 15px; line-height: 1.7; margin-bottom: 14px; }
+    .zonePpRow { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px; }
+    .zonePpRow input {
+      width: 52px; text-align: center; font-size: 18px; font-weight: 800;
+      border-radius: 6px; border: 1px solid #5a4b27; background: #1a172c; color: #fff;
+    }
+    .zonePpRow button {
+      min-width: 40px; height: 40px; font-size: 20px; font-weight: 900;
+      border-radius: 8px; border: 1px solid #c7b377; background: rgba(199,179,119,0.2); color: #f0d080; cursor: pointer;
+    }
+    .zonePpCancel { margin-top: 4px; font-size: 14px; color: #aaa; cursor: pointer; text-decoration: underline; }
+    #ctxDamageMenuHint {
+      position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+      z-index: 6000; pointer-events: none;
+      font-size: 12px; color: rgba(255,255,255,0.38);
+      letter-spacing: 0.5px;
+      font-family: 'Outfit', sans-serif;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    #ctxDamageMenuHint.is-visible { opacity: 1; }
     /* ファーストドロー選択 UI */
     .firstDrawCardOuter { position:relative; width:90px; height:130px; flex-shrink:0; cursor:pointer; border-radius:10px; box-sizing:border-box; transition: box-shadow .2s ease, transform .2s ease; }
     .firstDrawCardOuter:hover { transform: translateY(-2px); }
@@ -1314,6 +1345,28 @@ function updateMatchUI() {
     .firstDrawCardOuter--picked .firstDrawCheckRing {
       border-color:#00ffcc; color:#00ffcc; background:rgba(0,32,28,0.92);
       box-shadow: 0 0 10px rgba(0,255,204,0.35);
+    }
+    .firstDrawHideVisLabel .cardVisibilityLabel { display: none !important; }
+    .firstDrawPhaseMainRow { display:flex; align-items:flex-start; gap:20px; width:100%; }
+    .firstDrawPhaseLeftCol { flex:1 1 auto; min-width:0; }
+    .firstDrawPickRow {
+      display:flex; justify-content:flex-start; align-items:flex-start; gap:12px; flex-wrap:wrap;
+      margin-bottom:12px; min-height:140px;
+    }
+    .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:16px; }
+    .firstDrawPickPreviewCol { flex:0 0 212px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
+    .firstDrawPickPreviewCaption { font-size:11px; color:#889; margin-bottom:8px; text-align:center; letter-spacing:0.02em; }
+    .firstDrawLastPickPreview {
+      width:100%; min-height:268px; display:flex; align-items:center; justify-content:center;
+      border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
+    }
+    .firstDrawLastPickPreview .firstDrawLastPickClone {
+      width:188px !important; height:271px !important; pointer-events:none; border-radius:10px; overflow:hidden;
+      box-shadow:0 10px 28px rgba(0,0,0,0.45);
+    }
+    .firstDrawCardOuter--kept {
+      transform: scale(1.04);
+      box-shadow: 0 0 0 2px rgba(240,208,128,0.55), 0 8px 26px rgba(0,0,0,0.38);
     }
   `;
   document.head.appendChild(s);
@@ -1934,7 +1987,7 @@ function startFirstDrawPhase() {
   window._firstDrawPhaseStarted = true;
   if (typeof window.takeOut === "function") {
     const n = getFirstDrawRevealCount(me, m);
-    window.takeOut(n, { visibility: "self" });
+    window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
   } else {
     console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
   }
@@ -2004,22 +2057,32 @@ function updateFirstDrawPhaseUI() {
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 
-  if (!overlay.dataset.shellBuilt) {
+  if (overlay.dataset.shellBuilt !== "2") {
     overlay.innerHTML = `
-    <div style="width:100%;max-width:900px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
+    <div style="width:100%;max-width:1000px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
       <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
       <p id="firstDrawPhaseSub" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:10px;text-align:center;">
         カードをタップして選択／解除できます（丸にチェックが付きます）。<strong style="color:#f0d080;">ちょうど3枚</strong>のときだけ確定できます。残りは山札へ戻ります。
       </p>
       <p id="firstDrawPhaseProgress" style="color:#889;font-size:12px;line-height:1.5;margin-bottom:12px;text-align:center;"></p>
       <div id="firstDrawPhaseMessage" style="color:#aaa;font-size:14px;text-align:center;margin-bottom:18px;"></div>
-      <div id="firstDrawPhaseCards" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;min-height:140px;"></div>
-      <div style="text-align:center;">
-        <button id="firstDrawPhaseConfirm" type="button" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer;max-width:100%;" disabled>準備中…</button>
+      <div id="firstDrawPhaseMainRow" class="firstDrawPhaseMainRow">
+        <div id="firstDrawPhaseLeftCol" class="firstDrawPhaseLeftCol">
+          <div id="firstDrawPhaseCards" class="firstDrawPickRow"></div>
+          <div style="text-align:center;">
+            <button id="firstDrawPhaseConfirm" type="button" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer;max-width:100%;" disabled>準備中…</button>
+          </div>
+        </div>
+        <div id="firstDrawPickPreviewCol" class="firstDrawPickPreviewCol">
+          <div class="firstDrawPickPreviewCaption">直近にタップしたカード</div>
+          <div id="firstDrawLastPickPreview" class="firstDrawLastPickPreview"></div>
+        </div>
       </div>
     </div>
   `;
-    overlay.dataset.shellBuilt = "1";
+    overlay.dataset.shellBuilt = "2";
+    delete overlay.dataset.cardsBound;
+    delete overlay.dataset.localFirstDrawLocked;
   }
 
   startFirstDrawPhase();
@@ -2075,6 +2138,8 @@ function updateFirstDrawPhaseUI() {
           : `確定するには ${selected.length - 3} 枚の選択を外してください（現在 ${selected.length}/3）`;
   };
 
+  const previewHost = overlay.querySelector("#firstDrawLastPickPreview");
+
   useCandidates.forEach((card, index) => {
     const outer = document.createElement("div");
     outer.className = "firstDrawCardOuter";
@@ -2102,6 +2167,17 @@ function updateFirstDrawPhaseUI() {
         outer.classList.add("firstDrawCardOuter--picked");
       }
       syncPickUi();
+      if (previewHost) {
+        previewHost.innerHTML = "";
+        const snap = useCandidates[index];
+        if (snap) {
+          const pv = snap.cloneNode(true);
+          pv.classList.add("firstDrawCardClone", "firstDrawLastPickClone");
+          const pvLbl = pv.querySelector(".cardVisibilityLabel");
+          if (pvLbl) pvLbl.remove();
+          previewHost.appendChild(pv);
+        }
+      }
     });
 
     cardArea.appendChild(outer);
@@ -2116,6 +2192,57 @@ function updateFirstDrawPhaseUI() {
     const chosen = selected.map((i) => useCandidates[i]).filter(Boolean);
     const unchosen = useCandidates.filter((_, i) => !selected.includes(i));
 
+    const previewCol = overlay.querySelector("#firstDrawPickPreviewCol");
+    if (previewCol) previewCol.style.visibility = "hidden";
+
+    const playExit = (el) => {
+      if (!el) return Promise.resolve();
+      if (typeof el.animate === "function") {
+        return el
+          .animate(
+            [
+              { opacity: 1, transform: "scale(1) translateY(0)" },
+              { opacity: 0, transform: "scale(0.78) translateY(14px)" },
+            ],
+            { duration: 400, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" }
+          )
+          .finished.catch(() => {});
+      }
+      return new Promise((r) => setTimeout(r, 400));
+    };
+
+    cardArea.querySelectorAll(".firstDrawCardOuter").forEach((outer) => {
+      const idx = Number(outer.dataset.firstDrawIndex);
+      if (selected.includes(idx)) outer.classList.add("firstDrawCardOuter--kept");
+    });
+
+    const overlayExitPromises = [];
+    cardArea.querySelectorAll(".firstDrawCardOuter").forEach((outer) => {
+      const idx = Number(outer.dataset.firstDrawIndex);
+      if (selected.includes(idx)) return;
+      overlayExitPromises.push(
+        playExit(outer).then(() => {
+          outer.remove();
+        })
+      );
+    });
+
+    const fieldExitPromises = unchosen.map((card) =>
+      playExit(card).then(() => {
+        const rawId = card.dataset.id;
+        if (rawId) {
+          const isTemp = card.dataset.isTemp === "true";
+          const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+          insertCardIntoDeckAtRandom(me, storeId);
+        }
+        card.remove();
+      })
+    );
+
+    await Promise.all([...overlayExitPromises, ...fieldExitPromises]);
+
+    cardArea.classList.add("firstDrawPickRow--finalThree");
+
     const deckObj = field.querySelector(`.deckObject[data-owner="${me}"]`);
     const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
     const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
@@ -2125,6 +2252,7 @@ function updateFirstDrawPhaseUI() {
         : 1527;
 
     chosen.forEach((card, idx) => {
+      card.classList.remove("firstDrawHideVisLabel");
       card.dataset.visibility = "self";
       card.classList.remove("visibilityNone");
       card.classList.add("visibilitySelf");
@@ -2137,16 +2265,6 @@ function updateFirstDrawPhaseUI() {
       card.dataset.x = String(40 + idx * 100);
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
-    });
-
-    unchosen.forEach((card) => {
-      const rawId = card.dataset.id;
-      if (rawId) {
-        const isTemp = card.dataset.isTemp === "true";
-        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
-        insertCardIntoDeckAtRandom(me, storeId);
-      }
-      card.remove();
     });
 
     if (typeof window.organizeHands === "function") window.organizeHands();
@@ -2165,6 +2283,16 @@ function updateFirstDrawPhaseUI() {
       addGameLog(`${playerName} が 手札を3枚選び、残り${pickN - 3}枚を山札のランダムな位置に戻しました`);
     }
 
+    await new Promise((r) => setTimeout(r, 520));
+
+    cardArea.innerHTML = "";
+    cardArea.classList.remove("firstDrawPickRow--finalThree");
+    if (previewCol) {
+      previewCol.style.visibility = "";
+      const ph = overlay.querySelector("#firstDrawLastPickPreview");
+      if (ph) ph.innerHTML = "";
+    }
+
     const gameRoom = localStorage.getItem("gameRoom");
     const readyKey = me === "player1" ? "firstDrawP1Ready" : "firstDrawP2Ready";
     if (gameRoom && firebaseClient?.db) {
@@ -2176,7 +2304,6 @@ function updateFirstDrawPhaseUI() {
     }
     state.matchData[readyKey] = true;
 
-    cardArea.innerHTML = "";
     overlay.dataset.cardsBound = "1";
     if (gameRoom && firebaseClient?.db) {
       await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(() => {});
@@ -3024,6 +3151,17 @@ function handleChatSend() {
 let _chatEventsBound = false;
 let _gameBootstrapped = false;
 
+function setupGameUiEnhancements() {
+  const chat = document.getElementById("chatArea");
+  if (!chat || chat.dataset.expandToggle === "1") return;
+  chat.dataset.expandToggle = "1";
+  chat.addEventListener("click", (e) => {
+    if (e.target.closest("#chatInputRow")) return;
+    if (e.target.closest("#chatInput") || e.target.closest("#chatSendBtn")) return;
+    chat.classList.toggle("chat-expanded");
+  });
+}
+
 async function initGame() {
   if (_gameBootstrapped) {
     console.log("[initGame] already bootstrapped - skip duplicate init");
@@ -3238,6 +3376,7 @@ async function initGame() {
       gameState: JSON.parse(JSON.stringify(state)),
       fieldCards: []
     };
+    setupGameUiEnhancements();
     setupRoomWatcher();
 
     // ── 7. 自分の最新状態を Firebase に送信（整合性担保） ──

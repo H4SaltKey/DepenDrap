@@ -683,13 +683,17 @@ body.isDraggingCard #field .deckObject{
 }
 
 .lorHpFill {
-  background: linear-gradient(90deg, #7b1c1c, #e74c3c, #ff8a80);
-  box-shadow: 0 0 6px rgba(231,76,60,0.5);
+  background: rgba(231, 76, 60, 0.92);
+  box-shadow: none;
+}
+
+.lorHpBarOuter {
+  border-color: rgba(231, 76, 60, 0.42);
 }
 
 .lorDefstackFill{
-  background: linear-gradient(90deg, #1a3a6e, #2f80ed, #74b9ff);
-  box-shadow: 0 0 6px rgba(47,128,237,0.5);
+  background: #2f80ed;
+  box-shadow: 0 0 6px rgba(47,128,237,0.45);
 }
 
 .lorValGroup{
@@ -1999,6 +2003,102 @@ button{
 }
 #chatSendBtn:hover {
   background: rgba(200, 155, 60, 0.4);
+}
+
+/* チャット展開（クリックでトグル） */
+#chatArea.chat-expanded {
+  max-height: calc(100vh - 24px);
+  z-index: 7000;
+}
+#chatArea.chat-expanded #chatLogs {
+  height: calc(100vh - 120px);
+  min-height: 200px;
+  max-height: calc(100vh - 100px);
+}
+
+.opHandLimitDisplay {
+  top: -40px !important;
+  bottom: auto !important;
+  left: 10px !important;
+  right: auto !important;
+}
+
+.zoneStackInspectPanel {
+  position: fixed;
+  z-index: 12050;
+  background: rgba(12, 10, 22, 0.96);
+  border: 1px solid rgba(199, 179, 119, 0.45);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  max-width: min(96vw, 720px);
+  font-family: 'Outfit', sans-serif;
+}
+
+.zoneStackInspectHead {
+  font-size: 11px;
+  color: #a9a4c4;
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+
+.zoneStackInspectRow {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  max-width: 92vw;
+}
+
+.zoneStackInspectItem {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 102px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  background: #111;
+}
+
+.zoneStackInspectOrder {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 800;
+  color: #f0d080;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.2;
+}
+
+.zoneStackInspectImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.handReorderGuide {
+  position: absolute;
+  width: 3px;
+  z-index: 8600;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 255, 204, 0.08),
+    rgba(0, 255, 204, 0.95) 35%,
+    rgba(0, 255, 204, 0.95) 65%,
+    rgba(0, 255, 204, 0.08)
+  );
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.55);
 }
 
 .log-entry {

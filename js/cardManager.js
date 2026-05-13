@@ -62,6 +62,8 @@ let prevZoneLogState = null;
 
 const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];
 const ZONE_RECT = { w: CARD_W, h: CARD_H };
+const HAND_ZONE_Y_MIN = 1460;
+window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
 
 function nextZoneOrder() {
   zoneOrderCounter += 1;
@@ -89,10 +91,10 @@ function getZoneAnchor(owner, type) {
     };
   }
   if (type === "grave") {
-    return {
-      x: isMine ? (FIELD_W - CARD_W - 80) : 80,
-      y: midY
-    };
+    if (isMine) {
+      return { x: FIELD_W - CARD_W - 20, y: FIELD_H - CARD_H - 400 };
+    }
+    return { x: 20, y: 180 };
   }
   return { x: attackerX, y: attackerY };
 }
@@ -145,28 +147,31 @@ function ensureBattleZoneUIs() {
     const isMine = owner === (window.myRole || "player1");
     BATTLE_ZONE_TYPES.forEach((type) => {
       const id = `battleZone_${owner}_${type}`;
-      if (document.getElementById(id)) return;
-      const el = document.createElement("div");
-      el.id = id;
-      el.className = `battleZone battleZone-${type} ${isMine ? "mine" : "enemy"}`;
-      el.dataset.owner = owner;
-      el.dataset.zoneType = type;
-      el.style.position = "absolute";
-      el.style.width = `${CARD_W}px`;
-      el.style.height = `${CARD_H}px`;
-      el.style.zIndex = "0";
-      el.style.pointerEvents = type === "attacker" ? "none" : "auto";
-      el.innerHTML = `<div class="battleZoneLabel">${type === "attacker" ? "ATK" : type === "skill" ? "SKILL" : "GRAVE"}</div><div class="battleZoneCount"></div>`;
-      if (owner !== (window.myRole || "player1")) {
-        el.style.transform = "rotate(180deg)";
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement("div");
+        el.id = id;
+        el.className = `battleZone battleZone-${type} ${isMine ? "mine" : "enemy"}`;
+        el.dataset.owner = owner;
+        el.dataset.zoneType = type;
+        el.style.position = "absolute";
+        el.style.width = `${CARD_W}px`;
+        el.style.height = `${CARD_H}px`;
+        el.style.zIndex = "0";
+        el.style.pointerEvents = type === "attacker" ? "none" : "auto";
+        el.innerHTML = `<div class="battleZoneLabel">${type === "attacker" ? "ATK" : type === "skill" ? "SKILL" : "GRAVE"}</div><div class="battleZoneCount"></div>`;
+        if (owner !== (window.myRole || "player1")) {
+          el.style.transform = "rotate(180deg)";
+        }
+        content.appendChild(el);
       }
-      content.appendChild(el);
+      bindBattleZoneStackInspect(el, owner, type);
     });
   });
 }
 
-let zoneHoverPreviewCards = {};
 let zoneHoverHideTimer = null;
+let zoneStackInspectPanel = null;
 
 function cancelZoneHoverHide() {
   if (zoneHoverHideTimer) {
@@ -178,104 +183,102 @@ function cancelZoneHoverHide() {
 function scheduleZoneHoverHide() {
   cancelZoneHoverHide();
   zoneHoverHideTimer = setTimeout(() => {
-    hideZonePreviewCards();
-  }, 120);
+    hideZoneStackInspectPanel();
+  }, 160);
 }
 
-function createZoneHoverPreviewCard(originalCard, cardIndex, totalCards, overlapRate, anchor) {
-  const cardId = originalCard.dataset.id;
-  const data = getCardData(cardId) || {};
-  const preview = document.createElement("div");
-  preview.className = "card zoneHoverPreviewCard";
-  preview.dataset.id = cardId;
-  preview.dataset.originalInstanceId = originalCard.dataset.instanceId || "";
-  preview.dataset.zoneHoverPreview = "true";
-  preview.dataset.previewIndex = String(cardIndex);
-  preview.style.position = "absolute";
-  preview.style.width = `${CARD_W}px`;
-  preview.style.height = `${CARD_H}px`;
-  preview.style.pointerEvents = "auto";
-  preview.style.cursor = "pointer";
-  preview.style.background = "#111";
-  preview.style.border = "1px solid rgba(255,255,255,0.08)";
-  preview.style.boxSizing = "border-box";
-  preview.style.overflow = "hidden";
-  preview.style.zIndex = String(500 + cardIndex);
+function hideZoneStackInspectPanel() {
+  cancelZoneHoverHide();
+  if (zoneStackInspectPanel && zoneStackInspectPanel.parentNode) {
+    zoneStackInspectPanel.remove();
+  }
+  zoneStackInspectPanel = null;
+}
 
-  const step = CARD_W * (1 - overlapRate);
-  const offsetX = anchor.x - step * (totalCards - 1 - cardIndex);
-  preview.dataset.x = String(offsetX);
-  preview.dataset.y = String(anchor.y);
-  preview.style.left = `${offsetX}px`;
-  preview.style.top = `${anchor.y}px`;
+/**
+ * スキル場／墓地: ホバーで積み順＋画像を一覧し、各カードは右クリックで通常メニュー
+ */
+function showZoneStackInspectHover(owner, type) {
+  const cards = getZoneCards(owner, type);
+  if (cards.length === 0) {
+    hideZoneStackInspectPanel();
+    return;
+  }
 
-  const img = document.createElement("img");
-  setSafeSrc(img, data.image || originalCard.querySelector("img")?.src || "");
-  img.draggable = false;
-  img.style.width = "100%";
-  img.style.height = "100%";
-  img.style.objectFit = "contain";
-  img.style.pointerEvents = "none";
+  hideZoneStackInspectPanel();
 
-  const label = document.createElement("div");
-  label.className = "cardVisibilityLabel";
-  label.textContent = originalCard.querySelector(".cardVisibilityLabel")?.textContent || "";
+  const panel = document.createElement("div");
+  panel.id = "zoneStackInspectPanel";
+  panel.className = "zoneStackInspectPanel";
+  panel.dataset.owner = owner;
+  panel.dataset.zoneType = type;
 
-  const takeOutBtn = document.createElement("button");
-  takeOutBtn.textContent = "取り出す";
-  takeOutBtn.style.cssText = `
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    padding: 2px 4px;
-    font-size: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 3px;
-    cursor: pointer;
-    z-index: 10;
-  `;
-  takeOutBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    takeOutCardFromZone(originalCard);
+  const title = type === "skill" ? "スキル場" : "墓地";
+  const head = document.createElement("div");
+  head.className = "zoneStackInspectHead";
+  head.textContent = `${title}（1=下・古い順／右ほど上）`;
+
+  const row = document.createElement("div");
+  row.className = "zoneStackInspectRow";
+
+  cards.forEach((c, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "zoneStackInspectItem";
+    const ord = document.createElement("div");
+    ord.className = "zoneStackInspectOrder";
+    ord.textContent = String(i + 1);
+    const img = document.createElement("img");
+    const cid = c.dataset.id;
+    const data = typeof getCardData === "function" ? getCardData(cid) : {};
+    setSafeSrc(img, (data && data.image) || c.querySelector("img")?.src || "");
+    img.className = "zoneStackInspectImg";
+    img.draggable = false;
+    wrap.appendChild(ord);
+    wrap.appendChild(img);
+    wrap.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof openCardMenu === "function") openCardMenu(c, e.clientX, e.clientY);
+    });
+    wrap.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (typeof showCardZoom === "function") showCardZoom(c);
+    });
+    row.appendChild(wrap);
   });
 
-  preview.appendChild(img);
-  preview.appendChild(label);
-  preview.appendChild(takeOutBtn);
+  panel.appendChild(head);
+  panel.appendChild(row);
+  panel.addEventListener("pointerenter", cancelZoneHoverHide);
+  panel.addEventListener("pointerleave", scheduleZoneHoverHide);
 
-  preview.addEventListener("pointerenter", () => {
-    preview.style.zIndex = "5999";
-    cancelZoneHoverHide();
-  });
-  preview.addEventListener("pointerleave", () => {
-    preview.style.zIndex = String(500 + cardIndex);
-    scheduleZoneHoverHide();
-  });
-  preview.addEventListener("contextmenu", (e) => {
-    const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
-    if (!original) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (typeof openCardMenu === "function") openCardMenu(original, e.clientX, e.clientY);
-  });
-  preview.addEventListener("click", (e) => {
-    const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
-    if (!original) return;
-    e.stopPropagation();
-    if (typeof showCardZoom === "function") showCardZoom(original);
-  });
+  document.body.appendChild(panel);
+  zoneStackInspectPanel = panel;
 
-  return preview;
+  const zoneEl = document.getElementById(`battleZone_${owner}_${type}`);
+  const br = zoneEl ? zoneEl.getBoundingClientRect() : { left: 8, top: 80, width: 0, bottom: 120 };
+
+  const place = () => {
+    const pw = panel.offsetWidth || 320;
+    const ph = panel.offsetHeight || 120;
+    let left = br.left + (br.width / 2) - pw / 2;
+    left = Math.max(8, Math.min(window.innerWidth - pw - 8, left));
+    let top = br.top - ph - 10;
+    if (top < 8) top = Math.min(window.innerHeight - ph - 8, br.bottom + 10);
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+  };
+  requestAnimationFrame(() => {
+    place();
+  });
 }
 
 function attachZoneHoverListeners(card, owner, type) {
   if (!card || card.dataset.zoneHoverAttached === "true") return;
   card.dataset.zoneHoverAttached = "true";
   card.addEventListener("pointerenter", () => {
-    if (getZoneCards(owner, type).length > 1) {
-      showZonePreviewCards(owner, type);
+    if (getZoneCards(owner, type).length >= 1) {
+      showZoneStackInspectHover(owner, type);
     }
   });
   card.addEventListener("pointerleave", () => {
@@ -283,35 +286,16 @@ function attachZoneHoverListeners(card, owner, type) {
   });
 }
 
-function showZonePreviewCards(owner, type) {
-  const cards = getZoneCards(owner, type);
-  if (cards.length < 2) {
-    hideZonePreviewCards();
-    return;
-  }
-
-  hideZonePreviewCards();
-  const content = getFieldContent();
-  if (!content) return;
-
-  const anchor = getZoneAnchor(owner, type);
-  const overlapRate = Math.min(0.95, 0.65 + Math.max(0, cards.length - 1) * 0.02);
-  const previewCards = [];
-
-  cards.slice(0, -1).forEach((card, index) => {
-    const preview = createZoneHoverPreviewCard(card, index, cards.length, overlapRate, anchor);
-    content.appendChild(preview);
-    previewCards.push(preview);
+function bindBattleZoneStackInspect(zoneEl, owner, type) {
+  if (!zoneEl || (type !== "skill" && type !== "grave")) return;
+  if (zoneEl.dataset.stackInspectBound === "1") return;
+  zoneEl.dataset.stackInspectBound = "1";
+  zoneEl.addEventListener("pointerenter", () => {
+    if (getZoneCards(owner, type).length >= 1) showZoneStackInspectHover(owner, type);
   });
-
-  zoneHoverPreviewCards[`${owner}:${type}`] = previewCards;
-}
-
-function hideZonePreviewCards() {
-  Object.values(zoneHoverPreviewCards).flat().forEach(el => {
-    if (el && el.parentNode) el.remove();
+  zoneEl.addEventListener("pointerleave", () => {
+    scheduleZoneHoverHide();
   });
-  zoneHoverPreviewCards = {};
 }
 
 function takeOutCardFromZone(card) {
@@ -320,10 +304,11 @@ function takeOutCardFromZone(card) {
   // 手札に追加
   const owner = card.dataset.owner;
   // 次のhandOrderを取得
-  const hands = Array.from(getFieldContent().querySelectorAll('.card')).filter(c => c.dataset.owner === owner && parseInt(c.dataset.y) >= 1500);
+  const handY = FIELD_H - CARD_H - 20;
+  const hands = Array.from(getFieldContent().querySelectorAll('.card')).filter(c => c.dataset.owner === owner && parseInt(c.dataset.y) >= HAND_ZONE_Y_MIN);
   const maxOrder = hands.length > 0 ? Math.max(...hands.map(c => parseInt(c.dataset.handOrder || 0))) : 0;
   card.dataset.handOrder = String(maxOrder + 1);
-  card.dataset.y = "1500";
+  card.dataset.y = String(handY);
   // fieldContentに追加
   getFieldContent().appendChild(card);
   // organizeHands
@@ -350,7 +335,7 @@ function updateBattleZoneUI() {
       if (!countEl) return;
       if (type === "grave") countEl.textContent = `${cards.length}枚`;
       else countEl.textContent = cards.length > 0 ? "●" : "○";
-      if ((type === "skill" || type === "grave") && cards.length > 1) {
+      if ((type === "skill" || type === "grave") && cards.length >= 1) {
         const topCard = cards[cards.length - 1];
         if (topCard) attachZoneHoverListeners(topCard, owner, type);
       }
@@ -906,6 +891,154 @@ function addCardToField(id, visibility = "both"){
   placeCard(field, card, getNextFieldPosition());
 }
 
+function restoreCardElToPrev(el) {
+  const px = Number(el.dataset.prevX || 0) || 0;
+  const py = Number(el.dataset.prevY || 0) || 0;
+  el.style.left = px + "px";
+  el.style.top = py + "px";
+  el.dataset.x = String(px);
+  el.dataset.y = String(py);
+  const pz = el.dataset.prevZoneType || "";
+  const owner = el.dataset.owner || window.myRole || "player1";
+  if (pz === "attacker" || pz === "skill" || pz === "grave") {
+    placeCardInZone(el, owner, pz);
+    if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  } else {
+    clearZoneMarker(el);
+  }
+}
+
+function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
+  const overlay = document.createElement("div");
+  overlay.className = "zonePpModalOverlay";
+  const labelZone = zoneType === "attacker" ? "アタッカー" : "スキル";
+  overlay.innerHTML = `
+    <div class="zonePpModalBox" role="dialog" aria-modal="true">
+      <div class="zonePpLine1">PPを <strong>減少</strong>／<strong>増加</strong>ボタンと数値（0〜2）で指定し、<b>${labelZone}</b>場に出します。</div>
+      <div class="zonePpRow">
+        <button type="button" id="zonePpDec">−</button>
+        <input id="zonePpCostInput" type="number" min="0" max="2" value="0" inputmode="numeric" />
+        <button type="button" id="zonePpInc">＋</button>
+      </div>
+      <div style="margin-bottom:14px;"><button type="button" id="zonePpOk" style="padding:10px 22px;background:#c7b377;border:none;border-radius:8px;font-weight:800;cursor:pointer;color:#1a172c;">場に出す</button></div>
+      <div class="zonePpCancel" id="zonePpCancel" role="button" tabindex="0">キャンセル</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const inp = overlay.querySelector("#zonePpCostInput");
+  const clamp = (v) => Math.max(0, Math.min(2, v));
+  const setV = (v) => { inp.value = String(clamp(v)); };
+  overlay.querySelector("#zonePpDec").onclick = () => setV((parseInt(inp.value, 10) || 0) - 1);
+  overlay.querySelector("#zonePpInc").onclick = () => setV((parseInt(inp.value, 10) || 0) + 1);
+
+  const close = () => {
+    overlay.remove();
+    if (typeof onDone === "function") onDone();
+  };
+
+  overlay.querySelector("#zonePpCancel").onclick = () => {
+    restoreCardElToPrev(cardEl);
+    close();
+  };
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      restoreCardElToPrev(cardEl);
+      close();
+    }
+  });
+
+  overlay.querySelector("#zonePpOk").onclick = () => {
+    const cost = clamp(parseInt(inp.value, 10) || 0);
+    const st = typeof state !== "undefined" ? state[owner] : null;
+    if (!st) {
+      close();
+      return;
+    }
+    if (st.pp < cost) {
+      alert("PPが足りません。");
+      return;
+    }
+    st.pp -= cost;
+    placeCardInZone(cardEl, owner, zoneType);
+    if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+    if (typeof update === "function") update();
+    close();
+  };
+}
+
+function clearHandReorderGuides() {
+  const content = getFieldContent();
+  if (!content) return;
+  content.querySelectorAll(".handReorderGuide").forEach((n) => n.remove());
+}
+
+/**
+ * 手札内並べ替え時、挿入位置に縦線を表示
+ */
+function updateHandReorderGuides(dragEl, fieldX, fieldY) {
+  clearHandReorderGuides();
+  const myRole2 = window.myRole || "player1";
+  if (!dragEl || dragEl.dataset.owner !== myRole2) return;
+
+  const handLineY = FIELD_H - CARD_H - 20;
+  let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
+  const handBg = document.getElementById("myHandZoneBg");
+  const field = document.getElementById("field");
+  if (handBg && field) {
+    const fr = field.getBoundingClientRect();
+    const cxc = fieldX + CARD_W / 2;
+    const cyc = fieldY + CARD_H / 2;
+    const br = handBg.getBoundingClientRect();
+    const padX = 90;
+    const padY = 110;
+    const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
+    const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
+    const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;
+    const hy1 = (br.bottom - fr.top - fieldPanY) / fieldZoom + padY;
+    if (cxc >= hx0 && cxc <= hx1 && cyc >= hy0 && cyc <= hy1) inHandDrop = true;
+  }
+  const treatAsHand = inHandDrop || fieldY >= HAND_ZONE_Y_MIN;
+  if (!treatAsHand) return;
+
+  const content = getFieldContent();
+  if (!content) return;
+  const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+  const other = cards.filter(
+    (c) => c.dataset.owner === myRole2 && Number(c.dataset.y) >= HAND_ZONE_Y_MIN && c !== dragEl
+  );
+  if (other.length === 0) return;
+
+  other.sort((a, b) => Number(a.dataset.x || 0) - Number(b.dataset.x || 0));
+  const dropCx = fieldX + CARD_W / 2;
+  let slot = 0;
+  for (let i = 0; i < other.length; i++) {
+    const cardCenterX = Number(other[i].dataset.x || 0) + CARD_W / 2;
+    if (dropCx > cardCenterX) slot = i + 1;
+    else break;
+  }
+
+  let boundaryX;
+  if (slot === 0) boundaryX = Number(other[0].dataset.x || 0) - 8;
+  else if (slot >= other.length) boundaryX = Number(other[other.length - 1].dataset.x || 0) + CARD_W + 8;
+  else {
+    boundaryX =
+      (Number(other[slot - 1].dataset.x || 0) +
+        CARD_W +
+        Number(other[slot].dataset.x || 0)) /
+      2;
+  }
+
+  const g = document.createElement("div");
+  g.className = "handReorderGuide";
+  g.style.left = `${boundaryX - 1.5}px`;
+  g.style.top = `${handLineY + CARD_H * 0.06}px`;
+  g.style.height = `${CARD_H * 0.88}px`;
+  content.appendChild(g);
+}
+
 // ===== Pointer Eventsベースのドラッグ =====
 function enablePointerDrag(el){
   let pointerId = null;
@@ -970,10 +1103,16 @@ function enablePointerDrag(el){
 
     el.style.left = fieldX + "px";
     el.style.top  = fieldY + "px";
+
+    if (isDragging) {
+      updateHandReorderGuides(el, fieldX, fieldY);
+    }
   });
 
   el.addEventListener("pointerup", (e)=>{
     if(e.pointerId !== pointerId) return;
+
+    clearHandReorderGuides();
 
     el.style.opacity = "";
     document.body.classList.remove("isDraggingCard");
@@ -1025,6 +1164,18 @@ function enablePointerDrag(el){
         const a = getZoneAnchor(myRole2, type);
         return centerX >= a.x && centerX <= a.x + ZONE_RECT.w && centerY >= a.y && centerY <= a.y + ZONE_RECT.h;
       });
+      if (zoneHit === "attacker" || zoneHit === "skill") {
+        pointerId = null;
+        showBattleZonePpCostModal({
+          zoneType: zoneHit,
+          cardEl: el,
+          owner: myRole2,
+          onDone: () => {
+            document.body.classList.remove("isInteractingCard");
+          }
+        });
+        return;
+      }
       if (zoneHit) {
         placeCardInZone(el, myRole2, zoneHit);
         if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
@@ -1039,20 +1190,39 @@ function enablePointerDrag(el){
         clearZoneMarker(el);
       }
 
-      el.style.left = fieldX + "px";
-      el.style.top  = fieldY + "px";
-      el.dataset.x  = fieldX;
-      el.dataset.y  = fieldY;
+      const handLineY = FIELD_H - CARD_H - 20;
+      let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
+      const handBg = document.getElementById("myHandZoneBg");
+      if (handBg && field) {
+        const fr = field.getBoundingClientRect();
+        const cxc = fieldX + CARD_W / 2;
+        const cyc = fieldY + CARD_H / 2;
+        const br = handBg.getBoundingClientRect();
+        const padX = 90;
+        const padY = 110;
+        const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
+        const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
+        const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;
+        const hy1 = (br.bottom - fr.top - fieldPanY) / fieldZoom + padY;
+        if (cxc >= hx0 && cxc <= hx1 && cyc >= hy0 && cyc <= hy1) inHandDrop = true;
+      }
+      const treatAsHand = inHandDrop || fieldY >= HAND_ZONE_Y_MIN;
+
+      const placeY = treatAsHand ? handLineY : fieldY;
+      const placeX = fieldX;
+      el.style.left = placeX + "px";
+      el.style.top  = placeY + "px";
+      el.dataset.x  = placeX;
+      el.dataset.y  = placeY;
       
       // 手札エリアでのドラッグ移動の場合、handOrder を更新
-      if (el.dataset.owner === myRole2 && fieldY >= 1500) {
-        // このカードが手札エリアにドロップされた
+      if (el.dataset.owner === myRole2 && treatAsHand) {
         const content = getFieldContent();
         if (content) {
           const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
           const otherHandCards = cards.filter(c => 
             c.dataset.owner === myRole2 && 
-            Number(c.dataset.y) >= 1500 && 
+            Number(c.dataset.y) >= HAND_ZONE_Y_MIN && 
             c !== el
           );
           
@@ -1110,8 +1280,24 @@ function enablePointerDrag(el){
     document.body.classList.remove("isInteractingCard");
   });
 
+  el.addEventListener("pointerenter", () => {
+    const myRole = window.myRole || "player1";
+    if (el.dataset.owner !== myRole || el.classList.contains("deckObject")) return;
+    if (Number(el.dataset.y) >= HAND_ZONE_Y_MIN) {
+      el.classList.add("handCardLift");
+      window._lastHandHoverEl = el;
+      if (typeof window.organizeHands === "function") window.organizeHands();
+    }
+  });
+  el.addEventListener("pointerleave", () => {
+    el.classList.remove("handCardLift");
+    if (window._lastHandHoverEl === el) window._lastHandHoverEl = null;
+    if (typeof window.organizeHands === "function") window.organizeHands();
+  });
+
   el.addEventListener("pointercancel", (e)=>{
     if(e.pointerId !== pointerId) return;
+    clearHandReorderGuides();
     el.style.opacity = "";
     isDragging = false;
     draggingCard = null;
@@ -1194,7 +1380,7 @@ async function initCards(){
     const opHandBg = document.createElement("div");
     opHandBg.id = "opHandZoneBg";
     opHandBg.className = "handZoneBg opHandZoneBg";
-    opHandBg.innerHTML = '<div class="handZoneLabel">相手の手札エリア</div>';
+    opHandBg.innerHTML = '<div class="handZoneLabel">相手の手札エリア</div><div id="opHandLimitDisplay" class="handLimitDisplay opHandLimitDisplay"></div>';
     content.appendChild(opHandBg);
   }
   ensureBattleZoneUIs();
@@ -1281,48 +1467,67 @@ window.prevMyHandCount = -1;
 
 window.organizeHands = function() {
   const content = getFieldContent();
-  if(!content) return;
+  if (!content) return;
   const myRole = window.myRole || "player1";
-  
+  const opRole = myRole === "player1" ? "player2" : "player1";
+
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-  const myHandCards = cards.filter(c => c.dataset.owner === myRole && Number(c.dataset.y) >= 1500);
-  
+  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && Number(c.dataset.y) >= HAND_ZONE_Y_MIN);
+  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && Number(c.dataset.y) >= HAND_ZONE_Y_MIN);
+
   if (myHandCards.length > 0) {
-    // 手札のソート規則を手札に加えた順に変更
     myHandCards.sort((a, b) => {
       const oa = Number(a.dataset.handOrder || 0);
       const ob = Number(b.dataset.handOrder || 0);
       return oa - ob;
     });
 
-    const spacing = 40;
-    let startX = 40; // 左端詰め
     const handY = FIELD_H - CARD_H - 20;
+    const startX0 = 36;
+    const maxRowW = Math.min(FIELD_W - 72, Math.floor(FIELD_W * 0.9));
+    const n = myHandCards.length;
+    const baseGap = 40;
+    let step = baseGap;
+    let span = (n - 1) * step + CARD_W;
+    if (span > maxRowW && n > 1) {
+      step = Math.max(10, (maxRowW - CARD_W) / (n - 1));
+    }
 
-    myHandCards.forEach((c) => {
-      if (c === draggingCard) return; // ドラッグ中は動かさない
-      c.style.left = startX + "px";
+    myHandCards.forEach((c, i) => {
+      if (c === draggingCard) return;
+      const x = startX0 + i * step;
+      c.style.left = x + "px";
       c.style.top = handY + "px";
-      c.dataset.x = startX;
-      c.dataset.y = handY;
-      c.style.zIndex = ++cardZCounter;
-      startX += CARD_W + spacing;
+      c.dataset.x = String(x);
+      c.dataset.y = String(handY);
+      const baseZ = 200 + i;
+      c.style.zIndex = String(baseZ);
     });
+
+    const topHover = window._lastHandHoverEl;
+    if (topHover && myHandCards.includes(topHover) && topHover !== draggingCard) {
+      topHover.style.zIndex = String(9200 + (typeof cardZCounter !== "undefined" ? cardZCounter : 0));
+    }
   }
 
-  // 手札枚数の変更をチャットに記録
   if (window.prevMyHandCount !== -1 && window.prevMyHandCount !== myHandCards.length) {
     if (typeof addGameLog === "function") {
       addGameLog(`[SYSTEM] ${window.myUsername || state[myRole]?.username || myRole} の手札が ${myHandCards.length} 枚になりました。`);
     }
   }
 
-  // 手札枚数上限表示の更新
   const limitDisplay = document.getElementById("myHandLimitDisplay");
   if (limitDisplay) {
     const limit = window.getHandLimit(myRole);
-    limitDisplay.textContent = `${myHandCards.length}/${limit}`;
+    limitDisplay.textContent = `${myHandCards.length} / ${limit}`;
     limitDisplay.style.color = myHandCards.length > limit ? "#ff6666" : "#c7b377";
+  }
+
+  const opDisp = document.getElementById("opHandLimitDisplay");
+  if (opDisp) {
+    const olim = window.getHandLimit(opRole);
+    opDisp.textContent = `${opHandCards.length} / ${olim}`;
+    opDisp.style.color = opHandCards.length > olim ? "#ff8888" : "#c7b377";
   }
 
   window.prevMyHandCount = myHandCards.length;

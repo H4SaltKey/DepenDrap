@@ -223,29 +223,7 @@ function openCardMenu(card, x, y){
     const isMine = owner === me;
     items.push({ sep: true });
     items.push(
-      { label: "スキル場操作", disabled: true },
-      { sep: true },
-      {
-        label: "内容を確認",
-        action: () => {
-          if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "skill");
-        }
-      },
-      { sep: true },
-      {
-        label: "場のアタッカーカードを墓地へ送る",
-        disabled: !isMine,
-        action: () => {
-          if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "attacker");
-        }
-      },
-      {
-        label: "場のスキルカードを墓地へ送る",
-        disabled: !isMine,
-        action: () => {
-          if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "skill");
-        }
-      }
+      { label: "スキル場操作", disabled: true }
     );
   }
 
@@ -681,11 +659,12 @@ function drawToHand(count){
 
 /**
  * @param {number} count
- * @param {{ visibility?: "none"|"self" }} [opts] 省略時は "none"。ファーストドローは { visibility: "self" }
+ * @param {{ visibility?: "none"|"self", hideSelfVisibilityLabel?: boolean }} [opts] 省略時は "none"。ファーストドローは { visibility: "self", hideSelfVisibilityLabel: true } など
  */
 function takeOut(count, opts){
   opts = opts || {};
   const visMode = opts.visibility === "self" ? "self" : "none";
+  const hideSelfLabel = !!opts.hideSelfVisibilityLabel && visMode === "self";
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
@@ -728,6 +707,7 @@ function takeOut(count, opts){
 
     const lbl = card.querySelector(".cardVisibilityLabel");
     if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if (hideSelfLabel) card.classList.add("firstDrawHideVisLabel");
     if(typeof applyCardFace === "function") applyCardFace(card, vis);
 
     if(typeof placeCard === "function"){
@@ -975,8 +955,8 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     const meRole = window.myRole || "player1";
     const canApplyEvolution = targetOwner !== meRole;
 
-    // 瞬発の道: 本ダメージ前に脆弱ダメージ
-    if (canApplyEvolution && actualAmount >= 6 && me.evolutionPath === "瞬発の道") {
+    // 奇撃の道（旧: 瞬発の道）: 本ダメージ前に脆弱ダメージ
+    if (canApplyEvolution && actualAmount >= 6 && (me.evolutionPath === "奇撃の道" || me.evolutionPath === "瞬発の道")) {
       const z = [1, 3, 4, 6][getLvIdx(me.level || 1)];
       applyHit("fragile", z);
     }
@@ -1088,11 +1068,11 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   
   let actualAmount = amount;
   
-  // 瞬発の道: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
+  // 奇撃の道（旧: 瞬発の道）: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
   const meRole = window.myRole || "player1";
   const myState = state[meRole];
   const canApplyEvolution = targetOwner !== meRole;
-  if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && myState.evolutionPath === '瞬発の道') {
+  if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && (myState.evolutionPath === '奇撃の道' || myState.evolutionPath === '瞬発の道')) {
     const lv = myState.level || 1;
     let idx = 0;
     if (lv >= 6) idx = 3;
@@ -1103,7 +1083,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     
     s.defstack = Math.max(0, s.defstack - z);
     if (typeof addGameLog === "function") {
-      addGameLog(`[EVOLUTION] ${actor} の「瞬発の道」効果！ 直前に ${z} の脆弱ダメージを与えた！`);
+      addGameLog(`[EVOLUTION] ${actor} の「奇撃の道」効果！ 直前に ${z} の脆弱ダメージを与えた！`);
     }
   }
 
@@ -1227,13 +1207,6 @@ function openGraveZoneMenu(owner, x, y){
     { label: "墓地操作", disabled: true },
     { sep: true },
     {
-      label: "内容を確認",
-      action: () => {
-        if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "grave");
-      }
-    },
-    { sep: true },
-    {
       label: "場のアタッカーカードを墓地へ送る",
       disabled: !isMine,
       action: () => {
@@ -1252,32 +1225,8 @@ function openGraveZoneMenu(owner, x, y){
 }
 
 function openSkillZoneMenu(owner, x, y){
-  const me = window.myRole || "player1";
-  const isMine = owner === me;
   const items = [
-    { label: "スキル場操作", disabled: true },
-    { sep: true },
-    {
-      label: "内容を確認",
-      action: () => {
-        if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "skill");
-      }
-    },
-    { sep: true },
-    {
-      label: "場のアタッカーカードを墓地へ送る",
-      disabled: !isMine,
-      action: () => {
-        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "attacker");
-      }
-    },
-    {
-      label: "場のスキルカードを墓地へ送る",
-      disabled: !isMine,
-      action: () => {
-        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "skill");
-      }
-    }
+    { label: "スキル場操作", disabled: true }
   ];
   buildMenu(items, x, y);
 }
@@ -1340,6 +1289,27 @@ document.addEventListener("contextmenu", (e) => {
     openGameContextMenu(hit, e.clientX, e.clientY);
   }
 });
+
+// 相手ステータスパネル上でダメージメニューが使える旨を薄字表示
+(function setupCtxDamageMenuHint() {
+  let hint = document.getElementById("ctxDamageMenuHint");
+  document.addEventListener("mousemove", (e) => {
+    if (!hint) {
+      hint = document.createElement("div");
+      hint.id = "ctxDamageMenuHint";
+      hint.textContent = "右クリックでダメージメニュー";
+      document.body.appendChild(hint);
+    }
+    const t = e.target;
+    const lor = t && t.closest && t.closest(".lorPanel");
+    const me = window.myRole || window.getMyRole?.() || "player1";
+    if (lor && lor.dataset.owner && lor.dataset.owner !== me) {
+      hint.classList.add("is-visible");
+    } else {
+      hint.classList.remove("is-visible");
+    }
+  });
+})();
 
 // game.js など IIFE 外から山札ドロー操作を呼ぶため公開
 window.takeOut = takeOut;

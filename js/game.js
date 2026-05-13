@@ -310,6 +310,7 @@ function drawFromDeckObject() {
     addGameLog(`${window.myUsername || state[currentRole]?.username || currentRole} が カードを1枚引いた`);
   }
 
+/**
  * 自分の playerState を Firebase に送信（デバウンス付き）
  */
 let _syncMyStateTimer = null;

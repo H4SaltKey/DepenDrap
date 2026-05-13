@@ -12,8 +12,13 @@
   <header class="deckPageHeader">
     <button class="back-btn-inline" onclick="location.href='deckSelect.html'">保存して戻る</button>
     <div class="title-group">
-      <h2>デッキ構築</h2>
-      <span id="deckTitle"></span>
+      <div>
+        <h2>デッキ構築</h2>
+        <span id="deckTitle"></span>
+      </div>
+      <div id="deckStats" class="deckStats">
+        <span id="deckCountLabel">0</span> / <span id="deckCountHint">30〜40 枚</span>
+      </div>
     </div>
   </header>
 
@@ -75,7 +80,13 @@
 
   <section class="deckSection deckArea" id="deckDropZone">
     <div class="deckToolbar">
-      <h3>デッキ</h3>
+      <div class="deckToolbarHeading">
+        <h3>デッキ</h3>
+        <div class="deckStatusBar">
+          <span id="deckThresholdText">30〜40 枚で構築してください</span>
+          <div class="deckProgress"><div id="deckProgressBar"></div></div>
+        </div>
+      </div>
       <div class="deckHeaderControls">
         <div class="deckCodeBox">
           <label for="deckCodeInput">デッキコード</label>

@@ -4,6 +4,8 @@ let cardFilters = {
   attribute: "all",
   type: "all"
 };
+const DECK_MIN_SIZE = 30;
+const DECK_MAX_SIZE = 40;
 
 // URLパラメータからデッキIDを取得
 const DECK_ID = new URLSearchParams(location.search).get("deckId");
@@ -66,6 +68,10 @@ async function loadDeck() {
 
 // ===== カード操作 =====
 function addCard(id) {
+  if (getDeckLength() >= DECK_MAX_SIZE) {
+    showDeckMessage(`デッキは最大 ${DECK_MAX_SIZE} 枚です`);
+    return;
+  }
   deck.push(id);
   sortDeck();
   render();
@@ -113,12 +119,52 @@ function getDeckEntries() {
     .filter(entry => entry.count > 0);
 }
 
+function getDeckLength() {
+  return deck.length;
+}
+
 function showDeckMessage(text) {
   const deckMessage = document.getElementById("deckMessage");
+  if (!deckMessage) return;
   deckMessage.innerText = text;
+  deckMessage.classList.add("deckMessageActive");
   setTimeout(() => {
-    if (deckMessage.innerText === text) deckMessage.innerText = "";
+    if (deckMessage.innerText === text) {
+      deckMessage.innerText = "";
+      deckMessage.classList.remove("deckMessageActive");
+    }
   }, 1600);
+}
+
+function updateDeckStats() {
+  const count = getDeckLength();
+  const countLabel = document.getElementById("deckCountLabel");
+  const countHint = document.getElementById("deckCountHint");
+  const progressBar = document.getElementById("deckProgressBar");
+  const thresholdText = document.getElementById("deckThresholdText");
+  const deckStats = document.getElementById("deckStats");
+
+  if (countLabel) countLabel.textContent = String(count);
+  if (countHint) countHint.textContent = `${DECK_MIN_SIZE}〜${DECK_MAX_SIZE} 枚`; 
+  if (thresholdText) {
+    if (count < DECK_MIN_SIZE) {
+      thresholdText.textContent = `あと ${DECK_MIN_SIZE - count} 枚必要です`;
+    } else if (count > DECK_MAX_SIZE) {
+      thresholdText.textContent = `最大を ${count - DECK_MAX_SIZE} 枚超過しています`;
+    } else {
+      thresholdText.textContent = "デッキサイズが適正です";
+    }
+  }
+
+  if (progressBar) {
+    const progress = Math.min(100, Math.max(0, (count / DECK_MAX_SIZE) * 100));
+    progressBar.style.width = `${progress}%`;
+  }
+
+  if (deckStats) {
+    deckStats.classList.toggle("deckStatsWarning", count < DECK_MIN_SIZE || count > DECK_MAX_SIZE);
+    deckStats.classList.toggle("deckStatsReady", count >= DECK_MIN_SIZE && count <= DECK_MAX_SIZE);
+  }
 }
 
 function animateCardTransition(sourceEl, targetRect, onFinish) {
@@ -427,8 +473,8 @@ function render() {
   const cardIds = getFilteredCardIds();
   const deckEntries = getDeckEntries();
 
-  cardsDiv.innerHTML = "";
-  deckDiv.innerHTML = "";
+  if (cardsDiv) cardsDiv.innerHTML = "";
+  if (deckDiv) deckDiv.innerHTML = "";
 
   cardIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
   deckEntries.forEach(entry => deckDiv.appendChild(createCardElement(entry.id, entry.count, "deck")));
@@ -438,6 +484,7 @@ function render() {
   const codeInput = document.getElementById("deckCodeInput");
   if (codeInput) codeInput.value = code;
 
+  updateDeckStats();
   updateCardsScrollButtons();
   updateDeckScrollButtons();
 }

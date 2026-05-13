@@ -2100,6 +2100,19 @@ function updateReadyCheckUI() {
       .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
     </style>
   `;
+
+  if (!overlay.dataset.transitionScheduled) {
+    overlay.dataset.transitionScheduled = "true";
+    setTimeout(() => {
+      if (!window._bothPlayersConnected || state.matchData.status !== "ready_check") return;
+      state.matchData.status = window._isReload ? "reconnect_complete" : "order_phase";
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+      update();
+    }, 1200);
+  }
 }
 
 

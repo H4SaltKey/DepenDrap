@@ -1062,9 +1062,31 @@ body.deckPage{
     font-weight:700;
 }
 
-.deckPageHeader span{
+.deckPageHeader span,
+.deckPageHeader #deckStats {
     font-size:14px;
     color:#a09070;
+}
+
+#deckStats {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #f4f1d6;
+}
+
+#deckStats.deckStatsReady {
+    border-color: rgba(68, 188, 143, 0.35);
+    background: rgba(32, 76, 61, 0.4);
+}
+
+#deckStats.deckStatsWarning {
+    border-color: rgba(236, 100, 75, 0.4);
+    background: rgba(83, 28, 21, 0.35);
 }
 
 .cardListHeader{
@@ -1095,6 +1117,12 @@ body.deckPage{
     font-size:13px;
     color:#bbb;
     white-space:nowrap;
+}
+
+.deckMessageActive{
+    color:#f0e1a8;
+    opacity:1;
+    transition: opacity 0.2s ease;
 }
 
 /* ========================================
@@ -1428,6 +1456,49 @@ body.deckPage{
     color:#f4f1d6;
     white-space:nowrap;
     flex-shrink:0;
+}
+
+.deckToolbarHeading {
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    align-items:flex-start;
+    flex:1 1 0;
+    min-width:0;
+}
+
+.deckStatusBar {
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    width:100%;
+    min-width:220px;
+}
+
+.deckStatusBar span {
+    color:#d8c394;
+    font-size:12px;
+}
+
+.deckProgress {
+    position:relative;
+    width:100%;
+    height:10px;
+    border-radius:999px;
+    background: rgba(255,255,255,0.08);
+    overflow:hidden;
+}
+
+#deckProgressBar {
+    height:100%;
+    width:0;
+    border-radius:999px;
+    background: linear-gradient(90deg, #d8c394, #f4e6a8);
+    transition: width 0.25s ease;
+}
+
+.deckToolbarHeading span {
+    color:#f4f1d6;
 }
 
 .deckHeaderControls{

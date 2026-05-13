@@ -58,7 +58,7 @@
       text-align:center;
       line-height:50px;
       cursor:pointer;
-      z-index:9999;
+      z-index:10002;
     }
 
     #menuPanel{
@@ -66,7 +66,7 @@
       top:70px;
       right:15px;
       background:#222;
-      z-index:9999;
+      z-index:10002;
     }
 
     .menuItem{
@@ -88,7 +88,7 @@
       display:flex;
       justify-content:center;
       align-items:center;
-      z-index:10000;
+      z-index:10003;
     }
 
     .modalContent{

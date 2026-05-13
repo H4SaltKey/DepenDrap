@@ -1919,9 +1919,7 @@ function updateOrderPhaseUI() {
   const m = state.matchData;
   let overlay = document.getElementById("orderPhaseOverlay");
 
-  // order_phaseステータスの場合のみ表示。
-  // reconnect_completeは使用されない（再接続時は修正で適用されない）。
-  if (m.status !== "order_phase") {
+  if (m.status !== "order_phase" && m.status !== "reconnect_complete") {
     if (overlay) {
       overlay.style.opacity = "0";
       setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
@@ -1943,6 +1941,34 @@ function updateOrderPhaseUI() {
   }
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
+
+  if (m.status === "reconnect_complete") {
+    const turnOrderResolved = m.firstPlayer != null;
+    overlay.innerHTML = `
+      <div class="order-container" style="max-width:900px;width:90%;">
+        <h2 class="order-title" style="margin-bottom:20px;">再接続完了</h2>
+        <div style="font-size:16px;color:#c7b377;margin-bottom:24px;text-align:center;">ゲームに再接続しました。${turnOrderResolved ? 'ゲームを再開します。' : '順番決めから再開します。'}</div>
+      </div>
+      <style>
+        @keyframes connSpin { to { transform: rotate(360deg); } }
+        .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
+      </style>
+    `;
+    // 自動で次のフェーズへ
+    setTimeout(() => {
+      if (turnOrderResolved) {
+        state.matchData.status = "playing";
+      } else {
+        state.matchData.status = "order_phase";
+      }
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+      update();
+    }, 2000);
+    return;
+  }
 
   // order_phase: 順番決め
   const p1Name = state.player1.username || "プレイヤー1";
@@ -2755,6 +2781,10 @@ async function initGame() {
           normalizeState();
           applyLevelStats("player1");
           applyLevelStats("player2");
+
+          // リロード（再接続）時はステータスを reconnect_complete に設定
+          state.matchData.status = "reconnect_complete";
+          console.log("[initGame] リロード時ステータスを reconnect_complete に設定");
 
         } catch (e) {
           console.warn("[initGame] Firebase 復元エラー:", e);

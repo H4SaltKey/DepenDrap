@@ -1313,5 +1313,6 @@ document.addEventListener("contextmenu", (e) => {
 
 // game.js など IIFE 外から山札ドロー操作を呼ぶため公開
 window.takeOut = takeOut;
+window.drawCards = drawCards;
 
 })();

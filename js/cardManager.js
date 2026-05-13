@@ -1486,11 +1486,18 @@ window.organizeHands = function() {
     const startX0 = 36;
     const maxRowW = Math.min(FIELD_W - 72, Math.floor(FIELD_W * 0.9));
     const n = myHandCards.length;
-    const baseGap = 40;
-    let step = baseGap;
-    let span = (n - 1) * step + CARD_W;
-    if (span > maxRowW && n > 1) {
-      step = Math.max(10, (maxRowW - CARD_W) / (n - 1));
+    /** この枚数を基準に「隙間あり」の密度を決め、それ以上はさらに詰める */
+    const HAND_LAYOUT_REF = 8;
+    const minStep = 10;
+    let step = 40;
+    if (n > 1) {
+      const stepFitN = (maxRowW - CARD_W) / (n - 1);
+      const stepFitRef = (maxRowW - CARD_W) / Math.max(1, HAND_LAYOUT_REF - 1);
+      if (n <= HAND_LAYOUT_REF) {
+        step = Math.max(minStep, Math.min(stepFitRef, stepFitN));
+      } else {
+        step = Math.max(minStep, stepFitN);
+      }
     }
 
     myHandCards.forEach((c, i) => {

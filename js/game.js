@@ -152,7 +152,10 @@ function createDeckObject(forceResetPos = false) {
 
     // 相手のデッキには一切イベントを付けず、座標も固定
     if (isMe) {
-      wrapper.addEventListener("dblclick", () => { drawFromDeckObject(); });
+      wrapper.addEventListener("dblclick", () => {
+        if (!gameReady) return;
+        if (typeof window.drawCards === "function") window.drawCards(1);
+      });
       enablePointerDrag(wrapper);
 
       // 自分から見て左下に配置する
@@ -252,68 +255,6 @@ function returnToDeck(cardId, isTemp = false) {
   }
   
   update();
-}
-
-// ===== ドロー =====
-function drawFromDeckObject() {
-  if (!gameReady) return;
-  const currentRole = window.getMyRole();
-  if (!currentRole) return;
-
-  const s = state[currentRole];
-  if (!s || !s.deck || s.deck.length === 0) {
-    // デッキが空の状態でドローしようとした場合、敗北判定
-    console.warn("[Draw] デッキが空です。敗北判定を実行します。");
-    addGameLog(`[DEFEAT] ${window.myUsername || state[currentRole]?.username || "プレイヤー"} はデッキが空の状態でドローしようとしました。敗北です。`);
-    // オーバードロー敗北判定を呼び出し
-    setTimeout(() => triggerOverdrawDefeat(), 100);
-    return;
-  }
-
-  let rawId = s.deck.pop();
-  if (!rawId) return;
-
-  let isTemp = false;
-  if (typeof rawId === "string" && rawId.startsWith("TEMP:")) {
-    isTemp = true;
-    rawId = rawId.replace("TEMP:", "");
-  }
-
-  const deckObj = getFieldContent().querySelector(".deckObject[data-owner='" + currentRole + "']");
-  const deckX = deckObj ? Number(deckObj.dataset.x) : -320;
-  const deckY = deckObj ? Number(deckObj.dataset.y) : 200;
-  const handY = 1600;
-
-  const card = createCard(rawId);
-  if (card) {
-    card.dataset.owner = currentRole;
-    card.dataset.origin = currentRole;
-    if (isTemp) card.dataset.isTemp = "true";
-
-    card.dataset.visibility = "self";
-    card.classList.add("visibilitySelf");
-    const label = card.querySelector(".cardVisibilityLabel");
-    if (label) label.textContent = "自分のみ";
-    card.style.zIndex = ++cardZCounter;
-    const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now();
-    card.dataset.handOrder = String(nextOrder);
-    placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
-    if (typeof window.organizeHands === "function") window.organizeHands();
-    const destX = parseFloat(card.style.left) || deckX;
-    const destY = parseFloat(card.style.top) || handY;
-    card.animate([
-      { transform: `translate(${deckX - destX}px, ${deckY - destY}px) scale(0.55)`, opacity: 0.2 },
-      { transform: "translate(0, 0) scale(1.08)", opacity: 1, offset: 0.8 },
-      { transform: "translate(0, 0) scale(1)", opacity: 1 }
-    ], { duration: 420, easing: "cubic-bezier(0.175, 0.885, 0.32, 1.275)" });
-  }
-
-  state[currentRole].pp = Math.min((Number(state[currentRole].pp) || 0) + 1, Number(state[currentRole].ppMax) || 2);
-  if (typeof addGameLog === "function") {
-    addGameLog(`${window.myUsername || state[currentRole]?.username || currentRole} が カードを1枚引いた`);
-  }
-
-  if (typeof update === "function") update();
 }
 
 /**

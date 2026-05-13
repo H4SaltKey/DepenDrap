@@ -1269,10 +1269,30 @@ function updateMatchUI() {
       opacity: 0; transition: opacity 0.2s;
     }
     #ctxDamageMenuHint.is-visible { opacity: 1; }
-    /* ファーストドロー選択 UI */
+    /* ファーストドロー選択 UI（フィールド複製の left/top/寸法インラインを無効化して切れを防ぐ） */
     .firstDrawCardOuter { position:relative; width:90px; height:130px; flex-shrink:0; cursor:pointer; border-radius:10px; box-sizing:border-box; transition: box-shadow .2s ease, transform .2s ease; }
     .firstDrawCardOuter:hover { transform: translateY(-2px); }
-    .firstDrawCardOuter .firstDrawCardClone { width:90px; height:130px; display:block; pointer-events:none; border-radius:8px; overflow:hidden; }
+    .firstDrawPickRow .firstDrawCardClone.card {
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      width: 90px !important;
+      height: 130px !important;
+      max-width: 90px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+    .firstDrawPickRow .firstDrawCardClone.card img {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      aspect-ratio: auto !important;
+    }
     .firstDrawCheckRing {
       position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%;
       display:flex; align-items:center; justify-content:center;
@@ -1289,10 +1309,10 @@ function updateMatchUI() {
     }
     .firstDrawHideVisLabel .cardVisibilityLabel { display: none !important; }
     .firstDrawPhaseMainRow { display:flex; align-items:flex-start; gap:20px; width:100%; }
-    .firstDrawPhaseLeftCol { flex:1 1 auto; min-width:0; }
+    .firstDrawPhaseLeftCol { flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: visible; padding-bottom: 4px; }
     .firstDrawPickRow {
       display:flex; justify-content:flex-start; align-items:flex-start; gap:12px; flex-wrap:wrap;
-      margin-bottom:12px; min-height:140px;
+      margin-bottom:12px; min-height:140px; width: max-content; max-width: 100%;
     }
     .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:16px; }
     .firstDrawPickPreviewCol { flex:0 0 212px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
@@ -1300,10 +1320,36 @@ function updateMatchUI() {
     .firstDrawLastPickPreview {
       width:100%; min-height:268px; display:flex; align-items:center; justify-content:center;
       border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
+      box-sizing: border-box;
+      padding: 10px 14px;
+      overflow: visible;
     }
-    .firstDrawLastPickPreview .firstDrawLastPickClone {
-      width:188px !important; height:271px !important; pointer-events:none; border-radius:10px; overflow:hidden;
+    .firstDrawLastPickPreview .firstDrawLastPickClone.card {
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      width: min(100%, 220px) !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: min(52vh, 320px) !important;
+      aspect-ratio: 320 / 453;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: hidden;
+      border-radius: 10px;
       box-shadow:0 10px 28px rgba(0,0,0,0.45);
+    }
+    .firstDrawLastPickPreview .firstDrawLastPickClone.card img {
+      width: auto !important;
+      height: auto !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      aspect-ratio: auto !important;
     }
     .firstDrawCardOuter--kept {
       transform: scale(1.04);
@@ -2000,7 +2046,7 @@ function updateFirstDrawPhaseUI() {
 
   if (overlay.dataset.shellBuilt !== "2") {
     overlay.innerHTML = `
-    <div style="width:100%;max-width:1000px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
+    <div style="width:100%;max-width:min(100%,1100px);background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;box-sizing:border-box;">
       <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
       <p id="firstDrawPhaseSub" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:10px;text-align:center;">
         カードをタップして選択／解除できます（丸にチェックが付きます）。<strong style="color:#f0d080;">ちょうど3枚</strong>のときだけ確定できます。残りは山札へ戻ります。

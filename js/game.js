@@ -1042,6 +1042,11 @@ function updateMatchUI() {
     showRoundNotification(m.round);
     window._lastRound = m.round;
     
+    // R1T1処理（ラウンド1のみ）
+    if (m.round === 1) {
+      setTimeout(() => startR1T1(), 1000);
+    }
+    
     // lastTurnPlayerを即座に更新（2重表示を防ぐ）
     lastTurnPlayer = m.turnPlayer;
     
@@ -1057,6 +1062,11 @@ function updateMatchUI() {
       const isMe = m.turnPlayer === window.myRole;
       showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
       lastTurnPlayer = m.turnPlayer;
+      
+      // ターン開始ドロー（自分のターン時）
+      if (isMe && m.round > 1 || (m.round === 1 && m.turn > 1)) { // R1T1以外
+        setTimeout(() => startTurnDraw(), 500);
+      }
     }
   }
 
@@ -3220,3 +3230,120 @@ document.addEventListener("firebaseJoined", () => {
 
 // ===== タイマー処理は削除（時間制限機能は実装しない） =====
 // 時間制限機能は Firebase では複雑なため、MVP では実装しません
+
+// ===== R1T1処理 =====
+function startR1T1() {
+  const me = window.myRole || "player1";
+  const myState = state[me];
+  if (!myState || myState.deck.length < 5) {
+    console.warn("[R1T1] デッキが5枚未満です。処理をスキップします。");
+    return;
+  }
+
+  // 山札から5枚取り出す（盤面へ配置、非公開）
+  const takenCards = [];
+  for (let i = 0; i < 5; i++) {
+    const rawId = myState.deck.pop();
+    if (!rawId) break;
+    takenCards.push(rawId);
+  }
+
+  // 取り出したカードを盤面へ配置（非公開）
+  const deckObj = document.querySelector(`.deckObject[data-owner="${me}"]`);
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+
+  const field = document.getElementById("field");
+  takenCards.forEach((rawId, i) => {
+    const card = createCard(rawId);
+    if (!card) return;
+    card.dataset.visibility = "none";
+    card.dataset.owner = me;
+    card.dataset.origin = me;
+    card.classList.add("visibilityNone");
+    const lbl = card.querySelector(".cardVisibilityLabel");
+    if (lbl) lbl.textContent = "非公開";
+    if (typeof applyCardFace === "function") applyCardFace(card, "none");
+    if (typeof placeCard === "function") {
+      card.style.zIndex = ++cardZCounter;
+      placeCard(field, card, { x: deckX + 100 + i * 80, y: deckY - 200 });
+    }
+  });
+
+  // UI: 5枚から3枚選択
+  showR1T1Selection(takenCards.length);
+
+  // チャット記録
+  if (typeof addGameLog === "function") {
+    const playerName = window.myUsername || me;
+    addGameLog(`${playerName} が R1T1を開始しました`);
+  }
+}
+
+function startTurnDraw() {
+  const me = window.myRole || "player1";
+  const myState = state[me];
+  if (!myState || myState.deck.length === 0) {
+    console.warn("[TurnDraw] デッキが空です。敗北判定を実行します。");
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} のデッキが空になりました。敗北です。`);
+    }
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 500);
+    }
+    return;
+  }
+
+  // 山札から1枚取得
+  const rawId = myState.deck.pop();
+  if (!rawId) return;
+
+  // 手札へ追加
+  const card = createCard(rawId);
+  if (!card) return;
+  card.dataset.visibility = "self";
+  card.dataset.owner = me;
+  card.dataset.origin = me;
+  card.classList.add("visibilitySelf");
+  const lbl = card.querySelector(".cardVisibilityLabel");
+  if (lbl) lbl.textContent = "自分のみ";
+  if (typeof applyCardFace === "function") applyCardFace(card, "self");
+
+  const field = document.getElementById("field");
+  const deckObj = document.querySelector(`.deckObject[data-owner="${me}"]`);
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+  if (typeof placeCard === "function") {
+    card.style.zIndex = ++cardZCounter;
+    card.style.left = deckX + "px";
+    card.style.top = deckY + "px";
+    const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now();
+    card.dataset.handOrder = String(nextOrder);
+    placeCard(field, card, { x: deckX, y: deckY });
+  }
+
+  // PP +1（上限まで）
+  const currentPp = Number(myState.pp) || 0;
+  const maxPp = Number(myState.ppMax) || 10;
+  myState.pp = Math.min(currentPp + 1, maxPp);
+
+  // 手札整列
+  if (typeof window.organizeHands === "function") window.organizeHands();
+
+  // アニメーション
+  card.animate([
+    { transform: `translate(${deckX - deckX}px, ${deckY - 1600}px) scale(0.5)`, opacity: 0 },
+    { transform: `translate(0, 0) scale(1.1)`, opacity: 1, offset: 0.8 },
+    { transform: `translate(0, 0) scale(1)`, opacity: 1 }
+  ], { duration: 500, easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' });
+
+  // チャット記録
+  if (typeof addGameLog === "function") {
+    const playerName = window.myUsername || me;
+    addGameLog(`${playerName} が カードを1枚引いた`);
+  }
+
+  // 保存
+  if (typeof saveAllImmediate === "function") saveAllImmediate();
+  if (typeof update === "function") update();
+}

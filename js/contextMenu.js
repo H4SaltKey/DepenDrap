@@ -425,36 +425,31 @@ function cloneCard(card){
 function openDeckMenu(deck, x, y){
   const remaining = (typeof getMyState !== "undefined" && getMyState()) ? getMyState().deck.length : 0;
 
-  const subDraw = Array.from({length:10}, (_, i) => ({
+  const subIncreaseHand = Array.from({length:10}, (_, i) => ({
     label: `${i+1}枚`,
-    action: () => drawMultiple(i+1, false)
+    action: () => drawToHand(i+1)
   }));
-  const subDrawBack = Array.from({length:10}, (_, i) => ({
+  const subTakeOut = Array.from({length:10}, (_, i) => ({
     label: `${i+1}枚`,
-    action: () => drawMultiple(i+1, true)
+    action: () => takeOut(i+1)
   }));
 
   const items = [
     {
-      label: "1枚引く",
+      label: "手札を1枚増やす",
       disabled: remaining === 0,
-      action: () => drawMultiple(1, false)
+      action: () => drawToHand(1)
     },
     {
-      label: "裏側で1枚引く",
+      label: "手札を複数枚増やす",
       disabled: remaining === 0,
-      action: () => drawMultiple(1, true)
+      sub: subIncreaseHand
     },
     { sep: true },
     {
-      label: "複数枚引く",
+      label: "取り出す",
       disabled: remaining === 0,
-      sub: subDraw
-    },
-    {
-      label: "裏側で複数枚引く",
-      disabled: remaining === 0,
-      sub: subDrawBack
+      sub: subTakeOut
     },
     { sep: true },
     {
@@ -559,6 +554,192 @@ function drawMultiple(count, faceDown){
     if (typeof triggerOverdrawDefeat === "function") {
       setTimeout(() => triggerOverdrawDefeat(), 500);
     }
+  }
+
+  // 【一括保存】（ステータスとフィールドを同時に送る）
+  if (typeof saveAllImmediate === "function") {
+    saveAllImmediate();
+  } else {
+    if (typeof saveImmediate === "function") saveImmediate();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+  }
+
+  if(typeof updateDeckObject === "function") updateDeckObject();
+  if(typeof pushMyStateDebounced === "function") pushMyStateDebounced(); // デッキ枚数を同期
+  if(typeof update === "function") update();
+}
+
+function drawToHand(count){
+  if(typeof getMyState === "undefined" || !getMyState()) return;
+  const dState = getMyState();
+  
+  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
+  const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
+  const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
+  
+  let isOverdraw = false;
+  let actual = count;
+  if (count > dState.deck.length) {
+    console.warn(`[drawToHand] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    actual = dState.deck.length;
+    isOverdraw = true;
+  }
+
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+  
+  for(let i = 0; i < actual; i++){
+    let rawId = dState.deck.pop();
+    if(!rawId) continue;
+
+    let isTemp = false;
+    if (typeof rawId === "string" && rawId.startsWith("TEMP:")) {
+      isTemp = true;
+      rawId = rawId.replace("TEMP:", "");
+    }
+
+    const card = (typeof createCard === "function") ? createCard(rawId) : null;
+    if(!card) continue;
+
+    const vis = "self";
+    card.dataset.visibility = vis;
+    card.dataset.owner = me;
+    card.dataset.origin = me; 
+    if (isTemp) card.dataset.isTemp = "true";
+
+    card.classList.toggle("visibilitySelf", vis === "self");
+    card.classList.toggle("visibilityNone",  vis === "none");
+
+    const lbl = card.querySelector(".cardVisibilityLabel");
+    if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if(typeof applyCardFace === "function") applyCardFace(card, vis);
+
+    if(typeof placeCard === "function"){
+      if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
+      // デッキ位置から手札へ移動する演出
+      card.style.left = deckX + "px";
+      card.style.top = deckY + "px";
+      const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : (Date.now() + i);
+      card.dataset.handOrder = String(nextOrder);
+      placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
+    }
+  }
+
+  // ドロー直後に自動で手札整列
+  if (typeof window.organizeHands === "function") window.organizeHands();
+
+  // 目的地の座標を取得してアニメーション
+  const field = document.getElementById("field");
+  if (field) {
+    const cards = Array.from(field.querySelectorAll(".card:not(.deckObject)"));
+    cards.forEach(card => {
+      if (card.dataset.owner === me && Number(card.dataset.y) >= 1500) {
+        const destX = parseFloat(card.style.left) || deckX;
+        const destY = parseFloat(card.style.top) || 1600;
+        card.animate([
+          { transform: `translate(${deckX - destX}px, ${deckY - destY}px) scale(0.5)`, opacity: 0 },
+          { transform: `translate(0, 0) scale(1.1)`, opacity: 1, offset: 0.8 },
+          { transform: `translate(0, 0) scale(1)`, opacity: 1 }
+        ], { duration: 500, easing: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)' });
+      }
+    });
+  }
+
+  if (isOverdraw) {
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > 引けた枚数${actual}枚）。敗北です。`);
+    }
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 500);
+    }
+  }
+
+  // チャット記録
+  if (typeof addGameLog === "function") {
+    const playerName = window.myUsername || me;
+    addGameLog(`${playerName} が 手札を${actual}枚増やした`);
+  }
+
+  // 【一括保存】（ステータスとフィールドを同時に送る）
+  if (typeof saveAllImmediate === "function") {
+    saveAllImmediate();
+  } else {
+    if (typeof saveImmediate === "function") saveImmediate();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+  }
+
+  if(typeof updateDeckObject === "function") updateDeckObject();
+  if(typeof pushMyStateDebounced === "function") pushMyStateDebounced(); // デッキ枚数を同期
+  if(typeof update === "function") update();
+}
+
+function takeOut(count){
+  if(typeof getMyState === "undefined" || !getMyState()) return;
+  const dState = getMyState();
+  
+  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
+  const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
+  const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
+  
+  let isOverdraw = false;
+  let actual = count;
+  if (count > dState.deck.length) {
+    console.warn(`[takeOut] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    actual = dState.deck.length;
+    isOverdraw = true;
+  }
+
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+  
+  for(let i = 0; i < actual; i++){
+    let rawId = dState.deck.pop();
+    if(!rawId) continue;
+
+    let isTemp = false;
+    if (typeof rawId === "string" && rawId.startsWith("TEMP:")) {
+      isTemp = true;
+      rawId = rawId.replace("TEMP:", "");
+    }
+
+    const card = (typeof createCard === "function") ? createCard(rawId) : null;
+    if(!card) continue;
+
+    const vis = "none";
+    card.dataset.visibility = vis;
+    card.dataset.owner = me;
+    card.dataset.origin = me; 
+    if (isTemp) card.dataset.isTemp = "true";
+
+    card.classList.toggle("visibilitySelf", vis === "self");
+    card.classList.toggle("visibilityNone",  vis === "none");
+
+    const lbl = card.querySelector(".cardVisibilityLabel");
+    if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if(typeof applyCardFace === "function") applyCardFace(card, vis);
+
+    if(typeof placeCard === "function"){
+      if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
+      // デッキ位置から盤面へ配置（手札へは移動しない）
+      card.style.left = deckX + "px";
+      card.style.top = deckY + "px";
+      placeCard(document.getElementById("field"), card, { x: deckX + 100 + i * 50, y: deckY - 100 });
+    }
+  }
+
+  if (isOverdraw) {
+    if (typeof addGameLog === "function") {
+      addGameLog(`[DEFEAT] ${window.myUsername || "プレイヤー"} はデッキ枚数を超えてドローしようとしました（${count}枚 > 引けた枚数${actual}枚）。敗北です。`);
+    }
+    if (typeof triggerOverdrawDefeat === "function") {
+      setTimeout(() => triggerOverdrawDefeat(), 500);
+    }
+  }
+
+  // チャット記録
+  if (typeof addGameLog === "function") {
+    const playerName = window.myUsername || me;
+    addGameLog(`${playerName} が カードを${actual}枚取り出した`);
   }
 
   // 【一括保存】（ステータスとフィールドを同時に送る）

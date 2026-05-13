@@ -1890,11 +1890,15 @@ function updateReadyCheckUI() {
     overlay.dataset.transitionScheduled = "true";
     setTimeout(() => {
       if (!window._bothPlayersConnected || state.matchData.status !== "ready_check") return;
-      state.matchData.status = window._isReload ? "reconnect_complete" : "order_phase";
-      const gameRoom = localStorage.getItem("gameRoom");
-      if (gameRoom && firebaseClient?.db) {
-        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      // 新規入室のみorder_phaseへ遷移。再接続時は既存statusを維持。
+      if (!window._isReload) {
+        state.matchData.status = "order_phase";
+        const gameRoom = localStorage.getItem("gameRoom");
+        if (gameRoom && firebaseClient?.db) {
+          firebaseClient.writeMatchData(gameRoom, state.matchData);
+        }
       }
+      // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）
       update();
     }, 1200);
   }
@@ -1915,7 +1919,9 @@ function updateOrderPhaseUI() {
   const m = state.matchData;
   let overlay = document.getElementById("orderPhaseOverlay");
 
-  if (m.status !== "order_phase" && m.status !== "reconnect_complete") {
+  // order_phaseステータスの場合のみ表示。
+  // reconnect_completeは使用されない（再接続時は修正で適用されない）。
+  if (m.status !== "order_phase") {
     if (overlay) {
       overlay.style.opacity = "0";
       setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
@@ -1937,29 +1943,6 @@ function updateOrderPhaseUI() {
   }
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
-
-  if (m.status === "reconnect_complete") {
-    overlay.innerHTML = `
-      <div class="order-container" style="max-width:900px;width:90%;">
-        <h2 class="order-title" style="margin-bottom:20px;">再接続完了</h2>
-        <div style="font-size:16px;color:#c7b377;margin-bottom:24px;text-align:center;">ゲームに再接続しました。ゲームを再開します。</div>
-      </div>
-      <style>
-        @keyframes connSpin { to { transform: rotate(360deg); } }
-        .order-title { font-size: 28px; font-weight: 900; color: #e0d0a0; letter-spacing: 4px; text-align: center; }
-      </style>
-    `;
-    // 自動で次のフェーズへ
-    setTimeout(() => {
-      state.matchData.status = "setup_dice";
-      const gameRoom = localStorage.getItem("gameRoom");
-      if (gameRoom && firebaseClient?.db) {
-        firebaseClient.writeMatchData(gameRoom, state.matchData);
-      }
-      update();
-    }, 2000);
-    return;
-  }
 
   // order_phase: 順番決め
   const p1Name = state.player1.username || "プレイヤー1";
@@ -2903,9 +2886,13 @@ function setupRoomWatcher() {
     applyInteractionLockState();
 
     // 両プレイヤーが接続したら、ready_check から次のフェーズへ
+    // 新規入室のみorder_phaseへ遷移。再接続時は既存statusを維持（Firebase復元値を尊重）
     if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
-      state.matchData.status = window._isReload ? "reconnect_complete" : "order_phase";
-      firebaseClient.writeMatchData(gameRoom, state.matchData);
+      if (!window._isReload) {
+        state.matchData.status = "order_phase";
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+      // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）
     }
 
     const playerCount = Object.keys(players).length;

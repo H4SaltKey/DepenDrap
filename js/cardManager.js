@@ -221,8 +221,29 @@ function createZoneHoverPreviewCard(originalCard, cardIndex, totalCards, overlap
   label.className = "cardVisibilityLabel";
   label.textContent = originalCard.querySelector(".cardVisibilityLabel")?.textContent || "";
 
+  const takeOutBtn = document.createElement("button");
+  takeOutBtn.textContent = "取り出す";
+  takeOutBtn.style.cssText = `
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    padding: 2px 4px;
+    font-size: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 3px;
+    cursor: pointer;
+    z-index: 10;
+  `;
+  takeOutBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    takeOutCardFromZone(originalCard);
+  });
+
   preview.appendChild(img);
   preview.appendChild(label);
+  preview.appendChild(takeOutBtn);
 
   preview.addEventListener("pointerenter", () => {
     preview.style.zIndex = "5999";
@@ -291,6 +312,23 @@ function hideZonePreviewCards() {
     if (el && el.parentNode) el.remove();
   });
   zoneHoverPreviewCards = {};
+}
+
+function takeOutCardFromZone(card) {
+  // 場から削除
+  card.remove();
+  // 手札に追加
+  const owner = card.dataset.owner;
+  // 次のhandOrderを取得
+  const hands = Array.from(getFieldContent().querySelectorAll('.card')).filter(c => c.dataset.owner === owner && parseInt(c.dataset.y) >= 1500);
+  const maxOrder = hands.length > 0 ? Math.max(...hands.map(c => parseInt(c.dataset.handOrder || 0))) : 0;
+  card.dataset.handOrder = String(maxOrder + 1);
+  card.dataset.y = "1500";
+  // fieldContentに追加
+  getFieldContent().appendChild(card);
+  // organizeHands
+  if (typeof organizeHands === "function") organizeHands();
+  if (typeof saveFieldCards === "function") saveFieldCards();
 }
 
 function updateBattleZoneUI() {

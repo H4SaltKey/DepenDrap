@@ -215,6 +215,40 @@ function openCardMenu(card, x, y){
       }
     });
   }
+
+  // スキル場の最上部カードの場合、スキル場メニューを統合
+  if (card.dataset.zoneType === "skill" && typeof isTopZoneCard === "function" && isTopZoneCard(card)) {
+    const owner = card.dataset.owner;
+    const me = window.myRole || "player1";
+    const isMine = owner === me;
+    items.push({ sep: true });
+    items.push(
+      { label: "スキル場操作", disabled: true },
+      { sep: true },
+      {
+        label: "内容を確認",
+        action: () => {
+          if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "skill");
+        }
+      },
+      { sep: true },
+      {
+        label: "場のアタッカーカードを墓地へ送る",
+        disabled: !isMine,
+        action: () => {
+          if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "attacker");
+        }
+      },
+      {
+        label: "場のスキルカードを墓地へ送る",
+        disabled: !isMine,
+        action: () => {
+          if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "skill");
+        }
+      }
+    );
+  }
+
   buildMenu(items, x, y, card);
 }
 
@@ -1002,7 +1036,38 @@ function openGraveZoneMenu(owner, x, y){
     {
       label: "内容を確認",
       action: () => {
-        if (typeof window.showGraveyardContents === "function") window.showGraveyardContents(owner);
+        if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "grave");
+      }
+    },
+    { sep: true },
+    {
+      label: "場のアタッカーカードを墓地へ送る",
+      disabled: !isMine,
+      action: () => {
+        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "attacker");
+      }
+    },
+    {
+      label: "場のスキルカードを墓地へ送る",
+      disabled: !isMine,
+      action: () => {
+        if (typeof window.sendZoneCardsToGrave === "function") window.sendZoneCardsToGrave(owner, "skill");
+      }
+    }
+  ];
+  buildMenu(items, x, y);
+}
+
+function openSkillZoneMenu(owner, x, y){
+  const me = window.myRole || "player1";
+  const isMine = owner === me;
+  const items = [
+    { label: "スキル場操作", disabled: true },
+    { sep: true },
+    {
+      label: "内容を確認",
+      action: () => {
+        if (typeof showZonePreviewCards === "function") showZonePreviewCards(owner, "skill");
       }
     },
     { sep: true },
@@ -1029,6 +1094,9 @@ function getContextMenuTarget(target){
   const battleZone = target.closest(".battleZone");
   if (battleZone && battleZone.dataset.zoneType === "grave") {
     return { type: "graveZone", el: battleZone };
+  }
+  if (battleZone && battleZone.dataset.zoneType === "skill") {
+    return { type: "skillZone", el: battleZone };
   }
   const card = target.closest(".card:not(.deckObject)");
   if (card && card.dataset.zoneType === "grave") {
@@ -1057,6 +1125,7 @@ function openGameContextMenu(hit, x, y){
   else if(hit.type === "deck") openDeckMenu(hit.el, x, y);
   else if(hit.type === "lorPanel") openStatusMenu(hit.el.dataset.owner, x, y);
   else if(hit.type === "graveZone") openGraveZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
+  else if(hit.type === "skillZone") openSkillZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
 }
 
 document.addEventListener("mousedown", (e) => {

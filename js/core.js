@@ -25,7 +25,7 @@ let state = {
   matchData: {
     round: 1, turn: 1,
     turnPlayer: "player1",
-    status: "setup_dice",
+    status: "ready_check",
     winner: null, firstPlayer: null
   },
   logs: []

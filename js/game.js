@@ -66,7 +66,7 @@ function resetAllGameVariables() {
   
   // UI をリセット
   const overlay = document.getElementById("dicePhaseOverlay");
-  if (overlay) overlay.style.display = "none";
+  if (overlay) overlay.remove();
   
   const orderOverlay = document.getElementById("orderDecideOverlay");
   if (orderOverlay) orderOverlay.style.display = "none";
@@ -2005,10 +2005,14 @@ function updateDicePhaseUI() {
   const m = state.matchData;
   let overlay = document.getElementById("dicePhaseOverlay");
 
+  if (!gameReady) {
+    if (overlay) overlay.remove();
+    return;
+  }
+
   if (m.status !== "setup_dice") {
     if (overlay) {
-      overlay.style.opacity = "0";
-      setTimeout(() => { if (overlay) overlay.style.display = "none"; }, 500);
+      overlay.remove();
     }
     return;
   }

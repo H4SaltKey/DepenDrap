@@ -684,7 +684,7 @@ function renderOwnerUI(owner) {
         </div>
       </div>
       <div class="lorStatRow" style="position: relative;">
-        <span class="lorIcon" data-tooltip="防御力">${ICON_SLD}</span>
+        <span class="lorIcon" data-tooltip="合計防御力">${ICON_SLD}</span>
         <div class="lorBarOuter">
           <div class="lorBarInner lorDefstackFill" style="width:${sldPct}%"></div>
         </div>
@@ -865,26 +865,30 @@ const ICON_HP = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xml
 </svg>`;
 
 const ICON_SLD = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
-    fill="rgba(47,128,237,0.2)" stroke="#2f80ed" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
+    fill="rgba(96,160,255,0.18)" stroke="#4f7cff" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M9.5 10.5l5-5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M12 8.5l-1.5 4 4-1.5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const ICON_ATK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M6 18l8-8 4 4-8 8-4-4Z"
+  <path d="M5.5 18.5 19 5l-2-2-4.5 4.5L10 5 8 7l4.5 4.5L6 18.5l-0.5 0.5 1.5 1.5 2-2 4.5-4.5 4.5 4.5 1.5-1.5L13 9l2-2-1.5-1.5-4.5 4.5-4.5 4.5Z"
     fill="rgba(255,107,157,0.18)" stroke="#ff6b9d" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M7.5 9.5l5 5" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
-  <path d="M12 8l3 3" stroke="#ff6b9d" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
 
 const ICON_DEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
-    fill="rgba(240,208,128,0.16)" stroke="#f0d080" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M9 12.5l2.5 2.5L15 10" stroke="#f0d080" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
+    fill="rgba(96,160,255,0.16)" stroke="#4f7cff" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M12 7v6" stroke="#4f7cff" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M9 10h6" stroke="#4f7cff" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
 
 const ICON_IDEF = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M13 2 3 14h6l-1 8 10-12h-6l1-8Z"
+  <path d="M12 2l7 3.5v6.5c0 4-2.5 6.5-7 7c-4.5-0.5-7-3-7-7V5.5L12 2Z"
     fill="rgba(240,208,128,0.18)" stroke="#f0d080" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M8 11.5 11 8l2 2 2 2-4 4-2-2-1.5-1.5Z"
+    fill="rgba(240,208,128,0.32)"/>
+  <path d="M12 8.5v2.5" stroke="#f0d080" stroke-width="1.6" stroke-linecap="round"/>
 </svg>`;
 
 function update(skipLogCheck = false) {

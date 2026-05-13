@@ -30,6 +30,7 @@ function resetAllGameVariables() {
   window._isResetting = false; // リセット中フラグをクリア
   window._resultShowing = false; // リザルト表示フラグをクリア
   window._resultDismissed = false; // リザルト非表示フラグをクリア
+  window._firstDrawPhaseStarted = false;
   window._soloStartMode = false;
   window._bothPlayersConnected = false;
   cardsReadyFired = false;
@@ -304,29 +305,11 @@ function drawFromDeckObject() {
     ], { duration: 420, easing: "cubic-bezier(0.175, 0.885, 0.32, 1.275)" });
   }
 
-  // 即時保存
-  if (typeof saveImmediate === "function") saveImmediate();
-  else save();
-
-  updateDeckObject();
-  
-  // 手札状況を即座に同期
-  if (firebaseClient?.db) {
-    const gameRoom = localStorage.getItem("gameRoom");
-    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-    if (gameRoom && me) {
-      firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(e => 
-        console.warn("[Draw] 同期エラー:", e)
-      );
-    }
+  state[currentRole].pp = Math.min((Number(state[currentRole].pp) || 0) + 1, Number(state[currentRole].ppMax) || 2);
+  if (typeof addGameLog === "function") {
+    addGameLog(`${window.myUsername || state[currentRole]?.username || currentRole} が カードを1枚引いた`);
   }
-  
-  update();
-}
 
-// ===== ステータスUI =====
-
-/**
  * 自分の playerState を Firebase に送信（デバウンス付き）
  */
 let _syncMyStateTimer = null;
@@ -1176,6 +1159,9 @@ function updateMatchUI() {
 
   // 5. 進化の道フェーズのオーバーレイ
   updateEvolutionPhaseUI();
+
+  // 6. ファーストドローフェーズのオーバーレイ
+  if (typeof updateFirstDrawPhaseUI === 'function') updateFirstDrawPhaseUI();
 }
 
 // アニメーション・結果画面・ダイスフェーズのスタイルを初回のみ注入
@@ -1731,8 +1717,8 @@ function updateEvolutionPhaseUI() {
     if (m.turnPlayer === me && !window._evoPhaseTransitioning) {
       window._evoPhaseTransitioning = true;
       setTimeout(async () => {
-        m.status = "playing";
-        addGameLog(`[MATCH] 試合開始！先攻: ${m.firstPlayer === "player1" ? state.player1.username : state.player2.username}`);
+        m.status = "setup_first_draw";
+        addGameLog(`[MATCH] 進化選択が完了しました。ファーストドローフェーズに移行します。`);
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
           await firebaseClient.writeMatchData(gameRoom, m);
@@ -1741,7 +1727,7 @@ function updateEvolutionPhaseUI() {
         update();
       }, 1500);
     }
-    if (overlay) overlay.innerHTML = `<h2 style="color:#fff; text-shadow: 0 0 10px #fff;">両プレイヤーが道を選択しました<br>試合を開始します...</h2>`;
+    if (overlay) overlay.innerHTML = `<h2 style="color:#fff; text-shadow: 0 0 10px #fff;">両プレイヤーが道を選択しました<br>ファーストドローフェーズへ移行します...</h2>`;
     return;
   }
 
@@ -1814,6 +1800,168 @@ function updateEvolutionPhaseUI() {
       </style>
     `;
   }
+}
+
+function startFirstDrawPhase() {
+  const m = state.matchData;
+  if (m.status !== "setup_first_draw" || window._firstDrawPhaseStarted) return;
+  window._firstDrawPhaseStarted = true;
+  if (window.myRole === m.turnPlayer) {
+    takeOut(5);
+  }
+}
+
+function updateFirstDrawPhaseUI() {
+  const m = state.matchData;
+  if (m.status !== "setup_first_draw") {
+    const overlay = document.getElementById("firstDrawPhaseOverlay");
+    if (overlay) overlay.remove();
+    return;
+  }
+
+  let overlay = document.getElementById("firstDrawPhaseOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "firstDrawPhaseOverlay";
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8, 6, 15, 0.96); z-index: 10000; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(18px); flex-direction: column; color: #fff;
+      transition: opacity 0.3s ease; font-family: 'Outfit', sans-serif; padding: 20px;
+    `;
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = "flex";
+  overlay.style.opacity = "1";
+
+  const me = window.myRole || "player1";
+  const isMyTurn = me === m.turnPlayer;
+  const contentHTML = `
+    <div style="width:100%;max-width:900px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
+      <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
+      <p style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:18px;text-align:center;">
+        山札から5枚取り出して3枚を選択し、手札に加えます。残り2枚は山札下へ戻します。
+      </p>
+      <div id="firstDrawPhaseMessage" style="color:#aaa;font-size:14px;text-align:center;margin-bottom:18px;"></div>
+      <div id="firstDrawPhaseCards" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;"></div>
+      <div style="text-align:center;">
+        <button id="firstDrawPhaseConfirm" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:16px;cursor:pointer;" disabled>3枚選択して確定</button>
+      </div>
+    </div>
+  `;
+  overlay.innerHTML = contentHTML;
+
+  const messageEl = overlay.querySelector("#firstDrawPhaseMessage");
+  const cardArea = overlay.querySelector("#firstDrawPhaseCards");
+  const confirmBtn = overlay.querySelector("#firstDrawPhaseConfirm");
+
+  if (!isMyTurn) {
+    messageEl.textContent = "先攻プレイヤーがファーストドローを選択しています...";
+    cardArea.innerHTML = "";
+    confirmBtn.style.display = "none";
+    startFirstDrawPhase();
+    return;
+  }
+
+  messageEl.textContent = "5枚の中から3枚を選択してください。";
+  confirmBtn.style.display = "inline-flex";
+  confirmBtn.disabled = true;
+  cardArea.innerHTML = "";
+
+  startFirstDrawPhase();
+
+  const field = getFieldContent();
+  if (!field) return;
+  const candidates = Array.from(field.querySelectorAll(`.card[data-owner="${me}"][data-visibility="none"]`));
+  if (candidates.length === 0) {
+    messageEl.textContent = "ファーストドローのカードが見つかりません。";
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  const selected = [];
+  candidates.forEach((card, index) => {
+    const clone = card.cloneNode(true);
+    clone.style.width = "90px";
+    clone.style.height = "130px";
+    clone.style.cursor = "pointer";
+    clone.style.transition = "transform 0.2s ease, border-color 0.2s ease";
+    clone.dataset.firstDrawIndex = index;
+    clone.addEventListener("click", () => {
+      const idx = selected.indexOf(index);
+      if (idx >= 0) {
+        selected.splice(idx, 1);
+        clone.style.border = "2px solid transparent";
+        clone.style.transform = "scale(1)";
+      } else if (selected.length < 3) {
+        selected.push(index);
+        clone.style.border = "2px solid #00ffcc";
+        clone.style.transform = "scale(1.05)";
+      }
+      confirmBtn.disabled = selected.length !== 3;
+      confirmBtn.textContent = `確定 (${selected.length}/3)`;
+    });
+    cardArea.appendChild(clone);
+  });
+
+  confirmBtn.onclick = async () => {
+    if (selected.length !== 3) return;
+    const chosen = selected.map(i => candidates[i]).filter(Boolean);
+    const unchosen = candidates.filter((_, i) => !selected.includes(i));
+
+    const deckObj = field.querySelector(`.deckObject[data-owner="${me}"]`);
+    const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+    const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+
+    chosen.forEach((card, idx) => {
+      card.dataset.visibility = "self";
+      card.classList.remove("visibilityNone");
+      card.classList.add("visibilitySelf");
+      const lbl = card.querySelector(".cardVisibilityLabel");
+      if (lbl) lbl.textContent = "自分のみ";
+      if (typeof applyCardFace === "function") applyCardFace(card, "self");
+      const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now() + idx;
+      card.dataset.handOrder = String(nextOrder);
+      card.style.left = deckX + "px";
+      card.style.top = deckY + "px";
+    });
+
+    unchosen.forEach(card => {
+      const rawId = card.dataset.id;
+      if (rawId) {
+        const isTemp = card.dataset.isTemp === "true";
+        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+        state[me].deck.unshift(storeId);
+      }
+      card.remove();
+    });
+
+    if (typeof window.organizeHands === "function") window.organizeHands();
+
+    if (typeof saveAllImmediate === "function") {
+      saveAllImmediate();
+    } else {
+      if (typeof saveImmediate === "function") saveImmediate();
+      if (typeof saveFieldCards === "function") saveFieldCards();
+    }
+    if (typeof updateDeckObject === "function") updateDeckObject();
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+
+    if (typeof addGameLog === "function") {
+      const playerName = window.myUsername || me;
+      addGameLog(`${playerName} が 手札を3枚増やした`);
+    }
+
+    m.status = "playing";
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && firebaseClient?.db) {
+      await firebaseClient.writeMatchData(gameRoom, m);
+      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+    }
+
+    overlay.remove();
+    update();
+  };
 }
 
 window.selectEvolutionPath = async function(pathName) {

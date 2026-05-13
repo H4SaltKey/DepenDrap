@@ -425,6 +425,10 @@ function cloneCard(card){
 function openDeckMenu(deck, x, y){
   const remaining = (typeof getMyState !== "undefined" && getMyState()) ? getMyState().deck.length : 0;
 
+  const subDraw = Array.from({length:10}, (_, i) => ({
+    label: `${i+1}枚`,
+    action: () => drawCards(i+1)
+  }));
   const subIncreaseHand = Array.from({length:10}, (_, i) => ({
     label: `${i+1}枚`,
     action: () => drawToHand(i+1)
@@ -436,16 +440,15 @@ function openDeckMenu(deck, x, y){
 
   const items = [
     {
-      label: "手札を1枚増やす",
+      label: "カードを引く",
       disabled: remaining === 0,
-      action: () => drawToHand(1)
+      sub: subDraw
     },
     {
-      label: "手札を複数枚増やす",
+      label: "手札を増やす",
       disabled: remaining === 0,
       sub: subIncreaseHand
     },
-    { sep: true },
     {
       label: "取り出す",
       disabled: remaining === 0,
@@ -453,7 +456,7 @@ function openDeckMenu(deck, x, y){
     },
     { sep: true },
     {
-      label: "デッキを全て集める",
+      label: "全て集める",
       disabled: !getFieldContent() || Array.from(getFieldContent().querySelectorAll(".card:not(.deckObject)"))
         .filter(c => (c.dataset.origin || c.dataset.owner || "player1") === (window.myRole || "player1")).length === 0,
       action: () => collectAllToDeck()
@@ -471,7 +474,7 @@ function openDeckMenu(deck, x, y){
   buildMenu(items, x, y, deck);
 }
 
-function drawMultiple(count, faceDown){
+function drawCards(count){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
@@ -482,13 +485,13 @@ function drawMultiple(count, faceDown){
   let isOverdraw = false;
   let actual = count;
   if (count > dState.deck.length) {
-    console.warn(`[drawMultiple] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    console.warn(`[drawCards] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
     actual = dState.deck.length;
     isOverdraw = true;
   }
 
-    const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
-    const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
+  const deckX = deckObj ? Number(deckObj.dataset.x) : 0;
+  const deckY = deckObj ? Number(deckObj.dataset.y) : 0;
   
   for(let i = 0; i < actual; i++){
     let rawId = dState.deck.pop();
@@ -503,7 +506,7 @@ function drawMultiple(count, faceDown){
     const card = (typeof createCard === "function") ? createCard(rawId) : null;
     if(!card) continue;
 
-    const vis = faceDown ? "none" : "self";
+    const vis = "self";
     card.dataset.visibility = vis;
     card.dataset.owner = me;
     card.dataset.origin = me; 
@@ -518,7 +521,6 @@ function drawMultiple(count, faceDown){
 
     if(typeof placeCard === "function"){
       if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
-      // デッキ位置から手札へ移動する演出
       card.style.left = deckX + "px";
       card.style.top = deckY + "px";
       const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : (Date.now() + i);
@@ -527,10 +529,10 @@ function drawMultiple(count, faceDown){
     }
   }
 
-  // ドロー直後に自動で手札整列
+  dState.pp = Math.min((Number(dState.pp) || 0) + actual, Number(dState.ppMax) || 2);
+
   if (typeof window.organizeHands === "function") window.organizeHands();
 
-  // 目的地の座標を取得してアニメーション
   const field = document.getElementById("field");
   if (field) {
     const cards = Array.from(field.querySelectorAll(".card:not(.deckObject)"));
@@ -556,7 +558,11 @@ function drawMultiple(count, faceDown){
     }
   }
 
-  // 【一括保存】（ステータスとフィールドを同時に送る）
+  if (typeof addGameLog === "function") {
+    const playerName = window.myUsername || me;
+    addGameLog(`${playerName} が カードを${actual}枚引いた`);
+  }
+
   if (typeof saveAllImmediate === "function") {
     saveAllImmediate();
   } else {

@@ -345,6 +345,27 @@ body.deckPage{
   border:1px solid rgba(240,208,128,0.45);
 }
 
+.zoneHoverPanel{
+  position:absolute;
+  pointer-events:auto;
+  display:none;
+}
+
+.zoneHoverPreviewCard{
+  position:absolute;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #111;
+}
+
+.zoneHoverPreviewCard.zoneHoverPreviewActive,
+.zoneHoverPreviewCard:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.38);
+}
+
 /* 共通背景（LoR風ダークファンタジー） */
 .title-bg {
   position: fixed;

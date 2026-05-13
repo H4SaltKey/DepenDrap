@@ -157,18 +157,144 @@ function ensureBattleZoneUIs() {
       el.style.zIndex = "0";
       el.style.pointerEvents = type === "attacker" ? "none" : "auto";
       el.innerHTML = `<div class="battleZoneLabel">${type === "attacker" ? "ATK" : type === "skill" ? "SKILL" : "GRAVE"}</div><div class="battleZoneCount"></div>`;
-      if (type === "skill" || type === "grave") {
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          openZoneListModal(owner, type);
-        });
-      }
       if (owner !== (window.myRole || "player1")) {
         el.style.transform = "rotate(180deg)";
       }
       content.appendChild(el);
     });
   });
+}
+
+let zoneHoverPanel = null;
+let zoneHoverHideTimer = null;
+let zoneHoverActiveKey = null;
+
+function cancelZoneHoverHide() {
+  if (zoneHoverHideTimer) {
+    clearTimeout(zoneHoverHideTimer);
+    zoneHoverHideTimer = null;
+  }
+}
+
+function scheduleZoneHoverHide() {
+  cancelZoneHoverHide();
+  zoneHoverHideTimer = setTimeout(() => {
+    hideZoneHoverPanel();
+  }, 120);
+}
+
+function ensureZoneHoverPanel() {
+  if (zoneHoverPanel) return zoneHoverPanel;
+  const panel = document.createElement("div");
+  panel.className = "zoneHoverPanel";
+  panel.style.position = "absolute";
+  panel.style.pointerEvents = "auto";
+  panel.style.display = "none";
+  panel.style.zIndex = "10005";
+  panel.style.background = "transparent";
+  panel.addEventListener("pointerenter", () => {
+    cancelZoneHoverHide();
+  });
+  panel.addEventListener("pointerleave", () => {
+    scheduleZoneHoverHide();
+  });
+  document.body.appendChild(panel);
+  zoneHoverPanel = panel;
+  return panel;
+}
+
+function attachZoneHoverListeners(card, owner, type) {
+  if (!card || card.dataset.zoneHoverAttached === "true") return;
+  card.dataset.zoneHoverAttached = "true";
+  card.addEventListener("pointerenter", () => {
+    if (getZoneCards(owner, type).length > 1) {
+      showZoneHoverPanel(owner, type);
+    }
+  });
+  card.addEventListener("pointerleave", () => {
+    scheduleZoneHoverHide();
+  });
+}
+
+function showZoneHoverPanel(owner, type) {
+  const cards = getZoneCards(owner, type);
+  if (cards.length < 2) {
+    hideZoneHoverPanel();
+    return;
+  }
+
+  const panel = ensureZoneHoverPanel();
+  panel.innerHTML = "";
+  panel.style.display = "block";
+  panel.dataset.owner = owner;
+  panel.dataset.type = type;
+
+  const field = document.getElementById("field");
+  const fieldRect = field ? field.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+  const anchor = getZoneAnchor(owner, type);
+  const pageX = fieldRect.left + (anchor.x + fieldPanX) * fieldZoom;
+  const pageY = fieldRect.top + (anchor.y + fieldPanY) * fieldZoom;
+
+  const previewWidth = 220;
+  const previewHeight = Math.round(previewWidth * CARD_H / CARD_W);
+  const overlapRate = Math.min(0.95, 0.65 + Math.max(0, cards.length - 1) * 0.02);
+  const step = previewWidth * (1 - overlapRate);
+  const totalWidth = previewWidth + step * (cards.length - 1);
+
+  panel.style.width = `${totalWidth}px`;
+  panel.style.height = `${previewHeight}px`;
+  panel.style.left = `${pageX + CARD_W * fieldZoom - totalWidth - 10}px`;
+  panel.style.top = `${pageY}px`;
+
+  cards.forEach((originalCard, index) => {
+    const preview = originalCard.cloneNode(true);
+    preview.classList.add("zoneHoverPreviewCard");
+    preview.dataset.originalInstanceId = originalCard.dataset.instanceId || "";
+    preview.dataset.zoneHoverPreview = "true";
+    preview.style.position = "absolute";
+    preview.style.left = `${index * step}px`;
+    preview.style.top = "0px";
+    preview.style.width = `${previewWidth}px`;
+    preview.style.height = "auto";
+    preview.style.pointerEvents = "auto";
+    preview.style.cursor = "pointer";
+    preview.style.zIndex = String(10 + index);
+    preview.classList.remove("opponent-card");
+
+    preview.addEventListener("pointerenter", () => {
+      preview.classList.add("zoneHoverPreviewActive");
+      preview.style.zIndex = "9999";
+      cancelZoneHoverHide();
+    });
+    preview.addEventListener("pointerleave", () => {
+      preview.classList.remove("zoneHoverPreviewActive");
+      preview.style.zIndex = String(10 + index);
+      scheduleZoneHoverHide();
+    });
+    preview.addEventListener("contextmenu", (e) => {
+      const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
+      if (!original) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof openCardMenu === "function") openCardMenu(original, e.clientX, e.clientY);
+    });
+    preview.addEventListener("click", (e) => {
+      const original = findFieldElementByInstanceId(preview.dataset.originalInstanceId);
+      if (!original) return;
+      e.stopPropagation();
+      if (typeof showCardZoom === "function") showCardZoom(original);
+    });
+
+    panel.appendChild(preview);
+  });
+
+  zoneHoverActiveKey = `${owner}:${type}`;
+}
+
+function hideZoneHoverPanel() {
+  if (!zoneHoverPanel) return;
+  zoneHoverPanel.style.display = "none";
+  zoneHoverActiveKey = null;
 }
 
 function updateBattleZoneUI() {
@@ -190,33 +316,12 @@ function updateBattleZoneUI() {
       if (!countEl) return;
       if (type === "grave") countEl.textContent = `${cards.length}枚`;
       else countEl.textContent = cards.length > 0 ? "●" : "○";
+      if ((type === "skill" || type === "grave") && cards.length > 1) {
+        const topCard = cards[cards.length - 1];
+        if (topCard) attachZoneHoverListeners(topCard, owner, type);
+      }
     });
   });
-}
-
-function openZoneListModal(owner, type) {
-  const cards = getZoneCards(owner, type);
-  if (cards.length < 2) return;
-  const modal = document.createElement("div");
-  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000001;display:flex;align-items:center;justify-content:center;";
-  const box = document.createElement("div");
-  box.style.cssText = "width:380px;max-height:70vh;overflow:auto;background:#1a172c;border:1px solid #c89b3c;border-radius:10px;padding:14px;color:#fff;";
-  box.innerHTML = `<div style="font-weight:bold;margin-bottom:8px;">${type === "skill" ? "スキル場" : "墓地"} 一覧 (${cards.length}枚)</div>`;
-  cards.forEach((c, i) => {
-    const d = getCardData(c.dataset.id) || { name: c.dataset.id || "unknown" };
-    const row = document.createElement("div");
-    row.style.cssText = "padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-size:13px;";
-    row.textContent = `${i + 1}. ${d.name || c.dataset.id}`;
-    box.appendChild(row);
-  });
-  const close = document.createElement("button");
-  close.textContent = "閉じる";
-  close.style.cssText = "margin-top:10px;padding:6px 10px;background:#333;border:1px solid #666;color:#fff;border-radius:6px;cursor:pointer;";
-  close.onclick = () => modal.remove();
-  box.appendChild(close);
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-  modal.appendChild(box);
-  document.body.appendChild(modal);
 }
 
 function logBattleZoneChanges() {
@@ -984,10 +1089,6 @@ function enablePointerDrag(el){
   // ダブルクリックでvisibility切り替え（デッキオブジェクトは除外）
   el.addEventListener("dblclick", ()=>{
     if(el.classList.contains("deckObject")) return;
-    if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && isTopZoneCard(el)) {
-      openZoneListModal(el.dataset.owner, el.dataset.zoneType);
-      return;
-    }
     cycleVisibility(el);
   });
 }

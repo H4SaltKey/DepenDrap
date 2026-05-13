@@ -905,6 +905,60 @@ function enablePointerDrag(el){
       el.dataset.x  = fieldX;
       el.dataset.y  = fieldY;
       
+      // 手札エリアでのドラッグ移動の場合、handOrder を更新
+      const myRole2 = window.myRole || "player1";
+      if (el.dataset.owner === myRole2 && fieldY >= 1500) {
+        // このカードが手札エリアにドロップされた
+        const content = getFieldContent();
+        if (content) {
+          const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+          const otherHandCards = cards.filter(c => 
+            c.dataset.owner === myRole2 && 
+            Number(c.dataset.y) >= 1500 && 
+            c !== el
+          );
+          
+          if (otherHandCards.length > 0) {
+            // ドロップ位置 x 座標に基づいて、どのカードの前か後ろかを判定
+            otherHandCards.sort((a, b) => {
+              const xa = Number(a.dataset.x || 0);
+              const xb = Number(b.dataset.x || 0);
+              return xa - xb;
+            });
+            
+            const dropX = fieldX + CARD_W / 2; // ドロップされたカードの中心 X 座標
+            let insertAfterCard = null;
+            
+            for (let i = 0; i < otherHandCards.length; i++) {
+              const cardCenterX = Number(otherHandCards[i].dataset.x || 0) + CARD_W / 2;
+              if (dropX > cardCenterX) {
+                insertAfterCard = otherHandCards[i];
+              } else {
+                break;
+              }
+            }
+            
+            // handOrder を計算
+            if (insertAfterCard) {
+              // insertAfterCard の直後に挿入
+              const afterOrder = Number(insertAfterCard.dataset.handOrder || 0);
+              const nextCardInOrder = otherHandCards.find(c => Number(c.dataset.handOrder || 0) > afterOrder);
+              if (nextCardInOrder) {
+                const nextOrder = Number(nextCardInOrder.dataset.handOrder || 0);
+                el.dataset.handOrder = String((afterOrder + nextOrder) / 2);
+              } else {
+                el.dataset.handOrder = String(afterOrder + 1000);
+              }
+            } else {
+              // 最初に挿入
+              const firstCard = otherHandCards[0];
+              const firstOrder = Number(firstCard.dataset.handOrder || 0);
+              el.dataset.handOrder = String(firstOrder - 1000);
+            }
+          }
+        }
+      }
+      
       if (typeof window.organizeHands === "function") window.organizeHands();
       if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
       

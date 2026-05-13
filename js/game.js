@@ -236,7 +236,17 @@ function returnToDeck(cardId, isTemp = false) {
   else save();
 
   updateDeckObject();
-  pushMyStateDebounced(); // デッキ枚数を同期
+  
+  // 手札状況を即座に同期
+  if (firebaseClient?.db) {
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && me) {
+      firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(e => 
+        console.warn("[ReturnToDeck] 同期エラー:", e)
+      );
+    }
+  }
+  
   update();
 }
 
@@ -299,7 +309,18 @@ function drawFromDeckObject() {
   else save();
 
   updateDeckObject();
-  pushMyStateDebounced(); // デッキ枚数を同期
+  
+  // 手札状況を即座に同期
+  if (firebaseClient?.db) {
+    const gameRoom = localStorage.getItem("gameRoom");
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    if (gameRoom && me) {
+      firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(e => 
+        console.warn("[Draw] 同期エラー:", e)
+      );
+    }
+  }
+  
   update();
 }
 

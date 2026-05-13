@@ -1,7 +1,7 @@
 /**
- * firebase-client.js v3.1
+ * firebase-client.js v3.2
  * シンプルで堅牢な Firebase Realtime Database クライアント
- * Realtime Database 利用前に匿名認証（auth != null）を完了させる
+ * Compat: onAuthStateChanged で user 確定後にのみ DB 接続（authStateReady は使用しない）
  */
 
 class FirebaseClient {
@@ -16,7 +16,7 @@ class FirebaseClient {
   }
 
   /**
-   * 匿名ログイン完了まで待機し、その後にのみ Database を接続する
+   * signInAnonymously（必要時）→ onAuthStateChanged で user 確定後にのみ Database を接続する
    */
   async ensureAnonymousAuthThenDatabase(app) {
     if (typeof firebase.auth !== "function") {
@@ -25,21 +25,45 @@ class FirebaseClient {
     }
 
     const auth = firebase.auth(app);
-    await auth.authStateReady();
 
-    if (!auth.currentUser) {
-      try {
-        await auth.signInAnonymously();
-      } catch (e) {
-        console.error("[FirebaseClient] 匿名ログイン失敗:", e.code || "", e.message);
-        console.error("[FirebaseClient] Firebase Console → Authentication → 匿名 を有効にしてください。");
-        return false;
-      }
+    try {
+      await new Promise((resolve, reject) => {
+        let finished = false;
+        let unsub = () => {};
+
+        const finishOk = () => {
+          if (finished) return;
+          finished = true;
+          unsub();
+          this.auth = auth;
+          this.db = firebase.database(app);
+          resolve();
+        };
+
+        const finishErr = (err) => {
+          if (finished) return;
+          finished = true;
+          unsub();
+          reject(err);
+        };
+
+        unsub = auth.onAuthStateChanged(
+          (user) => {
+            if (user) finishOk();
+          },
+          (error) => finishErr(error)
+        );
+
+        if (!auth.currentUser) {
+          auth.signInAnonymously().catch((e) => finishErr(e));
+        }
+      });
+      return true;
+    } catch (e) {
+      console.error("[FirebaseClient] 匿名ログイン失敗:", e.code || "", e.message);
+      console.error("[FirebaseClient] Firebase Console → Authentication → 匿名 を有効にしてください。");
+      return false;
     }
-
-    this.auth = auth;
-    this.db = firebase.database(app);
-    return true;
   }
 
   /**

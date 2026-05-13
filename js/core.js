@@ -184,8 +184,15 @@ function saveAllImmediate(customFieldCards = null) {
   if (typeof lastLocalFieldSaveAt !== "undefined") window.lastLocalFieldSaveAt = Date.now();
   const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : []);
 
-  // Firebase 経由で同期（自動）
-  // ローカルストレージに保存すれば、Firebase が自動的に同期
+  // フィールドカードの同期も実施
+  if (typeof saveFieldCards === "function") {
+    saveFieldCards();
+  }
+
+  // 可能ならステータス同期も行う
+  if (typeof saveImmediate === "function") {
+    return saveImmediate();
+  }
   return Promise.resolve();
 }
 

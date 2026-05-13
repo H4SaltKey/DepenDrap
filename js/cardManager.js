@@ -203,6 +203,37 @@ function ensureZoneHoverPanel() {
   return panel;
 }
 
+function createZoneHoverPreviewCard(originalCard) {
+  const cardId = originalCard.dataset.id;
+  const data = getCardData(cardId) || {};
+  const preview = document.createElement("div");
+  preview.className = "card zoneHoverPreviewCard";
+  preview.dataset.id = cardId;
+  preview.dataset.originalInstanceId = originalCard.dataset.instanceId || "";
+  preview.dataset.zoneHoverPreview = "true";
+  preview.style.position = "absolute";
+  preview.style.pointerEvents = "auto";
+  preview.style.overflow = "hidden";
+  preview.style.background = "#111";
+  preview.style.border = "1px solid rgba(255,255,255,0.08)";
+  preview.style.boxSizing = "border-box";
+
+  const img = document.createElement("img");
+  setSafeSrc(img, data.image || originalCard.querySelector("img")?.src || "");
+  img.draggable = false;
+  img.style.width = "100%";
+  img.style.height = "100%";
+  img.style.objectFit = "contain";
+
+  const label = document.createElement("div");
+  label.className = "cardVisibilityLabel";
+  label.textContent = originalCard.querySelector(".cardVisibilityLabel")?.textContent || "";
+
+  preview.appendChild(img);
+  preview.appendChild(label);
+  return preview;
+}
+
 function attachZoneHoverListeners(card, owner, type) {
   if (!card || card.dataset.zoneHoverAttached === "true") return;
   card.dataset.zoneHoverAttached = "true";
@@ -247,19 +278,13 @@ function showZoneHoverPanel(owner, type) {
   panel.style.top = `${pageY}px`;
 
   cards.forEach((originalCard, index) => {
-    const preview = originalCard.cloneNode(true);
-    preview.classList.add("zoneHoverPreviewCard");
-    preview.dataset.originalInstanceId = originalCard.dataset.instanceId || "";
-    preview.dataset.zoneHoverPreview = "true";
-    preview.style.position = "absolute";
+    const preview = createZoneHoverPreviewCard(originalCard);
     preview.style.left = `${index * step}px`;
     preview.style.top = "0px";
     preview.style.width = `${previewWidth}px`;
-    preview.style.height = "auto";
-    preview.style.pointerEvents = "auto";
+    preview.style.height = `${previewHeight}px`;
     preview.style.cursor = "pointer";
     preview.style.zIndex = String(10 + index);
-    preview.classList.remove("opponent-card");
 
     preview.addEventListener("pointerenter", () => {
       preview.classList.add("zoneHoverPreviewActive");

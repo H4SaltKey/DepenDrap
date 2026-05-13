@@ -1,12 +1,13 @@
 /**
- * firebase-client.js v3.0
+ * firebase-client.js v3.1
  * シンプルで堅牢な Firebase Realtime Database クライアント
- * 既存コードの問題を排除した完全新規実装
+ * Realtime Database 利用前に匿名認証（auth != null）を完了させる
  */
 
 class FirebaseClient {
   constructor() {
     this.db = null;
+    this.auth = null;
     this.isConnected = false;
     this.username = null;
     this.sessionId = this.generateSessionId();
@@ -15,7 +16,34 @@ class FirebaseClient {
   }
 
   /**
-   * Firebase を初期化
+   * 匿名ログイン完了まで待機し、その後にのみ Database を接続する
+   */
+  async ensureAnonymousAuthThenDatabase(app) {
+    if (typeof firebase.auth !== "function") {
+      console.error("[FirebaseClient] firebase-auth-compat.js を HTML で firebase-database より前に読み込んでください");
+      return false;
+    }
+
+    const auth = firebase.auth(app);
+    await auth.authStateReady();
+
+    if (!auth.currentUser) {
+      try {
+        await auth.signInAnonymously();
+      } catch (e) {
+        console.error("[FirebaseClient] 匿名ログイン失敗:", e.code || "", e.message);
+        console.error("[FirebaseClient] Firebase Console → Authentication → 匿名 を有効にしてください。");
+        return false;
+      }
+    }
+
+    this.auth = auth;
+    this.db = firebase.database(app);
+    return true;
+  }
+
+  /**
+   * Firebase を初期化（認証成功後にのみ DB 接続・リスナー開始）
    */
   async initialize(config) {
     if (!config) {
@@ -31,7 +59,6 @@ class FirebaseClient {
     try {
       console.log("[FirebaseClient] 初期化中...");
       
-      // 既に初期化されている場合はスキップ
       let app;
       try {
         app = firebase.app();
@@ -39,19 +66,26 @@ class FirebaseClient {
         app = firebase.initializeApp(config);
       }
 
-      this.db = firebase.database(app);
+      const authed = await this.ensureAnonymousAuthThenDatabase(app);
+      if (!authed) {
+        this.db = null;
+        this.auth = null;
+        return false;
+      }
+
       this.username = localStorage.getItem("username") || "Player";
 
-      // 接続状態を監視
       this.setupConnectionMonitoring();
 
-      console.log("[FirebaseClient] ✅ 初期化成功");
+      console.log("[FirebaseClient] ✅ 初期化成功（匿名 UID:", this.auth.currentUser?.uid, ")");
       console.log("[FirebaseClient] Project:", config.projectId);
       console.log("[FirebaseClient] Database:", config.databaseURL);
 
       return true;
     } catch (error) {
       console.error("[FirebaseClient] 初期化エラー:", error.message);
+      this.db = null;
+      this.auth = null;
       return false;
     }
   }

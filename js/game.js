@@ -1248,6 +1248,24 @@ function updateMatchUI() {
       color: #4f7cff;
       stroke: #4f7cff;
     }
+    /* ファーストドロー選択 UI */
+    .firstDrawCardOuter { position:relative; width:90px; height:130px; flex-shrink:0; cursor:pointer; border-radius:10px; box-sizing:border-box; transition: box-shadow .2s ease, transform .2s ease; }
+    .firstDrawCardOuter:hover { transform: translateY(-2px); }
+    .firstDrawCardOuter .firstDrawCardClone { width:90px; height:130px; display:block; pointer-events:none; border-radius:8px; overflow:hidden; }
+    .firstDrawCheckRing {
+      position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      border:2px solid rgba(255,255,255,0.5); background:rgba(0,0,0,0.55); color:transparent;
+      pointer-events:none; transition: color .2s, border-color .2s, background .2s, box-shadow .2s;
+    }
+    .firstDrawCheckRing svg { display:block; }
+    .firstDrawCardOuter--picked {
+      box-shadow: 0 0 0 2px #00ffcc, 0 6px 22px rgba(0,255,204,0.22);
+    }
+    .firstDrawCardOuter--picked .firstDrawCheckRing {
+      border-color:#00ffcc; color:#00ffcc; background:rgba(0,32,28,0.92);
+      box-shadow: 0 0 10px rgba(0,255,204,0.35);
+    }
   `;
   document.head.appendChild(s);
 })();
@@ -1927,13 +1945,13 @@ function updateFirstDrawPhaseUI() {
     <div style="width:100%;max-width:900px;background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;">
       <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
       <p id="firstDrawPhaseSub" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:10px;text-align:center;">
-        3枚を選択して手札へ加える。残りは山札へ戻る。
+        カードをタップして選択／解除できます（丸にチェックが付きます）。<strong style="color:#f0d080;">ちょうど3枚</strong>のときだけ確定できます。残りは山札へ戻ります。
       </p>
       <p id="firstDrawPhaseProgress" style="color:#889;font-size:12px;line-height:1.5;margin-bottom:12px;text-align:center;"></p>
       <div id="firstDrawPhaseMessage" style="color:#aaa;font-size:14px;text-align:center;margin-bottom:18px;"></div>
       <div id="firstDrawPhaseCards" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;min-height:140px;"></div>
       <div style="text-align:center;">
-        <button id="firstDrawPhaseConfirm" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:16px;cursor:pointer;" disabled>3枚選択して確定</button>
+        <button id="firstDrawPhaseConfirm" type="button" style="background:#c89b3c;color:#1a172c;border:none;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer;max-width:100%;" disabled>準備中…</button>
       </div>
     </div>
   `;
@@ -1962,7 +1980,7 @@ function updateFirstDrawPhaseUI() {
     messageEl.textContent = "選択を確定しました。相手の完了を待っています…";
     confirmBtn.style.display = "none";
   } else if (!myReady) {
-    messageEl.textContent = "5枚の中から3枚を選択してください。";
+    messageEl.textContent = "5枚すべてタップで選択できます。チェックが付いた枚数がちょうど3枚のときだけ「確定」が押せます。";
     confirmBtn.style.display = "inline-flex";
   } else {
     messageEl.textContent = "双方の準備が完了しました。";
@@ -1973,39 +1991,55 @@ function updateFirstDrawPhaseUI() {
 
   const field = getFieldContent();
   if (!field) return;
-  const candidates = Array.from(field.querySelectorAll(`.card[data-owner="${me}"][data-visibility="none"]`));
+  const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="none"]`));
   if (candidates.length === 0) {
     messageEl.textContent = "山札から5枚が配置されるまでお待ちください…";
     return;
   }
 
   const selected = [];
+  const syncPickUi = () => {
+    confirmBtn.disabled = selected.length !== 3;
+    confirmBtn.textContent =
+      selected.length === 3
+        ? "この3枚で確定"
+        : selected.length < 3
+          ? `確定するにはあと ${3 - selected.length} 枚選んでください（現在 ${selected.length}/3）`
+          : `確定するには ${selected.length - 3} 枚の選択を外してください（現在 ${selected.length}/3）`;
+  };
+
   candidates.forEach((card, index) => {
+    const outer = document.createElement("div");
+    outer.className = "firstDrawCardOuter";
+    outer.dataset.firstDrawIndex = String(index);
+
     const clone = card.cloneNode(true);
-    clone.style.width = "90px";
-    clone.style.height = "130px";
-    clone.style.cursor = "pointer";
-    clone.style.flexShrink = "0";
-    clone.style.position = "relative";
-    clone.style.transition = "transform 0.2s ease, border-color 0.2s ease";
-    clone.dataset.firstDrawIndex = String(index);
-    clone.addEventListener("click", () => {
+    clone.classList.add("firstDrawCardClone");
+
+    const ring = document.createElement("div");
+    ring.className = "firstDrawCheckRing";
+    ring.setAttribute("aria-hidden", "true");
+    ring.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>';
+
+    outer.appendChild(clone);
+    outer.appendChild(ring);
+
+    outer.addEventListener("click", () => {
       if (overlay.dataset.localFirstDrawLocked === "1") return;
-      const idx = selected.indexOf(index);
-      if (idx >= 0) {
-        selected.splice(idx, 1);
-        clone.style.border = "2px solid transparent";
-        clone.style.transform = "scale(1)";
-      } else if (selected.length < 3) {
+      const pos = selected.indexOf(index);
+      if (pos >= 0) {
+        selected.splice(pos, 1);
+        outer.classList.remove("firstDrawCardOuter--picked");
+      } else {
         selected.push(index);
-        clone.style.border = "2px solid #00ffcc";
-        clone.style.transform = "scale(1.05)";
+        outer.classList.add("firstDrawCardOuter--picked");
       }
-      confirmBtn.disabled = selected.length !== 3;
-      confirmBtn.textContent = `確定 (${selected.length}/3)`;
+      syncPickUi();
     });
-    cardArea.appendChild(clone);
+
+    cardArea.appendChild(outer);
   });
+  syncPickUi();
 
   confirmBtn.onclick = async () => {
     if (selected.length !== 3 || overlay.dataset.localFirstDrawLocked === "1") return;
@@ -3317,7 +3351,7 @@ function setupRoomWatcher() {
   const opCardsListener = opCardsRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
     const opCards = snap.val();
-    // 相手のカードデータを適用（applyFieldCardsFromServer は自分のカードを上書きしない）
+    // 相手の fieldCards（相手オーナーのカードのみ）を適用。applyFieldCardsFromServer は部分同期時に自席 DOM を消さない。
     if (typeof window.applyFieldCardsFromServer === "function") {
       window.applyFieldCardsFromServer(opCards);
     }

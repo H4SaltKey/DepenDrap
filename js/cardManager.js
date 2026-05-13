@@ -1349,17 +1349,33 @@ function restoreFieldCards(){
 window.applyFieldCardsFromServer = function(data){
   if(document.body.classList.contains("isInteractingCard")) return;
   if(Date.now() - lastLocalFieldSaveAt < 500) return;
-  const normalized = normalizeFieldCardData(data);
+  const rawList = Array.isArray(data) ? data : (data && typeof data === "object" ? Object.values(data) : []);
+  const normalized = normalizeFieldCardData(rawList);
   data = normalized.data;
   const content = getFieldContent();
   const domRepaired = repairDuplicateDomInstanceIds();
-  const serverIds = new Set(data.map(d => d.instanceId));
-  
-  content.querySelectorAll(".card").forEach(el => {
-    if(el.dataset.instanceId && !serverIds.has(el.dataset.instanceId)){
-      el.remove();
-    }
-  });
+  const serverIds = new Set(data.map(d => d.instanceId).filter(Boolean));
+
+  const cardItems = data.filter(d => d && !d.isDeck);
+  const ownersPresent = new Set(cardItems.map(d => d.owner).filter(Boolean));
+
+  // 相手の fieldCards のみが届くときは「そのオーナー」のカードだけ孤児掃除する。
+  // 従来は serverIds に自分の instanceId が含まれず、ファーストドロー等で自席のカードが全消しされていた。
+  if (cardItems.length > 0 && ownersPresent.size === 1) {
+    const soleOwner = [...ownersPresent][0];
+    content.querySelectorAll(".card").forEach(el => {
+      if (el.dataset.owner !== soleOwner) return;
+      if (el.dataset.instanceId && !serverIds.has(el.dataset.instanceId)) {
+        el.remove();
+      }
+    });
+  } else if (cardItems.length > 0) {
+    content.querySelectorAll(".card").forEach(el => {
+      if (el.dataset.instanceId && !serverIds.has(el.dataset.instanceId)) {
+        el.remove();
+      }
+    });
+  }
 
   data.forEach(item => {
     let el = findFieldElementByInstanceId(item.instanceId);

@@ -2007,6 +2007,7 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   }
 }
 
+/*
 function updateFirstDrawPhaseUI() {
   const m = state.matchData;
   if (m.status !== "setup_first_draw") {
@@ -2301,6 +2302,7 @@ function updateFirstDrawPhaseUI() {
 
   overlay.dataset.cardsBound = "1";
 }
+  */
 
 window.selectEvolutionPath = async function(pathName) {
   if (window.isGameInteractionLocked()) return;

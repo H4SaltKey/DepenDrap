@@ -1,7 +1,6 @@
 
 
 
-// ... existing code ...
 
 
 
@@ -9,7 +8,6 @@
 
 
 
-// Adjustments for the First Draw Phase UI
 
 
 
@@ -184,11 +182,6 @@
 
 
 
-// 1. Remove the card visibility label "自分だけ"
-document.querySelectorAll('.card-title').forEach(title => {
-    if (title.innerText === '自分だけ') {
-        title.remove();
-    }
 
 
 
@@ -2934,7 +2927,6 @@ document.querySelectorAll('.card-title').forEach(title => {
 
 
 
-});
 
 
 
@@ -3061,14 +3053,6 @@ document.querySelectorAll('.card-title').forEach(title => {
 
 
 
-// 2. Modify the Right-click menu to only keep the "enlarge view" option
-const contextMenu = document.querySelector('.context-menu');
-if (contextMenu) {
-    const options = contextMenu.querySelectorAll('.menu-item');
-    options.forEach(option => {
-        if (option.innerText !== '拡大表示') {
-            option.style.display = 'none';
-        }
 
 
 
@@ -3107,10 +3091,8 @@ if (contextMenu) {
 
 
 
-    });
 
 
-}
 
 
 
@@ -3744,11 +3726,6 @@ if (contextMenu) {
 
 
 
-// 3. Rename the preview card label and increase its size
-document.querySelectorAll('.preview-card-label').forEach(label => {
-    label.textContent = 'プレビュー';
-    label.style.fontSize = '20px'; // Increase font size as needed
-});
 
 
 
@@ -3885,5 +3862,43 @@ document.querySelectorAll('.preview-card-label').forEach(label => {
 
 
 
-// ... existing code ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="new/path/to/firebase-client.js?v=10"></script>
+    <script src="new/path/to/messaging.js?v=1"></script>
+</head>
+<body>
+    <!-- ... existing code ... -->
+</body>
+</html>
 

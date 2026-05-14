@@ -193,7 +193,7 @@ let lastResetAt = 0;
 async function resetField() {
   const now = Date.now();
   if (now - lastResetAt < 10000) {
-    alert("リセットプロトコルは実行直後です。しばらくお待ちください。");
+    showWarningMessage("リセットプロトコルは実行直後です。しばらくお待ちください。");
     return;
   }
 
@@ -2858,7 +2858,7 @@ async function handleTurnEnd() {
     const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
     const myHandCards = cards.filter(c => c.dataset.owner === me && Number(c.dataset.y) >= 1500);
     if (myHandCards.length > handLimit) {
-      alert(`手札が上限を超えています（${myHandCards.length}枚 / 上限${handLimit}枚）。\n手札を${myHandCards.length - handLimit}枚捨ててからターンを終了してください。`);
+      showErrorMessage(`手札が上限を超えています（${myHandCards.length}枚 / 上限${handLimit}枚）。手札を${myHandCards.length - handLimit}枚捨ってからターンを終了してください。`);
       return;
     }
   }

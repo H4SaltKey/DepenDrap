@@ -86,7 +86,7 @@ async function openCardBatchUploader() {
     const files = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
     document.body.removeChild(fileInput);
     if (files.length === 0) {
-      alert("フォルダ内に画像ファイルが見つかりませんでした。");
+      showWarningMessage("フォルダ内に画像ファイルが見つかりませんでした。");
       return;
     }
 
@@ -101,7 +101,7 @@ async function openCardBatchUploader() {
       // サブフォルダーから block999 を検索
       blockFolders = getBlockFoldersFromFiles(files);
       if (blockFolders.length === 0) {
-        alert("選択したフォルダー内に 'block999' 形式のフォルダーが見つかりませんでした。");
+        showWarningMessage("選択したフォルダー内に 'block999' 形式のフォルダーが見つかりませんでした。");
         return;
       }
     }
@@ -237,7 +237,7 @@ async function uploadCardsToServerFromBlocks(blockFolders) {
   document.body.removeChild(downloadLink);
   URL.revokeObjectURL(downloadUrl);
 
-  alert(`カードデータを更新しました (追加: ${addedCount}, 更新: ${updatedCount})。cards.json がダウンロードされました。`);
+  showSuccessMessage(`カードデータを更新しました (追加: ${addedCount}, 更新: ${updatedCount})。cards.json がダウンロードされました。`);
 }
 
 

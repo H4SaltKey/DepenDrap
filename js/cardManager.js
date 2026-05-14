@@ -458,7 +458,7 @@ window.sendZoneCardsToGrave = function(owner, fromType) {
 window.showGraveyardContents = function(owner) {
   const graveCards = getZoneCards(owner, "grave");
   if (graveCards.length === 0) {
-    alert("墓地は空です。");
+    showInfoMessage("墓地は空です。");
     return;
   }
 
@@ -995,7 +995,7 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
       return;
     }
     if (st.pp < cost) {
-      alert("PPが足りません。");
+      showErrorMessage("PPが足りません。");
       return;
     }
     st.pp -= cost;

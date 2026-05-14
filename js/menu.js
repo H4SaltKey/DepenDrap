@@ -249,7 +249,7 @@
         try{
           await deleteAccount();
         } catch(e){
-          alert(e.message);
+          showErrorMessage(e.message);
         }
       });
     });

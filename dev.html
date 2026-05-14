@@ -242,15 +242,29 @@
     background: #f0f7ff;
     box-shadow: inset 0 0 0 2px #2f80ed;
   }
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,18,32,0.9); color: #ff6b6b; border: 1px solid #ff3377;
+    padding: 12px 24px; border-radius: 4px; font-size: 14px; z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: opacity 0.5s;
+  }
+  .toast.hidden { display: none; }
+  .toast.fadeOut { opacity: 0; }
 </style>
 </head>
 <body>
 <button class="back-btn" onclick="location.href='index.html'">戻る</button>
 
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/messaging.js"></script>
+
 <script>
 if(localStorage.getItem("dev") !== "true"){
-  alert("権限がないにゃん");
-  location.href = "index.html";
+  showErrorMessage("権限がないにゃん");
+  setTimeout(() => {
+    location.href = "index.html";
+  }, 500);
 }
 </script>
 

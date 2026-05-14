@@ -554,6 +554,6 @@ document.getElementById("openCardBatchUploader").addEventListener("click", () =>
     openCardBatchUploader();
   } else {
     console.error("[Dev] openCardBatchUploader関数が見つかりません");
-    alert("一括作成機能が利用できません。devTools.jsが正しく読み込まれているか確認してください。");
+    showErrorMessage("一括作成機能が利用できません。devTools.jsが正しく読み込まれているか確認してください。");
   }
 });

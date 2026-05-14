@@ -3894,8 +3894,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="new/path/to/firebase-client.js?v=10"></script>
-    <script src="new/path/to/messaging.js?v=1"></script>
+
+
+    <script src="js/firebase-client.js?v=10"></script>
+    <script src="js/messaging.js?v=1"></script>
 </head>
 <body>
     <!-- ... existing code ... -->

@@ -264,7 +264,14 @@ function showZoneStackInspectHover(owner, type) {
     wrap.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (typeof openCardMenu === "function") openCardMenu(c, e.clientX, e.clientY);
+      
+      // In first draw phase, only show zoom/enlarge
+      const isFirstDrawPhase = typeof state !== "undefined" && state.matchData?.status === "setup_first_draw";
+      if (isFirstDrawPhase && typeof showCardZoom === "function") {
+        showCardZoom(c);
+      } else if (typeof openCardMenu === "function") {
+        openCardMenu(c, e.clientX, e.clientY);
+      }
     });
     wrap.addEventListener("click", (e) => {
       e.stopPropagation();

@@ -31,6 +31,7 @@ function resetAllGameVariables() {
   window._resultShowing = false; // リザルト表示フラグをクリア
   window._resultDismissed = false; // リザルト非表示フラグをクリア
   window._firstDrawPhaseStarted = false;
+  window._orderPhaseAutoStartScheduled = false; // Order phase auto-start flag
   window._soloStartMode = false;
   window._bothPlayersConnected = false;
   cardsReadyFired = false;
@@ -1305,7 +1306,7 @@ function updateMatchUI() {
     .firstDrawPickPreviewCol { flex:0 0 212px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
     .firstDrawPickPreviewCaption { font-size:11px; color:#889; margin-bottom:8px; text-align:center; letter-spacing:0.02em; }
     .firstDrawLastPickPreview {
-      width:100%; min-height:268px; display:flex; align-items:center; justify-content:center;
+      width:100%; min-height:320px; display:flex; align-items:center; justify-content:center;
       border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
       box-sizing: border-box;
       padding: 10px 14px;
@@ -1315,10 +1316,10 @@ function updateMatchUI() {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: min(100%, 220px) !important;
+      width: min(100%, 280px) !important;
       height: auto !important;
       min-height: 0 !important;
-      max-height: min(52vh, 320px) !important;
+      max-height: min(60vh, 420px) !important;
       aspect-ratio: 320 / 453;
       margin: 0 auto !important;
       padding: 0 !important;
@@ -1328,7 +1329,8 @@ function updateMatchUI() {
       justify-content: center !important;
       overflow: hidden;
       border-radius: 10px;
-      box-shadow:0 10px 28px rgba(0,0,0,0.45);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 24px rgba(199,179,119,0.2);
+      transition: transform 0.3s ease;
     }
     .firstDrawLastPickPreview .firstDrawLastPickClone.card img {
       width: auto !important;
@@ -1976,6 +1978,22 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   if (!m.firstDrawP1Ready || !m.firstDrawP2Ready) return;
   if (window._firstDrawAdvanceSent) return;
   window._firstDrawAdvanceSent = true;
+  
+  // Clean up unchosen cards marked in first draw phase
+  const field = getFieldContent();
+  if (field) {
+    const unchosenCards = Array.from(field.querySelectorAll('[data-firstDrawUnchosenMarked="true"]'));
+    unchosenCards.forEach((card) => {
+      const rawId = card.dataset.id;
+      if (rawId) {
+        const isTemp = card.dataset.isTemp === "true";
+        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+        insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+      }
+      card.remove();
+    });
+  }
+  
   const gameRoom = localStorage.getItem("gameRoom");
   const next = { ...m, status: "playing", firstDrawDone: true };
   state.matchData = next;
@@ -2201,19 +2219,15 @@ function updateFirstDrawPhaseUI() {
       );
     });
 
-    const fieldExitPromises = unchosen.map((card) =>
-      playExit(card).then(() => {
-        const rawId = card.dataset.id;
-        if (rawId) {
-          const isTemp = card.dataset.isTemp === "true";
-          const storeId = isTemp ? `TEMP:${rawId}` : rawId;
-          insertCardIntoDeckAtRandom(me, storeId);
-        }
-        card.remove();
-      })
-    );
+    // Mark unchosen cards for later removal when both players are ready
+    unchosen.forEach((card) => {
+      card.dataset.firstDrawUnchosenMarked = "true";
+      card.style.opacity = "0.5";
+    });
 
-    await Promise.all([...overlayExitPromises, ...fieldExitPromises]);
+    // Don't remove unchosen cards yet - keep them visible until both players finish selection
+    // They will be cleaned up when phase transitions to "playing"
+    await Promise.all([...overlayExitPromises]);
 
     cardArea.classList.add("firstDrawPickRow--finalThree");
 
@@ -2467,10 +2481,10 @@ function updateOrderPhaseUI() {
         </div>
       </div>
       <div style="margin-top:40px;font-size:13px;color:#fff;letter-spacing:2px;text-align:center;">
-        ダイスロールで先攻・後攻を決めます...
+        両プレイヤーが準備完了。ダイスロールを開始します...
       </div>
       <div style="margin-top:20px;text-align:center;">
-        <button class="dice-choice-btn primary" onclick="startDiceRoll()">ダイスロール開始</button>
+        <div class="order-waiting-spinner" style="display:inline-block;width:40px;height:40px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #4fc3f7;border-radius:50%;animation:spin 1s linear infinite;"></div>
       </div>
     </div>
     <style>
@@ -2478,8 +2492,20 @@ function updateOrderPhaseUI() {
       .dice-choice-btn { padding: 10px 20px; margin: 0 10px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
       .dice-choice-btn.primary { background: #4fc3f7; color: #fff; }
       .dice-choice-btn.secondary { background: #e24a4a; color: #fff; }
+      @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   `;
+
+  // Auto-start dice roll when both players are ready in order_phase
+  if (window._orderPhaseAutoStartScheduled !== true) {
+    window._orderPhaseAutoStartScheduled = true;
+    setTimeout(() => {
+      if (state.matchData?.status === "order_phase") {
+        startDiceRoll();
+      }
+      window._orderPhaseAutoStartScheduled = false;
+    }, 1200);
+  }
 }
 
 

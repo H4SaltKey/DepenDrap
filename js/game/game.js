@@ -793,8 +793,15 @@ function getEvolutionPathHTML(owner) {
 function countOwnerHandCardsOnField(owner) {
   const c = typeof getFieldContent === "function" ? getFieldContent() : null;
   if (!c) return 0;
+  const handMin = (typeof window.HAND_ZONE_Y_MIN === "number") ? window.HAND_ZONE_Y_MIN : 1460;
   return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
-    (el) => el.dataset.owner === owner && Number(el.dataset.y) >= (typeof window.HAND_ZONE_Y_MIN === "number" ? window.HAND_ZONE_Y_MIN : 1460)
+    (el) => {
+      if (el.dataset.owner !== owner) return false;
+      const y = Number(el.dataset.y);
+      if (Number.isFinite(y) && y >= handMin) return true;
+      // dataset.y が欠落/不正でも、手札整列済みカードは handOrder を持つため手札として扱う
+      return Number.isFinite(Number(el.dataset.handOrder));
+    }
   ).length;
 }
 
@@ -2901,14 +2908,10 @@ async function handleTurnEnd() {
 
   // 手札枚数上限のチェック
   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
-  const content = document.getElementById("fieldContent") || document.getElementById("field");
-  if (content) {
-    const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-    const myHandCards = cards.filter(c => c.dataset.owner === me && Number(c.dataset.y) >= 1500);
-    if (myHandCards.length > handLimit) {
-      showErrorMessage(`手札が上限を超えています（${myHandCards.length}枚 / 上限${handLimit}枚）。手札を${myHandCards.length - handLimit}枚捨ってからターンを終了してください。`);
-      return;
-    }
+  const myHandCount = countOwnerHandCardsOnField(me);
+  if (myHandCount > handLimit) {
+    showErrorMessage(`手札が上限を超えています（${myHandCount}枚 / 上限${handLimit}枚）。手札を${myHandCount - handLimit}枚捨ってからターンを終了してください。`);
+    return;
   }
 
   const op          = me === "player1" ? "player2" : "player1";

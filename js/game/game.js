@@ -2249,6 +2249,8 @@ function updateFirstDrawPhaseUI() {
         const storeId = isTemp ? `TEMP:${rawId}` : rawId;
         insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
       }
+      // 表示用として残っている未選択カードは、確定後に盤面から即座に削除する
+      card.remove();
     });
 
     // Don't remove unchosen cards yet - keep them visible until both players finish selection

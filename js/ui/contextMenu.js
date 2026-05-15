@@ -517,6 +517,7 @@ function drawCards(count){
       const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : (Date.now() + i);
       card.dataset.handOrder = String(nextOrder);
       placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
+      card.dataset.y = String(typeof window.HAND_ZONE_Y_MIN === "number" ? window.HAND_ZONE_Y_MIN + 40 : 1520);
     }
   }
 
@@ -625,6 +626,7 @@ function drawToHand(count){
       const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : (Date.now() + i);
       card.dataset.handOrder = String(nextOrder);
       placeCard(document.getElementById("field"), card, { x: deckX, y: deckY });
+      card.dataset.y = String(typeof window.HAND_ZONE_Y_MIN === "number" ? window.HAND_ZONE_Y_MIN + 40 : 1520);
     }
   }
 

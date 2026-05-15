@@ -204,8 +204,13 @@ async function resetField() {
     showErrorMessage("リセット失敗: ルーム接続が無効です。再読み込み後に再試行してください。");
     return;
   }
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (me !== "player1") {
+    showWarningMessage("盤面リセットはホスト（player1）のみ実行できます。");
+    return;
+  }
   try {
-    await executeReset();
+    await executeReset(true);
   } catch (e) {
     console.error("[Reset] 実行失敗:", e);
     showErrorMessage("リセットに失敗しました。通信状態を確認して再試行してください。");
@@ -1315,10 +1320,10 @@ function updateMatchUI() {
       margin-bottom:12px; min-height:140px; width: max-content; max-width: 100%;
     }
     .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:16px; }
-    .firstDrawPickPreviewCol { flex:0 0 320px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
+    .firstDrawPickPreviewCol { flex:0 0 420px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
     .firstDrawPickPreviewCaption { font-size:11px; color:#889; margin-bottom:8px; text-align:center; letter-spacing:0.02em; }
     .firstDrawLastPickPreview {
-      width:100%; min-height:420px; display:flex; align-items:center; justify-content:center;
+      width:100%; min-height:520px; display:flex; align-items:center; justify-content:center;
       border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
       box-sizing: border-box;
       padding: 10px 14px;
@@ -1328,10 +1333,10 @@ function updateMatchUI() {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: min(100%, 320px) !important;
+      width: min(100%, 380px) !important;
       height: auto !important;
       min-height: 0 !important;
-      max-height: min(72vh, 520px) !important;
+      max-height: min(80vh, 620px) !important;
       aspect-ratio: 320 / 453;
       margin: 0 auto !important;
       padding: 0 !important;
@@ -3171,6 +3176,27 @@ function handleChatSend() {
 
 let _chatEventsBound = false;
 let _gameBootstrapped = false;
+let _connectionEventsBound = false;
+
+function bindConnectionUiEvents() {
+  if (_connectionEventsBound) return;
+  if (!window.firebaseClient || typeof firebaseClient.on !== "function") return;
+  _connectionEventsBound = true;
+
+  firebaseClient.on("disconnected", () => {
+    showWarningMessage("接続が切断されました。再接続を試みています…");
+    if (typeof showGameplayMessage === "function") {
+      showGameplayMessage("再接続中", "#ffb347");
+    }
+  });
+
+  firebaseClient.on("connected", () => {
+    showSuccessMessage("接続が回復しました。");
+    if (typeof showGameplayMessage === "function") {
+      showGameplayMessage("接続復帰", "#00ff99");
+    }
+  });
+}
 
 function setupGameUiEnhancements() {
   const chat = document.getElementById("chatArea");
@@ -3205,6 +3231,7 @@ async function initGame() {
   }
 
   try {
+    bindConnectionUiEvents();
     // ── 0. カードデータ読み込み ──
     console.log("[initGame] step0: loading assets");
     try {
@@ -3227,6 +3254,8 @@ async function initGame() {
     //   wasInGame（sessionStorage）は同一タブのリロードでのみ生き残る。
     //   タブを閉じた再開、別ルーム遷移では消える。
     const isReload = sessionStorage.getItem("wasInGame") === currentRoom;
+    const localStarted = localStorage.getItem("gameStarted") === "1" &&
+      localStorage.getItem("gameStartedRoom") === currentRoom;
     console.log(`[initGame] isReload=${isReload} room=${currentRoom}`);
 
     // ── 2a. 新規入室フロー ──
@@ -3322,9 +3351,15 @@ async function initGame() {
           applyLevelStats("player1");
           applyLevelStats("player2");
 
-          // リロード（再接続）時はステータスを reconnect_complete に設定
-          state.matchData.status = "reconnect_complete";
-          console.log("[initGame] リロード時ステータスを reconnect_complete に設定");
+          // 進行中のみ reconnect_complete、開始前は既存の待機フェーズを維持
+          const liveStatus = state.matchData.status;
+          const isLiveGame = localStarted && !["ready_check", "order_phase", "setup_dice", "setup_evolution", "setup_first_draw"].includes(liveStatus);
+          if (isLiveGame) {
+            state.matchData.status = "reconnect_complete";
+            console.log("[initGame] 進行中のため reconnect_complete に設定");
+          } else {
+            console.log("[initGame] 開始前フェーズのため既存statusを維持:", liveStatus);
+          }
 
         } catch (e) {
           console.warn("[initGame] Firebase 復元エラー:", e);

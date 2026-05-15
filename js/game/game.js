@@ -1045,11 +1045,7 @@ function updateMatchUI() {
       setTimeout(() => startR1T1(), 1000);
     }
 
-    // ファーストドロー済みの R1-1: 先攻の最初のターンでもターン開始ドロー（1枚）を行う
-    if (m.round === 1 && m.turn === 1 && m.firstDrawDone === true) {
-      const isMeFirst = m.turnPlayer === window.myRole;
-      if (isMeFirst) setTimeout(() => startTurnDraw(), 850);
-    }
+
     
     // lastTurnPlayerを即座に更新（2重表示を防ぐ）
     lastTurnPlayer = m.turnPlayer;
@@ -1067,10 +1063,7 @@ function updateMatchUI() {
       showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
       lastTurnPlayer = m.turnPlayer;
       
-      // ターン開始ドロー（自分のターン時）
-      if (isMe && (m.round > 1 || (m.round === 1 && m.turn > 1))) { // R1T1以外
-        setTimeout(() => startTurnDraw(), 500);
-      }
+
     }
   }
 

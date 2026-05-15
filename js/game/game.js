@@ -2898,7 +2898,7 @@ async function handleChooseOrder(goFirst) {
   update();
 }
 
-async function handleTurnEnd() {
+async function handleTurnEnd(skipHandLimitCheck = false) {
   if (window.isGameInteractionLocked()) return;
   const m  = state.matchData;
   const me = window.myRole || "player1";
@@ -2907,12 +2907,14 @@ async function handleTurnEnd() {
   if (m.winner) return;
 
   // 手札枚数上限のチェック
-  const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
-  const myHandCount = countOwnerHandCardsOnField(me);
-  if (myHandCount > handLimit) {
-    const need = myHandCount - handLimit;
-    showHandOverflowDiscardModal(me, need);
-    return;
+  if (!skipHandLimitCheck) {
+    const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
+    const myHandCount = countOwnerHandCardsOnField(me);
+    if (myHandCount > handLimit) {
+      const need = myHandCount - handLimit;
+      showHandOverflowDiscardModal(me, need);
+      return;
+    }
   }
 
   const op          = me === "player1" ? "player2" : "player1";
@@ -3022,7 +3024,7 @@ function showHandOverflowDiscardModal(owner, needCount) {
     }
     overlay.remove();
     handOverflowDiscardOpen = false;
-    await handleTurnEnd();
+    await handleTurnEnd(true);
   });
 
   actions.appendChild(btn);

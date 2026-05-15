@@ -322,6 +322,7 @@ function showZoneStackInspectHover(owner, type) {
     setSafeSrc(img, (data && data.image) || c.querySelector("img")?.src || "");
     img.className = "zoneStackInspectImg";
     img.draggable = false;
+    img.style.touchAction = "none";
     wrap.appendChild(ord);
     wrap.appendChild(img);
     wrap.addEventListener("contextmenu", (e) => {
@@ -341,6 +342,9 @@ function showZoneStackInspectHover(owner, type) {
       if (typeof showCardZoom === "function") showCardZoom(c);
     });
     wrap.addEventListener("pointerdown", (e) => {
+      beginZoneHoverCardDrag(c, e);
+    });
+    img.addEventListener("pointerdown", (e) => {
       beginZoneHoverCardDrag(c, e);
     });
     row.appendChild(wrap);

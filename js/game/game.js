@@ -1,6 +1,7 @@
 let gameReady = false;
 window._bothPlayersConnected = false;
 window._soloStartMode = false;
+let lastTurnDrawKey = "";
 
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
@@ -1016,6 +1017,18 @@ function updateMatchUI() {
   // ダイスロールが完全に終了するまで通知を表示しない
   // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
+  const meRole = window.myRole || "player1";
+
+  // ターン開始ドローの取りこぼし防止:
+  // 同期順序で turnChanged 判定を逃しても「自分ターンなら1回だけ」必ず実行する。
+  if (isDicePhaseComplete && m.turnPlayer === meRole && !m.winner) {
+    const drawKey = `${m.round}-${m.turn}-${m.turnPlayer}`;
+    const shouldSkipR1T1BeforeFirstDrawDone = (m.round === 1 && m.turn === 1 && m.firstDrawDone !== true);
+    if (!shouldSkipR1T1BeforeFirstDrawDone && lastTurnDrawKey !== drawKey) {
+      lastTurnDrawKey = drawKey;
+      setTimeout(() => startTurnDraw(), 400);
+    }
+  }
   
   // ラウンド開始通知（ターンよりも大きな括り）
   // ラウンドが変わった時、かつターン1の時に表示（先攻・後攻関係なく全員に表示）
@@ -3951,7 +3964,9 @@ function startR1T1() {
 }
 
 function startTurnDraw() {
+  const m = state.matchData || {};
   const me = window.myRole || "player1";
+  if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
   const myState = state[me];
   if (!myState || myState.deck.length === 0) {
     console.warn("[TurnDraw] デッキが空です。敗北判定を実行します。");

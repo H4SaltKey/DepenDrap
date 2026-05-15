@@ -1326,6 +1326,8 @@ document.addEventListener("contextmenu", (e) => {
     const me = window.myRole || window.getMyRole?.() || "player1";
     if (lor && lor.dataset.owner && lor.dataset.owner !== me) {
       hint.classList.add("is-visible");
+      hint.style.left = (e.clientX + 14) + "px";
+      hint.style.top = (e.clientY + 16) + "px";
     } else {
       hint.classList.remove("is-visible");
     }

@@ -6,6 +6,7 @@ window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
   if (!isGamePage) return false;
   const status = state.matchData?.status;
+  if (state.matchData?.winner || window._lastWinner) return true;
   return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "order_phase" || status === "reconnect_complete");
 };
 
@@ -1143,8 +1144,13 @@ function updateMatchUI() {
       document.body.appendChild(resultBtn);
     }
     resultBtn.style.display = "flex";
+    resultBtn.style.pointerEvents = "auto";
   } else if (resultBtn) {
     resultBtn.style.display = "none";
+  }
+  if (hasWinner) {
+    endBtn.style.pointerEvents = "none";
+    endBtn.style.opacity = "0.3";
   }
 
   // 4. ダイスフェーズのオーバーレイ
@@ -1736,9 +1742,10 @@ function watchRematchRequest() {
 
     if (opReq && !myReq) {
       // 相手が申し込んできた → リザルトが閉じられていたら再表示
-      if (!document.getElementById('gameResultOverlay') && state.matchData.winner) {
+      const winnerForReopen = state.matchData.winner || window._lastWinner;
+      if (!document.getElementById('gameResultOverlay') && winnerForReopen) {
         window._resultDismissed = false;
-        showResultScreen(state.matchData.winner);
+        showResultScreen(winnerForReopen);
       }
       
       if (statusEl) statusEl.textContent = "相手が再戦を申し込んでいます！";
@@ -3034,7 +3041,7 @@ document.body.addEventListener("input", (e) => {
 
 document.body.addEventListener("click", (e) => {
   if (window.isGameInteractionLocked()) {
-    const allowed = e.target.closest("#menuButton, #menuPanel, #optionsModal, #confirmModal");
+    const allowed = e.target.closest("#menuButton, #menuPanel, #optionsModal, #confirmModal, #chatArea, #gameResultOverlay, #showResultBtn");
     if (!allowed) return;
   }
   const evoTitle = e.target.closest(".evoPanelTitle[data-owner]");

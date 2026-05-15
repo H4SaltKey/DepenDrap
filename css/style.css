@@ -304,6 +304,14 @@ body.deckPage{
   transform:rotate(180deg);
 }
 
+/* 相手側の手札枚数表示を相手手札フィールド右下へ */
+.opHandZoneBg .handLimitDisplay{
+  top:auto;
+  left:auto;
+  bottom:12px;
+  right:12px;
+}
+
 .battleZone{
   border:2px dashed rgba(200,155,60,0.52);
   border-radius:12px;

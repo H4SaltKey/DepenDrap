@@ -172,6 +172,14 @@ function createDeckObject(forceResetPos = false) {
         wrapper.style.top = savedPos.y + "px";
         wrapper.dataset.x = savedPos.x;
         wrapper.dataset.y = savedPos.y;
+      } else {
+        // 再接続時など保存位置がない場合のフォールバック（手札横）
+        const lx = -320;
+        const ly = 1547;
+        wrapper.style.left = lx + "px";
+        wrapper.style.top = ly + "px";
+        wrapper.dataset.x = lx;
+        wrapper.dataset.y = ly;
       }
     } else {
       wrapper.classList.add("opponent-deck");

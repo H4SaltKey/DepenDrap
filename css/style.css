@@ -2028,10 +2028,10 @@ button{
 }
 
 .opHandLimitDisplay {
-  top: -44px !important;
-  bottom: auto !important;
-  left: 10px !important;
-  right: auto !important;
+  top: auto !important;
+  bottom: 10px !important;
+  left: auto !important;
+  right: 12px !important;
 }
 
 .zoneStackInspectPanel {

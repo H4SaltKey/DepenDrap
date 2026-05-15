@@ -142,6 +142,8 @@ function isTopZoneCard(card) {
 }
 
 function placeCardInZone(card, owner, type) {
+  // 既存のゾーン属性を確実に消してから新しいゾーンを付与する
+  clearZoneMarker(card);
   if (type === "attacker") {
     const prev = getZoneCards(owner, "attacker").filter((c) => c !== card);
     prev.forEach((c, i) => {
@@ -221,6 +223,67 @@ function hideZoneStackInspectPanel() {
   zoneStackInspectPanel = null;
 }
 
+function beginZoneHoverCardDrag(card, startEvent) {
+  if (!card || !startEvent || startEvent.button !== 0) return;
+  const myRole = window.myRole || "player1";
+  if (card.dataset.owner !== myRole) return;
+  if ((card.dataset.zoneType === "skill" || card.dataset.zoneType === "grave") && !isTopZoneCard(card)) return;
+
+  startEvent.preventDefault();
+  startEvent.stopPropagation();
+  hideZoneStackInspectPanel();
+
+  const field = document.getElementById("field");
+  if (!field) return;
+  const fieldRect = field.getBoundingClientRect();
+  const startRect = card.getBoundingClientRect();
+  const offsetX = startEvent.clientX - startRect.left;
+  const offsetY = startEvent.clientY - startRect.top;
+  const prevZoneType = card.dataset.zoneType || "";
+
+  let dragging = false;
+  const threshold = 4;
+  const sx = startEvent.clientX;
+  const sy = startEvent.clientY;
+  card.style.zIndex = DRAG_Z_TOP;
+
+  const move = (e) => {
+    const dx = e.clientX - sx;
+    const dy = e.clientY - sy;
+    if (!dragging && Math.hypot(dx, dy) < threshold) return;
+    dragging = true;
+    card.style.opacity = "0.85";
+    const fx = (e.clientX - fieldRect.left - fieldPanX) / fieldZoom;
+    const fy = (e.clientY - fieldRect.top - fieldPanY) / fieldZoom;
+    const x = fx - (offsetX / fieldZoom);
+    const y = fy - (offsetY / fieldZoom);
+    card.style.left = `${x}px`;
+    card.style.top = `${y}px`;
+  };
+
+  const up = (e) => {
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    card.style.opacity = "";
+    restoreCardDragZIndex(card);
+    if (!dragging) return;
+    const fx = (e.clientX - fieldRect.left - fieldPanX) / fieldZoom;
+    const fy = (e.clientY - fieldRect.top - fieldPanY) / fieldZoom;
+    const x = snapToGrid(fx - (offsetX / fieldZoom));
+    const y = snapToGrid(fy - (offsetY / fieldZoom));
+    if (prevZoneType) clearZoneMarker(card);
+    card.dataset.x = x;
+    card.dataset.y = y;
+    card.style.left = `${x}px`;
+    card.style.top = `${y}px`;
+    if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    saveFieldCards();
+  };
+
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", up);
+}
+
 /**
  * スキル場／墓地: ホバーで積み順＋画像を一覧し、各カードは右クリックで通常メニュー
  */
@@ -276,6 +339,9 @@ function showZoneStackInspectHover(owner, type) {
     wrap.addEventListener("click", (e) => {
       e.stopPropagation();
       if (typeof showCardZoom === "function") showCardZoom(c);
+    });
+    wrap.addEventListener("pointerdown", (e) => {
+      beginZoneHoverCardDrag(c, e);
     });
     row.appendChild(wrap);
   });

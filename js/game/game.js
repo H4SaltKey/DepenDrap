@@ -803,6 +803,18 @@ function countOwnerHandCardsOnField(owner) {
   ).length;
 }
 
+function getHandLimit(owner) {
+  const s = state[owner];
+  if (!s) return 6;
+  let limit = 6;
+  if (s.evolutionPath === "忍耐の道") {
+    limit += 2;
+    if ((Number(s.level) || 1) >= 6) limit += 1;
+  }
+  return limit;
+}
+window.getHandLimit = getHandLimit;
+
 function lorStatChip(icon, val, owner, key, title = "") {
   const isEditable = window.devMode;
   return `

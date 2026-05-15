@@ -233,7 +233,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
   if (!card || !startEvent || startEvent.button !== 0) return;
   const myRole = window.myRole || "player1";
   if (card.dataset.owner !== myRole) return;
-  if ((card.dataset.zoneType === "skill" || card.dataset.zoneType === "grave") && !isTopZoneCard(card)) return;
+  // (Remove restriction: allow dragging any card from the stack list)
 
   startEvent.preventDefault();
   startEvent.stopPropagation();
@@ -311,7 +311,7 @@ function showZoneStackInspectHover(owner, type) {
   const title = type === "skill" ? "スキル場" : "墓地";
   const head = document.createElement("div");
   head.className = "zoneStackInspectHead";
-  head.textContent = `${title}（1=下・古い順／右ほど上）`;
+  head.innerHTML = `<span>${title}</span><span style="font-size:10px; opacity:0.7;">全${cards.length}枚</span>`;
 
   const row = document.createElement("div");
   row.className = "zoneStackInspectRow";

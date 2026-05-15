@@ -3054,6 +3054,15 @@ function showHandOverflowDiscardModal(owner, needCount) {
     await handleTurnEnd(true);
   });
 
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "キャンセル";
+  cancelBtn.style.cssText = "padding:8px 16px;font-weight:700;background:#444;color:#fff;border:1px solid #777;border-radius:8px;cursor:pointer;";
+  cancelBtn.addEventListener("click", () => {
+    overlay.remove();
+    handOverflowDiscardOpen = false;
+  });
+
+  actions.appendChild(cancelBtn);
   actions.appendChild(btn);
   panel.appendChild(title);
   panel.appendChild(row);

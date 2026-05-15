@@ -2438,15 +2438,11 @@ function updateReadyCheckUI() {
     overlay.dataset.transitionScheduled = "true";
     setTimeout(() => {
       if (!window._bothPlayersConnected || state.matchData.status !== "ready_check") return;
-      // 新規入室のみorder_phaseへ遷移。再接続時は既存statusを維持。
-      if (!window._isReload) {
-        state.matchData.status = "order_phase";
-        const gameRoom = localStorage.getItem("gameRoom");
-        if (gameRoom && firebaseClient?.db) {
-          firebaseClient.writeMatchData(gameRoom, state.matchData);
-        }
+      state.matchData.status = "order_phase";
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && firebaseClient?.db) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
       }
-      // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）
       update();
     }, 1200);
   }
@@ -3595,14 +3591,10 @@ function setupRoomWatcher() {
     window._bothPlayersConnected = !!players.player1 && !!players.player2;
     applyInteractionLockState();
 
-    // 両プレイヤーが接続したら、ready_check から次のフェーズへ
-    // 新規入室のみorder_phaseへ遷移。再接続時は既存statusを維持（Firebase復元値を尊重）
+    // 両プレイヤーが接続したら、ready_check から次のフェーズへ進める。
     if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
-      if (!window._isReload) {
-        state.matchData.status = "order_phase";
-        firebaseClient.writeMatchData(gameRoom, state.matchData);
-      }
-      // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）
+      state.matchData.status = "order_phase";
+      firebaseClient.writeMatchData(gameRoom, state.matchData);
     }
 
     const playerCount = Object.keys(players).length;

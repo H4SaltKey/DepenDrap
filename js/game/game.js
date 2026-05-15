@@ -1811,6 +1811,10 @@ async function executeReset() {
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
     // 前試合のカード同期をクリア
     await firebaseClient.db.ref(`rooms/${gameRoom}/fieldCards`).remove();
+    // 前試合の変更要求・ログ・再戦フラグもクリア
+    await firebaseClient.db.ref(`rooms/${gameRoom}/pendingChange`).remove();
+    await firebaseClient.db.ref(`rooms/${gameRoom}/logs`).remove();
+    await firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove();
     // 各プレイヤーの diceValue もリセット
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1);
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1);

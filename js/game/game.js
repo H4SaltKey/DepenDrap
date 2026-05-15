@@ -1667,14 +1667,7 @@ function closeResultScreen() {
   window._resultShowing = false;
 
   // winner を state と Firebase からクリア（再流入防止）
-  if (state?.matchData) {
-    state.matchData.winner = null;
-    state.matchData.winnerSetAt = null;
-    const gameRoom = localStorage.getItem("gameRoom");
-    if (gameRoom && firebaseClient?.db) {
-      firebaseClient.writeMatchData(gameRoom, state.matchData);
-    }
-  }
+  // winner は保持（再戦UI再表示と合意判定に利用）
 
   // 閉じた後は再度 winner 判定を行わない（executeReset / handleChooseOrder まで維持）
   window._resultDismissed = true;
@@ -1998,7 +1991,8 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
       card.remove();
     });
   }
-  
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+
   const gameRoom = localStorage.getItem("gameRoom");
   const next = { ...m, status: "playing", firstDrawDone: true };
   state.matchData = next;
@@ -2277,14 +2271,7 @@ function updateFirstDrawPhaseUI() {
     }
 
     await new Promise((r) => setTimeout(r, 520));
-
-    cardArea.innerHTML = "";
-    cardArea.classList.remove("firstDrawPickRow--finalThree");
-    if (previewCol) {
-      previewCol.style.visibility = "";
-      const ph = overlay.querySelector("#firstDrawLastPickPreview");
-      if (ph) ph.innerHTML = "";
-    }
+    // 待機中は選択済み3枚の表示を維持する（相手完了まで消さない）
 
     const gameRoom = localStorage.getItem("gameRoom");
     const readyKey = me === "player1" ? "firstDrawP1Ready" : "firstDrawP2Ready";

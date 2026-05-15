@@ -264,14 +264,7 @@ function updateFirstDrawPhaseUI() {
     }
 
     await new Promise((r) => setTimeout(r, 520));
-
-    cardArea.innerHTML = "";
-    cardArea.classList.remove("firstDrawPickRow--finalThree");
-    if (previewCol) {
-      previewCol.style.visibility = "";
-      const ph = overlay.querySelector("#firstDrawLastPickPreview");
-      if (ph) ph.innerHTML = "";
-    }
+    // 待機中は選択済み3枚の表示を維持する（相手完了まで消さない）
 
     const gameRoom = localStorage.getItem("gameRoom");
     const readyKey = me === "player1" ? "firstDrawP1Ready" : "firstDrawP2Ready";

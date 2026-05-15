@@ -354,6 +354,9 @@ function addVal(owner, key, delta) {
   }
   
   s[key] = v;
+  if (key === "pp" && typeof addGameLog === "function") {
+    addGameLog(`[システム] ${s.username || owner} のPP: ${prev} → ${s[key]}`);
+  }
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);
 
@@ -1589,6 +1592,8 @@ function triggerOverdrawDefeat() {
 }
 
 function showResultScreen(winner) {
+  // 競合・レースで残ったオーバーレイを先に除去
+  document.querySelectorAll("#gameResultOverlay, .resultOverlay").forEach((el) => el.remove());
   // 既に表示中の場合は何もしない（2重表示防止）
   if (window._resultShowing) {
     console.log("[Result] SKIP: already showing");
@@ -1609,6 +1614,7 @@ function showResultScreen(winner) {
   const isDraw = (winner === 'draw');
   const div = document.createElement('div');
   div.id = 'gameResultOverlay';
+  div.className = 'resultOverlay';
 
   let title = '勝利';
   let color = '#c7b377';
@@ -1655,8 +1661,7 @@ function showResultScreen(winner) {
 
 function closeResultScreen() {
   // リスナーは解除せず、監視を継続（相手からの再戦申し込みを受け取るため）
-  const overlay = document.getElementById('gameResultOverlay');
-  if (overlay) overlay.remove();
+  document.querySelectorAll("#gameResultOverlay, .resultOverlay").forEach((el) => el.remove());
   
   // リザルト表示中フラグを解除
   window._resultShowing = false;

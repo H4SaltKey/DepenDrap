@@ -508,6 +508,12 @@ function drawCards(count){
   }
 
   dState.pp = Math.min((Number(dState.pp) || 0) + actual, Number(dState.ppMax) || 2);
+  if (typeof addGameLog === "function") {
+    const afterPp = Number(dState.pp) || 0;
+    const beforePp = Math.max(0, afterPp - actual);
+    const playerName = window.myUsername || me;
+    addGameLog(`[システム] ${playerName} のPP: ${beforePp} → ${afterPp}`);
+  }
 
   if (typeof window.organizeHands === "function") window.organizeHands();
 

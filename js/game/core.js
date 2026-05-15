@@ -384,6 +384,12 @@ function applyLevelStats(owner, force = false) {
 
 // ===== ログ =====
 function addGameLog(msg) {
+  if (typeof msg === "string") {
+    msg = msg
+      .replace(/\[EVOLUTION\]/g, "[進化の道]")
+      .replace(/\[ZONE\]/g, "[システム]")
+      .replace(/\[(SYSTEM|DICE|MATCH)\]/g, "[システム]");
+  }
   const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
   
   // 既に同じログが存在する場合は追加しない（重複防止）

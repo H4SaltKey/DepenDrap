@@ -144,6 +144,12 @@ function isTopZoneCard(card) {
 function placeCardInZone(card, owner, type) {
   // 既存のゾーン属性を確実に消してから新しいゾーンを付与する
   clearZoneMarker(card);
+  // 墓地 / アタッカー / スキルに出したカードは、出した時点で全体公開
+  card.dataset.visibility = "both";
+  card.classList.remove("visibilitySelf", "visibilityOpponent", "visibilityNone");
+  const visLabel = card.querySelector(".cardVisibilityLabel");
+  if (visLabel) visLabel.textContent = "";
+  if (typeof applyCardFace === "function") applyCardFace(card, "both");
   if (type === "attacker") {
     const prev = getZoneCards(owner, "attacker").filter((c) => c !== card);
     prev.forEach((c, i) => {

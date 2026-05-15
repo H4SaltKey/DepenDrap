@@ -1055,7 +1055,7 @@ function updateMatchUI() {
       lastTurnPlayer = m.turnPlayer;
       
       // ターン開始ドロー（自分のターン時）
-      if (isMe && m.round > 1 || (m.round === 1 && m.turn > 1)) { // R1T1以外
+      if (isMe && (m.round > 1 || (m.round === 1 && m.turn > 1))) { // R1T1以外
         setTimeout(() => startTurnDraw(), 500);
       }
     }
@@ -1780,8 +1780,9 @@ function watchRematchRequest() {
 
       // 結果画面を閉じてリセット
       closeResultScreen();
-      const isHostReset = me === "player1";
-      setTimeout(() => executeReset(isHostReset), 300);
+      // 再戦成立時は両端末とも共有データを初期化する。
+      // どちらか一方の通信失敗でリセットが不発になるのを防ぐ。
+      setTimeout(() => executeReset(true), 300);
     }
   });
 }
@@ -3365,7 +3366,8 @@ async function initGame() {
     //   wasInGame（sessionStorage）は同一タブのリロードでのみ生き残る。
     //   タブを閉じた再開、別ルーム遷移では消える。
     const isReload = sessionStorage.getItem("wasInGame") === currentRoom;
-    const localStarted = localStorage.getItem("gameStarted") === "1" &&
+    const startedFlag = localStorage.getItem("gameStarted");
+    const localStarted = (startedFlag === "true" || startedFlag === "1") &&
       localStorage.getItem("gameStartedRoom") === currentRoom;
     console.log(`[initGame] isReload=${isReload} room=${currentRoom}`);
 

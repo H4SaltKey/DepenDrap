@@ -7,7 +7,7 @@ window.isGameInteractionLocked = function() {
   if (!isGamePage) return false;
   const status = state.matchData?.status;
   if (state.matchData?.winner || window._lastWinner) return true;
-  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "order_phase" || status === "reconnect_complete");
+  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "order_phase");
 };
 
 function applyInteractionLockState() {
@@ -211,11 +211,6 @@ async function resetField() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom || !firebaseClient?.db) {
     showErrorMessage("リセット失敗: ルーム接続が無効です。再読み込み後に再試行してください。");
-    return;
-  }
-  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-  if (me !== "player1") {
-    showWarningMessage("盤面リセットはホスト（player1）のみ実行できます。");
     return;
   }
   try {
@@ -3378,15 +3373,8 @@ async function initGame() {
           applyLevelStats("player1");
           applyLevelStats("player2");
 
-          // 進行中のみ reconnect_complete、開始前は既存の待機フェーズを維持
-          const liveStatus = state.matchData.status;
-          const isLiveGame = localStarted && !["ready_check", "order_phase", "setup_dice", "setup_evolution", "setup_first_draw"].includes(liveStatus);
-          if (isLiveGame) {
-            state.matchData.status = "reconnect_complete";
-            console.log("[initGame] 進行中のため reconnect_complete に設定");
-          } else {
-            console.log("[initGame] 開始前フェーズのため既存statusを維持:", liveStatus);
-          }
+          // 再開時は Firebase 側の進行ステータスを尊重し、上書きしない
+          console.log("[initGame] 再開ステータスを維持:", state.matchData.status);
 
         } catch (e) {
           console.warn("[initGame] Firebase 復元エラー:", e);
@@ -3435,9 +3423,7 @@ async function initGame() {
     window._lastGameRoom = currentRoom;
     window._isReload = isReload;
 
-    // 古い winner を必ずクリア（前回ゲームの残滓・stale 防止）
-    state.matchData.winner    = null;
-    state.matchData.winnerSetAt = null;
+    // winner は再開整合性のため維持（stale 判定は watcher 側で処理）
     // 3秒の猶予: Firebase から流れてくる古い winner を stale として無視できるようにする
     // window._gameStartedAt = Date.now() + 3000; // 削除
 

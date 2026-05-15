@@ -3,6 +3,7 @@ window._bothPlayersConnected = false;
 window._soloStartMode = false;
 let lastTurnDrawKey = "";
 let handOverflowDiscardOpen = false;
+window._lastRound = 0; // 初期化
 
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
@@ -1027,12 +1028,19 @@ function updateMatchUI() {
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
   const meRole = window.myRole || "player1";
 
+  // 判定用変数を先に計算
+  const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
+  const isFirstTurnOfRound = m.turn === 1;
+  const turnChanged = lastTurnPlayer !== m.turnPlayer && isDicePhaseComplete;
+
   // ターン開始ドローの取りこぼし防止:
   // 同期順序で turnChanged 判定を逃しても「自分ターンなら1回だけ」必ず実行する。
   if (isDicePhaseComplete && m.turnPlayer === meRole && !m.winner) {
     const drawKey = `${m.round}-${m.turn}-${m.turnPlayer}`;
-    const shouldSkipR1T1BeforeFirstDrawDone = (m.round === 1 && m.turn === 1 && m.firstDrawDone !== true);
-    if (!shouldSkipR1T1BeforeFirstDrawDone && lastTurnDrawKey !== drawKey) {
+    // R1T1 でファーストドローフェーズ（3枚選択）が未完了なら通常ドローをスキップする
+    const shouldSkipNormalDrawInR1T1 = (m.round === 1 && m.turn === 1 && m.firstDrawDone !== true);
+    
+    if (!shouldSkipNormalDrawInR1T1 && lastTurnDrawKey !== drawKey) {
       lastTurnDrawKey = drawKey;
       // ターン開始通知の後にドローするように遅延を調整
       // ラウンド開始時は通知が遅れるため、さらに待機
@@ -1043,9 +1051,6 @@ function updateMatchUI() {
   
   // ラウンド開始通知（ターンよりも大きな括り）
   // ラウンドが変わった時、かつターン1の時に表示（先攻・後攻関係なく全員に表示）
-  const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
-  const isFirstTurnOfRound = m.turn === 1;
-  
   if (roundChanged && isFirstTurnOfRound) {
     showRoundNotification(m.round);
     window._lastRound = m.round;
@@ -1053,7 +1058,8 @@ function updateMatchUI() {
     // R1T1処理（ラウンド1のみ）
     // ファーストドローフェーズで既に5枚取り出し→手札3枚を済ませた場合は二重ドローしない（firstDrawDone は playing 移行時に true）
     if (m.round === 1 && m.firstDrawDone !== true) {
-      setTimeout(() => startR1T1(), 1000);
+      // ファーストドローフェーズをスキップした場合などのフォールバック
+      setTimeout(() => startR1T1(), 4500);
     }
 
 

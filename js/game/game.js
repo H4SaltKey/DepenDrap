@@ -1746,12 +1746,13 @@ function watchRematchRequest() {
 
       // 結果画面を閉じてリセット
       closeResultScreen();
-      setTimeout(() => executeReset(), 300);
+      const isHostReset = me === "player1";
+      setTimeout(() => executeReset(isHostReset), 300);
     }
   });
 }
 
-async function executeReset() {
+async function executeReset(syncShared = true) {
   // 盤面リセット中フラグを立てる
   window._isResetting = true;
   
@@ -1806,7 +1807,7 @@ async function executeReset() {
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");
-  if (gameRoom && firebaseClient?.db) {
+  if (gameRoom && firebaseClient?.db && syncShared) {
     // playerDice を完全に削除してダイス値をリセット
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
     // 前試合のカード同期をクリア

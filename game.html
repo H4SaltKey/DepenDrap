@@ -52,18 +52,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/firebase-client.js?v=10"></script>
-<script src="js/messaging.js?v=1"></script>
+<script src="js/network/firebase-client.js?v=10"></script>
+<script src="js/network/messaging.js?v=1"></script>
 
-<script src="js/cardData.js?v=8"></script>
-<script src="js/deckCode.js?v=8"></script>
-<script src="js/core.js?v=11"></script>
-<script src="js/cardManager.js?v=20"></script>
+<script src="js/card/cardData.js?v=8"></script>
+<script src="js/deck/deckCode.js?v=8"></script>
+<script src="js/game/core.js?v=11"></script>
+<script src="js/card/cardManager.js?v=20"></script>
 <script src="js/game/phases/firstDrawPhase.js"></script>
-<script src="js/game.js?v=51"></script>
-<script src="js/menu.js?v=10"></script>
-<script src="js/devTools.js?v=3"></script>
-<script src="js/damageCalc.js?v=4"></script>
+<script src="js/game/game.js?v=51"></script>
+<script src="js/ui/menu.js?v=10"></script>
+<script src="js/dev/devTools.js?v=3"></script>
+<script src="js/card/damageCalc.js?v=4"></script>
 
 <div id="field">
   <div id="fieldBgBlur"></div>
@@ -72,7 +72,7 @@
   </div>
 </div>
 
-<script src="js/contextMenu.js?v=20"></script>
+<script src="js/ui/contextMenu.js?v=20"></script>
 <script>
   (async () => {
     await initCards();

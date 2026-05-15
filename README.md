@@ -70,13 +70,14 @@ deckSelect.html     デッキ一覧
 deck.html           デッキ構築
 
 js/
-  firebase-sync.js  Firebase Realtime Database 接続・ルーム管理（メイン）
-  core.js           ゲーム状態管理
-  game.js           ゲームUI・ロジック
-  cardManager.js    カード・フィールド管理
-  timerSync.js      タイマー同期
-  matchSetup.js     マッチング処理
-  menu.js           メニューUI
+  network/firebase-client.js  Firebase Realtime Database 接続・ルーム管理（メイン）
+  network/messaging.js        画面通知・エラーメッセージ
+  game/core.js                ゲーム状態管理
+  game/game.js                ゲームUI・ロジック
+  game/matchSetup.js          マッチング処理
+  card/cardManager.js         カード・フィールド管理
+  ui/menu.js                  メニューUI
+  network/timerSync.js        タイマー同期（補助）
 ```
 
 ---

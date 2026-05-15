@@ -1993,11 +1993,13 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   if (field) {
     const unchosenCards = Array.from(field.querySelectorAll('[data-firstDrawUnchosenMarked="true"]'));
     unchosenCards.forEach((card) => {
-      const rawId = card.dataset.id;
-      if (rawId) {
-        const isTemp = card.dataset.isTemp === "true";
-        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
-        insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+      if (card.dataset.firstDrawReturned !== "1") {
+        const rawId = card.dataset.id;
+        if (rawId) {
+          const isTemp = card.dataset.isTemp === "true";
+          const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+          insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+        }
       }
       card.remove();
     });
@@ -2076,7 +2078,7 @@ function updateFirstDrawPhaseUI() {
           </div>
         </div>
         <div id="firstDrawPickPreviewCol" class="firstDrawPickPreviewCol">
-          <div class="firstDrawPickPreviewCaption">直近にタップしたカード</div>
+          <div class="firstDrawPickPreviewCaption">プレビュー</div>
           <div id="firstDrawLastPickPreview" class="firstDrawLastPickPreview"></div>
         </div>
       </div>
@@ -2175,6 +2177,8 @@ function updateFirstDrawPhaseUI() {
         if (snap) {
           const pv = snap.cloneNode(true);
           pv.classList.add("firstDrawCardClone", "firstDrawLastPickClone");
+          pv.style.width = "320px";
+          pv.style.height = "452px";
           const pvLbl = pv.querySelector(".cardVisibilityLabel");
           if (pvLbl) pvLbl.remove();
           previewHost.appendChild(pv);
@@ -2232,7 +2236,14 @@ function updateFirstDrawPhaseUI() {
     // Mark unchosen cards for later removal when both players are ready
     unchosen.forEach((card) => {
       card.dataset.firstDrawUnchosenMarked = "true";
+      card.dataset.firstDrawReturned = "1";
       card.style.opacity = "0.5";
+      const rawId = card.dataset.id;
+      if (rawId) {
+        const isTemp = card.dataset.isTemp === "true";
+        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+        insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+      }
     });
 
     // Don't remove unchosen cards yet - keep them visible until both players finish selection

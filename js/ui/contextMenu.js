@@ -168,6 +168,19 @@ document.addEventListener("keydown", (e) => {
 
 // ===== カード右クリック =====
 function openCardMenu(card, x, y){
+  const firstDrawOnly =
+    typeof state !== "undefined" &&
+    state?.matchData?.status === "setup_first_draw";
+  if (firstDrawOnly) {
+    buildMenu([
+      {
+        label: "拡大表示",
+        action: () => showCardZoom(card)
+      }
+    ], x, y, card);
+    return;
+  }
+
   const vis = card.dataset.visibility || "both";
   const items = [
     {

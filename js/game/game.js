@@ -197,10 +197,19 @@ async function resetField() {
     return;
   }
 
-  const ok = confirm("盤面全体のリセットプロトコルを実行しますか？（自分と相手の両方のステータスが初期化されます）");
+  const ok = confirm("盤面リセットは「再戦開始用」です。両プレイヤーの状態・山札・進化の道・ターン進行を初期化します。実行しますか？");
   if (!ok) return;
-
-  await executeReset();
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (!gameRoom || !firebaseClient?.db) {
+    showErrorMessage("リセット失敗: ルーム接続が無効です。再読み込み後に再試行してください。");
+    return;
+  }
+  try {
+    await executeReset();
+  } catch (e) {
+    console.error("[Reset] 実行失敗:", e);
+    showErrorMessage("リセットに失敗しました。通信状態を確認して再試行してください。");
+  }
 }
 
 window.resetField = resetField;
@@ -1306,10 +1315,10 @@ function updateMatchUI() {
       margin-bottom:12px; min-height:140px; width: max-content; max-width: 100%;
     }
     .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:16px; }
-    .firstDrawPickPreviewCol { flex:0 0 212px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
+    .firstDrawPickPreviewCol { flex:0 0 320px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
     .firstDrawPickPreviewCaption { font-size:11px; color:#889; margin-bottom:8px; text-align:center; letter-spacing:0.02em; }
     .firstDrawLastPickPreview {
-      width:100%; min-height:320px; display:flex; align-items:center; justify-content:center;
+      width:100%; min-height:420px; display:flex; align-items:center; justify-content:center;
       border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
       box-sizing: border-box;
       padding: 10px 14px;
@@ -1319,10 +1328,10 @@ function updateMatchUI() {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: min(100%, 280px) !important;
+      width: min(100%, 320px) !important;
       height: auto !important;
       min-height: 0 !important;
-      max-height: min(60vh, 420px) !important;
+      max-height: min(72vh, 520px) !important;
       aspect-ratio: 320 / 453;
       margin: 0 auto !important;
       padding: 0 !important;
@@ -1800,13 +1809,15 @@ async function executeReset() {
   if (gameRoom && firebaseClient?.db) {
     // playerDice を完全に削除してダイス値をリセット
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
+    // 前試合のカード同期をクリア
+    await firebaseClient.db.ref(`rooms/${gameRoom}/fieldCards`).remove();
     // 各プレイヤーの diceValue もリセット
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1);
     await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1);
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
-    // リセットされた playerState を反映
-    await firebaseClient.writeMyState(gameRoom, "player1", state.player1);
-    await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
+    // 自分の playerState のみ反映（同時再戦での相互上書きを防ぐ）
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    await firebaseClient.writeMyState(gameRoom, me, state[me]);
   }
 
   localStorage.setItem("gameState", JSON.stringify(createMinimalLocalState()));

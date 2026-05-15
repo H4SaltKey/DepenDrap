@@ -2,6 +2,7 @@ let gameReady = false;
 window._bothPlayersConnected = false;
 window._soloStartMode = false;
 let lastTurnDrawKey = "";
+let handOverflowDiscardOpen = false;
 
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
@@ -884,6 +885,13 @@ function update(skipLogCheck = false) {
   }
   lastStateJson = currentStateStr;
 
+  // 手札上限超過時の破棄モーダルが表示されている間は、
+  // UIの再構築による干渉を避けるため、更新を最小限にする
+  if (handOverflowDiscardOpen) {
+    applyInteractionLockState();
+    return;
+  }
+
   const playerEl = document.getElementById("gameUiPlayerInner");
   const enemyEl = document.getElementById("gameUiEnemy");
   const myOwner = window.myRole || "player1";
@@ -1026,7 +1034,10 @@ function updateMatchUI() {
     const shouldSkipR1T1BeforeFirstDrawDone = (m.round === 1 && m.turn === 1 && m.firstDrawDone !== true);
     if (!shouldSkipR1T1BeforeFirstDrawDone && lastTurnDrawKey !== drawKey) {
       lastTurnDrawKey = drawKey;
-      setTimeout(() => startTurnDraw(), 400);
+      // ターン開始通知の後にドローするように遅延を調整
+      // ラウンド開始時は通知が遅れるため、さらに待機
+      const drawDelay = roundChanged ? 4500 : 1500;
+      setTimeout(() => startTurnDraw(), drawDelay);
     }
   }
   
@@ -1132,7 +1143,10 @@ function updateMatchUI() {
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1;
     `;
-    endBtn.onclick = handleTurnEnd;
+    endBtn.onclick = (e) => {
+      // イベントオブジェクトが skipHandLimitCheck に渡されないようにラップする
+      handleTurnEnd(false);
+    };
     document.body.appendChild(endBtn);
   }
   endBtn.style.opacity = isMyTurn ? "1" : "0.3";
@@ -2902,6 +2916,10 @@ async function handleChooseOrder(goFirst) {
 }
 
 async function handleTurnEnd(skipHandLimitCheck = false) {
+  // skipHandLimitCheck が明示的に true でない場合は false として扱う
+  // (onclick 等から Event オブジェクトが渡された場合の誤作動防止)
+  if (skipHandLimitCheck !== true) skipHandLimitCheck = false;
+
   if (window.isGameInteractionLocked()) return;
   const m  = state.matchData;
   const me = window.myRole || "player1";
@@ -2955,7 +2973,7 @@ async function handleTurnEnd(skipHandLimitCheck = false) {
   update();
 }
 
-let handOverflowDiscardOpen = false;
+// (moved to top of file)
 function showHandOverflowDiscardModal(owner, needCount) {
   if (handOverflowDiscardOpen) return;
   const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("field");

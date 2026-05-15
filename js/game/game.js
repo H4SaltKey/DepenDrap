@@ -2910,7 +2910,8 @@ async function handleTurnEnd() {
   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
   const myHandCount = countOwnerHandCardsOnField(me);
   if (myHandCount > handLimit) {
-    showErrorMessage(`手札が上限を超えています（${myHandCount}枚 / 上限${handLimit}枚）。手札を${myHandCount - handLimit}枚捨ってからターンを終了してください。`);
+    const need = myHandCount - handLimit;
+    showHandOverflowDiscardModal(me, need);
     return;
   }
 
@@ -2947,6 +2948,89 @@ async function handleTurnEnd() {
   }
 
   update();
+}
+
+let handOverflowDiscardOpen = false;
+function showHandOverflowDiscardModal(owner, needCount) {
+  if (handOverflowDiscardOpen) return;
+  const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("field");
+  if (!content) return;
+  const handCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+    .filter((c) => c.dataset.owner === owner && Number(c.dataset.y) >= (window.HAND_ZONE_Y_MIN || 1460));
+  if (handCards.length < needCount) return;
+
+  handOverflowDiscardOpen = true;
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100120;display:flex;align-items:center;justify-content:center;";
+  const panel = document.createElement("div");
+  panel.style.cssText = "width:min(96vw,1180px);max-height:88vh;overflow:hidden;background:#161422;border:1px solid #6f5d31;border-radius:14px;padding:14px;color:#f2e6c8;display:flex;flex-direction:column;gap:10px;";
+  const title = document.createElement("div");
+  title.style.cssText = "font-size:20px;font-weight:800;";
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:10px;overflow-x:auto;padding:8px 2px 12px;";
+  const actions = document.createElement("div");
+  actions.style.cssText = "display:flex;justify-content:flex-end;gap:8px;";
+  const btn = document.createElement("button");
+  btn.textContent = "捨てる";
+  btn.style.cssText = "padding:8px 16px;font-weight:700;background:#a33737;color:#fff;border:1px solid #d98080;border-radius:8px;cursor:pointer;";
+  btn.disabled = true;
+
+  const selected = new Set();
+  const refresh = () => {
+    title.textContent = `手札を${needCount}枚捨てる（あと${needCount - selected.size}枚）`;
+    btn.disabled = selected.size !== needCount;
+  };
+  refresh();
+
+  handCards.forEach((c) => {
+    const w = document.createElement("div");
+    w.style.cssText = "position:relative;flex:0 0 auto;width:140px;cursor:pointer;";
+    const img = document.createElement("img");
+    const src = c.querySelector("img")?.src || "";
+    img.src = src;
+    img.style.cssText = "width:140px;height:198px;object-fit:contain;border:1px solid #544826;border-radius:8px;background:#111;";
+    const mark = document.createElement("div");
+    mark.textContent = "✕";
+    mark.style.cssText = "position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:rgba(255,80,80,0.82);font-size:92px;font-weight:900;pointer-events:none;";
+    w.addEventListener("click", () => {
+      if (selected.has(c)) selected.delete(c);
+      else if (selected.size < needCount) selected.add(c);
+      mark.style.display = selected.has(c) ? "flex" : "none";
+      refresh();
+    });
+    w.appendChild(img);
+    w.appendChild(mark);
+    row.appendChild(w);
+  });
+
+  btn.addEventListener("click", async () => {
+    if (selected.size !== needCount) return;
+    selected.forEach((c) => {
+      if (typeof placeCardInZone === "function") placeCardInZone(c, owner, "grave");
+    });
+    if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+    if (typeof window.organizeHands === "function") window.organizeHands();
+    if (typeof addGameLog === "function") {
+      addGameLog(`[システム] ${state[owner]?.username || owner} が手札を${needCount}枚捨てました`);
+    }
+    // 忍耐の道: 捨てた枚数ぶんEXP（ターン毎最大2）
+    const s = state[owner];
+    if (s?.evolutionPath === "忍耐の道" && needCount > 0) {
+      const gain = Math.min(2, needCount);
+      if (gain > 0 && typeof addVal === "function") addVal(owner, "exp", gain);
+    }
+    overlay.remove();
+    handOverflowDiscardOpen = false;
+    await handleTurnEnd();
+  });
+
+  actions.appendChild(btn);
+  panel.appendChild(title);
+  panel.appendChild(row);
+  panel.appendChild(actions);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
 }
 
 /**

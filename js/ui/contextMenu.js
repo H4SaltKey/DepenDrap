@@ -1333,46 +1333,22 @@ function openGameContextMenu(hit, x, y){
 
 function openFieldContextMenu(x, y) {
   const items = [
-    { label: "ステータスブロックの追加", disabled: true },
-    { sep: true },
     {
-      label: "独自 (UIレイヤー)",
-      action: () => addStatusBlock("ui", x, y)
-    },
-    {
-      label: "共有 (盤面レイヤー)",
+      label: "ステータスブロックを追加",
       action: () => {
         const rect = document.getElementById("field").getBoundingClientRect();
         const fieldX = (x - rect.left) / (window.fieldZoom || 1) - (window.fieldPanX || 0) / (window.fieldZoom || 1);
         const fieldY = (y - rect.top) / (window.fieldZoom || 1) - (window.fieldPanY || 0) / (window.fieldZoom || 1);
-        addStatusBlock("field", fieldX, fieldY);
+        if (typeof openStatusBlockEditor === "function") {
+          openStatusBlockEditor(null, true, fieldX, fieldY);
+        }
       }
     }
   ];
   buildMenu(items, x, y);
 }
 
-function addStatusBlock(type, x, y) {
-  const id = "sb_" + Date.now() + "_" + Math.floor(Math.random()*1000);
-  const me = window.myRole || "player1";
-  const newBlock = {
-    id, type, owner: me,
-    name: "新規ステータス",
-    current: 0, max: 10,
-    memo: "",
-    x, y,
-    scale: 1.0,
-    groupId: null
-  };
-  
-  if (!state[me].statusBlocks) state[me].statusBlocks = [];
-  state[me].statusBlocks.push(newBlock);
-  
-  if (typeof saveFieldCards === "function") saveFieldCards();
-  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
-  if (typeof update === "function") update();
-  if (typeof renderStatusBlocks === "function") renderStatusBlocks();
-}
+
 
 document.addEventListener("mousedown", (e) => {
   if(e.button !== 2) return;

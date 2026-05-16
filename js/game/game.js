@@ -4089,10 +4089,10 @@ function updateFieldStatusPanels() {
       el.id = id;
       el.className = "fieldStatusPanel";
       el.style.cssText = `
-        position: absolute; width: 220px; padding: 12px;
-        background: rgba(15, 12, 28, 0.88); border: 1px solid #c7b377;
-        border-radius: 12px; backdrop-filter: blur(8px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 50;
+        position: absolute; width: 660px; padding: 36px;
+        background: rgba(15, 12, 28, 0.92); border: 3px solid #c7b377;
+        border-radius: 24px; backdrop-filter: blur(12px);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6); z-index: 50;
         font-family: 'Outfit', sans-serif; pointer-events: auto;
       `;
       content.appendChild(el);
@@ -4106,36 +4106,29 @@ function updateFieldStatusPanels() {
     // 位置決め
     if (owner === "player1") {
       el.style.left = "40px";
-      el.style.top = "1340px";
+      el.style.top = "1180px"; // 大きくなったので少し上に調整
       el.style.transform = "";
     } else {
-      el.style.left = "2740px";
+      el.style.left = "2300px"; // 大きくなったので左に寄せる
       el.style.top = "540px";
-      el.style.transform = "rotate(180deg)";
+      el.style.transform = ""; // 自身の視点方向へ向ける（回転なし）
     }
 
     el.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: flex; flex-direction: column; gap: 24px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 11px; letter-spacing: 1px;">PP</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1" style="width:20px;height:20px;padding:0;cursor:pointer;">−</button>` : ""}
-            <span style="color: #00ffff; font-size: 18px; font-weight: bold;">${currentPp}/${maxPp}</span>
-            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1" style="width:20px;height:20px;padding:0;cursor:pointer;">＋</button>` : ""}
+          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">PP</span>
+          <div style="display: flex; align-items: center; gap: 18px;">
+            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1" style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">−</button>` : ""}
+            <span style="color: #00ffff; font-size: 64px; font-weight: bold; min-width: 140px; text-align: center;">${currentPp}/${maxPp}</span>
+            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1" style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">＋</button>` : ""}
           </div>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 11px; letter-spacing: 1px;">手札</span>
-          <span style="color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'}; font-size: 18px; font-weight: bold;">
+          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">手札</span>
+          <span style="color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'}; font-size: 64px; font-weight: bold; min-width: 140px; text-align: center;">
             ${s.handCount} / ${handLimit}
           </span>
-        </div>
-        <div style="height: 1px; background: rgba(199,179,119,0.2); margin: 2px 0;"></div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; color: #888;">
-          <div>アタッカー: <span style="color:#eee">${s.attackerCount || 0}</span></div>
-          <div>スキル: <span style="color:#eee">${s.skillCount || 0}</span></div>
-          <div>墓地: <span style="color:#eee">${s.graveCount || 0}</span></div>
-          <div>その他: <span style="color:#eee">${s.fieldNoneCount || 0}</span></div>
         </div>
       </div>
     `;

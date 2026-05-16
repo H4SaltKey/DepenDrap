@@ -116,17 +116,16 @@ function renderSingleBlock(block, parent, index) {
   
   if (block.type === "ui") {
     el.style.marginBottom = (40 * (s - 1)) + "px"; 
-    el.style.marginRight = (200 * (s - 1)) + "px"; // 縮小に合わせて調整
+    el.style.marginRight = (400 * (s - 1)) + "px"; // UIは常時表示に戻るため広げ直す
   } else if (block.icon) {
     el.style.backgroundImage = `url("${block.icon}")`;
   }
 
   const deleteBtn = isMine ? `
     <button class="sb-delete-btn-corner sb-hover-only" title="長押しで削除" onpointerdown="handleDeleteDown(event, '${block.id}')" onpointerup="handleDeleteUp(event)" onpointerleave="handleDeleteUp(event)">✕</button>
-  ` : `<span class="sb-owner-tag-corner sb-hover-only">${block.owner === 'player1' ? 'P1' : 'P2'}</span>`;
+  ` : `<span class="sb-owner-tag-corner sb-hover-only">${(state[block.owner]?.name || (block.owner === 'player1' ? 'P1' : 'P2')).slice(0,2)}</span>`;
 
   const readonly = canEditContent ? "" : "readonly disabled";
-  // 数値の変更は所有者に関わらず可能という要望
   const valReadonly = ""; 
 
   const iconHtml = block.icon ? `<img src="${block.icon}" class="sb-icon-small">` : `<div class="sb-icon-placeholder"></div>`;
@@ -145,38 +144,44 @@ function renderSingleBlock(block, parent, index) {
 
   let html = "";
   if (block.type === "ui") {
+    // UI: 上下移動ボタンのみホバー表示（アイコンに重ねる）。他は常時表示。
     html = `
       <div class="sb-ui-inner">
-        ${isMine ? `
-          <div class="sb-reorder-btns sb-hover-only">
-            <button onclick="reorderBlock('${block.id}', -1)" class="sb-mini-btn">▲</button>
-            <button onclick="reorderBlock('${block.id}', 1)" class="sb-mini-btn">▼</button>
-          </div>
-        ` : ''}
-        ${iconHtml}
+        <div class="sb-icon-wrapper">
+          ${iconHtml}
+          ${isMine ? `
+            <div class="sb-reorder-btns-overlay sb-hover-only">
+              <button onclick="reorderBlock('${block.id}', -1)" class="sb-mini-btn">▲</button>
+              <button onclick="reorderBlock('${block.id}', 1)" class="sb-mini-btn">▼</button>
+            </div>
+          ` : ''}
+        </div>
         <div class="sb-ui-main">
           <div class="sb-ui-top-row">
-            <input type="text" value="${block.name || ''}" class="sb-name-input sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
+            <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
             ${valHtml}
           </div>
           <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
         </div>
-        <textarea class="sb-memo sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
+        <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ..." title="${block.memo || ''}">${block.memo || ''}</textarea>
         ${deleteBtn}
         <div class="sb-resize-handle sb-hover-only" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
     `;
   } else {
+    // 盤面: ホバー時に 数値 / 名称 / メモ の順で表示
     html = `
       <div class="sb-field-inner">
         <div class="sb-field-val-overlay">
           ${valHtml}
         </div>
-        <div class="sb-header sb-hover-only">
-          <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
+        <div class="sb-field-hover-stack sb-hover-only">
+          <div class="sb-header">
+            <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
+          </div>
+          <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ..." title="${block.memo || ''}">${block.memo || ''}</textarea>
         </div>
         <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
-        <textarea class="sb-memo sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
         ${deleteBtn}
         <div class="sb-resize-handle sb-hover-only" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
@@ -233,13 +238,10 @@ window.duplicateBlock = function(id, targetOwner) {
   copy.id = "sb_" + Date.now();
   copy.owner = targetOwner;
   
-  // 名前プレフィックスの自動追記
   if (copy.ownerType === "self") {
-    const ownerName = state[targetOwner]?.name || (targetOwner === 'player1' ? 'P1' : 'P2');
+    const ownerName = state[targetOwner]?.name || (targetOwner === 'player1' ? 'Player1' : 'Player2');
     const prefix = `${ownerName}の `;
-    if (!copy.name.startsWith(prefix)) {
-      copy.name = prefix + copy.name;
-    }
+    if (!copy.name.startsWith(prefix)) copy.name = prefix + copy.name;
   }
 
   if (!state[targetOwner].statusBlocks) state[targetOwner].statusBlocks = [];
@@ -343,13 +345,10 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     if (urlInput.value) block.icon = urlInput.value;
     else block.icon = currentIconData;
 
-    // 個人(self)の場合の名前自動追記
     if (block.ownerType === "self") {
-      const ownerName = state[block.owner]?.name || (block.owner === 'player1' ? 'P1' : 'P2');
+      const ownerName = state[block.owner]?.name || (block.owner === 'player1' ? 'Player1' : 'Player2');
       const prefix = `${ownerName}の `;
-      if (!block.name.startsWith(prefix)) {
-        block.name = prefix + block.name;
-      }
+      if (!block.name.startsWith(prefix)) block.name = prefix + block.name;
     }
 
     if (isNew) {
@@ -443,7 +442,7 @@ function onPointerMove(e) {
     const el = document.getElementById(resizingBlockId);
     if (el) {
       el.style.transform = `scale(${newScale})`;
-      if (block.type === "ui") { el.style.marginBottom = (40 * (newScale - 1)) + "px"; el.style.marginRight = (200 * (newScale - 1)) + "px"; }
+      if (block.type === "ui") { el.style.marginBottom = (40 * (newScale - 1)) + "px"; el.style.marginRight = (400 * (newScale - 1)) + "px"; }
     }
   }
 }
@@ -549,17 +548,17 @@ style.textContent = `
     user-select: none;
     box-sizing: border-box;
     overflow: visible;
-    transition: width 0.2s, height 0.2s;
   }
-  .sb-ui-mode { width: auto; padding: 6px; }
+  .sb-ui-mode { width: 560px; padding: 6px; }
   .sb-field-mode { width: 140px; height: 140px; padding: 0; }
   .sb-has-bg { background-size: cover; background-position: center; border-color: rgba(255,255,255,0.2); }
   
   .sb-ui-inner { display: flex; align-items: center; gap: 8px; position: relative; width: 100%; }
-  .sb-icon-small { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
-  .sb-icon-placeholder { width: 32px; height: 32px; flex-shrink: 0; }
+  .sb-icon-wrapper { position: relative; width: 40px; height: 40px; flex-shrink: 0; }
+  .sb-icon-small { width: 100%; height: 100%; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); }
+  .sb-icon-placeholder { width: 100%; height: 100%; }
   
-  .sb-ui-main { display: flex; flex-direction: column; gap: 4px; }
+  .sb-ui-main { flex: 0 1 280px; display: flex; flex-direction: column; gap: 4px; }
   .sb-ui-top-row { display: flex; align-items: center; gap: 6px; }
   
   .sb-name-input { 
@@ -569,8 +568,8 @@ style.textContent = `
     color: #f0d080 !important; 
     font-weight: bold; font-size: 13px; outline: none; padding: 2px 6px; box-sizing: border-box;
   }
-  .sb-ui-mode .sb-name-input { width: 90px; }
-  .sb-field-mode .sb-name-input { width: 100%; margin-bottom: 4px; }
+  .sb-ui-mode .sb-name-input { width: 110px; }
+  .sb-field-mode .sb-name-input { width: 100%; }
   
   .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); overflow: hidden; }
   .sb-adjust-btn { 
@@ -590,12 +589,21 @@ style.textContent = `
   
   .sb-memo { 
     background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #ccc; font-size: 10px; border-radius: 4px; padding: 4px; resize: none; outline: none; box-sizing: border-box; font-family: inherit;
+    transition: height 0.2s;
   }
-  .sb-ui-mode .sb-memo { width: 80px; height: 32px; }
+  .sb-ui-mode .sb-memo { width: 120px; height: 36px; }
+  .sb-ui-mode .sb-memo:hover { height: 80px; z-index: 100; position: relative; }
   .sb-field-mode .sb-memo { width: 100%; height: 40px; margin-top: 4px; }
 
-  .sb-field-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 7px; }
+  .sb-field-inner { position: relative; width: 100%; height: 100%; overflow: visible; border-radius: 7px; }
   .sb-field-val-overlay { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5; }
+  .sb-field-hover-stack { 
+    position: absolute; top: 26px; left: 0; right: 0; 
+    display: flex; flex-direction: column; gap: 4px; padding: 4px;
+    background: rgba(0,0,0,0.7); border-radius: 4px; pointer-events: none;
+  }
+  .status-block:hover .sb-field-hover-stack { pointer-events: auto; }
+
   .sb-field-mode .sb-bar-bg { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0; }
   
   .sb-delete-btn-corner { 
@@ -608,6 +616,11 @@ style.textContent = `
   .sb-hover-only { visibility: hidden; opacity: 0; transition: opacity 0.2s; }
   .status-block:hover .sb-hover-only { visibility: visible; opacity: 1; }
 
+  .sb-reorder-btns-overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px;
+    background: rgba(0,0,0,0.5); border-radius: 4px;
+  }
+
   .sb-context-menu { background: rgba(20, 18, 30, 0.98); border: 1px solid #f0d080; border-radius: 8px; min-width: 140px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
   .sb-menu-item { padding: 10px 15px; color: #eee; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .sb-menu-item:hover { background: rgba(240, 208, 128, 0.2); color: #f0d080; }
@@ -617,6 +630,5 @@ style.textContent = `
   .sb-editor-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; }
   .sb-editor-grid label { font-size: 13px; color: #f0d080; font-weight: bold; }
   .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #000; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; outline: none; font-family: inherit; }
-  .sb-editor-upload { display: flex; gap: 6px; align-items: center; }
 `;
 document.head.appendChild(style);

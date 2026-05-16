@@ -159,6 +159,8 @@ function updateDeckStats() {
   if (progressBar) {
     const progress = Math.min(100, Math.max(0, (count / DECK_MAX_SIZE) * 100));
     progressBar.style.width = `${progress}%`;
+    const progressLabel = document.getElementById("deckProgressLabel");
+    if (progressLabel) progressLabel.textContent = `${count} / ${DECK_MAX_SIZE}`;
   }
 
   if (deckStats) {
@@ -499,12 +501,14 @@ function scrollContainer(container, amount) {
 
 function updateCardsScrollButtons() {
   const cardsDiv = document.getElementById("cards");
+  if (!cardsDiv) return;
+  const container = cardsDiv.closest(".cardListScroll");
   const cardsPrev = document.getElementById("cardsPrev");
   const cardsNext = document.getElementById("cardsNext");
-  if (!cardsDiv || !cardsPrev || !cardsNext) return;
-  const max = cardsDiv.scrollWidth - cardsDiv.clientWidth;
-  cardsPrev.disabled = cardsDiv.scrollLeft <= 0;
-  cardsNext.disabled = cardsDiv.scrollLeft >= max - 1;
+  if (!container || !cardsPrev || !cardsNext) return;
+  const max = container.scrollWidth - container.clientWidth;
+  cardsPrev.disabled = container.scrollLeft <= 0;
+  cardsNext.disabled = container.scrollLeft >= max - 1;
 }
 
 function updateDeckScrollButtons() {
@@ -594,10 +598,12 @@ function setupDeckBuilder() {
   const deckNext = document.getElementById("deckNext");
 
   if (cardsPrev && cardsDiv) {
-    cardsPrev.onclick = () => scrollContainer(cardsDiv, -Math.max(cardsDiv.clientWidth * 0.75, 240));
+    const scrollTarget = cardsDiv.closest(".cardListScroll") || cardsDiv;
+    cardsPrev.onclick = () => scrollContainer(scrollTarget, -Math.max(scrollTarget.clientWidth * 0.75, 240));
   }
   if (cardsNext && cardsDiv) {
-    cardsNext.onclick = () => scrollContainer(cardsDiv, Math.max(cardsDiv.clientWidth * 0.75, 240));
+    const scrollTarget = cardsDiv.closest(".cardListScroll") || cardsDiv;
+    cardsNext.onclick = () => scrollContainer(scrollTarget, Math.max(scrollTarget.clientWidth * 0.75, 240));
   }
   if (deckPrev && deckDiv) {
     deckPrev.onclick = () => scrollContainer(deckDiv, -Math.max(deckDiv.clientWidth * 0.75, 240));
@@ -607,7 +613,9 @@ function setupDeckBuilder() {
   }
 
   if (cardsDiv) {
-    cardsDiv.addEventListener("scroll", updateCardsScrollButtons);
+    const scrollTarget = cardsDiv.closest(".cardListScroll");
+    if (scrollTarget) scrollTarget.addEventListener("scroll", updateCardsScrollButtons);
+    else cardsDiv.addEventListener("scroll", updateCardsScrollButtons);
   }
   if (deckDiv) {
     deckDiv.addEventListener("scroll", updateDeckScrollButtons);

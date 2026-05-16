@@ -1022,6 +1022,8 @@ body.deckPage{
     gap:6px;
     padding:8px 8px 6px;
     box-sizing:border-box;
+    transform: scale(0.95);
+    transform-origin: top center;
 }
 
 .deckBuilder > .deckPageHeader{

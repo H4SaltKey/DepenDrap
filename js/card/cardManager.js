@@ -38,7 +38,8 @@ function toLocalY(serverY){
 const CARD_GRID_SIZE = 20;
 const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.05;
-let FIELD_ZOOM_MAX = 0.8;
+const FIELD_SCROLL_ZOOM_STEP = 0.02; // 40% of button step
+let FIELD_ZOOM_MAX = 0.95; // 0.8 + 0.15
 const FIELD_W = 3000;
 const FIELD_H = 2000;
 
@@ -1289,7 +1290,7 @@ async function initCards(){
     const pivotX = e.clientX - rect.left;
     const pivotY = e.clientY - rect.top;
     
-    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * FIELD_ZOOM_STEP, pivotX, pivotY);
+    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * FIELD_SCROLL_ZOOM_STEP, pivotX, pivotY);
   }, { passive:false });
 
   restoreFieldCards();

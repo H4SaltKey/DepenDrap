@@ -1297,6 +1297,8 @@ function getContextMenuTarget(target){
     const panelByOwner = document.querySelector(`.lorPanel[data-owner="${evoOwner}"]`);
     if(panelByOwner) return { type: "lorPanel", el: panelByOwner };
   }
+  const field = target.closest("#fieldContent, #field");
+  if(field) return { type: "field", el: field };
   return null;
 }
 
@@ -1307,6 +1309,48 @@ function openGameContextMenu(hit, x, y){
   else if(hit.type === "lorPanel") openStatusMenu(hit.el.dataset.owner, x, y);
   else if(hit.type === "graveZone") openGraveZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
   else if(hit.type === "skillZone") openSkillZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
+  else if(hit.type === "field") openFieldContextMenu(x, y);
+}
+
+function openFieldContextMenu(x, y) {
+  const items = [
+    { label: "ステータスブロックの追加", disabled: true },
+    { sep: true },
+    {
+      label: "独自 (UIレイヤー)",
+      action: () => addStatusBlock("ui", x, y)
+    },
+    {
+      label: "共有 (盤面レイヤー)",
+      action: () => {
+        const rect = document.getElementById("field").getBoundingClientRect();
+        const fieldX = (x - rect.left) / (window.fieldZoom || 1) - (window.fieldPanX || 0) / (window.fieldZoom || 1);
+        const fieldY = (y - rect.top) / (window.fieldZoom || 1) - (window.fieldPanY || 0) / (window.fieldZoom || 1);
+        addStatusBlock("field", fieldX, fieldY);
+      }
+    }
+  ];
+  buildMenu(items, x, y);
+}
+
+function addStatusBlock(type, x, y) {
+  const id = "sb_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+  const me = window.myRole || "player1";
+  const newBlock = {
+    id, type, owner: me,
+    name: "新規ステータス",
+    current: 0, max: 10,
+    memo: "",
+    x, y,
+    groupId: null
+  };
+  
+  if (!state.statusBlocks) state.statusBlocks = [];
+  state.statusBlocks.push(newBlock);
+  
+  if (typeof saveFieldCards === "function") saveFieldCards();
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+  if (typeof update === "function") update();
 }
 
 document.addEventListener("mousedown", (e) => {

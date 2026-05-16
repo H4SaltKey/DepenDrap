@@ -925,6 +925,9 @@ function update(skipLogCheck = false) {
   // フィールド上のステータスパネルの更新
   updateFieldStatusPanels();
 
+  // ステータスブロックの描画更新
+  renderStatusBlocks();
+
   // チャットログの更新
   if (typeof updateGameLogs === "function") updateGameLogs(state.logs);
 

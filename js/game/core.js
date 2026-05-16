@@ -12,7 +12,8 @@ const BASE_INITIAL_STATE = {
   instantDef: 0, instantDefMax: 999,
   pp: 0,         ppMax: 2,
   deck: [],
-  backImage: null
+  backImage: null,
+  statusBlocks: []
 };
 
 function makeCharState() {

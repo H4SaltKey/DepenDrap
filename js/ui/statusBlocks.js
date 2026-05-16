@@ -1,13 +1,11 @@
 /**
  * statusBlocks.js
  * フィールド上およびUI上のステータスブロックをレンダリングする
- * [自分/相手/共有] の所有権、アイコン表示、反転表示、エディタ機能をサポート
  */
 
 const SB_FIELD_W = 3000;
 const SB_FIELD_H = 2000;
 
-// ズーム・パン情報を取得するヘルパー
 function getFieldTransform() {
   return {
     zoom: (typeof fieldZoom !== 'undefined') ? fieldZoom : 1,
@@ -33,7 +31,6 @@ window.renderStatusBlocks = function() {
     if (!activeIds.has(el.id)) el.remove();
   });
 
-  // UIブロックの描画
   const uiBlocks = allBlocks.filter(b => b.type === "ui");
   const myRole = window.myRole || "player1";
   uiBlocks.sort((a, b) => {
@@ -48,7 +45,6 @@ window.renderStatusBlocks = function() {
     renderSingleBlock(block, uiLayer, index);
   });
 
-  // フィールドブロック
   const fieldBlocks = allBlocks.filter(b => b.type === "field");
   fieldBlocks.forEach(block => {
     renderSingleBlock(block, fieldLayer);
@@ -60,13 +56,7 @@ function ensureLayers() {
   if (!fieldLayer) {
     fieldLayer = document.createElement("div");
     fieldLayer.id = "fieldStatusBlocksLayer";
-    fieldLayer.style.cssText = `
-      position: absolute;
-      top: 0; left: 0;
-      width: ${SB_FIELD_W}px; height: ${SB_FIELD_H}px;
-      pointer-events: none;
-      z-index: 50;
-    `;
+    fieldLayer.style.cssText = `position:absolute;top:0;left:0;width:${SB_FIELD_W}px;height:${SB_FIELD_H}px;pointer-events:none;z-index:50;`;
     const content = document.getElementById("fieldContent");
     if (content) content.appendChild(fieldLayer);
   }
@@ -75,17 +65,7 @@ function ensureLayers() {
   if (!uiLayer) {
     uiLayer = document.createElement("div");
     uiLayer.id = "uiStatusBlocksLayer";
-    uiLayer.style.cssText = `
-      position: fixed;
-      top: 0; left: 0;
-      padding: 5px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      pointer-events: none;
-      z-index: 10000;
-      width: fit-content;
-    `;
+    uiLayer.style.cssText = `position:fixed;top:0;left:0;padding:5px;display:flex;flex-direction:column;gap:5px;pointer-events:none;z-index:10000;width:fit-content;`;
     document.body.appendChild(uiLayer);
   }
 }
@@ -111,17 +91,12 @@ function renderSingleBlock(block, parent, index) {
   let { x, y, scale } = block;
   if (!isShared) {
     const local = getLocalPresentation(block.id);
-    if (local) {
-      x = local.x ?? x;
-      y = local.y ?? y;
-      scale = local.scale ?? scale;
-    }
+    if (local) { x = local.x ?? x; y = local.y ?? y; scale = local.scale ?? scale; }
   }
 
   if (block.type === "field" && isShared && !isMine) {
     const inv = getInvertedCoords(x, y, scale || 1);
-    x = inv.x;
-    y = inv.y;
+    x = inv.x; y = inv.y;
   }
 
   if (block.type === "field") {
@@ -141,29 +116,30 @@ function renderSingleBlock(block, parent, index) {
   
   if (block.type === "ui") {
     el.style.marginBottom = (40 * (s - 1)) + "px"; 
-    el.style.marginRight = (400 * (s - 1)) + "px";
+    el.style.marginRight = (200 * (s - 1)) + "px"; // 縮小に合わせて調整
   } else if (block.icon) {
     el.style.backgroundImage = `url("${block.icon}")`;
   }
 
-  // 削除ボタンの配置変更
   const deleteBtn = isMine ? `
-    <button class="sb-delete-btn-corner" title="長押しで削除" onpointerdown="handleDeleteDown(event, '${block.id}')" onpointerup="handleDeleteUp(event)" onpointerleave="handleDeleteUp(event)">✕</button>
-  ` : `<span class="sb-owner-tag-corner">${block.owner === 'player1' ? 'P1' : 'P2'}</span>`;
+    <button class="sb-delete-btn-corner sb-hover-only" title="長押しで削除" onpointerdown="handleDeleteDown(event, '${block.id}')" onpointerup="handleDeleteUp(event)" onpointerleave="handleDeleteUp(event)">✕</button>
+  ` : `<span class="sb-owner-tag-corner sb-hover-only">${block.owner === 'player1' ? 'P1' : 'P2'}</span>`;
 
   const readonly = canEditContent ? "" : "readonly disabled";
+  // 数値の変更は所有者に関わらず可能という要望
+  const valReadonly = ""; 
+
   const iconHtml = block.icon ? `<img src="${block.icon}" class="sb-icon-small">` : `<div class="sb-icon-placeholder"></div>`;
 
-  // 数値部分の統合レイアウト [ - ] [ Current / Max ] [ + ]
   const valHtml = `
     <div class="sb-val-controls">
-      <button onclick="adjustCurrent('${block.id}', -1)" class="sb-adjust-btn" ${readonly}>−</button>
+      <button onclick="adjustCurrent('${block.id}', -1)" class="sb-adjust-btn" ${valReadonly}>−</button>
       <div class="sb-val-display">
-        <input type="number" value="${block.current || 0}" class="sb-val-input" ${readonly} onchange="updateBlockData('${block.id}', 'current', this.value)">
+        <input type="number" value="${block.current || 0}" class="sb-val-input" ${valReadonly} onchange="updateBlockData('${block.id}', 'current', this.value)">
         <span class="sb-sep">/</span>
-        <input type="number" value="${block.max || 10}" class="sb-max-input" ${readonly} onchange="updateBlockData('${block.id}', 'max', this.value)">
+        <input type="number" value="${block.max || 10}" class="sb-max-input" ${valReadonly} onchange="updateBlockData('${block.id}', 'max', this.value)">
       </div>
-      <button onclick="adjustCurrent('${block.id}', 1)" class="sb-adjust-btn" ${readonly}>＋</button>
+      <button onclick="adjustCurrent('${block.id}', 1)" class="sb-adjust-btn" ${valReadonly}>＋</button>
     </div>
   `;
 
@@ -172,37 +148,37 @@ function renderSingleBlock(block, parent, index) {
     html = `
       <div class="sb-ui-inner">
         ${isMine ? `
-          <div class="sb-reorder-btns">
+          <div class="sb-reorder-btns sb-hover-only">
             <button onclick="reorderBlock('${block.id}', -1)" class="sb-mini-btn">▲</button>
             <button onclick="reorderBlock('${block.id}', 1)" class="sb-mini-btn">▼</button>
           </div>
-        ` : '<div style="width:16px;"></div>'}
+        ` : ''}
         ${iconHtml}
         <div class="sb-ui-main">
           <div class="sb-ui-top-row">
-            <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
+            <input type="text" value="${block.name || ''}" class="sb-name-input sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
             ${valHtml}
           </div>
           <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
         </div>
-        <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
+        <textarea class="sb-memo sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
         ${deleteBtn}
-        <div class="sb-resize-handle" onpointerdown="startResizing(event, '${block.id}')"></div>
+        <div class="sb-resize-handle sb-hover-only" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
     `;
   } else {
     html = `
       <div class="sb-field-inner">
-        <div class="sb-header">
-          <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
-        </div>
-        <div class="sb-val-row">
+        <div class="sb-field-val-overlay">
           ${valHtml}
         </div>
+        <div class="sb-header sb-hover-only">
+          <input type="text" value="${block.name || ''}" class="sb-name-input" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">
+        </div>
         <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
-        <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
+        <textarea class="sb-memo sb-hover-only" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
         ${deleteBtn}
-        <div class="sb-resize-handle" onpointerdown="startResizing(event, '${block.id}')"></div>
+        <div class="sb-resize-handle sb-hover-only" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
     `;
   }
@@ -224,7 +200,6 @@ function renderSingleBlock(block, parent, index) {
   }
 }
 
-// --- ステータスブロック専用コンテキストメニュー ---
 function showStatusBlockMenu(e, id) {
   const existing = document.getElementById("sb-context-menu");
   if (existing) existing.remove();
@@ -232,33 +207,45 @@ function showStatusBlockMenu(e, id) {
   const menu = document.createElement("div");
   menu.id = "sb-context-menu";
   menu.className = "sb-context-menu premium-glass";
-  menu.style.cssText = `
-    position: fixed;
-    top: ${e.clientY}px;
-    left: ${e.clientX}px;
-    z-index: 30000;
-  `;
+  menu.style.cssText = `position:fixed;top:${e.clientY}px;left:${e.clientX}px;z-index:30000;`;
   
   const block = findBlockById(id);
   const myRole = window.myRole || "player1";
 
   menu.innerHTML = `
     <div class="sb-menu-item" onclick="openStatusBlockEditor('${id}'); document.getElementById('sb-context-menu').remove();">詳細編集...</div>
+    <div class="sb-menu-item" onclick="duplicateBlock('${id}', 'player1'); document.getElementById('sb-context-menu').remove();">自分用に複製</div>
+    <div class="sb-menu-item" onclick="duplicateBlock('${id}', 'player2'); document.getElementById('sb-context-menu').remove();">相手用に複製</div>
     ${block.owner === myRole ? `<div class="sb-menu-item sb-menu-delete" onclick="if(confirm('削除しますか？')) removeStatusBlock('${id}'); document.getElementById('sb-context-menu').remove();">削除</div>` : ''}
   `;
 
   document.body.appendChild(menu);
-  
   const closeMenu = (ev) => {
-    if (!menu.contains(ev.target)) {
-      menu.remove();
-      document.removeEventListener("pointerdown", closeMenu);
-    }
+    if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("pointerdown", closeMenu); }
   };
   setTimeout(() => document.addEventListener("pointerdown", closeMenu), 10);
 }
 
-// --- エディタモーダル ---
+window.duplicateBlock = function(id, targetOwner) {
+  const original = findBlockById(id);
+  if (!original) return;
+  const copy = JSON.parse(JSON.stringify(original));
+  copy.id = "sb_" + Date.now();
+  copy.owner = targetOwner;
+  
+  // 名前プレフィックスの自動追記
+  if (copy.ownerType === "self") {
+    const ownerName = state[targetOwner]?.name || (targetOwner === 'player1' ? 'P1' : 'P2');
+    const prefix = `${ownerName}の `;
+    if (!copy.name.startsWith(prefix)) {
+      copy.name = prefix + copy.name;
+    }
+  }
+
+  if (!state[targetOwner].statusBlocks) state[targetOwner].statusBlocks = [];
+  state[targetOwner].statusBlocks.push(copy);
+  updateAndSync();
+};
 
 window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
   let block = isNew ? {
@@ -294,7 +281,7 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
 
         <label>所有者タイプ</label>
         <select id="ed_ownerType">
-          <option value="self" ${block.ownerType==='self'?'selected':''}>自分 (Personal)</option>
+          <option value="self" ${block.ownerType==='self'?'selected':''}>個人 (Personal)</option>
           <option value="shared" ${block.ownerType==='shared'?'selected':''}>共有 (Shared)</option>
         </select>
 
@@ -325,7 +312,6 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     </div>
   `;
 
-  // 画像アップロード処理
   const fileInput = overlay.querySelector("#ed_icon_file");
   const preview = overlay.querySelector("#ed_icon_preview");
   const urlInput = overlay.querySelector("#ed_icon_url");
@@ -338,9 +324,8 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       currentIconData = ev.target.result;
-      preview.src = currentIconData;
-      preview.style.display = "block";
-      urlInput.value = ""; // ファイル優先
+      preview.src = currentIconData; preview.style.display = "block";
+      urlInput.value = "";
     };
     reader.readAsDataURL(file);
   };
@@ -349,18 +334,22 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     block.name = document.getElementById("ed_name").value;
     block.type = document.getElementById("ed_type").value;
     block.ownerType = document.getElementById("ed_ownerType").value;
-    // 小数点以下切り捨て (100%基準で整数入力)
     const sInput = parseInt(document.getElementById("ed_scale").value) || 100;
     block.scale = sInput / 100;
     block.current = parseInt(document.getElementById("ed_current").value) || 0;
     block.max = parseInt(document.getElementById("ed_max").value) || 10;
     block.memo = document.getElementById("ed_memo").value;
 
-    // アイコンの決定
-    if (urlInput.value) {
-      block.icon = urlInput.value;
-    } else {
-      block.icon = currentIconData;
+    if (urlInput.value) block.icon = urlInput.value;
+    else block.icon = currentIconData;
+
+    // 個人(self)の場合の名前自動追記
+    if (block.ownerType === "self") {
+      const ownerName = state[block.owner]?.name || (block.owner === 'player1' ? 'P1' : 'P2');
+      const prefix = `${ownerName}の `;
+      if (!block.name.startsWith(prefix)) {
+        block.name = prefix + block.name;
+      }
     }
 
     if (isNew) {
@@ -368,15 +357,11 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
       if (!state[me].statusBlocks) state[me].statusBlocks = [];
       state[me].statusBlocks.push(block);
     }
-    
     updateAndSync();
     overlay.remove();
   };
-
   document.body.appendChild(overlay);
 };
-
-// --- ドラッグ & リサイズ ---
 
 let draggingBlockId = null;
 let dragOffset = { x: 0, y: 0 };
@@ -388,32 +373,23 @@ function startDragging(e, id) {
   const block = findBlockById(id);
   if (!block) return;
   draggingBlockId = id;
-  
   const { zoom, panX, panY } = getFieldTransform();
   const field = document.getElementById("field");
   const fieldRect = field.getBoundingClientRect();
-
   const cursorFieldX = (e.clientX - fieldRect.left - panX) / zoom;
   const cursorFieldY = (e.clientY - fieldRect.top - panY) / zoom;
-
-  let bx = block.x || 0;
-  let by = block.y || 0;
-  let bs = block.scale || 1.0;
+  let bx = block.x || 0; let by = block.y || 0; let bs = block.scale || 1.0;
   if (!isSharedBlock(block)) {
     const local = getLocalPresentation(id);
     if (local) { bx = local.x ?? bx; by = local.y ?? by; bs = local.scale ?? bs; }
   }
-
   const myRole = window.myRole || "player1";
   if (isSharedBlock(block) && block.owner !== myRole) {
     const inv = getInvertedCoords(bx, by, bs);
-    dragOffset.x = cursorFieldX - inv.x;
-    dragOffset.y = cursorFieldY - inv.y;
+    dragOffset.x = cursorFieldX - inv.x; dragOffset.y = cursorFieldY - inv.y;
   } else {
-    dragOffset.x = cursorFieldX - bx;
-    dragOffset.y = cursorFieldY - by;
+    dragOffset.x = cursorFieldX - bx; dragOffset.y = cursorFieldY - by;
   }
-
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
   const el = document.getElementById(id);
@@ -439,62 +415,35 @@ function onPointerMove(e) {
   if (draggingBlockId) {
     const block = findBlockById(draggingBlockId);
     if (!block) return;
-
     const { zoom, panX, panY } = getFieldTransform();
     const field = document.getElementById("field");
     const fieldRect = field.getBoundingClientRect();
-
     const cursorFieldX = (e.clientX - fieldRect.left - panX) / zoom;
     const cursorFieldY = (e.clientY - fieldRect.top - panY) / zoom;
-
     let nx = cursorFieldX - dragOffset.x;
     let ny = cursorFieldY - dragOffset.y;
-    
     const myRole = window.myRole || "player1";
     if (isSharedBlock(block)) {
-      if (block.owner === myRole) {
-        block.x = nx;
-        block.y = ny;
-      } else {
-        let bs = block.scale || 1.0;
-        const rev = getInvertedCoords(nx, ny, bs);
-        block.x = rev.x;
-        block.y = rev.y;
-      }
-    } else {
-      setLocalPresentation(draggingBlockId, { x: nx, y: ny });
-    }
-    
+      if (block.owner === myRole) { block.x = nx; block.y = ny; }
+      else { let bs = block.scale || 1.0; const rev = getInvertedCoords(nx, ny, bs); block.x = rev.x; block.y = rev.y; }
+    } else { setLocalPresentation(draggingBlockId, { x: nx, y: ny }); }
     const el = document.getElementById(draggingBlockId);
-    if (el) {
-      el.style.left = nx + "px";
-      el.style.top = ny + "px";
-    }
+    if (el) { el.style.left = nx + "px"; el.style.top = ny + "px"; }
   }
-  
   if (resizingBlockId) {
     const block = findBlockById(resizingBlockId);
     if (!block) return;
     const dx = e.clientX - resizeStartPos.x;
     const dy = e.clientY - resizeStartPos.y;
-    
     const { zoom } = getFieldTransform();
     const delta = (dx + dy) / (300 * zoom);
     const newScale = Math.max(0.2, Math.min(6.0, resizeStartScale + delta));
-    
-    if (isSharedBlock(block)) {
-      block.scale = newScale;
-    } else {
-      setLocalPresentation(resizingBlockId, { scale: newScale });
-    }
-    
+    if (isSharedBlock(block)) block.scale = newScale;
+    else setLocalPresentation(resizingBlockId, { scale: newScale });
     const el = document.getElementById(resizingBlockId);
     if (el) {
       el.style.transform = `scale(${newScale})`;
-      if (block.type === "ui") {
-        el.style.marginBottom = (40 * (newScale - 1)) + "px";
-        el.style.marginRight = (400 * (newScale - 1)) + "px";
-      }
+      if (block.type === "ui") { el.style.marginBottom = (40 * (newScale - 1)) + "px"; el.style.marginRight = (200 * (newScale - 1)) + "px"; }
     }
   }
 }
@@ -502,18 +451,13 @@ function onPointerMove(e) {
 function onPointerUp(e) {
   if (draggingBlockId || resizingBlockId) {
     const block = findBlockById(draggingBlockId || resizingBlockId);
-    if (block && isSharedBlock(block)) {
-      if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
-    }
+    if (block && isSharedBlock(block)) if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
     renderStatusBlocks(); 
   }
-  draggingBlockId = null;
-  resizingBlockId = null;
+  draggingBlockId = null; resizingBlockId = null;
   document.removeEventListener("pointermove", onPointerMove);
   document.removeEventListener("pointerup", onPointerUp);
 }
-
-// --- ユーティリティ ---
 
 function findBlockById(id) {
   const p1 = state.player1?.statusBlocks || [];
@@ -521,15 +465,10 @@ function findBlockById(id) {
   return p1.find(b => b.id === id) || p2.find(b => b.id === id);
 }
 
-function isSharedBlock(block) {
-  return block.ownerType === "shared";
-}
+function isSharedBlock(block) { return block.ownerType === "shared"; }
 
 function getLocalPresentation(id) {
-  try {
-    const saved = JSON.parse(localStorage.getItem("sb_presentation") || "{}");
-    return saved[id] || null;
-  } catch { return null; }
+  try { const saved = JSON.parse(localStorage.getItem("sb_presentation") || "{}"); return saved[id] || null; } catch { return null; }
 }
 
 function setLocalPresentation(id, data) {
@@ -541,20 +480,13 @@ function setLocalPresentation(id, data) {
 }
 
 function getInvertedCoords(x, y, scale) {
-  const BLOCK_W = 200 * scale;
-  const BLOCK_H = 120 * scale;
-  return {
-    x: SB_FIELD_W - x - BLOCK_W,
-    y: SB_FIELD_H - y - BLOCK_H
-  };
+  const BLOCK_W = 200 * scale; const BLOCK_H = 120 * scale;
+  return { x: SB_FIELD_W - x - BLOCK_W, y: SB_FIELD_H - y - BLOCK_H };
 }
 
 window.adjustCurrent = function(id, delta) {
   const block = findBlockById(id);
-  if (block && (block.owner === window.myRole || isSharedBlock(block))) {
-    block.current = (block.current || 0) + delta;
-    updateAndSync();
-  }
+  if (block) { block.current = (block.current || 0) + delta; updateAndSync(); }
 };
 
 window.reorderBlock = function(id, direction) {
@@ -565,17 +497,15 @@ window.reorderBlock = function(id, direction) {
   if (subIdx === -1) return;
   const targetSubIdx = subIdx + direction;
   if (targetSubIdx < 0 || targetSubIdx >= uiBlocks.length) return;
-  const blockA = uiBlocks[subIdx];
-  const blockB = uiBlocks[targetSubIdx];
-  const realIdxA = list.indexOf(blockA);
-  const realIdxB = list.indexOf(blockB);
+  const blockA = uiBlocks[subIdx]; const blockB = uiBlocks[targetSubIdx];
+  const realIdxA = list.indexOf(blockA); const realIdxB = list.indexOf(blockB);
   [list[realIdxA], list[realIdxB]] = [list[realIdxB], list[realIdxA]];
   updateAndSync();
 };
 
 window.updateBlockData = function(id, key, value) {
   const block = findBlockById(id);
-  if (block && (block.owner === window.myRole || isSharedBlock(block))) {
+  if (block) {
     if (key === 'current' || key === 'max') block[key] = Number(value);
     else block[key] = value;
     updateAndSync();
@@ -584,14 +514,9 @@ window.updateBlockData = function(id, key, value) {
 
 let deleteTimer = null;
 window.handleDeleteDown = function(e, id) {
-  e.stopPropagation();
-  const btn = e.target;
-  btn.classList.add("deleting");
+  e.stopPropagation(); const btn = e.target; btn.classList.add("deleting");
   deleteTimer = setTimeout(() => {
-    btn.classList.remove("deleting");
-    if (confirm("このステータスブロックを削除しますか？")) {
-      removeStatusBlock(id);
-    }
+    btn.classList.remove("deleting"); if (confirm("このステータスブロックを削除しますか？")) removeStatusBlock(id);
   }, 800); 
 };
 
@@ -613,7 +538,6 @@ function updateAndSync() {
   renderStatusBlocks();
 }
 
-// --- スタイル定義 ---
 const style = document.createElement("style");
 style.textContent = `
   .status-block {
@@ -625,102 +549,74 @@ style.textContent = `
     user-select: none;
     box-sizing: border-box;
     overflow: visible;
+    transition: width 0.2s, height 0.2s;
   }
-  .sb-ui-mode { width: 600px; padding: 10px; }
-  .sb-field-mode { width: 220px; padding: 12px; }
+  .sb-ui-mode { width: auto; padding: 6px; }
+  .sb-field-mode { width: 140px; height: 140px; padding: 0; }
   .sb-has-bg { background-size: cover; background-position: center; border-color: rgba(255,255,255,0.2); }
-  .sb-field-inner { position: relative; z-index: 1; height: 100%; }
-  .sb-has-bg .sb-field-inner { background: rgba(0,0,0,0.5); padding: 5px; border-radius: 4px; }
-
-  .sb-ui-inner { display: flex; align-items: center; gap: 12px; position: relative; width: 100%; }
-  .sb-icon-small { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
-  .sb-icon-placeholder { width: 40px; height: 40px; flex-shrink: 0; }
   
-  .sb-ui-main { flex: 0 1 260px; display: flex; flex-direction: column; gap: 6px; }
-  .sb-ui-top-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .sb-ui-inner { display: flex; align-items: center; gap: 8px; position: relative; width: 100%; }
+  .sb-icon-small { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
+  .sb-icon-placeholder { width: 32px; height: 32px; flex-shrink: 0; }
+  
+  .sb-ui-main { display: flex; flex-direction: column; gap: 4px; }
+  .sb-ui-top-row { display: flex; align-items: center; gap: 6px; }
   
   .sb-name-input { 
-    background: rgba(0,0,0,0.5); 
-    border: 1px solid rgba(255,255,255,0.15); 
+    background: rgba(0,0,0,0.6) !important; 
+    border: 1px solid rgba(255,255,255,0.2) !important; 
     border-radius: 4px; 
-    color: #f0d080; 
-    font-weight: bold; 
-    font-size: 14px; 
-    outline: none; 
-    padding: 3px 8px; 
-    box-sizing: border-box;
+    color: #f0d080 !important; 
+    font-weight: bold; font-size: 13px; outline: none; padding: 2px 6px; box-sizing: border-box;
   }
-  .sb-ui-mode .sb-name-input { width: 110px; }
-  .sb-field-mode .sb-name-input { width: 100%; margin-bottom: 6px; }
+  .sb-ui-mode .sb-name-input { width: 90px; }
+  .sb-field-mode .sb-name-input { width: 100%; margin-bottom: 4px; }
   
-  .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.5); border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); overflow: hidden; }
+  .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); overflow: hidden; }
   .sb-adjust-btn { 
-    background: rgba(255,255,255,0.05); 
-    border: none; 
-    border-right: 1px solid rgba(255,255,255,0.1);
-    color: #f0d080; 
-    width: 26px; height: 26px; 
-    cursor: pointer; font-size: 18px; 
-    display: flex; align-items: center; justify-content: center; 
+    background: rgba(255,255,255,0.05); border: none; border-right: 1px solid rgba(255,255,255,0.1);
+    color: #f0d080; width: 22px; height: 22px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; 
   }
   .sb-adjust-btn:last-child { border-right: none; border-left: 1px solid rgba(255,255,255,0.1); }
   .sb-adjust-btn:hover { background: rgba(255,255,255,0.15); }
   
-  .sb-val-display { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
-  .sb-val-input { width: 36px; background: transparent; border: none; color: #fff; text-align: center; font-size: 15px; font-weight: bold; outline: none; }
-  .sb-sep { color: #888; font-size: 12px; }
-  .sb-max-input { width: 36px; background: transparent; border: none; color: #aaa; text-align: center; font-size: 12px; outline: none; }
+  .sb-val-display { display: flex; align-items: center; gap: 1px; padding: 0 4px; }
+  .sb-val-input { width: 30px; background: transparent; border: none; color: #fff; text-align: center; font-size: 13px; font-weight: bold; outline: none; }
+  .sb-sep { color: #666; font-size: 10px; }
+  .sb-max-input { width: 30px; background: transparent; border: none; color: #999; text-align: center; font-size: 11px; outline: none; }
   
-  .sb-bar-bg { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; border: 1px solid rgba(0,0,0,0.3); }
+  .sb-bar-bg { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; border: 1px solid rgba(0,0,0,0.3); }
   .sb-bar-fill { height: 100%; background: linear-gradient(90deg, #c89b3c, #f0d080); transition: width 0.3s; }
   
   .sb-memo { 
-    background: rgba(0,0,0,0.5); 
-    border: 1px solid rgba(255,255,255,0.15); 
-    color: #ccc; font-size: 11px; border-radius: 4px; padding: 6px; resize: none; outline: none; box-sizing: border-box; font-family: inherit;
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #ccc; font-size: 10px; border-radius: 4px; padding: 4px; resize: none; outline: none; box-sizing: border-box; font-family: inherit;
   }
-  .sb-ui-mode .sb-memo { flex: 1; height: 40px; }
-  .sb-field-mode .sb-memo { width: 100%; height: 48px; margin-top: 8px; }
+  .sb-ui-mode .sb-memo { width: 80px; height: 32px; }
+  .sb-field-mode .sb-memo { width: 100%; height: 40px; margin-top: 4px; }
 
+  .sb-field-inner { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 7px; }
+  .sb-field-val-overlay { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5; }
+  .sb-field-mode .sb-bar-bg { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0; }
+  
   .sb-delete-btn-corner { 
-    position: absolute; top: -10px; right: -10px; 
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #222; border: 1px solid rgba(199, 179, 119, 0.6);
-    color: #999; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 14px; transition: all 0.2s; z-index: 20;
+    position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+    background: #111; border: 1px solid rgba(199, 179, 119, 0.6); color: #999; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 20;
   }
-  .sb-delete-btn-corner:hover { background: #ff4444; color: #fff; border-color: #fff; }
-  .sb-delete-btn-corner.deleting { background: #ff0000 !important; transform: scale(1.3); }
-  .sb-owner-tag-corner {
-    position: absolute; top: -10px; right: -10px;
-    background: #111; border: 1px solid #444; color: #666;
-    font-size: 9px; padding: 2px 4px; border-radius: 4px; z-index: 20;
-  }
+  .sb-owner-tag-corner { position: absolute; top: -8px; right: -8px; background: #000; border: 1px solid #333; color: #555; font-size: 8px; padding: 1px 3px; border-radius: 3px; z-index: 20; }
+  .sb-resize-handle { position: absolute; bottom: -2px; right: -2px; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 60%, rgba(199, 179, 119, 0.6) 60%); z-index: 10; }
 
-  .sb-resize-handle { 
-    position: absolute; bottom: -2px; right: -2px; width: 22px; height: 22px; 
-    cursor: nwse-resize; background: linear-gradient(135deg, transparent 60%, rgba(199, 179, 119, 0.6) 60%); 
-    border-radius: 0 0 8px 0; z-index: 10;
-  }
+  .sb-hover-only { visibility: hidden; opacity: 0; transition: opacity 0.2s; }
+  .status-block:hover .sb-hover-only { visibility: visible; opacity: 1; }
 
-  .sb-context-menu { background: rgba(20, 18, 30, 0.95); border: 1px solid #f0d080; border-radius: 8px; overflow: hidden; min-width: 120px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+  .sb-context-menu { background: rgba(20, 18, 30, 0.98); border: 1px solid #f0d080; border-radius: 8px; min-width: 140px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
   .sb-menu-item { padding: 10px 15px; color: #eee; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .sb-menu-item:hover { background: rgba(240, 208, 128, 0.2); color: #f0d080; }
-  .sb-menu-delete:hover { background: rgba(255, 0, 0, 0.2); color: #ff8888; }
 
   .sb-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 20000; display: flex; align-items: center; justify-content: center; pointer-events: all; }
-  .sb-editor-modal { width: 480px; padding: 26px; border: 1px solid #f0d080; border-radius: 14px; display: flex; flex-direction: column; gap: 16px; }
-  .sb-editor-grid { display: grid; grid-template-columns: 140px 1fr; gap: 14px; align-items: center; }
+  .sb-editor-modal { width: 440px; padding: 20px; border: 1px solid #f0d080; border-radius: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .sb-editor-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; }
   .sb-editor-grid label { font-size: 13px; color: #f0d080; font-weight: bold; }
-  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #000; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; outline: none; font-family: inherit; }
-  .sb-editor-upload { display: flex; gap: 8px; align-items: center; }
-  .sb-editor-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
-  .sb-editor-footer button { padding: 10px 22px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; }
-  .sb-btn-save { background: #f0d080; color: #000; }
-  .sb-btn-cancel { background: #333; color: #ccc; }
-
-  .sb-reorder-btns { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-  .sb-mini-btn { background: rgba(255,255,255,0.08); border: 1px solid #444; color: #aaa; font-size: 10px; padding: 2px 4px; cursor: pointer; border-radius: 4px; }
-  .sb-mini-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #000; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; outline: none; font-family: inherit; }
+  .sb-editor-upload { display: flex; gap: 6px; align-items: center; }
 `;
 document.head.appendChild(style);

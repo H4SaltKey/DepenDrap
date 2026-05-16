@@ -436,8 +436,8 @@ body.deckPage{
   top:50%;
   left:50%;
   transform:translate(-50%, -50%);
-  color:rgba(255,255,255,0.9);
-  text-shadow:0 0 4px rgba(0,0,0,0.9);
+  color:#000;
+  text-shadow:0 0 4px rgba(255,255,255,0.7);
   user-select:none;
   pointer-events:none;
   z-index:2;
@@ -445,7 +445,7 @@ body.deckPage{
 .cardVisibilityLabel i {
   width: 48px;
   height: 48px;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.8));
 }
 
 .cardTempIcon {

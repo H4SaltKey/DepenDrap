@@ -1707,7 +1707,7 @@ async function executeReset(syncShared = true) {
     await firebaseClient.writeMyState(gameRoom, me, state[me]);
   }
 
-  localStorage.setItem("gameState", JSON.stringify(createMinimalLocalState()));
+  safeLocalSetItem("gameState", createSafeLocalStateCopy());
   localStorage.removeItem("fieldCards");
 
   createDeckObject(true);
@@ -2569,6 +2569,13 @@ async function initGame() {
         // username を state に反映（再入室時に相手名が失われないよう）
         if (players.player1?.username) state.player1.username = players.player1.username;
         if (players.player2?.username) state.player2.username = players.player2.username;
+        // 接続状態を即時反映（ウォッチャーの初回コールバック前にロックを解除するため）
+        window._bothPlayersConnected = !!players.player1 && !!players.player2;
+        // 両プレイヤー接続済みで ready_check なら setup_dice へ遷移
+        if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
+          state.matchData.status = "setup_dice";
+          firebaseClient.writeMatchData(currentRoom, state.matchData);
+        }
         applyInteractionLockState();
         console.log("[initGame] 接続プレイヤー数:", Object.keys(players).length, "bothConnected:", window._bothPlayersConnected);
       } catch (e) {

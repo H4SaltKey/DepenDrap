@@ -116,6 +116,8 @@ function renderSingleBlock(block, parent, index) {
     el.style.pointerEvents = "auto";
   } else {
     el.style.position = "relative";
+    el.style.left = "";
+    el.style.top = "";
     el.style.order = index;
     el.style.pointerEvents = "auto";
   }
@@ -124,8 +126,8 @@ function renderSingleBlock(block, parent, index) {
   const iconHtml = block.icon ? `<img src="${block.icon}" class="sb-icon-main">` : `<div class="sb-icon-placeholder"></div>`;
   
   // プレイヤー名のピルタグ
-  const ownerName = state[block.owner]?.name || (block.owner === 'player1' ? 'Player1' : 'Player2');
-  const playerPill = `<span class="sb-player-pill">${ownerName}</span>`;
+  const ownerAccountName = state[block.owner]?.username || state[block.owner]?.name || (block.owner === 'player1' ? 'Player1' : 'Player2');
+  const playerPill = `<span class="sb-player-pill">${ownerAccountName}</span>`;
 
   const valHtml = `
     <div class="sb-val-controls">
@@ -327,6 +329,7 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
   };
 
   overlay.querySelector(".sb-btn-save").onclick = () => {
+    const oldType = block.type;
     block.name = document.getElementById("ed_name").value;
     block.type = document.getElementById("ed_type").value;
     block.ownerType = document.getElementById("ed_ownerType").value;
@@ -334,6 +337,40 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     block.max = parseInt(document.getElementById("ed_max").value) || 10;
     block.memo = document.getElementById("ed_memo").value;
     block.icon = urlInput.value || currentIconData;
+
+    if (oldType !== block.type) {
+      if (block.type === 'field') {
+        // UIから盤面へ変換: 画面中央左寄りに配置
+        const { zoom, panX, panY } = getFieldTransform();
+        const field = document.getElementById("field");
+        if (field) {
+          const rect = field.getBoundingClientRect();
+          // 中央左寄り (幅の25%位置)
+          const screenLeftCenterX = rect.left + (rect.width * 0.25);
+          const screenCenterY = rect.top + (rect.height / 2);
+          block.x = (screenLeftCenterX - rect.left - panX) / zoom - 70;
+          block.y = (screenCenterY - rect.top - panY) / zoom - 70;
+        } else {
+          block.x = SB_FIELD_W / 2 - 500;
+          block.y = SB_FIELD_H / 2 - 70;
+        }
+        block.w = 140;
+        block.h = 140;
+      } else if (block.type === 'ui') {
+        // 盤面からUIへ変換: デフォルトサイズにリセット
+        block.w = 560;
+        block.h = 52;
+      }
+      
+      // ローカルの見た目設定(presentation)もリセットする
+      try {
+        const saved = JSON.parse(localStorage.getItem("sb_presentation") || "{}");
+        if (saved[block.id]) {
+          delete saved[block.id];
+          localStorage.setItem("sb_presentation", JSON.stringify(saved));
+        }
+      } catch (e) {}
+    }
 
     if (isNew) {
       const me = window.myRole || "player1";
@@ -540,15 +577,17 @@ style.textContent = `
     padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
   }
 
-  .sb-name-input { 
-    background: rgba(0,0,0,0.6) !important; 
-    border: 1px solid rgba(255,255,255,0.2) !important; 
+  input[type="text"].sb-name-input { 
+    background-color: #111 !important; 
+    border: 1px solid #666 !important; 
     border-radius: 4px; 
-    color: #f0d080 !important; 
+    color: white !important; 
     font-weight: bold; font-size: 13px; outline: none; padding: 2px 6px; box-sizing: border-box;
+    -webkit-box-shadow: 0 0 0 1000px #111 inset !important;
+    -webkit-text-fill-color: white !important;
   }
-  .sb-ui-mode .sb-name-input { width: 110px; }
-  .sb-field-name-small { font-size: 10px !important; width: 80px !important; }
+  .sb-ui-mode input[type="text"].sb-name-input { width: 110px; }
+  .sb-field-mode input[type="text"].sb-field-name-small { font-size: 10px !important; width: 80px !important; }
   
   .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); overflow: hidden; }
   .sb-adjust-btn { 
@@ -576,7 +615,7 @@ style.textContent = `
 
   .sb-field-inner { position: relative; width: 100%; height: 100%; overflow: visible; border-radius: 7px; display: flex; flex-direction: column; }
   .sb-icon-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 0; pointer-events: none; }
-  .sb-icon-bg .sb-icon-main { width: 100%; height: 100%; opacity: 0.6; }
+  .sb-icon-bg .sb-icon-main { width: 100%; height: 100%; }
   
   .sb-field-val-overlay { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 5; }
   .sb-field-hover-stack { 

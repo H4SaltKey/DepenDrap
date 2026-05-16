@@ -42,8 +42,14 @@ async function initMatchSetup() {
   renderCurrentDeck();
 
   // チャット
+  setupChatUI();
+  const chatInput = document.getElementById("chatInput");
+  chatInput.addEventListener("keydown", e => { 
+    if (e.isComposing) return;
+    if (e.key === "Enter") sendChat(); 
+  });
   document.getElementById("chatSendBtn").addEventListener("click", sendChat);
-  document.getElementById("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+  bindTypingEvents(chatInput);
 
   // Firebase
   const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
@@ -280,8 +286,9 @@ async function leaveRoom() {
 function watchRoom(roomName) {
   if (roomUnsubscribe) roomUnsubscribe();
 
-  // チャット監視も開始
+  // チャットとタイピング監視も開始
   watchChat(roomName);
+  watchTyping(roomName);
 
   roomUnsubscribe = firebaseClient.watchRoom(roomName, (roomData) => {
     if (!roomData) { addLog("system", "ルームが削除されました。"); resetRoom(); return; }
@@ -526,15 +533,84 @@ function updateFirebaseStatus(label, ok) {
 
 // ===== チャット =====
 
-function addLog(type, text) {
+function addLog(type, text, color = null) {
   const log = document.getElementById("chatLog");
   if (!log) return;
   const line = document.createElement("div");
   line.className = `chatLine ${type}`;
+  if (color) line.style.color = color;
   const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
   line.textContent = `[${time}] ${text}`;
   log.appendChild(line);
   log.scrollTop = log.scrollHeight;
+}
+
+function setupChatUI() {
+  const inputRow = document.getElementById("chatInputRow");
+  if (!inputRow || document.getElementById("chatColorBtn")) return;
+
+  const pickerHTML = `
+    <div class="chatColorContainer" style="position:relative; display:flex; align-items:center;">
+      <button type="button" id="chatColorBtn" title="文字色変更" style="width: 32px; height: 32px; background: transparent; border: none; border-right: 1px solid rgba(199,179,119,0.2); font-size: 16px; cursor: pointer; padding:0; display:flex; align-items:center; justify-content:center;">🎨</button>
+      <div id="chatColorPalette" style="display:none; position:absolute; bottom:100%; left:0; width:140px; background:rgba(10,8,20,0.95); border:1px solid #c89b3c; border-radius:4px; padding:6px; flex-wrap:wrap; gap:6px; z-index:10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+         ${["#ffffff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#ff99ff", "#99ffff", "#ffcc99", "#cc99ff", "#e0d0a0", "#cccccc", "#ff66b2"].map(c => `<div class="chat-color-opt" style="width:20px; height:20px; background:${c}; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.2);" data-color="${c}"></div>`).join("")}
+      </div>
+    </div>
+  `;
+  inputRow.insertAdjacentHTML("afterbegin", pickerHTML);
+  
+  const btn = document.getElementById("chatColorBtn");
+  const palette = document.getElementById("chatColorPalette");
+  const savedColor = localStorage.getItem("chatColor") || "#ffffff";
+  const input = document.getElementById("chatInput");
+  if (input) input.style.color = savedColor;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    palette.style.display = palette.style.display === "none" ? "flex" : "none";
+  });
+
+  palette.querySelectorAll(".chat-color-opt").forEach(opt => {
+    opt.addEventListener("click", (e) => {
+      const c = e.target.dataset.color;
+      localStorage.setItem("chatColor", c);
+      if (input) input.style.color = c;
+      palette.style.display = "none";
+    });
+  });
+
+  document.addEventListener("click", () => palette.style.display = "none");
+}
+
+let _typingTimeout = null;
+let _lastTypingSent = 0;
+
+function bindTypingEvents(chatInput) {
+  if (!chatInput) return;
+  chatInput.addEventListener("input", (e) => {
+    const isTyping = chatInput.value.trim().length > 0;
+    const now = Date.now();
+    if (isTyping && now - _lastTypingSent > 2000) {
+      _lastTypingSent = now;
+      if (currentRoom && currentPlayerKey && firebaseClient?.db) {
+        firebaseClient.db.ref(`rooms/${currentRoom}/typing/${currentPlayerKey}`).set(true);
+      }
+    }
+    if (_typingTimeout) clearTimeout(_typingTimeout);
+    _typingTimeout = setTimeout(() => {
+      if (currentRoom && currentPlayerKey && firebaseClient?.db) {
+        firebaseClient.db.ref(`rooms/${currentRoom}/typing/${currentPlayerKey}`).set(null);
+      }
+      _lastTypingSent = 0;
+    }, 3000);
+  });
+}
+
+function clearTypingStatus() {
+  if (_typingTimeout) clearTimeout(_typingTimeout);
+  if (currentRoom && currentPlayerKey && firebaseClient?.db) {
+    firebaseClient.db.ref(`rooms/${currentRoom}/typing/${currentPlayerKey}`).set(null);
+  }
 }
 
 function sendChat() {
@@ -543,9 +619,12 @@ function sendChat() {
   if (!text) return;
   input.value = "";
 
+  const color = localStorage.getItem("chatColor") || "#ffffff";
+  
   if (!currentRoom || !firebaseClient.db) {
     // ルーム未参加時はローカル表示のみ
-    addLog("mine", `${currentUser}: ${text}`);
+    addLog("mine", `${currentUser}: ${text}`, color);
+    clearTypingStatus();
     return;
   }
 
@@ -553,8 +632,11 @@ function sendChat() {
   firebaseClient.db.ref(`rooms/${currentRoom}/chat`).push({
     user: currentUser,
     text,
+    color,
     ts: firebase.database.ServerValue.TIMESTAMP
   });
+  
+  clearTypingStatus();
 }
 
 let _chatListenerRef = null;
@@ -581,12 +663,41 @@ function watchChat(roomName) {
 
       if (d.user === currentUser) {
         // 自分の発言 → mine スタイルで表示
-        addLog("mine", `${currentUser}: ${d.text}`);
+        addLog("mine", `${currentUser}: ${d.text}`, d.color);
       } else {
         // 相手の発言
-        addLog("other", `${d.user}: ${d.text}`);
+        addLog("other", `${d.user}: ${d.text}`, d.color);
       }
     });
+}
+
+let _typingListenerRef = null;
+
+function watchTyping(roomName) {
+  if (_typingListenerRef) {
+    _typingListenerRef.off();
+    _typingListenerRef = null;
+  }
+  if (!firebaseClient.db || !currentPlayerKey) return;
+  
+  const opKey = currentPlayerKey === "player1" ? "player2" : "player1";
+  _typingListenerRef = firebaseClient.db.ref(`rooms/${roomName}/typing/${opKey}`);
+  _typingListenerRef.on('value', snap => {
+    const isTyping = !!snap.val();
+    let ind = document.getElementById("matchTypingIndicator");
+    if (isTyping) {
+      if (!ind) {
+        ind = document.createElement("div");
+        ind.id = "matchTypingIndicator";
+        ind.style.cssText = "font-size:10px; color:#c89b3c; padding:2px 8px; font-style:italic; animation: pulse 1.5s infinite;";
+        const chatLog = document.getElementById("chatLog");
+        if (chatLog) chatLog.parentNode.insertBefore(ind, document.getElementById("chatInputRow"));
+      }
+      ind.textContent = `${opponentName || "相手"} is typing...`;
+    } else {
+      if (ind) ind.remove();
+    }
+  });
 }
 
 // ===== ゲーム開始 =====
@@ -652,4 +763,5 @@ window.addEventListener("beforeunload", async () => {
   if (roomUnsubscribe)     roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
   if (_chatListenerRef)    _chatListenerRef.off();
+  if (_typingListenerRef)  _typingListenerRef.off();
 });

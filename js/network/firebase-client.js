@@ -305,7 +305,7 @@ class FirebaseClient {
 
           if (playerCount < 2) {
             rooms.push({
-              name: roomData.name,
+              name: childSnapshot.key || roomData.name,
               playerCount,
               status: roomData.status || 'waiting'
             });

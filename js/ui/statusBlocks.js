@@ -188,7 +188,7 @@ function renderSingleBlock(block, parent, index) {
         <div class="sb-field-val-overlay">
           ${valHtml}
         </div>
-        <div class="sb-field-hover-stack sb-hover-only">
+        <div class="sb-field-hover-stack sb-hover-only" style="top: ${Math.max(18, 22 * numScale + 4)}px;">
           <div class="sb-header">
             ${playerPill}
             <input type="text" value="${block.name || ''}" class="sb-name-input sb-field-name-small" ${readonly} onchange="updateBlockData('${block.id}', 'name', this.value)">

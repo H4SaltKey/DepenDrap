@@ -4103,15 +4103,40 @@ function updateFieldStatusPanels() {
     const currentPp = s.pp || 0;
     const maxPp = s.ppMax || 2;
 
-    // 位置決め
-    if (owner === "player1") {
+    const isMine = owner === (window.myRole || "player1");
+    const id = `fieldStatusPanel_${owner}`;
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.className = "fieldStatusPanel";
+      el.style.cssText = `
+        position: absolute; width: 660px; padding: 36px;
+        background: rgba(15, 12, 28, 0.92); border: 3px solid #c7b377;
+        border-radius: 24px; backdrop-filter: blur(12px);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 50;
+        font-family: 'Outfit', sans-serif; pointer-events: auto;
+      `;
+      content.appendChild(el);
+    }
+
+    const s = state[owner];
+    const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+    const currentPp = s.pp || 0;
+    const maxPp = s.ppMax || 2;
+
+    // 位置決め (座標は維持しつつ内容を入れ替え)
+    // 自身(isMine)を「手前(y=1180)」に、相手を「奥(y=540)」に配置するようにマッピング
+    if (isMine) {
       el.style.left = "40px";
-      el.style.top = "1180px"; // 大きくなったので少し上に調整
-      el.style.transform = "";
+      el.style.top = "1180px";
+      el.style.transform = "scale(1)";
+      el.style.transformOrigin = "top left";
     } else {
-      el.style.left = "2300px"; // 大きくなったので左に寄せる
+      el.style.left = "2300px";
       el.style.top = "540px";
-      el.style.transform = ""; // 自身の視点方向へ向ける（回転なし）
+      el.style.transform = "scale(0.8)"; // 相手は20%縮小
+      el.style.transformOrigin = "top right";
     }
 
     el.innerHTML = `

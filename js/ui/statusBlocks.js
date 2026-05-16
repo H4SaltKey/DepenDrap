@@ -129,15 +129,29 @@ function renderSingleBlock(block, parent, index) {
   const ownerAccountName = state[block.owner]?.username || state[block.owner]?.name || (block.owner === 'player1' ? 'Player1' : 'Player2');
   const playerPill = `<span class="sb-player-pill">${ownerAccountName}</span>`;
 
+  let numScale = 1;
+  if (block.type === "field") {
+    numScale = Math.min(w / 140, h / 140);
+  }
+  const numSize = Math.max(10, 13 * numScale);
+  const maxSize = Math.max(9, 11 * numScale);
+  const btnSize = Math.max(12, 16 * numScale);
+  const sepSize = Math.max(8, 10 * numScale);
+
+  const numStyle = `font-size: ${numSize}px;`;
+  const maxStyle = `font-size: ${maxSize}px;`;
+  const btnStyle = `font-size: ${btnSize}px; width: ${Math.max(16, 22*numScale)}px; height: ${Math.max(16, 22*numScale)}px;`;
+  const sepStyle = `font-size: ${sepSize}px;`;
+
   const valHtml = `
     <div class="sb-val-controls">
-      <button onclick="adjustCurrent('${block.id}', -1)" class="sb-adjust-btn">−</button>
+      <button onclick="adjustCurrent('${block.id}', -1)" class="sb-adjust-btn" style="${btnStyle}">−</button>
       <div class="sb-val-display">
-        <input type="number" value="${block.current || 0}" class="sb-val-input" onchange="updateBlockData('${block.id}', 'current', this.value)">
-        <span class="sb-sep">/</span>
-        <input type="number" value="${block.max || 10}" class="sb-max-input" onchange="updateBlockData('${block.id}', 'max', this.value)">
+        <input type="number" value="${block.current || 0}" class="sb-val-input" style="${numStyle}" onchange="updateBlockData('${block.id}', 'current', this.value)">
+        <span class="sb-sep" style="${sepStyle}">/</span>
+        <input type="number" value="${block.max || 10}" class="sb-max-input" style="${maxStyle}" onchange="updateBlockData('${block.id}', 'max', this.value)">
       </div>
-      <button onclick="adjustCurrent('${block.id}', 1)" class="sb-adjust-btn">＋</button>
+      <button onclick="adjustCurrent('${block.id}', 1)" class="sb-adjust-btn" style="${btnStyle}">＋</button>
     </div>
   `;
 
@@ -162,8 +176,9 @@ function renderSingleBlock(block, parent, index) {
           </div>
           <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
         </div>
-        <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ..." title="${block.memo || ''}">${block.memo || ''}</textarea>
-        <div class="sb-resize-handle sb-hover-only" onpointerdown="startResizing(event, '${block.id}')"></div>
+        <div class="sb-ui-memo-wrapper">
+          <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ..." title="${block.memo || ''}">${block.memo || ''}</textarea>
+        </div>
       </div>
     `;
   } else {
@@ -469,6 +484,15 @@ function onPointerMove(e) {
     let nw = Math.max(50, resizeStartSize.w + dx);
     let nh = Math.max(30, resizeStartSize.h + dy);
     
+    if (e.shiftKey) {
+      let ratio = 1;
+      const img = document.querySelector(`#${resizingBlockId} .sb-icon-main`);
+      if (img && img.naturalHeight) {
+        ratio = img.naturalWidth / img.naturalHeight;
+      }
+      nh = nw / ratio;
+    }
+    
     if (isSharedBlock(block)) { block.w = nw; block.h = nh; }
     else { setLocalPresentation(resizingBlockId, { w: nw, h: nh }); }
     
@@ -510,7 +534,7 @@ function setLocalPresentation(id, data) {
 
 window.adjustCurrent = function(id, delta) {
   const block = findBlockById(id);
-  if (block) { block.current = (block.current || 0) + delta; updateAndSync(); }
+  if (block) { block.current = (block.current || 0) + delta; updateAndSyncBlockOwner(block.owner); }
 };
 
 window.reorderBlock = function(id, direction) {
@@ -524,7 +548,7 @@ window.reorderBlock = function(id, direction) {
   const blockA = uiBlocks[subIdx]; const blockB = uiBlocks[targetSubIdx];
   const realIdxA = list.indexOf(blockA); const realIdxB = list.indexOf(blockB);
   [list[realIdxA], list[realIdxB]] = [list[realIdxB], list[realIdxA]];
-  updateAndSync();
+  updateAndSyncBlockOwner(myRole);
 };
 
 window.updateBlockData = function(id, key, value) {
@@ -532,7 +556,7 @@ window.updateBlockData = function(id, key, value) {
   if (block) {
     if (key === 'current' || key === 'max') block[key] = Number(value);
     else block[key] = value;
-    updateAndSync();
+    updateAndSyncBlockOwner(block.owner);
   }
 };
 
@@ -541,11 +565,25 @@ function removeStatusBlock(id) {
   if (!block) return;
   const owner = block.owner;
   state[owner].statusBlocks = state[owner].statusBlocks.filter(b => b.id !== id);
-  updateAndSync();
+  updateAndSyncBlockOwner(owner);
 }
 
 function updateAndSync() {
   if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+  renderStatusBlocks();
+}
+
+function updateAndSyncBlockOwner(owner) {
+  const myRole = window.myRole || "player1";
+  if (owner === myRole) {
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+  } else {
+    // 双方向編集のため相手のstateを直接Push
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && typeof firebaseClient !== "undefined" && firebaseClient.db) {
+      firebaseClient.writeMyState(gameRoom, owner, state[owner]).catch(e => console.error(e));
+    }
+  }
   renderStatusBlocks();
 }
 
@@ -592,25 +630,30 @@ style.textContent = `
   .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); overflow: hidden; }
   .sb-adjust-btn { 
     background: rgba(255,255,255,0.05); border: none; border-right: 1px solid rgba(255,255,255,0.1);
-    color: #f0d080; width: 22px; height: 22px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; 
+    color: #f0d080; cursor: pointer; display: flex; align-items: center; justify-content: center; 
   }
   .sb-adjust-btn:last-child { border-right: none; border-left: 1px solid rgba(255,255,255,0.1); }
   .sb-adjust-btn:hover { background: rgba(255,255,255,0.15); }
   
   .sb-val-display { display: flex; align-items: center; gap: 1px; padding: 0 4px; }
-  .sb-val-input { width: 30px; background: transparent; border: none; color: #fff; text-align: center; font-size: 13px; font-weight: bold; outline: none; }
-  .sb-sep { color: #666; font-size: 10px; }
-  .sb-max-input { width: 30px; background: transparent; border: none; color: #aaa; text-align: center; font-size: 11px; outline: none; }
+  .sb-val-input { background: transparent; border: none; color: #fff; text-align: center; font-weight: bold; outline: none; width: auto; max-width: 40px; }
+  .sb-sep { color: #666; }
+  .sb-max-input { background: transparent; border: none; color: #aaa; text-align: center; outline: none; width: auto; max-width: 34px; }
   
   .sb-bar-bg { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; border: 1px solid rgba(0,0,0,0.3); }
   .sb-bar-fill { height: 100%; background: linear-gradient(90deg, #c89b3c, #f0d080); transition: width 0.3s; }
   
-  .sb-memo { 
+  .sb-ui-memo-wrapper { position: relative; flex: 1; height: 36px; min-width: 50px; }
+  .sb-ui-mode .sb-memo { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 36px;
     background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #ccc; font-size: 10px; border-radius: 4px; padding: 4px; resize: none; outline: none; box-sizing: border-box; font-family: inherit;
-    flex: 1; min-width: 50px; height: 36px; transition: all 0.2s;
+    transition: all 0.2s; z-index: 10;
   }
-  .sb-ui-mode .sb-memo:hover { height: 100px; z-index: 100; position: relative; min-width: 150px; }
-  .sb-field-mode .sb-memo { width: 100%; height: 40px; margin-top: 4px; }
+  .sb-ui-mode .sb-memo:hover { height: 100px; z-index: 100; min-width: 150px; }
+  .sb-field-mode .sb-memo { 
+    width: 100%; height: 40px; margin-top: 4px;
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: #ccc; font-size: 10px; border-radius: 4px; padding: 4px; resize: none; outline: none; box-sizing: border-box; font-family: inherit;
+  }
   .sb-field-mode .sb-memo:hover { height: auto; min-height: 80px; z-index: 100; }
 
   .sb-field-inner { position: relative; width: 100%; height: 100%; overflow: visible; border-radius: 7px; display: flex; flex-direction: column; }

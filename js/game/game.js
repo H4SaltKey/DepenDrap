@@ -9,7 +9,7 @@ window.isGameInteractionLocked = function() {
   if (!isGamePage) return false;
   const status = state.matchData?.status;
   if (state.matchData?.winner || window._lastWinner) return true;
-  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "setup_dice");
+  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check");
 };
 
 function applyInteractionLockState() {
@@ -1713,6 +1713,18 @@ async function executeReset(syncShared = true) {
   createDeckObject(true);
 
   if (typeof syncLoop === "function") await syncLoop();
+
+  // リセット後、両プレイヤーが既に接続済みなら ready_check → setup_dice へ遷移
+  // （players ノードは変更されないため roomWatcher が再発火しない問題への対処）
+  if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
+    state.matchData.status = "setup_dice";
+    const gameRoom = localStorage.getItem("gameRoom");
+    if (gameRoom && firebaseClient?.db) {
+      firebaseClient.writeMatchData(gameRoom, state.matchData);
+    }
+  }
+  applyInteractionLockState();
+
   if (typeof update === "function") update();
   
   // リセット完了後、フラグを解除

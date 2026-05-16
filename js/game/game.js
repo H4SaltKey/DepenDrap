@@ -675,32 +675,6 @@ function renderOwnerUI(owner) {
   </div>
   
   <div style="display:flex; flex-direction:column; gap:8px;">
-    <!-- PP パネル -->
-    <div class="evoPanel" style="
-      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
-      padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    ">
-      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;" data-tooltip="ターン毎の行動ポイント">PP</div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        ${isMine ? (currentPp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="-1">−</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
-        <span style="font-size:20px; font-weight:bold; color:#00ffff;">${currentPp}/${maxPp}</span>
-        ${isMine ? (currentPp >= maxPp ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn lorPpBtn" data-owner="${owner}" data-key="pp" data-delta="1">＋</button>`) : `<span class="lorSmBtnPlaceholder"></span>`}
-      </div>
-    </div>
-
-    <!-- 手札枚数パネル -->
-    <div class="handCountPanel" style="
-      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
-      padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    ">
-      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;">HAND</div>
-      <div style="font-size:20px; font-weight:bold; color:${handCount > handLimit ? '#ff6666' : '#f0d080'};">
-        ${handCount} / ${handLimit}
-      </div>
-    </div>
-
   ${s.evolutionPath ? `
   <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
     <div class="evoPanel" style="
@@ -899,6 +873,9 @@ function update(skipLogCheck = false) {
   const currentStateStr = JSON.stringify(state);
   
   // 状態が変わっていないならDOMの再構築をスキップ（フォーカス外れやホバーの点滅を防ぐ）
+  // ただし、カード枚数などの同期要素は常に最新を保つ
+  updateZoneCountsInState();
+
   if (lastStateJson === currentStateStr) {
     return;
   }
@@ -945,6 +922,9 @@ function update(skipLogCheck = false) {
 
   if (typeof updateDeckObject === "function") updateDeckObject();
   
+  // フィールド上のステータスパネルの更新
+  updateFieldStatusPanels();
+
   // チャットログの更新
   if (typeof updateGameLogs === "function") updateGameLogs(state.logs);
 
@@ -4072,4 +4052,92 @@ function startTurnDraw() {
   // 保存
   if (typeof saveAllImmediate === "function") saveAllImmediate();
   if (typeof update === "function") update();
+}
+function updateZoneCountsInState() {
+  ["player1", "player2"].forEach(owner => {
+    const s = state[owner];
+    if (!s) return;
+    const cards = Array.from(document.querySelectorAll(".card:not(.deckObject)")).filter(c => c.dataset.owner === owner);
+    
+    s.handCount = cards.filter(c => {
+      const y = parseInt(c.dataset.y || 0);
+      return !c.dataset.zoneType && (owner === "player1" ? y >= 1460 : y <= 540);
+    }).length;
+    
+    s.attackerCount = cards.filter(c => c.dataset.zoneType === "attacker").length;
+    s.skillCount = cards.filter(c => c.dataset.zoneType === "skill").length;
+    s.graveCount = cards.filter(c => c.dataset.zoneType === "grave").length;
+    
+    s.fieldNoneCount = cards.filter(c => {
+      const y = parseInt(c.dataset.y || 0);
+      const isHand = (owner === "player1" ? y >= 1460 : y <= 540);
+      return !c.dataset.zoneType && !isHand;
+    }).length;
+  });
+}
+
+function updateFieldStatusPanels() {
+  const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("fieldContent");
+  if (!content) return;
+
+  ["player1", "player2"].forEach(owner => {
+    const isMine = owner === (window.myRole || "player1");
+    const id = `fieldStatusPanel_${owner}`;
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.className = "fieldStatusPanel";
+      el.style.cssText = `
+        position: absolute; width: 220px; padding: 12px;
+        background: rgba(15, 12, 28, 0.88); border: 1px solid #c7b377;
+        border-radius: 12px; backdrop-filter: blur(8px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 50;
+        font-family: 'Outfit', sans-serif; pointer-events: auto;
+      `;
+      content.appendChild(el);
+    }
+
+    const s = state[owner];
+    const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+    const currentPp = s.pp || 0;
+    const maxPp = s.ppMax || 2;
+
+    // 位置決め
+    if (owner === "player1") {
+      el.style.left = "40px";
+      el.style.top = "1340px";
+      el.style.transform = "";
+    } else {
+      el.style.left = "2740px";
+      el.style.top = "540px";
+      el.style.transform = "rotate(180deg)";
+    }
+
+    el.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="color: #aaa; font-size: 11px; letter-spacing: 1px;">PP</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="-1" style="width:20px;height:20px;padding:0;cursor:pointer;">−</button>` : ""}
+            <span style="color: #00ffff; font-size: 18px; font-weight: bold;">${currentPp}/${maxPp}</span>
+            ${isMine ? `<button class="lorSmBtn" data-owner="${owner}" data-key="pp" data-delta="1" style="width:20px;height:20px;padding:0;cursor:pointer;">＋</button>` : ""}
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="color: #aaa; font-size: 11px; letter-spacing: 1px;">手札</span>
+          <span style="color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'}; font-size: 18px; font-weight: bold;">
+            ${s.handCount} / ${handLimit}
+          </span>
+        </div>
+        <div style="height: 1px; background: rgba(199,179,119,0.2); margin: 2px 0;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; color: #888;">
+          <div>アタッカー: <span style="color:#eee">${s.attackerCount || 0}</span></div>
+          <div>スキル: <span style="color:#eee">${s.skillCount || 0}</span></div>
+          <div>墓地: <span style="color:#eee">${s.graveCount || 0}</span></div>
+          <div>その他: <span style="color:#eee">${s.fieldNoneCount || 0}</span></div>
+        </div>
+      </div>
+    `;
+  });
 }

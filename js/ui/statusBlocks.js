@@ -688,6 +688,13 @@ style.textContent = `
   .sb-editor-modal { width: 440px; padding: 20px; border: 1px solid #f0d080; border-radius: 12px; display: flex; flex-direction: column; gap: 14px; }
   .sb-editor-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; }
   .sb-editor-grid label { font-size: 13px; color: #f0d080; font-weight: bold; }
-  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #000; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; outline: none; font-family: inherit; }
+  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { 
+    background-color: #000 !important; 
+    border: 1px solid #444 !important; 
+    color: #fff !important; 
+    padding: 8px; border-radius: 4px; outline: none; font-family: inherit; 
+    -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+    -webkit-text-fill-color: #fff !important;
+  }
 `;
 document.head.appendChild(style);

@@ -287,12 +287,16 @@ function normalizeState() {
     // matchSetup 由来の一時フラグを除去（ゲーム状態を汚染しない）
     delete state[p]._ready;
     delete state[p]._deckCode;
-    ["hp", "shield", "defstack", "exp"].forEach(k => {
-      const v  = state[p][k];
-      const mx = state[p][k + "Max"] || 99;
+    ["hp", "shield", "defstack", "exp", "pp"].forEach(k => {
+      if (state[p][k] === undefined || state[p][k] === null) state[p][k] = 0;
+      const v  = Number(state[p][k]) || 0;
+      const mx = Number(state[p][k + "Max"]) || 99;
       if (k !== "defstack" && v > mx) state[p][k] = mx;
       if (v < 0) state[p][k] = 0;
+      else state[p][k] = v;
     });
+    if (state[p].level === undefined || state[p].level === null) state[p].level = 1;
+    if (!Array.isArray(state[p].statusBlocks)) state[p].statusBlocks = [];
   });
   if (!state.matchData) {
     state.matchData = {
@@ -301,6 +305,7 @@ function normalizeState() {
     };
   }
   state.logs = state.logs || [];
+  if (!Array.isArray(state.statusBlocks)) state.statusBlocks = [];
 }
 
 // ===== デッキ =====

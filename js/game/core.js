@@ -280,9 +280,16 @@ async function syncLoop() {
 setInterval(syncLoop, 1000);
 
 // ===== 状態正規化 =====
+function calcExpMax(level) {
+  return Math.max(1, level) * 2;
+}
+
 function normalizeState() {
   ["player1", "player2"].forEach(p => {
-    if (!state[p]) state[p] = { ...makeCharState(), diceValue: -1 };
+    // 完全に欠損している場合の安全な初期化
+    if (!state[p] || typeof state[p] !== "object") {
+      state[p] = { ...makeCharState(), diceValue: -1 };
+    }
     if (!Array.isArray(state[p].deck)) state[p].deck = [];
     // diceValue が undefined/null の場合は -1 に初期化
     if (state[p].diceValue === undefined || state[p].diceValue === null) state[p].diceValue = -1;

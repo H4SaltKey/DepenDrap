@@ -3,6 +3,7 @@
  */
 let roomWatcherUnsubscribe = null;
 let playerDiceWatcherUnsubscribe = null;
+window._bothPlayersConnected = false;
 
 function setupRoomWatcher() {
   const gameRoom = localStorage.getItem("gameRoom");

@@ -1,5 +1,4 @@
 let gameReady = false;
-window._bothPlayersConnected = false;
 window._soloStartMode = false;
 let lastTurnDrawKey = "";
 let handOverflowDiscardOpen = false;
@@ -37,7 +36,6 @@ function resetAllGameVariables() {
   window._firstDrawPhaseStarted = false;
   window._orderPhaseAutoStartScheduled = false; // Order phase auto-start flag
   window._soloStartMode = false;
-  window._bothPlayersConnected = false;
   cardsReadyFired = false;
   lastStateJson = "";
   sliderActive = false;
@@ -441,9 +439,6 @@ function syncDerivedStats(owner) {
 }
 
 // 経験値上限 = 現在レベル * 2
-function calcExpMax(level) {
-  return Math.max(1, level) * 2;
-}
 
 // 経験値がたまったら自動レベルアップ
 function checkLevelUp(owner) {
@@ -1691,7 +1686,6 @@ async function executeReset(syncShared = true) {
   window._resultShowing = false;  // リザルト表示フラグをリセット
   window._lastWinner = null;  // 勝者情報をクリア
   window._soloStartMode = false;
-  window._bothPlayersConnected = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
   const gameRoom = localStorage.getItem("gameRoom");
@@ -2563,7 +2557,6 @@ async function initGame() {
         // username を state に反映（再入室時に相手名が失われないよう）
         if (players.player1?.username) state.player1.username = players.player1.username;
         if (players.player2?.username) state.player2.username = players.player2.username;
-        window._bothPlayersConnected = !!players.player1 && !!players.player2;
         applyInteractionLockState();
         console.log("[initGame] 接続プレイヤー数:", Object.keys(players).length, "bothConnected:", window._bothPlayersConnected);
       } catch (e) {
@@ -2619,7 +2612,6 @@ async function initGame() {
 window.startSoloGame = async function() {
   if (window._bothPlayersConnected) return;
   window._soloStartMode = true;
-  window._bothPlayersConnected = true;
   const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
   const op = me === "player1" ? "player2" : "player1";
   if (!state[op].username) state[op].username = "CPU";

@@ -204,14 +204,8 @@ function ensureBattleZoneUIs() {
   });
 }
 
-let zoneHoverHideTimer = null;
-let zoneStackInspectPanel = null;
-
-function cancelZoneHoverHide() {
-  if (zoneHoverHideTimer) {
-    clearTimeout(zoneHoverHideTimer);
-    zoneHoverHideTimer = null;
-  }
+function hideZoneStackInspectPanel() {
+  // Obsolete: Replaced by context menu inspector
 }
 
 function scheduleZoneHoverHide() {
@@ -237,7 +231,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
 
   startEvent.preventDefault();
   startEvent.stopPropagation();
-  hideZoneStackInspectPanel();
+  // hideZoneStackInspectPanel(); // (obsolete)
 
   const field = document.getElementById("field");
   if (!field) return;
@@ -290,139 +284,59 @@ function beginZoneHoverCardDrag(card, startEvent) {
   document.addEventListener("pointerup", up);
 }
 
-/**
- * スキル場／墓地: ホバーで積み順＋画像を一覧し、各カードは右クリックで通常メニュー
- */
-function showZoneStackInspectHover(owner, type) {
-  const cards = getZoneCards(owner, type);
-  if (cards.length === 0) {
-    hideZoneStackInspectPanel();
-    return;
-  }
-
-  hideZoneStackInspectPanel();
-
-  const panel = document.createElement("div");
-  panel.id = "zoneStackInspectPanel";
-  panel.className = "zoneStackInspectPanel";
-  panel.dataset.owner = owner;
-  panel.dataset.zoneType = type;
-
-  const title = type === "skill" ? "スキル場" : "墓地";
-  const head = document.createElement("div");
-  head.className = "zoneStackInspectHead";
-  head.textContent = `${title}（1=下・古い順／右ほど上）`;
-
-  const row = document.createElement("div");
-  row.className = "zoneStackInspectRow";
-
-  cards.forEach((c, i) => {
-    const wrap = document.createElement("div");
-    wrap.className = "zoneStackInspectItem";
-    const ord = document.createElement("div");
-    ord.className = "zoneStackInspectOrder";
-    ord.textContent = String(i + 1);
-    const img = document.createElement("img");
-    const cid = c.dataset.id;
-    const data = typeof getCardData === "function" ? getCardData(cid) : {};
-    setSafeSrc(img, (data && data.image) || c.querySelector("img")?.src || "");
-    img.className = "zoneStackInspectImg";
-    img.draggable = false;
-    img.style.touchAction = "none";
-    wrap.appendChild(ord);
-    wrap.appendChild(img);
-    wrap.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // In first draw phase, only show zoom/enlarge
-      const isFirstDrawPhase = typeof state !== "undefined" && state.matchData?.status === "setup_first_draw";
-      if (isFirstDrawPhase && typeof showCardZoom === "function") {
-        showCardZoom(c);
-      } else if (typeof openCardMenu === "function") {
-        openCardMenu(c, e.clientX, e.clientY);
-      }
-    });
-    wrap.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (typeof showCardZoom === "function") showCardZoom(c);
-    });
-    wrap.addEventListener("pointerdown", (e) => {
-      beginZoneHoverCardDrag(c, e);
-    });
-    img.addEventListener("pointerdown", (e) => {
-      beginZoneHoverCardDrag(c, e);
-    });
-    row.appendChild(wrap);
-  });
-
-  panel.appendChild(head);
-  panel.appendChild(row);
-  panel.addEventListener("pointerenter", cancelZoneHoverHide);
-  panel.addEventListener("pointerleave", scheduleZoneHoverHide);
-
-  document.body.appendChild(panel);
-  zoneStackInspectPanel = panel;
-
-  const zoneEl = document.getElementById(`battleZone_${owner}_${type}`);
-  const br = zoneEl ? zoneEl.getBoundingClientRect() : { left: 8, top: 80, width: 0, bottom: 120 };
-
-  const place = () => {
-    const pw = panel.offsetWidth || 320;
-    const ph = panel.offsetHeight || 120;
-    let left = br.left + (br.width / 2) - pw / 2;
-    left = Math.max(8, Math.min(window.innerWidth - pw - 8, left));
-    let top = br.top - ph - 10;
-    if (top < 8) top = Math.min(window.innerHeight - ph - 8, br.bottom + 10);
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
-  };
-  requestAnimationFrame(() => {
-    place();
-  });
-}
+// showZoneStackInspectHover is now replaced by context menu "Inspect Contents"
 
 function attachZoneHoverListeners(card, owner, type) {
-  if (!card || card.dataset.zoneHoverAttached === "true") return;
-  card.dataset.zoneHoverAttached = "true";
-  card.addEventListener("pointerenter", () => {
-    if (getZoneCards(owner, type).length >= 1) {
-      showZoneStackInspectHover(owner, type);
-    }
-  });
-  card.addEventListener("pointerleave", () => {
-    scheduleZoneHoverHide();
-  });
+  // Obsolete: Replaced by context menu
 }
 
 function bindBattleZoneStackInspect(zoneEl, owner, type) {
   if (!zoneEl || (type !== "skill" && type !== "grave")) return;
   if (zoneEl.dataset.stackInspectBound === "1") return;
   zoneEl.dataset.stackInspectBound = "1";
-  zoneEl.addEventListener("pointerenter", () => {
-    if (getZoneCards(owner, type).length >= 1) showZoneStackInspectHover(owner, type);
-  });
-  zoneEl.addEventListener("pointerleave", () => {
-    scheduleZoneHoverHide();
+  // ホバー処理を右クリックへ変更するため、既存のリスナーは削除
+  zoneEl.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window.showZoneInspectorModal === "function") {
+      window.showZoneInspectorModal(owner, type);
+    }
   });
 }
 
 function takeOutCardFromZone(card) {
+  const owner = card.dataset.owner;
+  const type = card.dataset.zoneType;
+  const order = Number(card.dataset.zoneOrder || 0);
+
   // 場から削除
   card.remove();
+  clearZoneMarker(card);
+
   // 手札に追加
-  const owner = card.dataset.owner;
-  // 次のhandOrderを取得
   const handY = FIELD_H - CARD_H - 20;
   const hands = Array.from(getFieldContent().querySelectorAll('.card')).filter(c => c.dataset.owner === owner && parseInt(c.dataset.y) >= HAND_ZONE_Y_MIN);
   const maxOrder = hands.length > 0 ? Math.max(...hands.map(c => parseInt(c.dataset.handOrder || 0))) : 0;
   card.dataset.handOrder = String(maxOrder + 1);
   card.dataset.y = String(handY);
-  // fieldContentに追加
+  card.dataset.visibility = "self"; // 手札に戻るときは自分のみ
+  if (typeof applyCardFace === "function") applyCardFace(card, "self");
+  
   getFieldContent().appendChild(card);
-  // organizeHands
+
+  // 同じゾーンの残りのカードの順序を詰め、表示を更新
+  if (type) {
+    const remaining = getZoneCards(owner, type);
+    // getZoneCards は既に zoneOrder でソートされているため、再割り当てするだけで良い
+    remaining.forEach((c, i) => {
+      c.dataset.zoneOrder = String(1000 + i); // 新しい順序
+    });
+  }
+
   if (typeof organizeHands === "function") organizeHands();
+  if (typeof organizeBattleZones === "function") organizeBattleZones();
   if (typeof saveFieldCards === "function") saveFieldCards();
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
 }
 
 function updateBattleZoneUI() {
@@ -530,153 +444,7 @@ window.sendZoneCardsToGrave = function(owner, fromType) {
   saveFieldCards();
 };
 
-window.showGraveyardContents = function(owner) {
-  const graveCards = getZoneCards(owner, "grave");
-  if (graveCards.length === 0) {
-    showInfoMessage("墓地は空です。");
-    return;
-  }
 
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000000;
-    backdrop-filter: blur(4px);
-  `;
-
-  const container = document.createElement("div");
-  container.style.cssText = `
-    background: #1a172c;
-    border: 2px solid #c7b377;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 800px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-    color: #e0d0a0;
-  `;
-
-  const ownerLabel = owner === (window.myRole || "player1") ? "自分" : "相手";
-  container.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2 style="margin: 0; color: #e0d0a0;">${ownerLabel}の墓地 (${graveCards.length}枚)</h2>
-      <button id="closeGraveViewer" style="
-        background: #333;
-        border: 1px solid #555;
-        color: #ccc;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      ">閉じる</button>
-    </div>
-    <div id="graveCardList" style="display: flex; flex-direction: column; gap: 12px;"></div>
-  `;
-
-  const cardList = container.querySelector("#graveCardList");
-  
-  // 墓地のカードを順序に表示（最新が上）
-  graveCards.slice().reverse().forEach((card, index) => {
-    const cardId = card.dataset.id;
-    const cardDiv = document.createElement("div");
-    cardDiv.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #333;
-    `;
-
-    const orderLabel = document.createElement("div");
-    orderLabel.style.cssText = `
-      background: #c7b377;
-      color: #1a172c;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 14px;
-      flex-shrink: 0;
-    `;
-    orderLabel.textContent = graveCards.length - index;
-
-    const img = card.querySelector("img");
-    const cardImg = document.createElement("img");
-    if (img) {
-      cardImg.src = img.src;
-      cardImg.style.cssText = `
-        width: 60px;
-        height: 85px;
-        object-fit: contain;
-        border-radius: 4px;
-        border: 1px solid #555;
-      `;
-    }
-
-    const cardInfo = document.createElement("div");
-    cardInfo.style.cssText = `
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    `;
-
-    const cardName = document.createElement("div");
-    cardName.style.cssText = `
-      font-size: 16px;
-      font-weight: bold;
-      color: #e0d0a0;
-    `;
-    cardName.textContent = cardId;
-
-    const cardMeta = document.createElement("div");
-    cardMeta.style.cssText = `
-      font-size: 12px;
-      color: #888;
-    `;
-    cardMeta.textContent = `順序: ${graveCards.length - index} / ${graveCards.length}`;
-
-    cardInfo.appendChild(cardName);
-    cardInfo.appendChild(cardMeta);
-
-    cardDiv.appendChild(orderLabel);
-    if (img) cardDiv.appendChild(cardImg);
-    cardDiv.appendChild(cardInfo);
-
-    cardList.appendChild(cardDiv);
-  });
-
-  overlay.appendChild(container);
-  document.body.appendChild(overlay);
-
-  container.querySelector("#closeGraveViewer").addEventListener("click", () => {
-    overlay.remove();
-  });
-
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      overlay.remove();
-    }
-  });
-
-  document.addEventListener("keydown", function handler(e) {
-    if (e.key === "Escape") {
-      overlay.remove();
-      document.removeEventListener("keydown", handler);
-    }
-  });
-};
 
 window.resetBattleZoneState = function() {
   prevZoneLogState = null;

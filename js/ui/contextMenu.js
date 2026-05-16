@@ -229,15 +229,17 @@ function openCardMenu(card, x, y){
     });
   }
 
-  // スキル場の最上部カードの場合、スキル場メニューを統合
-  if (card.dataset.zoneType === "skill" && typeof isTopZoneCard === "function" && isTopZoneCard(card)) {
-    const owner = card.dataset.owner;
-    const me = window.myRole || "player1";
-    const isMine = owner === me;
-    items.push({ sep: true });
-    items.push(
-      { label: "スキル場操作", disabled: true }
-    );
+  // ゾーン内のカードの場合、「内容確認」メニューを追加
+  if (card.dataset.zoneType === "skill" || card.dataset.zoneType === "attacker" || card.dataset.zoneType === "grave") {
+    items.splice(2, 0, {
+      label: "内容確認 (この場)",
+      action: () => {
+        if (typeof window.showZoneInspectorModal === "function") {
+          window.showZoneInspectorModal(card.dataset.owner, card.dataset.zoneType);
+        }
+      }
+    });
+    items.splice(3, 0, { sep: true });
   }
 
   buildMenu(items, x, y, card);
@@ -1332,10 +1334,210 @@ document.addEventListener("contextmenu", (e) => {
       hint.classList.remove("is-visible");
     }
   });
+  // game.js など IIFE 外から山札ドロー操作を呼ぶため公開
+  window.takeOut = takeOut;
+  window.drawCards = drawCards;
 })();
 
-// game.js など IIFE 外から山札ドロー操作を呼ぶため公開
-window.takeOut = takeOut;
-window.drawCards = drawCards;
+// ===== ゾーン内容確認モーダル =====
+window.showZoneInspectorModal = function(owner, type) {
+  const cards = typeof getZoneCards === "function" ? getZoneCards(owner, type) : [];
+  const overlay = document.createElement("div");
+  overlay.className = "zoneInspectorOverlay";
+  overlay.style.cssText = `
+    position: fixed; inset: 0; background: rgba(8, 6, 15, 0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100000; backdrop-filter: blur(10px); font-family: 'Outfit', sans-serif;
+  `;
+
+  const typeName = type === "skill" ? "スキル" : (type === "attacker" ? "アタッカー" : "墓地");
+  const ownerName = owner === window.myRole ? "あなた" : "相手";
+
+  const renderContent = () => {
+    const currentCards = typeof getZoneCards === "function" ? getZoneCards(owner, type) : [];
+    const html = `
+      <div class="zoneInspectorBox" style="
+        width: 800px; max-height: 80vh; background: #1a172c; border: 1px solid #c7b377;
+        border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      ">
+        <div style="padding: 20px; background: rgba(199, 179, 119, 0.1); border-bottom: 1px solid rgba(199, 179, 119, 0.2); display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-size: 20px; color: #f0d080; letter-spacing: 1px;">${ownerName}の${typeName}場</h2>
+          <button id="closeInspector" style="background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer;">✕</button>
+        </div>
+        
+        <div id="inspectorScrollArea" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+          ${currentCards.length === 0 ? '<div style="color: #777; text-align: center; padding: 40px;">カードがありません</div>' : ""}
+          ${currentCards.map((c, i) => {
+            const data = typeof getCardData === "function" ? getCardData(c.dataset.id) : {};
+            return `
+              <div class="inspectorItem" data-instance-id="${c.dataset.instanceId}" style="
+                display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.03);
+                border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;
+                transition: all 0.2s;
+              ">
+                <div style="width: 30px; font-weight: 900; color: #c7b377; text-align: center; font-size: 18px;">${i + 1}</div>
+                <div style="width: 60px; height: 84px; flex-shrink: 0; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #444; cursor: zoom-in;" onclick="window.showCardZoomById('${c.dataset.id}')">
+                  <img src="${data.image || ''}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="flex: 1;">
+                  <div style="color: #fff; font-weight: bold; font-size: 15px;">${data.name || "Unknown"}</div>
+                  <div style="color: #888; font-size: 12px; margin-top: 4px;">ID: ${c.dataset.id}</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="inspBtn moveUp" data-idx="${i}" title="順序を上げる" ${i === 0 ? "disabled" : ""} style="background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 32px; height: 32px; cursor: pointer;">↑</button>
+                  <button class="inspBtn moveDown" data-idx="${i}" title="順序を下げる" ${i === currentCards.length - 1 ? "disabled" : ""} style="background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 32px; height: 32px; cursor: pointer;">↓</button>
+                  <button class="inspBtn takeOut" data-idx="${i}" title="手札に取り出す" style="background: #442a2a; color: #ff9999; border: 1px solid #663333; border-radius: 4px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12px; font-weight: bold;">取り出す</button>
+                  <button class="inspBtn insertNext" data-idx="${i}" title="この次に手札から追加" style="background: #2a3a44; color: #99e1ff; border: 1px solid #334e66; border-radius: 4px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12px; font-weight: bold;">挿入</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+          
+          ${currentCards.length > 0 ? "" : `
+            <div style="text-align: center;">
+              <button id="insertFirst" style="background: #2a3a44; color: #99e1ff; border: 1px solid #334e66; border-radius: 4px; padding: 8px 20px; cursor: pointer; font-weight: bold;">手札からカードを追加</button>
+            </div>
+          `}
+        </div>
+
+        <div style="padding: 16px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); font-size: 12px; color: #666; text-align: center;">
+          カードを右クリックすると詳細メニューが開けます。順序は上が「新しい/上」です。
+        </div>
+      </div>
+    `;
+    overlay.innerHTML = html;
+
+    // イベント紐づけ
+    overlay.querySelector("#closeInspector").onclick = () => overlay.remove();
+    
+    // アイテムごとの右クリックメニュー
+    overlay.querySelectorAll(".inspectorItem").forEach(item => {
+      item.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const instanceId = item.dataset.instanceId;
+        const cardEl = typeof findFieldElementByInstanceId === "function" ? findFieldElementByInstanceId(instanceId) : null;
+        if (cardEl) {
+          openCardMenu(cardEl, e.clientX, e.clientY);
+        }
+      });
+
+      const firstBtn = item.querySelector(".inspBtn");
+      if (!firstBtn) return;
+      const idx = parseInt(firstBtn.dataset.idx);
+      
+      item.querySelector(".moveUp")?.addEventListener("click", () => {
+        reorderCards(idx, idx - 1);
+      });
+      item.querySelector(".moveDown")?.addEventListener("click", () => {
+        reorderCards(idx, idx + 1);
+      });
+      item.querySelector(".takeOut")?.addEventListener("click", () => {
+        const instanceId = item.dataset.instanceId;
+        const cardEl = typeof findFieldElementByInstanceId === "function" ? findFieldElementByInstanceId(instanceId) : null;
+        if (cardEl && typeof takeOutCardFromZone === "function") {
+          takeOutCardFromZone(cardEl);
+          renderContent();
+        }
+      });
+      item.querySelector(".insertNext")?.addEventListener("click", (e) => {
+        showHandSelectionForInsert(idx + 1, e);
+      });
+    });
+
+    if (overlay.querySelector("#insertFirst")) {
+      overlay.querySelector("#insertFirst").onclick = (e) => showHandSelectionForInsert(0, e);
+    }
+  };
+
+  const reorderCards = (fromIdx, toIdx) => {
+    const currentCards = typeof getZoneCards === "function" ? getZoneCards(owner, type) : [];
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= currentCards.length || toIdx >= currentCards.length) return;
+    
+    const item = currentCards.splice(fromIdx, 1)[0];
+    currentCards.splice(toIdx, 0, item);
+    
+    currentCards.forEach((c, i) => {
+      c.dataset.zoneOrder = String(1000 + i);
+    });
+    
+    if (typeof organizeBattleZones === "function") organizeBattleZones();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+    renderContent();
+  };
+
+  const showHandSelectionForInsert = (targetIdx, event) => {
+    const me = window.myRole || "player1";
+    const handCards = Array.from(document.querySelectorAll(".card")).filter(c => c.dataset.owner === me && Number(c.dataset.y) >= (window.HAND_ZONE_Y_MIN || 1460));
+    
+    if (handCards.length === 0) {
+      alert("手札にカードがありません。");
+      return;
+    }
+
+    const subItems = handCards.map(c => {
+      const data = typeof getCardData === "function" ? getCardData(c.dataset.id) : {};
+      return {
+        label: data.name || c.dataset.id,
+        action: () => {
+          insertHandCardAt(c, targetIdx);
+        }
+      };
+    });
+
+    buildMenu(subItems, event.clientX, event.clientY);
+  };
+
+  const insertHandCardAt = (cardEl, targetIdx) => {
+    const currentCards = typeof getZoneCards === "function" ? getZoneCards(owner, type) : [];
+    
+    // ゾーン情報を設定
+    cardEl.dataset.zoneType = type;
+    cardEl.dataset.owner = owner;
+    cardEl.dataset.visibility = "both";
+    if (typeof applyCardFace === "function") applyCardFace(cardEl, "both");
+    
+    // 順序を再割り当て
+    currentCards.splice(targetIdx, 0, cardEl);
+    currentCards.forEach((c, i) => {
+      c.dataset.zoneOrder = String(1000 + i);
+    });
+
+    // アンカー位置へ移動（organizeBattleZones で最終調整される）
+    if (typeof window.getZoneAnchor === "function") {
+      const anchor = window.getZoneAnchor(owner, type);
+      cardEl.style.left = anchor.x + "px";
+      cardEl.style.top = anchor.y + "px";
+      cardEl.dataset.x = String(anchor.x);
+      cardEl.dataset.y = String(anchor.y);
+    }
+
+    if (typeof organizeBattleZones === "function") organizeBattleZones();
+    if (typeof organizeHands === "function") organizeHands();
+    if (typeof saveFieldCards === "function") saveFieldCards();
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+    
+    renderContent();
+  };
+
+  renderContent();
+  document.body.appendChild(overlay);
+  
+  // 背景クリックで閉じる
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+};
+
+window.showCardZoomById = function(id) {
+  const dummy = document.createElement("div");
+  dummy.dataset.id = id;
+  const img = document.createElement("img");
+  const data = typeof getCardData === "function" ? getCardData(id) : {};
+  img.src = data.image || "";
+  dummy.appendChild(img);
+  showCardZoom(dummy);
+};
 
 })();

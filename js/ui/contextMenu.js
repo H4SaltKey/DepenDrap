@@ -1361,15 +1361,17 @@ function addStatusBlock(type, x, y) {
     current: 0, max: 10,
     memo: "",
     x, y,
+    scale: 1.0,
     groupId: null
   };
   
-  if (!state.statusBlocks) state.statusBlocks = [];
-  state.statusBlocks.push(newBlock);
+  if (!state[me].statusBlocks) state[me].statusBlocks = [];
+  state[me].statusBlocks.push(newBlock);
   
   if (typeof saveFieldCards === "function") saveFieldCards();
   if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
   if (typeof update === "function") update();
+  if (typeof renderStatusBlocks === "function") renderStatusBlocks();
 }
 
 document.addEventListener("mousedown", (e) => {

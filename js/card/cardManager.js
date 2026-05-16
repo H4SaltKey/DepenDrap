@@ -629,10 +629,20 @@ function createCard(id){
   label.classList.add("cardVisibilityLabel");
   label.textContent = "";
 
+  // 複製（一時）カード用アイコン
+  const tempIcon = document.createElement("div");
+  tempIcon.classList.add("cardTempIcon");
+  tempIcon.innerHTML = '<i data-lucide="route-off"></i>';
+
   wrapper.appendChild(img);
   wrapper.appendChild(label);
+  wrapper.appendChild(tempIcon);
 
   enablePointerDrag(wrapper);
+  
+  if (window.lucide) {
+    window.lucide.createIcons({ props: { "stroke-width": 2.5 }, scope: wrapper });
+  }
 
   return wrapper;
 }
@@ -678,7 +688,6 @@ function applyCardFace(card, visibility){
 
 function cycleVisibility(card){
   const states = ["self", "both", "none"];
-  const labels = { both:"", self:"自分のみ", none:"非公開" };
   const current = card.dataset.visibility || "both";
   const currentIndex = states.indexOf(current);
   const next = states[(currentIndex === -1 ? 0 : currentIndex + 1) % states.length];
@@ -689,11 +698,29 @@ function cycleVisibility(card){
   card.classList.toggle("visibilityOpponent", next === "opponent");
   card.classList.toggle("visibilityNone", next === "none");
 
-  const label = card.querySelector(".cardVisibilityLabel");
-  if(label) label.textContent = labels[next] ?? "";
-
+  updateVisibilityIcon(card, next);
   applyCardFace(card, next);
   saveFieldCards();
+}
+
+/**
+ * カードの表示状態に応じた Lucide アイコンを更新
+ */
+function updateVisibilityIcon(card, vis) {
+  const label = card.querySelector(".cardVisibilityLabel");
+  if (!label) return;
+
+  if (vis === "self") {
+    label.innerHTML = '<i data-lucide="hat-glasses"></i>';
+  } else if (vis === "none") {
+    label.innerHTML = '<i data-lucide="eye-off"></i>';
+  } else {
+    label.innerHTML = '';
+  }
+
+  if (window.lucide) {
+    window.lucide.createIcons({ scope: label });
+  }
 }
 
 // ===== グリッド・配置 =====
@@ -1501,7 +1528,7 @@ window.applyFieldCardsFromServer = function(data){
     else delete el.dataset.handOrder;
     el.dataset.isTemp = item.isTemp ? "true" : "false";
     
-    // 相手のカードかどうかを判定（window.myRole が null の場合も考慮）
+    // 相手のカードかどうかを判定
     const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey");
     if(item.owner && item.owner !== myRole && myRole !== null){
       el.classList.add("opponent-card");
@@ -1511,12 +1538,14 @@ window.applyFieldCardsFromServer = function(data){
 
     const vis = item.visibility || "both";
     el.dataset.visibility = vis;
-    const labels = { self:"自分のみ", opponent:"相手のみ", none:"非公開", both:"" };
     el.classList.toggle("visibilitySelf", vis === "self");
     el.classList.toggle("visibilityOpponent", vis === "opponent");
     el.classList.toggle("visibilityNone", vis === "none");
-    const label = el.querySelector(".cardVisibilityLabel");
-    if(label) label.textContent = labels[vis] || "";
+    
+    if (typeof updateVisibilityIcon === "function") {
+      updateVisibilityIcon(el, vis);
+    }
+    
     applyCardFace(el, vis);
   });
   if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();

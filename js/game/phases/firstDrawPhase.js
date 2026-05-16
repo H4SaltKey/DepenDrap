@@ -213,14 +213,18 @@ function updateFirstDrawPhaseUI() {
       );
     });
 
-    // Mark unchosen cards for later removal when both players are ready
+    // 未選択カードを山札のランダムな位置に戻す
     unchosen.forEach((card) => {
-      card.dataset.firstDrawUnchosenMarked = "true";
-      card.style.opacity = "0.5";
+      const rawId = card.dataset.id;
+      if (rawId) {
+        const isTemp = card.dataset.isTemp === "true";
+        const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+        insertCardIntoDeckAtRandom(me, storeId);
+        card.dataset.firstDrawReturned = "1";
+      }
+      card.remove();
     });
 
-    // Don't remove unchosen cards yet - keep them visible until both players finish selection
-    // They will be cleaned up when phase transitions to "playing"
     await Promise.all([...overlayExitPromises]);
 
     cardArea.classList.add("firstDrawPickRow--finalThree");
@@ -238,8 +242,9 @@ function updateFirstDrawPhaseUI() {
       card.dataset.visibility = "self";
       card.classList.remove("visibilityNone");
       card.classList.add("visibilitySelf");
-      const lbl = card.querySelector(".cardVisibilityLabel");
-      if (lbl) lbl.textContent = "自分のみ";
+      if (typeof updateVisibilityIcon === "function") {
+        updateVisibilityIcon(card, "self");
+      }
       if (typeof applyCardFace === "function") applyCardFace(card, "self");
       const nextOrder = typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now() + idx;
       card.dataset.handOrder = String(nextOrder);

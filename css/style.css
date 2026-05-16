@@ -436,15 +436,34 @@ body.deckPage{
   top:50%;
   left:50%;
   transform:translate(-50%, -50%);
-  font-size:22px;
-  text-align:center;
   color:rgba(255,255,255,0.9);
-  text-shadow:0 0 3px rgba(0,0,0,0.8);
-  line-height:1.2;
+  text-shadow:0 0 4px rgba(0,0,0,0.9);
   user-select:none;
   pointer-events:none;
   z-index:2;
-  white-space:nowrap;
+}
+.cardVisibilityLabel i {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+}
+
+.cardTempIcon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  z-index: 3;
+  pointer-events: none;
+}
+.card[data-is-temp="true"] .cardTempIcon {
+  display: block;
+}
+.cardTempIcon i {
+  width: 24px;
+  height: 24px;
+  color: #000;
+  stroke-width: 2.5px;
 }
 
 /* デッキオブジェクト */

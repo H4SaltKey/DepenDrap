@@ -393,13 +393,15 @@ function showCardZoom(card){
 }
 
 function setCardVisibility(card, vis){
-  const labels = { both:"", self:"自分のみ", none:"非公開" };
   card.dataset.visibility = vis;
   card.classList.toggle("visibilitySelf",    vis === "self");
   card.classList.toggle("visibilityOpponent", vis === "opponent");
   card.classList.toggle("visibilityNone",    vis === "none");
-  const label = card.querySelector(".cardVisibilityLabel");
-  if(label) label.textContent = labels[vis] ?? "";
+  
+  if (typeof updateVisibilityIcon === "function") {
+    updateVisibilityIcon(card, vis);
+  }
+  
   if(typeof applyCardFace === "function") applyCardFace(card, vis);
   if(typeof saveFieldCards === "function") saveFieldCards();
 }
@@ -524,8 +526,9 @@ function drawCards(count){
     card.classList.toggle("visibilitySelf", vis === "self");
     card.classList.toggle("visibilityNone",  vis === "none");
 
-    const lbl = card.querySelector(".cardVisibilityLabel");
-    if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if (typeof updateVisibilityIcon === "function") {
+      updateVisibilityIcon(card, vis);
+    }
     if(typeof applyCardFace === "function") applyCardFace(card, vis);
 
     if(typeof placeCard === "function"){
@@ -632,8 +635,9 @@ function drawToHand(count){
     card.classList.toggle("visibilitySelf", vis === "self");
     card.classList.toggle("visibilityNone",  vis === "none");
 
-    const lbl = card.querySelector(".cardVisibilityLabel");
-    if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if (typeof updateVisibilityIcon === "function") {
+      updateVisibilityIcon(card, vis);
+    }
     if(typeof applyCardFace === "function") applyCardFace(card, vis);
 
     if(typeof placeCard === "function"){
@@ -744,8 +748,9 @@ function takeOut(count, opts){
     card.classList.toggle("visibilitySelf", vis === "self");
     card.classList.toggle("visibilityNone",  vis === "none");
 
-    const lbl = card.querySelector(".cardVisibilityLabel");
-    if(lbl) lbl.textContent = vis === "self" ? "自分のみ" : "非公開";
+    if (typeof updateVisibilityIcon === "function") {
+      updateVisibilityIcon(card, vis);
+    }
     if (hideSelfLabel) card.classList.add("firstDrawHideVisLabel");
     if(typeof applyCardFace === "function") applyCardFace(card, vis);
 
@@ -810,12 +815,26 @@ function collectAllToDeck(){
   if (collectedCount > 0) {
     if(typeof shuffleDeck === "function") shuffleDeck();
 
+    // ゾーン（アタッカー/スキル/墓地）の状態をリセット
+    if (typeof window.resetBattleZoneState === "function") window.resetBattleZoneState();
+    // 手札整列
+    if (typeof window.organizeHands === "function") window.organizeHands();
+    // ゾーンカウントを state に反映
+    if (typeof updateZoneCountsInState === "function") updateZoneCountsInState();
+
     // 【アトミック保存】: ステータス(山札)と現在のフィールド状態を送信
     if (typeof saveAllImmediate === "function") {
       saveAllImmediate();
     } else {
       if (typeof saveImmediate === "function") saveImmediate();
       if (typeof saveFieldCards === "function") saveFieldCards();
+    }
+    // Firebase へカード配置状況を同期
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+
+    if (typeof addGameLog === "function") {
+      const playerName = window.myUsername || me;
+      addGameLog(`[システム] ${playerName} が全てのカードを山札に集めました（${collectedCount}枚）`);
     }
   }
 

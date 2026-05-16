@@ -2,6 +2,14 @@
  * statusBlocks.js
  * フィールド上およびUI上のステータスブロックをレンダリングする
  * [自分/相手/共有] の所有権、アイコン表示、反転表示、エディタ機能をサポート
+ * 
+ * 修正点:
+ * 1. 角ドラッグによるリサイズを全ブロック（相手所有含む）で可能に。
+ * 2. 名前・メモ等を常時編集可能（権限ある場合）。
+ * 3. スケール単位を100倍表示（1.0 = 100）。
+ * 4. 盤面移動の座標計算精度向上。
+ * 5. デザインの統一。
+ * 6. UIメモの表示安定化。
  */
 
 const SB_FIELD_W = 3000;
@@ -86,7 +94,7 @@ function renderSingleBlock(block, parent, index) {
   const myRole = window.myRole || "player1";
   const isMine = block.owner === myRole;
   const isShared = block.ownerType === "shared";
-  const canEdit = isMine || isShared;
+  const canEditContent = isMine || isShared; // データ内容の編集権限
 
   if (!el) {
     el = document.createElement("div");
@@ -123,11 +131,11 @@ function renderSingleBlock(block, parent, index) {
     el.style.position = "absolute";
     el.style.left = (x || 0) + "px";
     el.style.top = (y || 0) + "px";
-    el.style.pointerEvents = "auto"; // 追加
+    el.style.pointerEvents = "auto";
   } else {
     el.style.position = "relative";
     el.style.order = index;
-    el.style.pointerEvents = "auto"; // 追加
+    el.style.pointerEvents = "auto";
   }
 
   const s = scale || 1.0;
@@ -135,7 +143,6 @@ function renderSingleBlock(block, parent, index) {
   el.style.transformOrigin = "top left";
   
   if (block.type === "ui") {
-    // UIモードは横長。高さは固定気味
     el.style.marginBottom = (40 * (s - 1)) + "px"; 
     el.style.marginRight = (400 * (s - 1)) + "px";
   } else if (block.icon) {
@@ -143,15 +150,14 @@ function renderSingleBlock(block, parent, index) {
   }
 
   const deleteBtn = isMine ? `
-    <button class="sb-delete-btn" onpointerdown="handleDeleteDown(event, '${block.id}')" onpointerup="handleDeleteUp(event)" onpointerleave="handleDeleteUp(event)">✕</button>
+    <button class="sb-delete-btn" title="長押しで削除" onpointerdown="handleDeleteDown(event, '${block.id}')" onpointerup="handleDeleteUp(event)" onpointerleave="handleDeleteUp(event)">✕</button>
   ` : `<span class="sb-owner-tag">${block.owner === 'player1' ? 'P1' : 'P2'}</span>`;
 
-  const readonly = canEdit ? "" : "readonly disabled";
+  const readonly = canEditContent ? "" : "readonly disabled";
   const iconHtml = block.icon ? `<img src="${block.icon}" class="sb-icon-small">` : `<div class="sb-icon-placeholder"></div>`;
 
   let html = "";
   if (block.type === "ui") {
-    // 横長レイアウト [移動] [アイコン] [名] [数値系] [メモ] [削除]
     html = `
       <div class="sb-ui-inner">
         ${isMine ? `
@@ -179,10 +185,10 @@ function renderSingleBlock(block, parent, index) {
           <button class="sb-edit-trigger" onclick="openStatusBlockEditor('${block.id}')">⚙</button>
           ${deleteBtn}
         </div>
+        <div class="sb-resize-handle" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
     `;
   } else {
-    // フィールドレイアウト (従来ベース or 画像上層)
     html = `
       <div class="sb-field-inner">
         <div class="sb-header">
@@ -203,7 +209,7 @@ function renderSingleBlock(block, parent, index) {
         </div>
         <div class="sb-bar-bg"><div class="sb-bar-fill" style="width:${Math.min(100, (block.current / block.max) * 100)}%;"></div></div>
         <textarea class="sb-memo" ${readonly} onchange="updateBlockData('${block.id}', 'memo', this.value)" placeholder="メモ...">${block.memo || ''}</textarea>
-        ${canEdit ? `<div class="sb-resize-handle" onpointerdown="startResizing(event, '${block.id}')"></div>` : ''}
+        <div class="sb-resize-handle" onpointerdown="startResizing(event, '${block.id}')"></div>
       </div>
     `;
   }
@@ -217,7 +223,6 @@ function renderSingleBlock(block, parent, index) {
         startDragging(e, block.id);
       };
     }
-    // 右クリックで編集画面を開く機能を追加
     el.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -266,8 +271,8 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
           <option value="shared" ${block.ownerType==='shared'?'selected':''}>共有 (Shared)</option>
         </select>
 
-        <label>大きさ倍率</label>
-        <input type="number" id="ed_scale" step="0.1" value="${block.scale || 1.0}">
+        <label>大きさ (100%基準)</label>
+        <input type="number" id="ed_scale" step="5" value="${Math.round((block.scale || 1.0) * 100)}">
 
         <label>現在値</label>
         <input type="number" id="ed_current" value="${block.current}">
@@ -292,7 +297,8 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     block.name = document.getElementById("ed_name").value;
     block.type = document.getElementById("ed_type").value;
     block.ownerType = document.getElementById("ed_ownerType").value;
-    block.scale = parseFloat(document.getElementById("ed_scale").value) || 1.0;
+    // 100倍表示を戻す
+    block.scale = (parseFloat(document.getElementById("ed_scale").value) || 100) / 100;
     block.current = parseInt(document.getElementById("ed_current").value) || 0;
     block.max = parseInt(document.getElementById("ed_max").value) || 10;
     block.icon = document.getElementById("ed_icon").value;
@@ -320,14 +326,43 @@ let resizeStartScale = 1;
 let resizeStartPos = { x: 0, y: 0 };
 
 function startDragging(e, id) {
+  const block = findBlockById(id);
+  if (!block) return;
   draggingBlockId = id;
-  const el = document.getElementById(id);
-  const rect = el.getBoundingClientRect();
+  
+  const field = document.getElementById("field");
+  const fieldRect = field.getBoundingClientRect();
   const zoom = window.fieldZoom || 1;
-  dragOffset.x = (e.clientX - rect.left) / zoom;
-  dragOffset.y = (e.clientY - rect.top) / zoom;
+  const panX = window.fieldPanX || 0;
+  const panY = window.fieldPanY || 0;
+
+  // カーソルのフィールド内座標
+  const cursorFieldX = (e.clientX - fieldRect.left - panX) / zoom;
+  const cursorFieldY = (e.clientY - fieldRect.top - panY) / zoom;
+
+  // 現在の座標を取得 (共有かローカルか)
+  let bx = block.x || 0;
+  let by = block.y || 0;
+  let bs = block.scale || 1.0;
+  if (!isSharedBlock(block)) {
+    const local = getLocalPresentation(id);
+    if (local) { bx = local.x ?? bx; by = local.y ?? by; bs = local.scale ?? bs; }
+  }
+
+  // 相手所有の共有ブロックの場合、表示座標は反転されているため、ドラッグ計算も反転させる必要がある
+  const myRole = window.myRole || "player1";
+  if (isSharedBlock(block) && block.owner !== myRole) {
+    const inv = getInvertedCoords(bx, by, bs);
+    dragOffset.x = cursorFieldX - inv.x;
+    dragOffset.y = cursorFieldY - inv.y;
+  } else {
+    dragOffset.x = cursorFieldX - bx;
+    dragOffset.y = cursorFieldY - by;
+  }
+
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
+  const el = document.getElementById(id);
   el.setPointerCapture(e.pointerId);
 }
 
@@ -336,7 +371,8 @@ function startResizing(e, id) {
   const block = findBlockById(id);
   if (!block) return;
   resizingBlockId = id;
-  const local = !isSharedBlock(block) ? getLocalPresentation(id) : null;
+  const isShared = isSharedBlock(block);
+  const local = !isShared ? getLocalPresentation(id) : null;
   resizeStartScale = local?.scale ?? (block.scale || 1.0);
   resizeStartPos = { x: e.clientX, y: e.clientY };
   document.addEventListener("pointermove", onPointerMove);
@@ -358,16 +394,27 @@ function onPointerMove(e) {
     let nx = (e.clientX - rect.left - panX) / zoom - dragOffset.x;
     let ny = (e.clientY - rect.top - panY) / zoom - dragOffset.y;
     
+    const myRole = window.myRole || "player1";
     if (isSharedBlock(block)) {
-      block.x = nx;
-      block.y = ny;
+      if (block.owner === myRole) {
+        block.x = nx;
+        block.y = ny;
+      } else {
+        // 相手オーナーの共有ブロックを動かす場合、反転させてから保存
+        let bs = block.scale || 1.0;
+        const rev = getInvertedCoords(nx, ny, bs);
+        block.x = rev.x;
+        block.y = rev.y;
+      }
     } else {
       setLocalPresentation(draggingBlockId, { x: nx, y: ny });
     }
     
     const el = document.getElementById(draggingBlockId);
-    el.style.left = nx + "px";
-    el.style.top = ny + "px";
+    if (el) {
+      el.style.left = nx + "px";
+      el.style.top = ny + "px";
+    }
   }
   
   if (resizingBlockId) {
@@ -375,8 +422,8 @@ function onPointerMove(e) {
     if (!block) return;
     const dx = e.clientX - resizeStartPos.x;
     const dy = e.clientY - resizeStartPos.y;
-    const delta = (dx + dy) / 200;
-    const newScale = Math.max(0.3, Math.min(5.0, resizeStartScale + delta));
+    const delta = (dx + dy) / 300;
+    const newScale = Math.max(0.2, Math.min(6.0, resizeStartScale + delta));
     
     if (isSharedBlock(block)) {
       block.scale = newScale;
@@ -385,7 +432,13 @@ function onPointerMove(e) {
     }
     
     const el = document.getElementById(resizingBlockId);
-    el.style.transform = `scale(${newScale})`;
+    if (el) {
+      el.style.transform = `scale(${newScale})`;
+      if (block.type === "ui") {
+        el.style.marginBottom = (40 * (newScale - 1)) + "px";
+        el.style.marginRight = (400 * (newScale - 1)) + "px";
+      }
+    }
   }
 }
 
@@ -514,10 +567,10 @@ style.textContent = `
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
     user-select: none;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible; /* リサイズハンドル等のため */
   }
   .sb-ui-mode {
-    width: 500px;
+    width: 600px; /* メモ安定化のため少し広げる */
     padding: 6px 10px;
   }
   .sb-field-mode {
@@ -536,45 +589,84 @@ style.textContent = `
     display: flex;
     align-items: center;
     gap: 12px;
+    position: relative;
+    width: 100%;
   }
-  .sb-icon-small { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); }
-  .sb-icon-placeholder { width: 32px; height: 32px; }
+  .sb-icon-small { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; background: rgba(0,0,0,0.3); flex-shrink: 0; }
+  .sb-icon-placeholder { width: 32px; height: 32px; flex-shrink: 0; }
   
-  .sb-ui-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .sb-ui-main { flex: 0 1 240px; display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
   .sb-ui-top-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   
-  .sb-name-input { background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; color: #f0d080; font-weight: bold; font-size: 14px; outline: none; padding: 2px 6px; }
-  .sb-ui-mode .sb-name-input { width: 120px; }
+  .sb-name-input { 
+    background: rgba(0,0,0,0.4); 
+    border: 1px solid rgba(255,255,255,0.1); 
+    border-radius: 4px; 
+    color: #f0d080; 
+    font-weight: bold; 
+    font-size: 14px; 
+    outline: none; 
+    padding: 2px 6px; 
+    box-sizing: border-box;
+  }
+  .sb-ui-mode .sb-name-input { width: 100px; }
+  .sb-field-mode .sb-name-input { width: 100%; margin-bottom: 4px; }
   
-  .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid #555; height: 24px; }
-  .sb-adjust-btn { background: transparent; border: none; color: #f0d080; width: 22px; height: 22px; cursor: pointer; font-size: 16px; }
+  .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); height: 24px; }
+  .sb-adjust-btn { background: transparent; border: none; color: #f0d080; width: 22px; height: 22px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .sb-adjust-btn:hover { background: rgba(255,255,255,0.1); }
   .sb-val-input { width: 32px; background: transparent; border: none; color: #fff; text-align: center; font-size: 14px; font-weight: bold; outline: none; }
-  .sb-max-input { width: 32px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 3px; color: #aaa; text-align: center; font-size: 11px; }
+  .sb-max-input { width: 32px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; color: #aaa; text-align: center; font-size: 11px; }
   
-  .sb-bar-bg { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .sb-bar-bg { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; border: 1px solid rgba(0,0,0,0.3); }
   .sb-bar-fill { height: 100%; background: linear-gradient(90deg, #c89b3c, #f0d080); transition: width 0.3s; }
   
-  .sb-memo { background: rgba(0,0,0,0.3); border: 1px solid #444; color: #ccc; font-size: 11px; border-radius: 4px; padding: 4px; resize: none; outline: none; }
-  .sb-ui-mode .sb-memo { width: 100px; height: 32px; }
-  .sb-field-mode .sb-memo { width: 100%; height: 40px; margin-top: 6px; }
+  .sb-memo { 
+    background: rgba(0,0,0,0.4); 
+    border: 1px solid rgba(255,255,255,0.1); 
+    color: #ccc; 
+    font-size: 11px; 
+    border-radius: 4px; 
+    padding: 6px; 
+    resize: none; 
+    outline: none; 
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  .sb-ui-mode .sb-memo { flex: 1; height: 36px; min-width: 80px; }
+  .sb-field-mode .sb-memo { width: 100%; height: 44px; margin-top: 6px; }
 
-  .sb-actions { display: flex; align-items: center; gap: 6px; }
-  .sb-edit-trigger { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; }
+  .sb-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .sb-edit-trigger { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px; }
   .sb-edit-trigger:hover { color: #f0d080; }
-  .sb-delete-btn { background: none; border: none; color: #777; cursor: pointer; font-size: 16px; transition: all 0.2s; }
+  .sb-delete-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 16px; padding: 4px; transition: all 0.2s; }
   .sb-delete-btn:hover { color: #ff5555; }
-  .sb-delete-btn.deleting { background: #ff4a4a !important; color: white !important; transform: scale(1.2); }
+  .sb-delete-btn.deleting { background: #ff4a4a !important; color: white !important; transform: scale(1.2); border-radius: 4px; }
 
   .sb-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 20000; display: flex; align-items: center; justify-content: center; pointer-events: all; }
-  .sb-editor-modal { width: 400px; padding: 20px; border: 1px solid #f0d080; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; }
-  .sb-editor-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center; }
-  .sb-editor-grid label { font-size: 13px; color: #f0d080; }
-  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #222; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; outline: none; resize: none; }
+  .sb-editor-modal { width: 440px; padding: 24px; border: 1px solid #f0d080; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; }
+  .sb-editor-grid { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: center; }
+  .sb-editor-grid label { font-size: 13px; color: #f0d080; font-weight: bold; }
+  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #111; border: 1px solid #444; color: #fff; padding: 8px; border-radius: 4px; outline: none; resize: none; font-family: inherit; }
   .sb-editor-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
-  .sb-editor-footer button { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; }
-  .sb-btn-save { background: #f0d080; color: #000; }
-  .sb-btn-cancel { background: #444; color: #fff; }
+  .sb-editor-footer button { padding: 10px 20px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; font-size: 14px; }
+  .sb-btn-save { background: #f0d080; color: #000; box-shadow: 0 0 15px rgba(240,208,128,0.3); }
+  .sb-btn-cancel { background: #333; color: #ccc; }
 
-  .sb-resize-handle { position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(199, 179, 119, 0.5) 50%); }
+  .sb-resize-handle { 
+    position: absolute; 
+    bottom: -2px; 
+    right: -2px; 
+    width: 20px; 
+    height: 20px; 
+    cursor: nwse-resize; 
+    background: linear-gradient(135deg, transparent 60%, rgba(199, 179, 119, 0.6) 60%); 
+    border-radius: 0 0 8px 0;
+    z-index: 10;
+  }
+  .sb-reorder-btns { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .sb-mini-btn { background: rgba(255,255,255,0.05); border: 1px solid #444; color: #888; font-size: 9px; padding: 0 3px; cursor: pointer; border-radius: 2px; }
+  .sb-mini-btn:hover { background: rgba(255,255,255,0.15); color: #ddd; }
+  .sb-owner-tag { font-size: 10px; color: #555; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px; border: 1px solid #333; }
 `;
 document.head.appendChild(style);

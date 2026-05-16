@@ -7,6 +7,30 @@ function updateDicePhaseUI() {
     return;
   }
 
+  if (m.status === "ready_check") {
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "dicePhaseOverlay";
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(8, 6, 15, 0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(15px); flex-direction: column; color: #fff;
+        transition: opacity 0.5s ease; font-family: 'Outfit', sans-serif;
+      `;
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = "flex";
+    overlay.style.opacity = "1";
+    overlay.dataset.phase = "ready_check";
+    overlay.innerHTML = `
+      <div style="text-align:center; animation:pulse 2s infinite;">
+        <h2 style="font-size:24px; font-weight:700; letter-spacing:2px; margin-bottom:20px;">対戦相手の接続を待機しています...</h2>
+        <div style="font-size:14px; color:#c7b377;">相手が参加するまでお待ちください</div>
+      </div>
+    `;
+    return;
+  }
+
   if (m.status !== "setup_dice") {
     if (overlay) {
       overlay.remove();

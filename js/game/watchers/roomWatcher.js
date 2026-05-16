@@ -40,10 +40,10 @@ function setupRoomWatcher() {
     applyInteractionLockState();
 
     // 両プレイヤーが接続したら、ready_check から次のフェーズへ
-    // 新規入室のみorder_phaseへ遷移。再接続時は既存statusを維持（Firebase復元値を尊重）
+    // 新規入室のみsetup_diceへ遷移。再接続時は既存statusを維持（Firebase復元値を尊重）
     if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
       if (!window._isReload) {
-        state.matchData.status = "order_phase";
+        state.matchData.status = "setup_dice";
         firebaseClient.writeMatchData(gameRoom, state.matchData);
       }
       // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）

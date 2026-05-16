@@ -10,7 +10,7 @@ window.isGameInteractionLocked = function() {
   if (!isGamePage) return false;
   const status = state.matchData?.status;
   if (state.matchData?.winner || window._lastWinner) return true;
-  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "order_phase");
+  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check" || status === "setup_dice");
 };
 
 function applyInteractionLockState() {
@@ -904,16 +904,6 @@ function update(skipLogCheck = false) {
 
   // マッチ進行UIの更新
   updateMatchUI();
-
-  // 準備フェーズUIの更新
-  if (typeof updateReadyCheckUI === 'function') {
-    updateReadyCheckUI();
-  }
-
-  // 順番決めフェーズUIの更新
-  if (typeof updateOrderPhaseUI === 'function') {
-    updateOrderPhaseUI();
-  }
 
   // ダイスフェーズUIの更新
   if (typeof updateDicePhaseUI === 'function') {

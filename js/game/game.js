@@ -567,6 +567,9 @@ function renderOwnerUI(owner) {
   const atMaxLv = s.level >= (s.levelMax || LEVEL_MAX);
   const atMinExp = s.level <= 1 && s.exp <= 0;
 
+  const handCount = (typeof countOwnerHandCardsOnField === "function") ? countOwnerHandCardsOnField(owner) : 0;
+  const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+
   return `
   <div style="display:flex; align-items:flex-end; gap:12px; ${isMine ? '' : 'flex-direction:row-reverse;'}">
   <div class="lorPanel" data-owner="${owner}">
@@ -686,6 +689,18 @@ function renderOwnerUI(owner) {
       </div>
     </div>
 
+    <!-- 手札枚数パネル -->
+    <div class="handCountPanel" style="
+      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
+      padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    ">
+      <div style="font-size:11px; color:#aaa; letter-spacing:1px; margin-bottom:2px;">HAND</div>
+      <div style="font-size:20px; font-weight:bold; color:${handCount > handLimit ? '#ff6666' : '#f0d080'};">
+        ${handCount} / ${handLimit}
+      </div>
+    </div>
+
   ${s.evolutionPath ? `
   <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
     <div class="evoPanel" style="
@@ -797,11 +812,20 @@ function countOwnerHandCardsOnField(owner) {
   const c = typeof getFieldContent === "function" ? getFieldContent() : null;
   if (!c) return 0;
   const handMin = (typeof window.HAND_ZONE_Y_MIN === "number") ? window.HAND_ZONE_Y_MIN : 1460;
+  const handMaxTop = FIELD_H - handMin; // 2000 - 1460 = 540
+  
   return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
     (el) => {
       if (el.dataset.owner !== owner) return false;
+      // ゾーン（アタッカー/スキル/墓地）に配置されているカードは除外
+      if (el.dataset.zoneType) return false;
+
       const y = Number(el.dataset.y);
-      if (Number.isFinite(y) && y >= handMin) return true;
+      if (Number.isFinite(y)) {
+        // Player 1 の手札エリア (下部) または Player 2 の手札エリア (上部) にあるか判定
+        if (owner === "player1" && y >= handMin) return true;
+        if (owner === "player2" && y <= handMaxTop) return true;
+      }
       // dataset.y が欠落/不正でも、手札整列済みカードは handOrder を持つため手札として扱う
       return Number.isFinite(Number(el.dataset.handOrder));
     }
@@ -3054,15 +3078,6 @@ function showHandOverflowDiscardModal(owner, needCount) {
     await handleTurnEnd(true);
   });
 
-  const cancelBtn = document.createElement("button");
-  cancelBtn.textContent = "キャンセル";
-  cancelBtn.style.cssText = "padding:8px 16px;font-weight:700;background:#444;color:#fff;border:1px solid #777;border-radius:8px;cursor:pointer;";
-  cancelBtn.addEventListener("click", () => {
-    overlay.remove();
-    handOverflowDiscardOpen = false;
-  });
-
-  actions.appendChild(cancelBtn);
   actions.appendChild(btn);
   panel.appendChild(title);
   panel.appendChild(row);

@@ -233,7 +233,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
   if (!card || !startEvent || startEvent.button !== 0) return;
   const myRole = window.myRole || "player1";
   if (card.dataset.owner !== myRole) return;
-  // (Remove restriction: allow dragging any card from the stack list)
+  if ((card.dataset.zoneType === "skill" || card.dataset.zoneType === "grave") && !isTopZoneCard(card)) return;
 
   startEvent.preventDefault();
   startEvent.stopPropagation();
@@ -311,7 +311,7 @@ function showZoneStackInspectHover(owner, type) {
   const title = type === "skill" ? "スキル場" : "墓地";
   const head = document.createElement("div");
   head.className = "zoneStackInspectHead";
-  head.innerHTML = `<span>${title}</span><span style="font-size:10px; opacity:0.7;">全${cards.length}枚</span>`;
+  head.textContent = `${title}（1=下・古い順／右ほど上）`;
 
   const row = document.createElement("div");
   row.className = "zoneStackInspectRow";
@@ -499,16 +499,15 @@ window.organizeBattleZones = function() {
       list.forEach((card, idx) => {
         card.style.left = `${anchor.x}px`;
         card.style.top = `${anchor.y}px`;
-        card.dataset.x = anchor.x;
-        card.dataset.y = anchor.y;
-        const isTop = idx === list.length - 1;
-        if (type === "attacker") {
-          card.style.display = "";
-          card.style.opacity = "1";
-        } else {
-          card.style.display = isTop ? "" : "none";
-          card.style.opacity = "1";
-        }
+        card.dataset.x = String(anchor.x);
+        card.dataset.y = String(anchor.y);
+        
+        // 重なり順を正しく制御（後ろのカードほど z-index を小さく）
+        // ベースを 100 とし、スタック順に加算
+        card.style.zIndex = String(100 + idx);
+        
+        card.style.display = "";
+        card.style.opacity = "1";
       });
     });
   });
@@ -1488,13 +1487,13 @@ async function initCards(){
     const myHandBg = document.createElement("div");
     myHandBg.id = "myHandZoneBg";
     myHandBg.className = "handZoneBg myHandZoneBg";
-    myHandBg.innerHTML = '<div class="handZoneLabel">手札エリア (ドロップで自動整列)</div><div id="myHandLimitDisplay" class="handLimitDisplay"></div>';
+    myHandBg.innerHTML = '<div class="handZoneLabel">手札エリア (ドロップで自動整列)</div>';
     content.appendChild(myHandBg);
 
     const opHandBg = document.createElement("div");
     opHandBg.id = "opHandZoneBg";
     opHandBg.className = "handZoneBg opHandZoneBg";
-    opHandBg.innerHTML = '<div class="handZoneLabel">相手の手札エリア</div><div id="opHandLimitDisplay" class="handLimitDisplay opHandLimitDisplay"></div>';
+    opHandBg.innerHTML = '<div class="handZoneLabel">相手の手札エリア</div>';
     content.appendChild(opHandBg);
   }
   ensureBattleZoneUIs();
@@ -1637,19 +1636,7 @@ window.organizeHands = function() {
     }
   }
 
-  const limitDisplay = document.getElementById("myHandLimitDisplay");
-  if (limitDisplay) {
-    const limit = window.getHandLimit(myRole);
-    limitDisplay.textContent = `${myHandCards.length} / ${limit}`;
-    limitDisplay.style.color = myHandCards.length > limit ? "#ff6666" : "#c7b377";
-  }
-
-  const opDisp = document.getElementById("opHandLimitDisplay");
-  if (opDisp) {
-    const olim = window.getHandLimit(opRole);
-    opDisp.textContent = `${opHandCards.length} / ${olim}`;
-    opDisp.style.color = opHandCards.length > olim ? "#ff8888" : "#c7b377";
-  }
+  // 手札枚数は HUD (renderOwnerUI) で自動更新されるため、ここでの個別更新は不要
 
   window.prevMyHandCount = myHandCards.length;
 };

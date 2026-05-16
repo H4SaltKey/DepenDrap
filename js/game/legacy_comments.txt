@@ -1,0 +1,15 @@
+// js/game/game.js から削除された旧コード群
+
+// 1. 廃止された空関数 (Obsolete)
+function getEvolutionPathTooltip(owner) { return ""; } // Obsolete, keeping to avoid undefined errors if called elsewhere
+
+// 2. 細かなステータス変更ログの旧コメントアウトブロック (checkAndLogStateChanges内)
+// HP/EXP/防御力の変更ログは出力しない（ログが多すぎるため）
+// 必要に応じてコメントアウトを外す
+// else {
+//   if (s1.hp !== s2.hp) addGameLog(`${name} HP:${s1.hp}→${s2.hp}`);
+//   if (s1.exp !== s2.exp) addGameLog(`${name} EXP:${s1.exp}→${s2.exp}`);
+//   if (s1.defstack !== s2.defstack || s1.defstackMax !== s2.defstackMax) {
+//     if (s2.defstack !== s1.defstack) addGameLog(`${name} 防御力:${s2.defstack}/${s2.defstackMax}`);
+//   }
+// }

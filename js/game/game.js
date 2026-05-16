@@ -704,8 +704,6 @@ function renderOwnerUI(owner) {
   </div>`;
 }
 
-function getEvolutionPathTooltip(owner) { return ""; } // Obsolete, keeping to avoid undefined errors if called elsewhere
-
 function openEvolutionPathModal(owner) {
   const html = getEvolutionPathHTML(owner);
   if (!html) return;
@@ -2231,15 +2229,6 @@ function checkAndLogStateChanges(oldState, newState) {
     if (s1.level < s2.level) {
       addGameLog(`${name} レベルアップ!!!【レベル:${s2.level}】`);
     }
-    // HP/EXP/防御力の変更ログは出力しない（ログが多すぎるため）
-    // 必要に応じてコメントアウトを外す
-    // else {
-    //   if (s1.hp !== s2.hp) addGameLog(`${name} HP:${s1.hp}→${s2.hp}`);
-    //   if (s1.exp !== s2.exp) addGameLog(`${name} EXP:${s1.exp}→${s2.exp}`);
-    //   if (s1.defstack !== s2.defstack || s1.defstackMax !== s2.defstackMax) {
-    //     if (s2.defstack !== s1.defstack) addGameLog(`${name} 防御力:${s2.defstack}/${s2.defstackMax}`);
-    //   }
-    // }
   });
 }
 

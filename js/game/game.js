@@ -4106,7 +4106,7 @@ function updateFieldStatusPanels() {
     const currentPp = s.pp || 0;
     const maxPp = s.ppMax || 2;
 
-    const isMine = owner === (window.myRole || "player1");
+    isMine = owner === (window.myRole || "player1");
     const id = `fieldStatusPanel_${owner}`;
     let el = document.getElementById(id);
     if (!el) {

@@ -1335,14 +1335,30 @@ function openFieldContextMenu(x, y) {
   const items = [
     {
       label: "ステータスブロックを追加",
-      action: () => {
-        const rect = document.getElementById("field").getBoundingClientRect();
-        const fieldX = (x - rect.left) / (window.fieldZoom || 1) - (window.fieldPanX || 0) / (window.fieldZoom || 1);
-        const fieldY = (y - rect.top) / (window.fieldZoom || 1) - (window.fieldPanY || 0) / (window.fieldZoom || 1);
-        if (typeof openStatusBlockEditor === "function") {
-          openStatusBlockEditor(null, true, fieldX, fieldY);
+      sub: [
+        {
+          label: "マニュアル",
+          action: () => {
+            const rect = document.getElementById("field").getBoundingClientRect();
+            const fieldX = (x - rect.left) / (window.fieldZoom || 1) - (window.fieldPanX || 0) / (window.fieldZoom || 1);
+            const fieldY = (y - rect.top) / (window.fieldZoom || 1) - (window.fieldPanY || 0) / (window.fieldZoom || 1);
+            if (typeof openStatusBlockEditor === "function") {
+              openStatusBlockEditor(null, true, fieldX, fieldY);
+            }
+          }
+        },
+        {
+          label: "プリセット",
+          action: () => {
+            const rect = document.getElementById("field").getBoundingClientRect();
+            const fieldX = (x - rect.left) / (window.fieldZoom || 1) - (window.fieldPanX || 0) / (window.fieldZoom || 1);
+            const fieldY = (y - rect.top) / (window.fieldZoom || 1) - (window.fieldPanY || 0) / (window.fieldZoom || 1);
+            if (typeof openStatusBlockPresetModal === "function") {
+              openStatusBlockPresetModal(fieldX, fieldY);
+            }
+          }
         }
-      }
+      ]
     }
   ];
   buildMenu(items, x, y);

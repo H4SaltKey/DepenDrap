@@ -384,6 +384,14 @@ if(localStorage.getItem("dev") !== "true"){
 <script src="js/dev/dev.js"></script>
 <script src="js/dev/devTools.js"></script>
 <script src="js/ui/menu.js?v=5"></script>
+<script src="js/statusBlocks/statusBlockPresets.js"></script>
+<script src="js/statusBlocks/statusBlockPresetStorage.js"></script>
+
+<div style="position:fixed; bottom:20px; left:20px; z-index:1000;">
+  <button onclick="if(window.openPresetStorageUI) window.openPresetStorageUI();" style="padding:10px 20px; background:#8e44ad; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+    ⚙️ ステータスプリセット管理
+  </button>
+</div>
 
 </body>
 </html>

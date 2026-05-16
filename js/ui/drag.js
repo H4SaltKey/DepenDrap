@@ -16,6 +16,7 @@ document.onmousemove = (e)=>{
   dragged.el.style.top = dragged.obj.y + "px";
 };
 
-document.onmouseup = ()=>{
+const releaseDrag = () => {
   dragged = null;
 };
+window.DragManager.register(releaseDrag);

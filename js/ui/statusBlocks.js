@@ -263,6 +263,22 @@ window.duplicateBlock = function(id, targetOwner) {
   updateAndSync();
 };
 
+window.addStatusBlockData = function(blockData) {
+  const targetOwner = blockData.owner || window.myRole || "player1";
+  if (!state[targetOwner].statusBlocks) state[targetOwner].statusBlocks = [];
+  
+  // 重複チェック (同名・同所有者)
+  const isDuplicate = state[targetOwner].statusBlocks.some(b => b.name === blockData.name);
+  if (isDuplicate) return false;
+  
+  const newBlock = { ...blockData };
+  if (!newBlock.id) newBlock.id = "sb_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+  
+  state[targetOwner].statusBlocks.push(newBlock);
+  updateAndSyncBlockOwner(targetOwner);
+  return true;
+};
+
 window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
   let block = isNew ? {
     id: "sb_" + Date.now(),
@@ -388,11 +404,10 @@ window.openStatusBlockEditor = function(id, isNew = false, x = 100, y = 100) {
     }
 
     if (isNew) {
-      const me = window.myRole || "player1";
-      if (!state[me].statusBlocks) state[me].statusBlocks = [];
-      state[me].statusBlocks.push(block);
+      window.addStatusBlockData(block);
+    } else {
+      updateAndSyncBlockOwner(block.owner);
     }
-    updateAndSync();
     overlay.remove();
   };
   document.body.appendChild(overlay);
@@ -431,7 +446,7 @@ function startDragging(e, id) {
     dragOffset.x = cursorFieldX - bx; dragOffset.y = cursorFieldY - by;
   }
   document.addEventListener("pointermove", onPointerMove);
-  document.addEventListener("pointerup", onPointerUp);
+  window.DragManager.register(onPointerUp);
   const el = document.getElementById(id);
   el.setPointerCapture(e.pointerId);
 }
@@ -447,7 +462,7 @@ function startResizing(e, id) {
   resizeStartSize.h = local?.h ?? (block.h || (block.type === "ui" ? 52 : 140));
   resizeStartPos = { x: e.clientX, y: e.clientY };
   document.addEventListener("pointermove", onPointerMove);
-  document.addEventListener("pointerup", onPointerUp);
+  window.DragManager.register(onPointerUp);
   const handle = e.target;
   handle.setPointerCapture(e.pointerId);
 }
@@ -509,7 +524,7 @@ function onPointerUp(e) {
   }
   draggingBlockId = null; resizingBlockId = null;
   document.removeEventListener("pointermove", onPointerMove);
-  document.removeEventListener("pointerup", onPointerUp);
+  window.DragManager.unregister(onPointerUp);
 }
 
 function findBlockById(id) {

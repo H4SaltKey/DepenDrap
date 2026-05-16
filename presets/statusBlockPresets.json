@@ -1,0 +1,24 @@
+[
+  {
+    "id": "preset_1",
+    "name": "毒",
+    "type": "field",
+    "ownerType": "self",
+    "current": 1,
+    "max": 5,
+    "memo": "ターン終了時にダメージ",
+    "icon": "",
+    "target": "opponent"
+  },
+  {
+    "id": "preset_2",
+    "name": "シールド",
+    "type": "ui",
+    "ownerType": "self",
+    "current": 10,
+    "max": 10,
+    "memo": "ダメージを肩代わり",
+    "icon": "",
+    "target": "self"
+  }
+]

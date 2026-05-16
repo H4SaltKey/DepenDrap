@@ -264,7 +264,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
 
   const up = (e) => {
     document.removeEventListener("pointermove", move);
-    document.removeEventListener("pointerup", up);
+    window.DragManager.unregister(up);
     card.style.opacity = "";
     restoreCardDragZIndex(card);
     if (!dragging) return;
@@ -282,7 +282,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
   };
 
   document.addEventListener("pointermove", move);
-  document.addEventListener("pointerup", up);
+  window.DragManager.register(up);
 }
 
 // showZoneStackInspectHover is now replaced by context menu "Inspect Contents"
@@ -583,6 +583,7 @@ function setupFieldPan(field){
     startPanY = fieldPanY;
     field.setPointerCapture(e.pointerId);
     field.classList.add("isPanning");
+    window.DragManager.register(stopPan);
   });
 
   field.addEventListener("pointermove", (e)=>{
@@ -596,13 +597,11 @@ function setupFieldPan(field){
     if(!isPanning) return;
     isPanning = false;
     field.classList.remove("isPanning");
-    if(field.hasPointerCapture(e.pointerId)){
-      field.releasePointerCapture(e.pointerId);
+    if(e && e.pointerId && field.hasPointerCapture && field.hasPointerCapture(e.pointerId)){
+      try{ field.releasePointerCapture(e.pointerId); }catch(err){}
     }
+    window.DragManager.unregister(stopPan);
   }
-
-  field.addEventListener("pointerup", stopPan);
-  field.addEventListener("pointercancel", stopPan);
 }
 
 // ===== カード生成 =====

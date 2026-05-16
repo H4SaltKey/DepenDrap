@@ -495,376 +495,394 @@ function checkLevelUp(owner) {
   syncDerivedStats(owner);
 }
 
-function barPct(current, max) {
-  if (!max) return 0;
-  return Math.min(100, Math.max(0, (current / max) * 100));
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function barPct(current, max) {
+//   if (!max) return 0;
+//   return Math.min(100, Math.max(0, (current / max) * 100));
+// }
 
 // バー+増減行（スライダーなし版とあり版）
-function renderBarRow(owner, key, label, fillClass, withSlider = true) {
-  const s = state[owner];
-  const cur = s[key];
-  const max = s[key + "Max"];
-  const pct = barPct(cur, max);
-  const slider = withSlider ? `
-    <input class="statSlider" type="range" min="0" max="${max}" value="${Math.min(Math.max(cur, 0), max)}"
-      data-owner="${owner}" data-key="${key}" data-type="slider">` : "";
-  return `
-  <div class="statBarWrap">
-    <div class="statBarLabel">${label}</div>
-    <div class="statBarOuter">
-      <div class="statBarInner ${fillClass}" style="width:${pct}%"></div>
-    </div>
-    <div class="statBarControls">
-      <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="-1">−</button>
-      <input class="statBarInput" type="number" value="${cur}"
-        data-owner="${owner}" data-key="${key}" data-type="val">
-      <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="1">＋</button>
-      <span class="statBarSep">/</span>
-      <input class="statMaxInput" type="number" value="${max}"
-        data-owner="${owner}" data-key="${key}" data-type="max">
-    </div>
-    ${slider}
-  </div>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function renderBarRow(owner, key, label, fillClass, withSlider = true) {
+//   const s = state[owner];
+//   const cur = s[key];
+//   const max = s[key + "Max"];
+//   const pct = barPct(cur, max);
+//   const slider = withSlider ? `
+//     <input class="statSlider" type="range" min="0" max="${max}" value="${Math.min(Math.max(cur, 0), max)}"
+//       data-owner="${owner}" data-key="${key}" data-type="slider">` : "";
+//   return `
+//   <div class="statBarWrap">
+//     <div class="statBarLabel">${label}</div>
+//     <div class="statBarOuter">
+//       <div class="statBarInner ${fillClass}" style="width:${pct}%"></div>
+//     </div>
+//     <div class="statBarControls">
+//       <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="-1">−</button>
+//       <input class="statBarInput" type="number" value="${cur}"
+//         data-owner="${owner}" data-key="${key}" data-type="val">
+//       <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="1">＋</button>
+//       <span class="statBarSep">/</span>
+//       <input class="statMaxInput" type="number" value="${max}"
+//         data-owner="${owner}" data-key="${key}" data-type="max">
+//     </div>
+//     ${slider}
+//   </div>`;
+// }
 
 // レベル行（増減ボタンなし）
-function renderLevelRow(owner) {
-  const s = state[owner];
-  return `
-  <div class="statLevelWrap">
-    <span class="statNumLabel">Lv</span>
-    <input class="statLevelInput" type="number" value="${s.level}"
-      data-owner="${owner}" data-key="level" data-type="val">
-  </div>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function renderLevelRow(owner) {
+//   const s = state[owner];
+//   return `
+//   <div class="statLevelWrap">
+//     <span class="statNumLabel">Lv</span>
+//     <input class="statLevelInput" type="number" value="${s.level}"
+//       data-owner="${owner}" data-key="level" data-type="val">
+//   </div>`;
+// }
 
 // 数値のみ行（スライダーなし）
-function renderNumRow(owner, key, label) {
-  const s = state[owner];
-  return `
-  <div class="statNumWrap">
-    <span class="statNumLabel">${label}</span>
-    <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="-1">−</button>
-    <input class="statNumInput" type="number" value="${s[key]}"
-      data-owner="${owner}" data-key="${key}" data-type="val">
-    <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="1">＋</button>
-  </div>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function renderNumRow(owner, key, label) {
+//   const s = state[owner];
+//   return `
+//   <div class="statNumWrap">
+//     <span class="statNumLabel">${label}</span>
+//     <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="-1">−</button>
+//     <input class="statNumInput" type="number" value="${s[key]}"
+//       data-owner="${owner}" data-key="${key}" data-type="val">
+//     <button class="statBtn" data-owner="${owner}" data-key="${key}" data-delta="1">＋</button>
+//   </div>`;
+// }
 
-function renderOwnerUI(owner) {
-  // 副作用なし：state を変更せず、ローカル変数で計算する
-  const s = state[owner];
-  const isMine = owner === (window.myRole || "player1");
-  const currentPp = Number.isFinite(Number(s.pp)) ? Number(s.pp) : 0;
-  const maxPp = Number.isFinite(Number(s.ppMax)) ? Number(s.ppMax) : 2;
-  const expMax = calcExpMax(s.level);
-  const defstackMax = s.def || 0;
-  const hpPct = barPct(s.hp, s.hpMax);
-  const barrierPct = barPct(s.shield, s.shieldMax);
-  const sldPct = barPct(s.defstack, defstackMax);
-  const expPct = barPct(s.exp, expMax);
-  const atMaxLv = s.level >= (s.levelMax || LEVEL_MAX);
-  const atMinExp = s.level <= 1 && s.exp <= 0;
+// LEGACY: moved to js/ui/statusUI.js
+// function renderOwnerUI(owner) {
+//   // 副作用なし：state を変更せず、ローカル変数で計算する
+//   const s = state[owner];
+//   const isMine = owner === (window.myRole || "player1");
+//   const currentPp = Number.isFinite(Number(s.pp)) ? Number(s.pp) : 0;
+//   const maxPp = Number.isFinite(Number(s.ppMax)) ? Number(s.ppMax) : 2;
+//   const expMax = calcExpMax(s.level);
+//   const defstackMax = s.def || 0;
+//   const hpPct = barPct(s.hp, s.hpMax);
+//   const barrierPct = barPct(s.shield, s.shieldMax);
+//   const sldPct = barPct(s.defstack, defstackMax);
+//   const expPct = barPct(s.exp, expMax);
+//   const atMaxLv = s.level >= (s.levelMax || LEVEL_MAX);
+//   const atMinExp = s.level <= 1 && s.exp <= 0;
+// 
+//   const handCount = (typeof countOwnerHandCardsOnField === "function") ? countOwnerHandCardsOnField(owner) : 0;
+//   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+// 
+//   return `
+//   <div style="display:flex; align-items:flex-end; gap:12px; ${isMine ? '' : 'flex-direction:row-reverse;'}">
+//   <div class="lorPanel" data-owner="${owner}">
+// 
+//     <!-- 左: レベル・経験値 -->
+//     <div class="lorLeft">
+//       <div style="text-align:center; font-size:14px; color:#e0d0a0; margin-bottom:6px; font-weight:bold; letter-spacing:1px;">
+//         ${s.username ? s.username : (owner === "player1" ? "Player 1" : "Player 2")}
+//       </div>
+//       <div class="lorLevelBlock">
+//         <div class="lorLevelLabel">LV</div>
+//         <div class="lorLevelGem">
+//           <svg class="lorExpRing" viewBox="0 0 44 44">
+//             <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+//             <circle cx="22" cy="22" r="19" fill="none" stroke="#c89b3c"
+//               stroke-width="3"
+//               stroke-dasharray="${(expPct * 119.4 / 100).toFixed(2)} 119.4"
+//               stroke-dashoffset="0"
+//               stroke-linecap="butt"
+//               transform="rotate(-90 22 22)"/>
+//           </svg>
+//           <div class="lorLevelInner">
+//             <div class="lorLevelNum">${s.level}</div>
+//           </div>
+//         </div>
+//       </div>
+//       <div class="lorExpRow" style="margin-bottom: 4px;">
+//         ${(atMinExp || !isMine)
+//       ? `<span class="lorSmBtnPlaceholder"></span>`
+//       : `<button class="lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="-1">−</button>`
+//     }
+//         <span class="lorExpVal">EXP ${s.exp}/${expMax}</span>
+//         <span class="lorSmBtnPlaceholder"></span>
+//       </div>
+//       ${(!atMaxLv && isMine)
+//         ? `<button class="lorExpAddBtn lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="1" style="width: 100%; padding: 4px 0; font-size: 11px; margin-top: 4px; background: rgba(50,40,30,0.8); border: 1px solid #7a6a40; border-radius: 4px; color: #f0d080; cursor: pointer; transition: all 0.2s;">＋ EXP追加</button>`
+//         : `<div style="height:24px;"></div>`
+//       }
+//     </div>
+// 
+//     <!-- 中央: HP・シールド -->
+//     <div class="lorCenter">
+//       <div class="lorStatRow lorBarrierRow" style="transform: scale(0.85); transform-origin: left bottom; margin-bottom: -4px;">
+//         <span class="lorIcon" data-tooltip="シールド">${ICON_BARRIER}</span>
+//         <div class="lorBarOuter">
+//           <div class="lorBarInner lorShieldFill" style="width:${barrierPct}%"></div>
+//         </div>
+//         <div class="lorValGroup">
+//           ${isMine ? (s.shield <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>`) : ""}
+//           <input class="lorValInput" type="number" value="${s.shield}"
+//             data-owner="${owner}" data-key="shield" data-type="val" ${isMine ? "" : "readonly disabled"}>
+//           <span class="lorValSep">/</span>
+//           <input class="lorMaxInput" type="number" value="${s.shieldMax}" readonly disabled
+//             style="opacity: 0.6; cursor: not-allowed;">
+//           ${isMine ? (s.shield >= s.shieldMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
+//         </div>
+//       </div>
+//       <div class="lorStatRow lorHpRow">
+//         <span class="lorIcon" data-tooltip="HP">${ICON_HP}</span>
+//         <div class="lorBarOuter lorHpBarOuter">
+//           <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
+//         </div>
+//         <div class="lorValGroup">
+//           ${isMine ? (s.hp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="-1">−</button>`) : ""}
+//           <input class="lorValInput" type="number" value="${s.hp}"
+//             data-owner="${owner}" data-key="hp" data-type="val" ${isMine ? "" : "readonly disabled"}>
+//           <span class="lorValSep">/</span>
+//           <input class="lorMaxInput" type="number" value="${s.hpMax}"
+//             data-owner="${owner}" data-key="hp" data-type="max" ${isMine ? "" : "readonly disabled"}>
+//           ${isMine ? (s.hp >= s.hpMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="1">＋</button>`) : ""}
+//         </div>
+//       </div>
+//       <div class="lorStatRow" style="position: relative;">
+//         <span class="lorIcon" data-tooltip="合計防御力">${ICON_SLD}</span>
+//         <div class="lorBarOuter">
+//           <div class="lorBarInner lorDefstackFill" style="width:${sldPct}%"></div>
+//         </div>
+//         <div class="lorValGroup">
+//           ${isMine ? (s.defstack <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="-1">−</button>`) : ""}
+//           <input class="lorValInput" type="number" value="${s.defstack}"
+//             data-owner="${owner}" data-key="defstack" data-type="val" ${isMine ? "" : "readonly disabled"}>
+//           <span class="lorValSep">/</span>
+//           <input class="lorMaxInput" type="number" value="${defstackMax}" readonly disabled
+//             style="opacity: 0.6; cursor: not-allowed;">
+//           ${isMine ? (s.defstack >= defstackMax && !s.defstackOverMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="1">＋</button>`) : ""}
+//         </div>
+//       </div>
+//     </div>
+// 
+//     <!-- 右: ATK/DEF/IDEF -->
+//     <div class="lorRight">
+//       ${lorStatChip(ICON_ATK, s.atk, owner, "atk", "基礎攻撃力")}
+//       ${lorStatChip(ICON_DEF, s.def, owner, "def", "基礎防御力")}
+//       ${lorInstantDefStatRow(owner, s)}
+//       ${isMine ? `
+//         <div class="lorActionGroup">
+//           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button">瞬間防御</button>
+//           <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" title="防御解除">解除</button>
+//         </div>
+//       ` : ""}
+//     </div>
+// 
+//   </div>
+//   
+//   <div style="display:flex; flex-direction:column; gap:8px;">
+//   ${s.evolutionPath ? `
+//   <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
+//     <div class="evoPanel" style="
+//       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
+//       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+//       width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+//     ">
+//       <div style="font-size:12px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+//       <div class="evoPanelTitle" data-owner="${owner}" style="font-size:18px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.4px;" title="クリックで拡大表示">${s.evolutionPath}</div>
+//       ${s.evolutionPath === '継続の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+//       ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+//     </div>
+//     <div class="evoPopup" style="
+//       position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
+//       left: 50%; transform: translateX(-50%); width: 420px;
+//       z-index: 99999; pointer-events: none;
+//       opacity: 0; transition: opacity 0.2s; visibility: hidden;
+//     ">
+//       <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
+//         ${getEvolutionPathHTML(owner)}
+//       </div>
+//     </div>
+//   </div>
+//   ` : ""}
+//   </div>
+//   
+//   </div>`;
+// }
 
-  const handCount = (typeof countOwnerHandCardsOnField === "function") ? countOwnerHandCardsOnField(owner) : 0;
-  const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+// LEGACY: moved to js/ui/overlayUI.js
+// function openEvolutionPathModal(owner) {
+//   const html = getEvolutionPathHTML(owner);
+//   if (!html) return;
+//   const overlay = document.createElement("div");
+//   overlay.className = "evoDetailOverlay";
+//   overlay.innerHTML = `
+//     <div class="evoDetailModal" role="dialog" aria-modal="true">
+//       <button type="button" class="evoDetailClose" aria-label="閉じる">✕</button>
+//       ${html}
+//     </div>
+//   `;
+//   const onEsc = (e) => {
+//     if (e.key !== "Escape") return;
+//     close();
+//   };
+//   const close = () => {
+//     document.removeEventListener("keydown", onEsc);
+//     overlay.remove();
+//   };
+//   overlay.addEventListener("click", (e) => {
+//     if (e.target === overlay || e.target.classList.contains("evoDetailClose")) close();
+//   });
+//   document.addEventListener("keydown", onEsc);
+//   document.body.appendChild(overlay);
+// }
 
-  return `
-  <div style="display:flex; align-items:flex-end; gap:12px; ${isMine ? '' : 'flex-direction:row-reverse;'}">
-  <div class="lorPanel" data-owner="${owner}">
+// LEGACY: moved to js/ui/overlayUI.js
+// function getEvolutionPathHTML(owner) {
+//   const s = state[owner];
+//   if (!s || !s.evolutionPath) return "";
+//   const lv = s.level || 1;
+//   let idx = 0;
+//   if (lv >= 6) idx = 3;
+//   else if (lv >= 5) idx = 2;
+//   else if (lv >= 3) idx = 1;
+// 
+//   let desc = "";
+//   let tableHTML = "";
+// 
+//   const colorAction = "#ff9999"; // 行動につながる部分
+//   const colorLevel = "#66ccff"; // レベルで変動する変数
+// 
+//   if (s.evolutionPath === '忍耐の道') {
+//     const xArr = [0, 1, 3, 4];
+//     const x = xArr[idx];
+//     desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
+//     tableHTML = `x = [0, 1, 3, 4]`;
+//   } else if (s.evolutionPath === '継続の道') {
+//     const yArr = [1, 3, 4, 6];
+//     const y = yArr[idx];
+//     desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
+//     tableHTML = `y = [1, 3, 4, 6]`;
+//   } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
+//     const zArr = [1, 3, 4, 6];
+//     const z = zArr[idx];
+//     desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
+//     tableHTML = `z = [1, 3, 4, 6]`;
+//   } else if (s.evolutionPath === '背水の道') {
+//     const tArr = [1, 2, 3, 4];
+//     const t = tArr[idx];
+//     desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:12px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
+//     tableHTML = `t = [1, 2, 3, 4]`;
+//   }
+//   
+//   return `
+//     <div style="font-size:18px; font-weight:bold; color:#f0d080; margin-bottom:10px; border-bottom:1px solid #5a4b27; padding-bottom:6px; text-align:center;">
+//       【${s.evolutionPath}】
+//     </div>
+//     <div style="font-size:15px; color:#f2f2f2; line-height:1.85; text-align:left; letter-spacing:0.2px;">
+//       ${desc}
+//     </div>
+//     <div style="margin-top:12px; text-align:right; font-size:13px; color:#b8b8b8; font-family:monospace;">
+//       ${tableHTML}
+//     </div>
+//   `;
+// }
 
-    <!-- 左: レベル・経験値 -->
-    <div class="lorLeft">
-      <div style="text-align:center; font-size:14px; color:#e0d0a0; margin-bottom:6px; font-weight:bold; letter-spacing:1px;">
-        ${s.username ? s.username : (owner === "player1" ? "Player 1" : "Player 2")}
-      </div>
-      <div class="lorLevelBlock">
-        <div class="lorLevelLabel">LV</div>
-        <div class="lorLevelGem">
-          <svg class="lorExpRing" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
-            <circle cx="22" cy="22" r="19" fill="none" stroke="#c89b3c"
-              stroke-width="3"
-              stroke-dasharray="${(expPct * 119.4 / 100).toFixed(2)} 119.4"
-              stroke-dashoffset="0"
-              stroke-linecap="butt"
-              transform="rotate(-90 22 22)"/>
-          </svg>
-          <div class="lorLevelInner">
-            <div class="lorLevelNum">${s.level}</div>
-          </div>
-        </div>
-      </div>
-      <div class="lorExpRow" style="margin-bottom: 4px;">
-        ${(atMinExp || !isMine)
-      ? `<span class="lorSmBtnPlaceholder"></span>`
-      : `<button class="lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="-1">−</button>`
-    }
-        <span class="lorExpVal">EXP ${s.exp}/${expMax}</span>
-        <span class="lorSmBtnPlaceholder"></span>
-      </div>
-      ${(!atMaxLv && isMine)
-        ? `<button class="lorExpAddBtn lorSmBtn" data-owner="${owner}" data-key="exp" data-delta="1" style="width: 100%; padding: 4px 0; font-size: 11px; margin-top: 4px; background: rgba(50,40,30,0.8); border: 1px solid #7a6a40; border-radius: 4px; color: #f0d080; cursor: pointer; transition: all 0.2s;">＋ EXP追加</button>`
-        : `<div style="height:24px;"></div>`
-      }
-    </div>
+// LEGACY: moved to js/ui/statusUI.js
+// function countOwnerHandCardsOnField(owner) {
+//   const c = typeof getFieldContent === "function" ? getFieldContent() : null;
+//   if (!c) return 0;
+//   const handMin = (typeof window.HAND_ZONE_Y_MIN === "number") ? window.HAND_ZONE_Y_MIN : 1460;
+//   const handMaxTop = FIELD_H - handMin; // 2000 - 1460 = 540
+//   
+//   return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
+//     (el) => {
+//       if (el.dataset.owner !== owner) return false;
+//       // ゾーン（アタッカー/スキル/墓地）に配置されているカードは除外
+//       if (el.dataset.zoneType) return false;
+// 
+//       const y = Number(el.dataset.y);
+//       if (Number.isFinite(y)) {
+//         // Player 1 の手札エリア (下部) または Player 2 の手札エリア (上部) にあるか判定
+//         if (owner === "player1" && y >= handMin) return true;
+//         if (owner === "player2" && y <= handMaxTop) return true;
+//       }
+//       // dataset.y が欠落/不正でも、手札整列済みカードは handOrder を持つため手札として扱う
+//       return Number.isFinite(Number(el.dataset.handOrder));
+//     }
+//   ).length;
+// }
 
-    <!-- 中央: HP・シールド -->
-    <div class="lorCenter">
-      <div class="lorStatRow lorBarrierRow" style="transform: scale(0.85); transform-origin: left bottom; margin-bottom: -4px;">
-        <span class="lorIcon" data-tooltip="シールド">${ICON_BARRIER}</span>
-        <div class="lorBarOuter">
-          <div class="lorBarInner lorShieldFill" style="width:${barrierPct}%"></div>
-        </div>
-        <div class="lorValGroup">
-          ${isMine ? (s.shield <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="-1">−</button>`) : ""}
-          <input class="lorValInput" type="number" value="${s.shield}"
-            data-owner="${owner}" data-key="shield" data-type="val" ${isMine ? "" : "readonly disabled"}>
-          <span class="lorValSep">/</span>
-          <input class="lorMaxInput" type="number" value="${s.shieldMax}" readonly disabled
-            style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? (s.shield >= s.shieldMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="shield" data-delta="1">＋</button>`) : ""}
-        </div>
-      </div>
-      <div class="lorStatRow lorHpRow">
-        <span class="lorIcon" data-tooltip="HP">${ICON_HP}</span>
-        <div class="lorBarOuter lorHpBarOuter">
-          <div class="lorBarInner lorHpFill" style="width:${hpPct}%"></div>
-        </div>
-        <div class="lorValGroup">
-          ${isMine ? (s.hp <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="-1">−</button>`) : ""}
-          <input class="lorValInput" type="number" value="${s.hp}"
-            data-owner="${owner}" data-key="hp" data-type="val" ${isMine ? "" : "readonly disabled"}>
-          <span class="lorValSep">/</span>
-          <input class="lorMaxInput" type="number" value="${s.hpMax}"
-            data-owner="${owner}" data-key="hp" data-type="max" ${isMine ? "" : "readonly disabled"}>
-          ${isMine ? (s.hp >= s.hpMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="hp" data-delta="1">＋</button>`) : ""}
-        </div>
-      </div>
-      <div class="lorStatRow" style="position: relative;">
-        <span class="lorIcon" data-tooltip="合計防御力">${ICON_SLD}</span>
-        <div class="lorBarOuter">
-          <div class="lorBarInner lorDefstackFill" style="width:${sldPct}%"></div>
-        </div>
-        <div class="lorValGroup">
-          ${isMine ? (s.defstack <= 0 ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="-1">−</button>`) : ""}
-          <input class="lorValInput" type="number" value="${s.defstack}"
-            data-owner="${owner}" data-key="defstack" data-type="val" ${isMine ? "" : "readonly disabled"}>
-          <span class="lorValSep">/</span>
-          <input class="lorMaxInput" type="number" value="${defstackMax}" readonly disabled
-            style="opacity: 0.6; cursor: not-allowed;">
-          ${isMine ? (s.defstack >= defstackMax && !s.defstackOverMax ? `<span class="lorSmBtnPlaceholder"></span>` : `<button class="lorSmBtn" data-owner="${owner}" data-key="defstack" data-delta="1">＋</button>`) : ""}
-        </div>
-      </div>
-    </div>
+// LEGACY: moved to js/ui/statusUI.js
+// function getHandLimit(owner) {
+//   const s = state[owner];
+//   if (!s) return 6;
+//   let limit = 6;
+//   if (s.evolutionPath === "忍耐の道") {
+//     limit += 2;
+//     if ((Number(s.level) || 1) >= 6) limit += 1;
+//   }
+//   return limit;
+// }
+// LEGACY: moved to js/ui/statusUI.js
+// window.getHandLimit = getHandLimit;
 
-    <!-- 右: ATK/DEF/IDEF -->
-    <div class="lorRight">
-      ${lorStatChip(ICON_ATK, s.atk, owner, "atk", "基礎攻撃力")}
-      ${lorStatChip(ICON_DEF, s.def, owner, "def", "基礎防御力")}
-      ${lorInstantDefStatRow(owner, s)}
-      ${isMine ? `
-        <div class="lorActionGroup">
-          <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button">瞬間防御</button>
-          <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" title="防御解除">解除</button>
-        </div>
-      ` : ""}
-    </div>
-
-  </div>
-  
-  <div style="display:flex; flex-direction:column; gap:8px;">
-  ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
-    <div class="evoPanel" style="
-      background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
-      padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    ">
-      <div style="font-size:12px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
-      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:18px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.4px;" title="クリックで拡大表示">${s.evolutionPath}</div>
-      ${s.evolutionPath === '継続の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
-      ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
-    </div>
-    <div class="evoPopup" style="
-      position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
-      left: 50%; transform: translateX(-50%); width: 420px;
-      z-index: 99999; pointer-events: none;
-      opacity: 0; transition: opacity 0.2s; visibility: hidden;
-    ">
-      <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
-        ${getEvolutionPathHTML(owner)}
-      </div>
-    </div>
-  </div>
-  ` : ""}
-  </div>
-  
-  </div>`;
-}
-
-function openEvolutionPathModal(owner) {
-  const html = getEvolutionPathHTML(owner);
-  if (!html) return;
-  const overlay = document.createElement("div");
-  overlay.className = "evoDetailOverlay";
-  overlay.innerHTML = `
-    <div class="evoDetailModal" role="dialog" aria-modal="true">
-      <button type="button" class="evoDetailClose" aria-label="閉じる">✕</button>
-      ${html}
-    </div>
-  `;
-  const onEsc = (e) => {
-    if (e.key !== "Escape") return;
-    close();
-  };
-  const close = () => {
-    document.removeEventListener("keydown", onEsc);
-    overlay.remove();
-  };
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay || e.target.classList.contains("evoDetailClose")) close();
-  });
-  document.addEventListener("keydown", onEsc);
-  document.body.appendChild(overlay);
-}
-
-function getEvolutionPathHTML(owner) {
-  const s = state[owner];
-  if (!s || !s.evolutionPath) return "";
-  const lv = s.level || 1;
-  let idx = 0;
-  if (lv >= 6) idx = 3;
-  else if (lv >= 5) idx = 2;
-  else if (lv >= 3) idx = 1;
-
-  let desc = "";
-  let tableHTML = "";
-
-  const colorAction = "#ff9999"; // 行動につながる部分
-  const colorLevel = "#66ccff"; // レベルで変動する変数
-
-  if (s.evolutionPath === '忍耐の道') {
-    const xArr = [0, 1, 3, 4];
-    const x = xArr[idx];
-    desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
-    tableHTML = `x = [0, 1, 3, 4]`;
-  } else if (s.evolutionPath === '継続の道') {
-    const yArr = [1, 3, 4, 6];
-    const y = yArr[idx];
-    desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
-    tableHTML = `y = [1, 3, 4, 6]`;
-  } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
-    const zArr = [1, 3, 4, 6];
-    const z = zArr[idx];
-    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
-    tableHTML = `z = [1, 3, 4, 6]`;
-  } else if (s.evolutionPath === '背水の道') {
-    const tArr = [1, 2, 3, 4];
-    const t = tArr[idx];
-    desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:12px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
-    tableHTML = `t = [1, 2, 3, 4]`;
-  }
-  
-  return `
-    <div style="font-size:18px; font-weight:bold; color:#f0d080; margin-bottom:10px; border-bottom:1px solid #5a4b27; padding-bottom:6px; text-align:center;">
-      【${s.evolutionPath}】
-    </div>
-    <div style="font-size:15px; color:#f2f2f2; line-height:1.85; text-align:left; letter-spacing:0.2px;">
-      ${desc}
-    </div>
-    <div style="margin-top:12px; text-align:right; font-size:13px; color:#b8b8b8; font-family:monospace;">
-      ${tableHTML}
-    </div>
-  `;
-}
-
-function countOwnerHandCardsOnField(owner) {
-  const c = typeof getFieldContent === "function" ? getFieldContent() : null;
-  if (!c) return 0;
-  const handMin = (typeof window.HAND_ZONE_Y_MIN === "number") ? window.HAND_ZONE_Y_MIN : 1460;
-  const handMaxTop = FIELD_H - handMin; // 2000 - 1460 = 540
-  
-  return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
-    (el) => {
-      if (el.dataset.owner !== owner) return false;
-      // ゾーン（アタッカー/スキル/墓地）に配置されているカードは除外
-      if (el.dataset.zoneType) return false;
-
-      const y = Number(el.dataset.y);
-      if (Number.isFinite(y)) {
-        // Player 1 の手札エリア (下部) または Player 2 の手札エリア (上部) にあるか判定
-        if (owner === "player1" && y >= handMin) return true;
-        if (owner === "player2" && y <= handMaxTop) return true;
-      }
-      // dataset.y が欠落/不正でも、手札整列済みカードは handOrder を持つため手札として扱う
-      return Number.isFinite(Number(el.dataset.handOrder));
-    }
-  ).length;
-}
-
-function getHandLimit(owner) {
-  const s = state[owner];
-  if (!s) return 6;
-  let limit = 6;
-  if (s.evolutionPath === "忍耐の道") {
-    limit += 2;
-    if ((Number(s.level) || 1) >= 6) limit += 1;
-  }
-  return limit;
-}
-window.getHandLimit = getHandLimit;
-
-function lorStatChip(icon, val, owner, key, title = "") {
-  const isEditable = window.devMode;
-  return `
-  <div class="lorChip" data-tooltip="${title}">
-    <span class="lorChipIcon">${icon}</span>
-    ${isEditable ? `
-      <input class="lorChipInput" type="number" value="${val}"
-        data-owner="${owner}" data-key="${key}" data-type="val"
-        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
-    ` : `
-      <span class="lorChipVal">${val}</span>
-    `}
-  </div>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function lorStatChip(icon, val, owner, key, title = "") {
+//   const isEditable = window.devMode;
+//   return `
+//   <div class="lorChip" data-tooltip="${title}">
+//     <span class="lorChipIcon">${icon}</span>
+//     ${isEditable ? `
+//       <input class="lorChipInput" type="number" value="${val}"
+//         data-owner="${owner}" data-key="${key}" data-type="val"
+//         style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
+//     ` : `
+//       <span class="lorChipVal">${val}</span>
+//     `}
+//   </div>`;
+// }
 
 /** Lucide（game.html で lucide.min.js を読み込み、update 末尾で createIcons） */
-function lorLucide(name, cls = "") {
-  const extra = cls ? ` ${cls}` : "";
-  return `<i data-lucide="${name}" class="lorLucide${extra}" width="20" height="20"></i>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function lorLucide(name, cls = "") {
+//   const extra = cls ? ` ${cls}` : "";
+//   return `<i data-lucide="${name}" class="lorLucide${extra}" width="20" height="20"></i>`;
+// }
 
 // ===== アイコン（Lucide 名） =====
 // シールド: 丸いエネルギーフィールド → orbit
-const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
+// LEGACY: moved to js/ui/statusUI.js
+// const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
 // HP: ハート
-const ICON_HP = lorLucide("heart", "lorLxHp");
+// LEGACY: moved to js/ui/statusUI.js
+// const ICON_HP = lorLucide("heart", "lorLxHp");
 // 合計防御力: 塗りつぶし盾（防御バーと同色）
-const ICON_SLD = lorLucide("shield", "lorLxDefTot");
+// LEGACY: moved to js/ui/statusUI.js
+// const ICON_SLD = lorLucide("shield", "lorLxDefTot");
 // 基礎攻撃力: 剣
-const ICON_ATK = lorLucide("sword", "lorLxAtk");
+// LEGACY: moved to js/ui/statusUI.js
+// const ICON_ATK = lorLucide("sword", "lorLxAtk");
 // 基礎防御力: shield-ellipsis
-const ICON_DEF = lorLucide("shield-ellipsis", "lorLxDef");
+// LEGACY: moved to js/ui/statusUI.js
+// const ICON_DEF = lorLucide("shield-ellipsis", "lorLxDef");
 
 /** 瞬間防御力: shield-alert のみ */
-function lorInstantDefStatRow(owner, s) {
-  const isEditable = window.devMode;
-  const val = Number(s.instantDef) || 0;
-  return `
-  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
-    <span class="lorChipIcon">${lorLucide("shield-alert", "lorLxIdef")}</span>
-    ${isEditable ? `
-      <input class="lorChipInput" type="number" value="${val}"
-        data-owner="${owner}" data-key="instantDef" data-type="val"
-        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
-    ` : `
-      <span class="lorChipVal">${val}</span>
-    `}
-  </div>`;
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function lorInstantDefStatRow(owner, s) {
+//   const isEditable = window.devMode;
+//   const val = Number(s.instantDef) || 0;
+//   return `
+//   <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
+//     <span class="lorChipIcon">${lorLucide("shield-alert", "lorLxIdef")}</span>
+//     ${isEditable ? `
+//       <input class="lorChipInput" type="number" value="${val}"
+//         data-owner="${owner}" data-key="instantDef" data-type="val"
+//         style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
+//     ` : `
+//       <span class="lorChipVal">${val}</span>
+//     `}
+//   </div>`;
+// }
 
 function update(skipLogCheck = false) {
   applyInteractionLockState();
@@ -1414,66 +1432,68 @@ function updateMatchUI() {
   document.head.appendChild(s);
 })();
 
-function showNotification(text, color) {
-  const div = document.createElement('div');
-  div.style.cssText = `
-    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 9999; pointer-events: none; text-align: center;
-    font-family: 'Outfit', sans-serif; white-space: nowrap;
-  `;
-  div.innerHTML = `
-    <h2 style="
-      font-size: 60px; font-weight: 900; color: ${color}; margin: 0;
-      letter-spacing: 15px; text-transform: uppercase;
-      animation: notifyIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-                 notifyOut 0.5s 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      text-shadow: 0 0 20px ${color}66;
-    ">${text}</h2>
-  `;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 2500);
-}
+// LEGACY: moved to js/ui/animationUI.js
+// function showNotification(text, color) {
+//   const div = document.createElement('div');
+//   div.style.cssText = `
+//     position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+//     z-index: 9999; pointer-events: none; text-align: center;
+//     font-family: 'Outfit', sans-serif; white-space: nowrap;
+//   `;
+//   div.innerHTML = `
+//     <h2 style="
+//       font-size: 60px; font-weight: 900; color: ${color}; margin: 0;
+//       letter-spacing: 15px; text-transform: uppercase;
+//       animation: notifyIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+//                  notifyOut 0.5s 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+//       text-shadow: 0 0 20px ${color}66;
+//     ">${text}</h2>
+//   `;
+//   document.body.appendChild(div);
+//   setTimeout(() => div.remove(), 2500);
+// }
 
-function showRoundNotification(round) {
-  const div = document.createElement('div');
-  div.style.cssText = `
-    position: fixed; inset: 0; z-index: 10000; pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(circle, rgba(199,179,119,0.15) 0%, rgba(0,0,0,0.8) 70%);
-    animation: roundFadeIn 0.6s ease-out forwards, roundFadeOut 0.6s 2.4s ease-in forwards;
-  `;
-  
-  const subtitleHtml = round === 1 ? `
-      <div style="
-        margin-top: 30px; font-size: 20px; font-weight: 600; color: #e0d0a0;
-        letter-spacing: 4px; opacity: 0.8;
-        animation: roundSubtitleSlide 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        transform: translateY(-30px); opacity: 0;
-      ">新たな戦いが始まる</div>
-  ` : "";
-  
-  div.innerHTML = `
-    <div style="text-align: center; animation: roundContentScale 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
-      <div style="
-        font-size: 28px; font-weight: 700; color: #c7b377; letter-spacing: 8px;
-        text-transform: uppercase; margin-bottom: 20px; opacity: 0.9;
-        animation: roundSubtitleSlide 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        transform: translateY(30px); opacity: 0;
-      ">ROUND</div>
-      <div style="
-        font-size: 140px; font-weight: 900; color: #fff;
-        letter-spacing: 20px; line-height: 1;
-        text-shadow: 0 0 40px rgba(199,179,119,0.6), 0 0 80px rgba(199,179,119,0.4),
-                     0 10px 30px rgba(0,0,0,0.8);
-        animation: roundNumberPulse 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        transform: scale(0.5); opacity: 0;
-      ">${round}</div>${subtitleHtml}
-    </div>
-  `;
-  
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 3200);
-}
+// LEGACY: moved to js/ui/animationUI.js
+// function showRoundNotification(round) {
+//   const div = document.createElement('div');
+//   div.style.cssText = `
+//     position: fixed; inset: 0; z-index: 10000; pointer-events: none;
+//     display: flex; align-items: center; justify-content: center;
+//     background: radial-gradient(circle, rgba(199,179,119,0.15) 0%, rgba(0,0,0,0.8) 70%);
+//     animation: roundFadeIn 0.6s ease-out forwards, roundFadeOut 0.6s 2.4s ease-in forwards;
+//   `;
+//   
+//   const subtitleHtml = round === 1 ? `
+//       <div style="
+//         margin-top: 30px; font-size: 20px; font-weight: 600; color: #e0d0a0;
+//         letter-spacing: 4px; opacity: 0.8;
+//         animation: roundSubtitleSlide 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+//         transform: translateY(-30px); opacity: 0;
+//       ">新たな戦いが始まる</div>
+//   ` : "";
+//   
+//   div.innerHTML = `
+//     <div style="text-align: center; animation: roundContentScale 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+//       <div style="
+//         font-size: 28px; font-weight: 700; color: #c7b377; letter-spacing: 8px;
+//         text-transform: uppercase; margin-bottom: 20px; opacity: 0.9;
+//         animation: roundSubtitleSlide 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+//         transform: translateY(30px); opacity: 0;
+//       ">ROUND</div>
+//       <div style="
+//         font-size: 140px; font-weight: 900; color: #fff;
+//         letter-spacing: 20px; line-height: 1;
+//         text-shadow: 0 0 40px rgba(199,179,119,0.6), 0 0 80px rgba(199,179,119,0.4),
+//                      0 10px 30px rgba(0,0,0,0.8);
+//         animation: roundNumberPulse 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+//         transform: scale(0.5); opacity: 0;
+//       ">${round}</div>${subtitleHtml}
+//     </div>
+//   `;
+//   
+//   document.body.appendChild(div);
+//   setTimeout(() => div.remove(), 3200);
+// }
 
 // ラウンド通知用のアニメーションスタイルを追加
 (function injectRoundNotificationStyles() {
@@ -1900,87 +1920,88 @@ async function handleTurnEnd(skipHandLimitCheck = false) {
 }
 
 // (moved to top of file)
-function showHandOverflowDiscardModal(owner, needCount) {
-  if (handOverflowDiscardOpen) return;
-  const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("field");
-  if (!content) return;
-  const handCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"))
-    .filter((c) => c.dataset.owner === owner && Number(c.dataset.y) >= (window.HAND_ZONE_Y_MIN || 1460));
-  if (handCards.length < needCount) return;
-
-  handOverflowDiscardOpen = true;
-  const overlay = document.createElement("div");
-  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100120;display:flex;align-items:center;justify-content:center;";
-  const panel = document.createElement("div");
-  panel.style.cssText = "width:min(96vw,1180px);max-height:88vh;overflow:hidden;background:#161422;border:1px solid #6f5d31;border-radius:14px;padding:14px;color:#f2e6c8;display:flex;flex-direction:column;gap:10px;";
-  const title = document.createElement("div");
-  title.style.cssText = "font-size:20px;font-weight:800;";
-  const row = document.createElement("div");
-  row.style.cssText = "display:flex;gap:10px;overflow-x:auto;padding:8px 2px 12px;";
-  const actions = document.createElement("div");
-  actions.style.cssText = "display:flex;justify-content:flex-end;gap:8px;";
-  const btn = document.createElement("button");
-  btn.textContent = "捨てる";
-  btn.style.cssText = "padding:8px 16px;font-weight:700;background:#a33737;color:#fff;border:1px solid #d98080;border-radius:8px;cursor:pointer;";
-  btn.disabled = true;
-
-  const selected = new Set();
-  const refresh = () => {
-    title.textContent = `手札を${needCount}枚捨てる（あと${needCount - selected.size}枚）`;
-    btn.disabled = selected.size !== needCount;
-  };
-  refresh();
-
-  handCards.forEach((c) => {
-    const w = document.createElement("div");
-    w.style.cssText = "position:relative;flex:0 0 auto;width:140px;cursor:pointer;";
-    const img = document.createElement("img");
-    const src = c.querySelector("img")?.src || "";
-    img.src = src;
-    img.style.cssText = "width:140px;height:198px;object-fit:contain;border:1px solid #544826;border-radius:8px;background:#111;";
-    const mark = document.createElement("div");
-    mark.textContent = "✕";
-    mark.style.cssText = "position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:rgba(255,80,80,0.82);font-size:92px;font-weight:900;pointer-events:none;";
-    w.addEventListener("click", () => {
-      if (selected.has(c)) selected.delete(c);
-      else if (selected.size < needCount) selected.add(c);
-      mark.style.display = selected.has(c) ? "flex" : "none";
-      refresh();
-    });
-    w.appendChild(img);
-    w.appendChild(mark);
-    row.appendChild(w);
-  });
-
-  btn.addEventListener("click", async () => {
-    if (selected.size !== needCount) return;
-    selected.forEach((c) => {
-      if (typeof placeCardInZone === "function") placeCardInZone(c, owner, "grave");
-    });
-    if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
-    if (typeof saveFieldCards === "function") saveFieldCards();
-    if (typeof window.organizeHands === "function") window.organizeHands();
-    if (typeof addGameLog === "function") {
-      addGameLog(`[システム] ${state[owner]?.username || owner} が手札を${needCount}枚捨てました`);
-    }
-    // 忍耐の道: 捨てた枚数ぶんEXP（ターン毎最大2）
-    const s = state[owner];
-    if (s?.evolutionPath === "忍耐の道" && needCount > 0) {
-      const gain = Math.min(2, needCount);
-      if (gain > 0 && typeof addVal === "function") addVal(owner, "exp", gain);
-    }
-    overlay.remove();
-    handOverflowDiscardOpen = false;
-    await handleTurnEnd(true);
-  });
-
-  actions.appendChild(btn);
-  panel.appendChild(title);
-  panel.appendChild(row);
-  panel.appendChild(actions);
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-}
+// LEGACY: moved to js/ui/overlayUI.js
+// function showHandOverflowDiscardModal(owner, needCount) {
+//   if (handOverflowDiscardOpen) return;
+//   const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("field");
+//   if (!content) return;
+//   const handCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+//     .filter((c) => c.dataset.owner === owner && Number(c.dataset.y) >= (window.HAND_ZONE_Y_MIN || 1460));
+//   if (handCards.length < needCount) return;
+// 
+//   handOverflowDiscardOpen = true;
+//   const overlay = document.createElement("div");
+//   overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:100120;display:flex;align-items:center;justify-content:center;";
+//   const panel = document.createElement("div");
+//   panel.style.cssText = "width:min(96vw,1180px);max-height:88vh;overflow:hidden;background:#161422;border:1px solid #6f5d31;border-radius:14px;padding:14px;color:#f2e6c8;display:flex;flex-direction:column;gap:10px;";
+//   const title = document.createElement("div");
+//   title.style.cssText = "font-size:20px;font-weight:800;";
+//   const row = document.createElement("div");
+//   row.style.cssText = "display:flex;gap:10px;overflow-x:auto;padding:8px 2px 12px;";
+//   const actions = document.createElement("div");
+//   actions.style.cssText = "display:flex;justify-content:flex-end;gap:8px;";
+//   const btn = document.createElement("button");
+//   btn.textContent = "捨てる";
+//   btn.style.cssText = "padding:8px 16px;font-weight:700;background:#a33737;color:#fff;border:1px solid #d98080;border-radius:8px;cursor:pointer;";
+//   btn.disabled = true;
+// 
+//   const selected = new Set();
+//   const refresh = () => {
+//     title.textContent = `手札を${needCount}枚捨てる（あと${needCount - selected.size}枚）`;
+//     btn.disabled = selected.size !== needCount;
+//   };
+//   refresh();
+// 
+//   handCards.forEach((c) => {
+//     const w = document.createElement("div");
+//     w.style.cssText = "position:relative;flex:0 0 auto;width:140px;cursor:pointer;";
+//     const img = document.createElement("img");
+//     const src = c.querySelector("img")?.src || "";
+//     img.src = src;
+//     img.style.cssText = "width:140px;height:198px;object-fit:contain;border:1px solid #544826;border-radius:8px;background:#111;";
+//     const mark = document.createElement("div");
+//     mark.textContent = "✕";
+//     mark.style.cssText = "position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:rgba(255,80,80,0.82);font-size:92px;font-weight:900;pointer-events:none;";
+//     w.addEventListener("click", () => {
+//       if (selected.has(c)) selected.delete(c);
+//       else if (selected.size < needCount) selected.add(c);
+//       mark.style.display = selected.has(c) ? "flex" : "none";
+//       refresh();
+//     });
+//     w.appendChild(img);
+//     w.appendChild(mark);
+//     row.appendChild(w);
+//   });
+// 
+//   btn.addEventListener("click", async () => {
+//     if (selected.size !== needCount) return;
+//     selected.forEach((c) => {
+//       if (typeof placeCardInZone === "function") placeCardInZone(c, owner, "grave");
+//     });
+//     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+//     if (typeof saveFieldCards === "function") saveFieldCards();
+//     if (typeof window.organizeHands === "function") window.organizeHands();
+//     if (typeof addGameLog === "function") {
+//       addGameLog(`[システム] ${state[owner]?.username || owner} が手札を${needCount}枚捨てました`);
+//     }
+//     // 忍耐の道: 捨てた枚数ぶんEXP（ターン毎最大2）
+//     const s = state[owner];
+//     if (s?.evolutionPath === "忍耐の道" && needCount > 0) {
+//       const gain = Math.min(2, needCount);
+//       if (gain > 0 && typeof addVal === "function") addVal(owner, "exp", gain);
+//     }
+//     overlay.remove();
+//     handOverflowDiscardOpen = false;
+//     await handleTurnEnd(true);
+//   });
+// 
+//   actions.appendChild(btn);
+//   panel.appendChild(title);
+//   panel.appendChild(row);
+//   panel.appendChild(actions);
+//   overlay.appendChild(panel);
+//   document.body.appendChild(overlay);
+// }
 
 /**
  * 自分の playerState として Firebase に送る内容を返す
@@ -2151,132 +2172,136 @@ document.body.addEventListener("click", (e) => {
 let cardsReadyFired = false;
 let lastStateJson = "";
 
-function updateGameLogs(logs) {
-  const chatLogs = document.getElementById("chatLogs");
-  if (!chatLogs || !Array.isArray(logs)) return;
-
-  const existingCount = chatLogs.querySelectorAll(".log-entry").length;
-  // logs.length が減少した（サーバーリセット等）場合も考慮して更新
-  if (logs.length !== existingCount) {
-    chatLogs.innerHTML = "";
-    // 重複を排除してユニークなログのみ表示（簡易的）
-    const uniqueLogs = [...new Set(logs)];
-    uniqueLogs.forEach(msg => {
-      const div = document.createElement("div");
-      div.classList.add("log-entry");
-
-      const match = msg.match(/^(\[[^\]]+\])\s*(.*)$/);
-      if (match) {
-        const ts = document.createElement("span");
-        ts.classList.add("log-ts");
-        ts.textContent = match[1];
-        div.appendChild(ts);
-        
-        let contentText = match[2];
-        const chatMatch = contentText.match(/^\[CHAT:([^\]]+)\]\s*(.*)$/);
-
-        if (contentText.startsWith("[システム]")) {
-           div.classList.add("log-system");
-        } else if (contentText.match(/^\[(EXP|HP|PP|DICE|RESULT|DEFEAT|EVOLUTION|MATCH|TURN|ZONE)\]/)) {
-           div.classList.add("log-stat");
-        } else if (chatMatch) {
-           div.classList.add("log-chat");
-           div.style.color = chatMatch[1];
-           contentText = chatMatch[2];
-        } else if (contentText.includes(": ")) {
-           div.classList.add("log-chat");
-           div.style.color = "#ffffff";
-        }
-        
-        div.appendChild(document.createTextNode(" " + contentText));
-      } else {
-        div.textContent = msg;
-      }
-      chatLogs.appendChild(div);
-    });
-    chatLogs.scrollTop = chatLogs.scrollHeight;
-  }
-}
+// LEGACY: moved to js/chat/chatUI.js
+// function updateGameLogs(logs) {
+//   const chatLogs = document.getElementById("chatLogs");
+//   if (!chatLogs || !Array.isArray(logs)) return;
+// 
+//   const existingCount = chatLogs.querySelectorAll(".log-entry").length;
+//   // logs.length が減少した（サーバーリセット等）場合も考慮して更新
+//   if (logs.length !== existingCount) {
+//     chatLogs.innerHTML = "";
+//     // 重複を排除してユニークなログのみ表示（簡易的）
+//     const uniqueLogs = [...new Set(logs)];
+//     uniqueLogs.forEach(msg => {
+//       const div = document.createElement("div");
+//       div.classList.add("log-entry");
+// 
+//       const match = msg.match(/^(\[[^\]]+\])\s*(.*)$/);
+//       if (match) {
+//         const ts = document.createElement("span");
+//         ts.classList.add("log-ts");
+//         ts.textContent = match[1];
+//         div.appendChild(ts);
+//         
+//         let contentText = match[2];
+//         const chatMatch = contentText.match(/^\[CHAT:([^\]]+)\]\s*(.*)$/);
+// 
+//         if (contentText.startsWith("[システム]")) {
+//            div.classList.add("log-system");
+//         } else if (contentText.match(/^\[(EXP|HP|PP|DICE|RESULT|DEFEAT|EVOLUTION|MATCH|TURN|ZONE)\]/)) {
+//            div.classList.add("log-stat");
+//         } else if (chatMatch) {
+//            div.classList.add("log-chat");
+//            div.style.color = chatMatch[1];
+//            contentText = chatMatch[2];
+//         } else if (contentText.includes(": ")) {
+//            div.classList.add("log-chat");
+//            div.style.color = "#ffffff";
+//         }
+//         
+//         div.appendChild(document.createTextNode(" " + contentText));
+//       } else {
+//         div.textContent = msg;
+//       }
+//       chatLogs.appendChild(div);
+//     });
+//     chatLogs.scrollTop = chatLogs.scrollHeight;
+//   }
+// }
 window.updateGameLogs = updateGameLogs;
 
-function checkAndLogStateChanges(oldState, newState) {
-  // リセットプロトコルの検知
-  const oldLogs = oldState.logs || [];
-  const newLogs = newState.logs || [];
-  if (newLogs.length > 0 && newLogs.length !== oldLogs.length) {
-    const latest = newLogs[newLogs.length - 1];
-    if (latest.includes("[PROTOCOL:RESET]")) {
-      // 自分が実行者でない場合のみ、追従リセットを行う
-      const initiator = latest.match(/\[PROTOCOL:RESET\] (.*?) が/);
-      if (initiator && initiator[1] !== (window.myUsername || state[window.myRole || "player1"]?.username || window.myRole)) {
-        console.log("Remote Reset Detected. Re-initializing local deck...");
-        initDeckFromCode();
-        shuffleDeck();
-        createDeckObject(true);
-      }
-    }
-  }
+// LEGACY: moved to js/chat/chatUI.js
+// function checkAndLogStateChanges(oldState, newState) {
+//   // リセットプロトコルの検知
+//   const oldLogs = oldState.logs || [];
+//   const newLogs = newState.logs || [];
+//   if (newLogs.length > 0 && newLogs.length !== oldLogs.length) {
+//     const latest = newLogs[newLogs.length - 1];
+//     if (latest.includes("[PROTOCOL:RESET]")) {
+//       // 自分が実行者でない場合のみ、追従リセットを行う
+//       const initiator = latest.match(/\[PROTOCOL:RESET\] (.*?) が/);
+//       if (initiator && initiator[1] !== (window.myUsername || state[window.myRole || "player1"]?.username || window.myRole)) {
+//         console.log("Remote Reset Detected. Re-initializing local deck...");
+//         initDeckFromCode();
+//         shuffleDeck();
+//         createDeckObject(true);
+//       }
+//     }
+//   }
+// 
+//   ["player1", "player2"].forEach(owner => {
+//     // oldState[owner]が存在しない場合はスキップ（初期化前）
+//     if (!oldState[owner] || !newState[owner]) return;
+//     
+//     const s1 = oldState[owner];
+//     const s2 = newState[owner];
+//     const name = s2.username || (owner === "player1" ? "プレイヤー1" : "プレイヤー2");
+// 
+//     // レベルアップのみログ出力（HPやEXPの細かい変更はログに出さない）
+//     if (s1.level < s2.level) {
+//       addGameLog(`${name} レベルアップ!!!【レベル:${s2.level}】`);
+//     }
+//   });
+// }
 
-  ["player1", "player2"].forEach(owner => {
-    // oldState[owner]が存在しない場合はスキップ（初期化前）
-    if (!oldState[owner] || !newState[owner]) return;
-    
-    const s1 = oldState[owner];
-    const s2 = newState[owner];
-    const name = s2.username || (owner === "player1" ? "プレイヤー1" : "プレイヤー2");
+// LEGACY: moved to js/chat/chatUI.js
+// function handleChatSend() {
+//   const input = document.getElementById("chatInput");
+//   const val = input.value.trim();
+//   if (!val) return;
+//   const color = localStorage.getItem("chatColor") || "#ffffff";
+//   addGameLog(`[CHAT:${color}] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole}: ${val}`);
+//   input.value = "";
+// }
 
-    // レベルアップのみログ出力（HPやEXPの細かい変更はログに出さない）
-    if (s1.level < s2.level) {
-      addGameLog(`${name} レベルアップ!!!【レベル:${s2.level}】`);
-    }
-  });
-}
-
-function handleChatSend() {
-  const input = document.getElementById("chatInput");
-  const val = input.value.trim();
-  if (!val) return;
-  const color = localStorage.getItem("chatColor") || "#ffffff";
-  addGameLog(`[CHAT:${color}] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole}: ${val}`);
-  input.value = "";
-}
-
-function setupChatUI() {
-  const inputRow = document.getElementById("chatInputRow");
-  if (!inputRow || document.getElementById("chatColorBtn")) return;
-
-  const pickerHTML = `
-    <div class="chatColorContainer" style="position:relative; display:flex; align-items:center;">
-      <button type="button" id="chatColorBtn" title="文字色変更" style="width: 32px; height: 32px; background: transparent; border: none; border-right: 1px solid rgba(199,179,119,0.2); font-size: 16px; cursor: pointer; padding:0; display:flex; align-items:center; justify-content:center;">🎨</button>
-      <div id="chatColorPalette" style="display:none; position:absolute; bottom:100%; left:0; width:140px; background:rgba(10,8,20,0.95); border:1px solid #c89b3c; border-radius:4px; padding:6px; flex-wrap:wrap; gap:6px; z-index:10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-         ${["#ffffff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#ff99ff", "#99ffff", "#ffcc99", "#cc99ff", "#e0d0a0", "#cccccc", "#ff66b2"].map(c => `<div class="chat-color-opt" style="width:20px; height:20px; background:${c}; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.2);" data-color="${c}"></div>`).join("")}
-      </div>
-    </div>
-  `;
-  inputRow.insertAdjacentHTML("afterbegin", pickerHTML);
-  
-  const btn = document.getElementById("chatColorBtn");
-  const palette = document.getElementById("chatColorPalette");
-  const savedColor = localStorage.getItem("chatColor") || "#ffffff";
-  const input = document.getElementById("chatInput");
-  if (input) input.style.color = savedColor;
-
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    palette.style.display = palette.style.display === "none" ? "flex" : "none";
-  });
-
-  palette.querySelectorAll(".chat-color-opt").forEach(opt => {
-    opt.addEventListener("click", (e) => {
-      const c = e.target.dataset.color;
-      localStorage.setItem("chatColor", c);
-      if (input) input.style.color = c;
-      palette.style.display = "none";
-    });
-  });
-
-  document.addEventListener("click", () => palette.style.display = "none");
-}
+// LEGACY: moved to js/chat/chatUI.js
+// function setupChatUI() {
+//   const inputRow = document.getElementById("chatInputRow");
+//   if (!inputRow || document.getElementById("chatColorBtn")) return;
+// 
+//   const pickerHTML = `
+//     <div class="chatColorContainer" style="position:relative; display:flex; align-items:center;">
+//       <button type="button" id="chatColorBtn" title="文字色変更" style="width: 32px; height: 32px; background: transparent; border: none; border-right: 1px solid rgba(199,179,119,0.2); font-size: 16px; cursor: pointer; padding:0; display:flex; align-items:center; justify-content:center;">🎨</button>
+//       <div id="chatColorPalette" style="display:none; position:absolute; bottom:100%; left:0; width:140px; background:rgba(10,8,20,0.95); border:1px solid #c89b3c; border-radius:4px; padding:6px; flex-wrap:wrap; gap:6px; z-index:10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+//          ${["#ffffff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#ff99ff", "#99ffff", "#ffcc99", "#cc99ff", "#e0d0a0", "#cccccc", "#ff66b2"].map(c => `<div class="chat-color-opt" style="width:20px; height:20px; background:${c}; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.2);" data-color="${c}"></div>`).join("")}
+//       </div>
+//     </div>
+//   `;
+//   inputRow.insertAdjacentHTML("afterbegin", pickerHTML);
+//   
+//   const btn = document.getElementById("chatColorBtn");
+//   const palette = document.getElementById("chatColorPalette");
+//   const savedColor = localStorage.getItem("chatColor") || "#ffffff";
+//   const input = document.getElementById("chatInput");
+//   if (input) input.style.color = savedColor;
+// 
+//   btn.addEventListener("click", (e) => {
+//     e.stopPropagation();
+//     palette.style.display = palette.style.display === "none" ? "flex" : "none";
+//   });
+// 
+//   palette.querySelectorAll(".chat-color-opt").forEach(opt => {
+//     opt.addEventListener("click", (e) => {
+//       const c = e.target.dataset.color;
+//       localStorage.setItem("chatColor", c);
+//       if (input) input.style.color = c;
+//       palette.style.display = "none";
+//     });
+//   });
+// 
+//   document.addEventListener("click", () => palette.style.display = "none");
+// }
 
 let _chatEventsBound = false;
 let _gameBootstrapped = false;
@@ -2768,114 +2793,115 @@ function updateZoneCountsInState() {
   });
 }
 
-function updateFieldStatusPanels() {
-  const content = (typeof getFieldContent === "function")
-    ? getFieldContent()
-    : document.getElementById("fieldContent");
-
-  if (!content) return;
-
-  ["player1", "player2"].forEach(owner => {
-    const isMine = owner === (window.myRole || "player1");
-    const id = `fieldStatusPanel_${owner}`;
-
-    let el = document.getElementById(id);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.id = id;
-      el.className = "fieldStatusPanel";
-
-      el.style.cssText = `
-        position: absolute;
-        width: 660px;
-        padding: 36px;
-        background: rgba(15, 12, 28, 0.92);
-        border: 3px solid #c7b377;
-        border-radius: 24px;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        z-index: 50;
-        font-family: 'Outfit', sans-serif;
-        pointer-events: auto;
-      `;
-
-      content.appendChild(el);
-    }
-
-    const s = state[owner];
-
-    const handLimit =
-      (typeof window.getHandLimit === "function")
-        ? window.getHandLimit(owner)
-        : 6;
-
-    const currentPp = s.pp || 0;
-    const maxPp = s.ppMax || 2;
-
-    // 位置調整
-    if (isMine) {
-      el.style.left = "40px";
-      el.style.top = "1180px";
-      el.style.transform = "scale(1)";
-      el.style.transformOrigin = "top left";
-    } else {
-      el.style.left = "2300px";
-      el.style.top = "540px";
-      el.style.transform = "scale(0.8)";
-      el.style.transformOrigin = "top right";
-    }
-
-    el.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
-            PP
-          </span>
-
-          <div style="display: flex; align-items: center; gap: 18px;">
-            ${isMine
-              ? `<button class="lorSmBtn"
-                  data-owner="${owner}"
-                  data-key="pp"
-                  data-delta="-1"
-                  style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
-                  −
-                </button>`
-              : ""}
-
-            <span style="color: #00ffff; font-size: 64px; font-weight: bold; min-width: 140px; text-align: center;">
-              ${currentPp}/${maxPp}
-            </span>
-
-            ${isMine
-              ? `<button class="lorSmBtn"
-                  data-owner="${owner}"
-                  data-key="pp"
-                  data-delta="1"
-                  style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
-                  ＋
-                </button>`
-              : ""}
-          </div>
-        </div>
-
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
-            手札
-          </span>
-
-          <span style="
-            color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'};
-            font-size: 64px;
-            font-weight: bold;
-            min-width: 140px;
-            text-align: center;
-          ">
-            ${s.handCount} / ${handLimit}
-          </span>
-        </div>
-      </div>
-    `;
-  });
-}
+// LEGACY: moved to js/ui/statusUI.js
+// function updateFieldStatusPanels() {
+//   const content = (typeof getFieldContent === "function")
+//     ? getFieldContent()
+//     : document.getElementById("fieldContent");
+// 
+//   if (!content) return;
+// 
+//   ["player1", "player2"].forEach(owner => {
+//     const isMine = owner === (window.myRole || "player1");
+//     const id = `fieldStatusPanel_${owner}`;
+// 
+//     let el = document.getElementById(id);
+// 
+//     if (!el) {
+//       el = document.createElement("div");
+//       el.id = id;
+//       el.className = "fieldStatusPanel";
+// 
+//       el.style.cssText = `
+//         position: absolute;
+//         width: 660px;
+//         padding: 36px;
+//         background: rgba(15, 12, 28, 0.92);
+//         border: 3px solid #c7b377;
+//         border-radius: 24px;
+//         backdrop-filter: blur(12px);
+//         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+//         z-index: 50;
+//         font-family: 'Outfit', sans-serif;
+//         pointer-events: auto;
+//       `;
+// 
+//       content.appendChild(el);
+//     }
+// 
+//     const s = state[owner];
+// 
+//     const handLimit =
+//       (typeof window.getHandLimit === "function")
+//         ? window.getHandLimit(owner)
+//         : 6;
+// 
+//     const currentPp = s.pp || 0;
+//     const maxPp = s.ppMax || 2;
+// 
+//     // 位置調整
+//     if (isMine) {
+//       el.style.left = "40px";
+//       el.style.top = "1180px";
+//       el.style.transform = "scale(1)";
+//       el.style.transformOrigin = "top left";
+//     } else {
+//       el.style.left = "2300px";
+//       el.style.top = "540px";
+//       el.style.transform = "scale(0.8)";
+//       el.style.transformOrigin = "top right";
+//     }
+// 
+//     el.innerHTML = `
+//       <div style="display: flex; flex-direction: column; gap: 24px;">
+//         <div style="display: flex; align-items: center; justify-content: space-between;">
+//           <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
+//             PP
+//           </span>
+// 
+//           <div style="display: flex; align-items: center; gap: 18px;">
+//             ${isMine
+//               ? `<button class="lorSmBtn"
+//                   data-owner="${owner}"
+//                   data-key="pp"
+//                   data-delta="-1"
+//                   style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
+//                   −
+//                 </button>`
+//               : ""}
+// 
+//             <span style="color: #00ffff; font-size: 64px; font-weight: bold; min-width: 140px; text-align: center;">
+//               ${currentPp}/${maxPp}
+//             </span>
+// 
+//             ${isMine
+//               ? `<button class="lorSmBtn"
+//                   data-owner="${owner}"
+//                   data-key="pp"
+//                   data-delta="1"
+//                   style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
+//                   ＋
+//                 </button>`
+//               : ""}
+//           </div>
+//         </div>
+// 
+//         <div style="display: flex; align-items: center; justify-content: space-between;">
+//           <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
+//             手札
+//           </span>
+// 
+//           <span style="
+//             color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'};
+//             font-size: 64px;
+//             font-weight: bold;
+//             min-width: 140px;
+//             text-align: center;
+//           ">
+//             ${s.handCount} / ${handLimit}
+//           </span>
+//         </div>
+//       </div>
+//     `;
+//   });
+// }

@@ -1681,10 +1681,15 @@ async function executeReset(syncShared = true) {
   state.player1.diceValue = -1;
   state.player2.diceValue = -1;
   window._gameStartInitiated = false;
-  window._gameStartedAt = 0;  // リセット時はクリア（次の handleChooseOrder で再設定）
-  window._resultDismissed = false;  // 再戦時は判定を再開
-  window._resultShowing = false;  // リザルト表示フラグをリセット
-  window._lastWinner = null;  // 勝者情報をクリア
+  window._gameStartedAt = Date.now(); // 試合開始時刻を更新（以前の勝者情報を stale 判定するため）
+  window._resultDismissed = false;     // 再戦時は判定を再開
+  window._resultShowing = false;       // リザルト表示フラグをリセット
+  window._lastWinner = null;           // 勝者情報をクリア
+  
+  // DOM上のリザルト画面があれば削除
+  const overlay = document.getElementById('gameResultOverlay');
+  if (overlay) overlay.remove();
+
   window._soloStartMode = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
@@ -2462,6 +2467,7 @@ async function initGame() {
       window._resultDismissed    = false;
       window._resultShowing      = false;
       window._lastWinner         = null;
+      window._gameStartedAt      = Date.now();
       lastTurnPlayer             = null;
 
       // 古いルームの残滓をFirebaseから削除（部屋作成者のみ実行して競合防止）

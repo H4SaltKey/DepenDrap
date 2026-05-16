@@ -67,14 +67,23 @@ async function loadDeck() {
 }
 
 // ===== カード操作 =====
-function addCard(id) {
+function canAddCard(id) {
   if (getDeckLength() >= DECK_MAX_SIZE) {
     showDeckMessage(`デッキは最大 ${DECK_MAX_SIZE} 枚です`);
-    return;
+    return false;
   }
+  return true;
+}
+
+function addCard(id) {
+  if (!canAddCard(id)) return;
   deck.push(id);
   sortDeck();
   render();
+}
+
+function canRemoveCard(id) {
+  return deck.indexOf(id) !== -1;
 }
 
 function removeCard(id) {
@@ -325,6 +334,7 @@ function createCardElement(id, count, source) {
     const deckRow = document.getElementById("deck");
     const cardsRow = document.getElementById("cards");
     if (source === "cards") {
+      if (!canAddCard(id)) return; // アニメーション前にチェック
       const deckRect = deckRow ? deckRow.getBoundingClientRect() : null;
       const targetRect = deckRect ? {
         left: deckRect.left + Math.max(0, (deckRect.width - el.offsetWidth) / 2),
@@ -337,6 +347,7 @@ function createCardElement(id, count, source) {
         hideDeckContextMenu();
       });
     } else {
+      if (!canRemoveCard(id)) return; // アニメーション前にチェック
       const cardsRect = cardsRow ? cardsRow.getBoundingClientRect() : null;
       const targetRect = cardsRect ? {
         left: cardsRect.left + Math.max(0, (cardsRect.width - el.offsetWidth) / 2),
@@ -409,6 +420,22 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
 
         if (sourceEl && count > 0) {
           const targetRow = action === "add" ? document.getElementById("deck") : document.getElementById("cards");
+          
+          // 実際に追加/削除可能な枚数を計算
+          let actualCount = 0;
+          if (action === "add") {
+            const currentLen = getDeckLength();
+            actualCount = Math.min(count, DECK_MAX_SIZE - currentLen);
+            if (actualCount <= 0) {
+              canAddCard(id); // メッセージ表示のため
+              return;
+            }
+          } else {
+            const currentCount = getDeckCount(id);
+            actualCount = Math.min(count, currentCount);
+            if (actualCount <= 0) return;
+          }
+
           const targetRect = targetRow ? {
             left: targetRow.getBoundingClientRect().left + Math.max(0, (targetRow.getBoundingClientRect().width - sourceEl.offsetWidth) / 2),
             top: action === "add"
@@ -417,7 +444,15 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
             width: sourceEl.offsetWidth,
             height: sourceEl.offsetHeight
           } : null;
-          animateCountActions(sourceEl, targetRect, count, performAction);
+          
+          const performActualAction = () => {
+            if (action === "add") {
+              for (let i = 0; i < actualCount; i++) addCard(id);
+            } else {
+              for (let i = 0; i < actualCount; i++) removeCard(id);
+            }
+          };
+          animateCountActions(sourceEl, targetRect, actualCount, performActualAction);
         } else {
           performAction();
         }

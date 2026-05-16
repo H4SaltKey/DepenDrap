@@ -123,9 +123,11 @@ function renderSingleBlock(block, parent, index) {
     el.style.position = "absolute";
     el.style.left = (x || 0) + "px";
     el.style.top = (y || 0) + "px";
+    el.style.pointerEvents = "auto"; // 追加
   } else {
     el.style.position = "relative";
     el.style.order = index;
+    el.style.pointerEvents = "auto"; // 追加
   }
 
   const s = scale || 1.0;
@@ -215,6 +217,12 @@ function renderSingleBlock(block, parent, index) {
         startDragging(e, block.id);
       };
     }
+    // 右クリックで編集画面を開く機能を追加
+    el.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openStatusBlockEditor(block.id);
+    };
   }
 }
 
@@ -535,7 +543,7 @@ style.textContent = `
   .sb-ui-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
   .sb-ui-top-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   
-  .sb-name-input { background: transparent; border: none; color: #f0d080; font-weight: bold; font-size: 14px; outline: none; }
+  .sb-name-input { background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; color: #f0d080; font-weight: bold; font-size: 14px; outline: none; padding: 2px 6px; }
   .sb-ui-mode .sb-name-input { width: 120px; }
   
   .sb-val-controls { display: flex; align-items: center; background: rgba(0,0,0,0.4); border-radius: 4px; border: 1px solid #555; height: 24px; }
@@ -561,7 +569,7 @@ style.textContent = `
   .sb-editor-modal { width: 400px; padding: 20px; border: 1px solid #f0d080; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; }
   .sb-editor-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center; }
   .sb-editor-grid label { font-size: 13px; color: #f0d080; }
-  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #222; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; outline: none; }
+  .sb-editor-grid input, .sb-editor-grid select, .sb-editor-grid textarea { background: #222; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; outline: none; resize: none; }
   .sb-editor-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
   .sb-editor-footer button { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; font-weight: bold; }
   .sb-btn-save { background: #f0d080; color: #000; }

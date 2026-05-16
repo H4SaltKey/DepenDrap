@@ -310,31 +310,29 @@ function takeOutCardFromZone(card) {
   const type = card.dataset.zoneType;
   const order = Number(card.dataset.zoneOrder || 0);
 
-  // 場から削除
-  card.remove();
+  // ゾーン情報をクリア
   clearZoneMarker(card);
 
-  // 手札に追加
-  const handY = FIELD_H - CARD_H - 20;
-  const hands = Array.from(getFieldContent().querySelectorAll('.card')).filter(c => c.dataset.owner === owner && parseInt(c.dataset.y) >= HAND_ZONE_Y_MIN);
-  const maxOrder = hands.length > 0 ? Math.max(...hands.map(c => parseInt(c.dataset.handOrder || 0))) : 0;
-  card.dataset.handOrder = String(maxOrder + 1);
-  card.dataset.y = String(handY);
-  card.dataset.visibility = "self"; // 手札に戻るときは自分のみ
-  if (typeof applyCardFace === "function") applyCardFace(card, "self");
-  
-  getFieldContent().appendChild(card);
+  // 元の場所（アンカー）の付近へ移動
+  if (type && typeof getZoneAnchor === "function") {
+    const anchor = getZoneAnchor(owner, type);
+    // 右下付近にオフセット
+    const nx = anchor.x + CARD_W + 40;
+    const ny = anchor.y + 40;
+    card.style.left = nx + "px";
+    card.style.top = ny + "px";
+    card.dataset.x = String(nx);
+    card.dataset.y = String(ny);
+  }
 
-  // 同じゾーンの残りのカードの順序を詰め、表示を更新
+  // 残りのカードの順序を詰め、表示を更新
   if (type) {
     const remaining = getZoneCards(owner, type);
-    // getZoneCards は既に zoneOrder でソートされているため、再割り当てするだけで良い
     remaining.forEach((c, i) => {
-      c.dataset.zoneOrder = String(1000 + i); // 新しい順序
+      c.dataset.zoneOrder = String(1000 + i);
     });
   }
 
-  if (typeof organizeHands === "function") organizeHands();
   if (typeof organizeBattleZones === "function") organizeBattleZones();
   if (typeof saveFieldCards === "function") saveFieldCards();
   if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();

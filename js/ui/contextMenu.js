@@ -229,9 +229,25 @@ function openCardMenu(card, x, y){
     });
   }
 
-  // ゾーン内のカードの場合、「内容確認」メニューを追加
+  // ゾーン内のカードの場合、特定のメニューを追加
   if (card.dataset.zoneType === "skill" || card.dataset.zoneType === "attacker" || card.dataset.zoneType === "grave") {
-    items.splice(2, 0, {
+    // 墓地以外なら「墓地へ送る」を最上部に追加
+    if (card.dataset.zoneType !== "grave") {
+      items.unshift({
+        label: "墓地へ送る",
+        action: () => {
+          if (typeof placeCardInZone === "function") {
+            placeCardInZone(card, card.dataset.owner, "grave");
+            if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+            if (typeof saveFieldCards === "function") saveFieldCards();
+            if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+          }
+        }
+      });
+      items.splice(1, 0, { sep: true });
+    }
+
+    items.splice(card.dataset.zoneType !== "grave" ? 2 : 0, 0, {
       label: "内容確認 (この場)",
       action: () => {
         if (typeof window.showZoneInspectorModal === "function") {
@@ -239,7 +255,7 @@ function openCardMenu(card, x, y){
         }
       }
     });
-    items.splice(3, 0, { sep: true });
+    items.splice(card.dataset.zoneType !== "grave" ? 3 : 1, 0, { sep: true });
   }
 
   buildMenu(items, x, y, card);
@@ -1387,22 +1403,11 @@ window.showZoneInspectorModal = function(owner, type) {
                 <div style="display: flex; gap: 8px;">
                   <button class="inspBtn moveUp" data-idx="${i}" title="順序を上げる" ${i === 0 ? "disabled" : ""} style="background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 32px; height: 32px; cursor: pointer;">↑</button>
                   <button class="inspBtn moveDown" data-idx="${i}" title="順序を下げる" ${i === currentCards.length - 1 ? "disabled" : ""} style="background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; width: 32px; height: 32px; cursor: pointer;">↓</button>
-                  <button class="inspBtn takeOut" data-idx="${i}" title="手札に取り出す" style="background: #442a2a; color: #ff9999; border: 1px solid #663333; border-radius: 4px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12px; font-weight: bold;">取り出す</button>
-                  <button class="inspBtn insertNext" data-idx="${i}" title="この次に手札から追加" style="background: #2a3a44; color: #99e1ff; border: 1px solid #334e66; border-radius: 4px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12px; font-weight: bold;">挿入</button>
+                  <button class="inspBtn takeOut" data-idx="${i}" title="場に取り出す" style="background: #442a2a; color: #ff9999; border: 1px solid #663333; border-radius: 4px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12px; font-weight: bold;">取り出す</button>
                 </div>
               </div>
             `;
           }).join("")}
-          
-          ${currentCards.length > 0 ? "" : `
-            <div style="text-align: center;">
-              <button id="insertFirst" style="background: #2a3a44; color: #99e1ff; border: 1px solid #334e66; border-radius: 4px; padding: 8px 20px; cursor: pointer; font-weight: bold;">手札からカードを追加</button>
-            </div>
-          `}
-        </div>
-
-        <div style="padding: 16px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); font-size: 12px; color: #666; text-align: center;">
-          カードを右クリックすると詳細メニューが開けます。順序は上が「新しい/上」です。
         </div>
       </div>
     `;
@@ -1438,17 +1443,10 @@ window.showZoneInspectorModal = function(owner, type) {
         const cardEl = typeof findFieldElementByInstanceId === "function" ? findFieldElementByInstanceId(instanceId) : null;
         if (cardEl && typeof takeOutCardFromZone === "function") {
           takeOutCardFromZone(cardEl);
-          renderContent();
+          overlay.remove(); // 取り出すたびに閉じる
         }
       });
-      item.querySelector(".insertNext")?.addEventListener("click", (e) => {
-        showHandSelectionForInsert(idx + 1, e);
-      });
     });
-
-    if (overlay.querySelector("#insertFirst")) {
-      overlay.querySelector("#insertFirst").onclick = (e) => showHandSelectionForInsert(0, e);
-    }
   };
 
   const reorderCards = (fromIdx, toIdx) => {

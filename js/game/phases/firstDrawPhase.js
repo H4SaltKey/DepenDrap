@@ -288,3 +288,76 @@ function updateFirstDrawPhaseUI() {
 
   overlay.dataset.cardsBound = "1";
 }
+
+/** 先攻は5枚、後攻は6枚をファーストドローで提示 */
+function getFirstDrawRevealCount(me, m) {
+  const fp = m && m.firstPlayer != null ? m.firstPlayer : "player1";
+  return me === fp ? 5 : 6;
+}
+
+/** 山札のランダムな位置に1枚挿入（インデックス 0..deck.length のいずれか） */
+function insertCardIntoDeckAtRandom(owner, storeId) {
+  const d = state[owner]?.deck;
+  if (!d || storeId == null || storeId === "") return;
+  const idx = Math.floor(Math.random() * (d.length + 1));
+  d.splice(idx, 0, storeId);
+}
+
+function startFirstDrawPhase() {
+  const m = state.matchData;
+  if (m.status !== "setup_first_draw" || window._firstDrawPhaseStarted) return;
+  const me = window.myRole || "player1";
+  const myReady = me === "player1" ? !!m.firstDrawP1Ready : !!m.firstDrawP2Ready;
+  if (myReady) {
+    window._firstDrawPhaseStarted = true;
+    return;
+  }
+  window._firstDrawPhaseStarted = true;
+  if (typeof window.takeOut === "function") {
+    const n = getFirstDrawRevealCount(me, m);
+    window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
+  } else {
+    console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
+  }
+}
+
+/**
+ * ファーストドロー: 双方が確定したら playing へ（各クライアントから idempotent に遷移可）
+ */
+function tryAdvanceFirstDrawToPlayingIfBothReady() {
+  const m = state.matchData;
+  if (!m || m.status !== "setup_first_draw") return;
+  if (!m.firstDrawP1Ready || !m.firstDrawP2Ready) return;
+  if (window._firstDrawAdvanceSent) return;
+  window._firstDrawAdvanceSent = true;
+  
+  // Clean up unchosen cards marked in first draw phase
+  const field = getFieldContent();
+  if (field) {
+    const unchosenCards = Array.from(field.querySelectorAll('[data-firstDrawUnchosenMarked="true"]'));
+    unchosenCards.forEach((card) => {
+      if (card.dataset.firstDrawReturned !== "1") {
+        const rawId = card.dataset.id;
+        if (rawId) {
+          const isTemp = card.dataset.isTemp === "true";
+          const storeId = isTemp ? `TEMP:${rawId}` : rawId;
+          insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+        }
+      }
+      card.remove();
+    });
+  }
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+
+  const gameRoom = localStorage.getItem("gameRoom");
+  const next = { ...m, status: "playing", firstDrawDone: true };
+  state.matchData = next;
+  if (gameRoom && firebaseClient?.db) {
+    firebaseClient.writeMatchData(gameRoom, next).catch((e) => {
+      console.warn("[FirstDraw] playing への遷移エラー:", e);
+      window._firstDrawAdvanceSent = false;
+    });
+  } else {
+    window._firstDrawAdvanceSent = false;
+  }
+}

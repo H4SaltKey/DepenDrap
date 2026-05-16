@@ -117,3 +117,51 @@ function closeResultScreen() {
   // 閉じた後は再度 winner 判定を行わない（executeReset / handleChooseOrder まで維持）
   window._resultDismissed = true;
 }
+
+// ===== 再戦合意システム =====
+
+let _rematchWatcher = null;
+
+window.requestRematch = function() {
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (!gameRoom || !firebaseClient?.db) return;
+
+  const btn = document.getElementById("rematchBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "申し込み中..."; }
+
+  const statusEl = document.getElementById("rematchStatus");
+  if (statusEl) statusEl.textContent = "相手の承諾を待っています...";
+
+  // Firebase に再戦リクエストを書き込む
+  firebaseClient.db.ref(`rooms/${gameRoom}/rematch/${me}`).set({
+    requested: true,
+    ts: firebase.database.ServerValue.TIMESTAMP
+  });
+};
+
+window.watchRematchRequest = function() {
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  const op = me === "player1" ? "player2" : "player1";
+  if (!gameRoom || !firebaseClient?.db) return;
+
+  if (_rematchWatcher) { _rematchWatcher.off(); _rematchWatcher = null; }
+
+  _rematchWatcher = firebaseClient.db.ref(`rooms/${gameRoom}/rematch`);
+  _rematchWatcher.on('value', (snap) => {
+    const data = snap.val() || {};
+    const myReq = data[me]?.requested;
+    const opReq = data[op]?.requested;
+
+    if (myReq && opReq) {
+      console.log("[Rematch] 両者の合意を確認。リセットを実行します。");
+      if (typeof executeReset === "function") executeReset();
+      // リモートの rematch データをクリア
+      firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove();
+    } else if (opReq && !myReq) {
+      const statusEl = document.getElementById("rematchStatus");
+      if (statusEl) statusEl.textContent = "相手が再戦を希望しています！";
+    }
+  });
+};

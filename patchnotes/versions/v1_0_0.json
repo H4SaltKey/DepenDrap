@@ -1,0 +1,25 @@
+{
+  "id": "v1_0_0",
+  "number": "1.0.0",
+  "date": "2026-05-17",
+  "status": "public",
+  "bellDot": {
+    "cards": true,
+    "rules": false
+  },
+  "cards": [
+    {
+      "name": "サンプルカード",
+      "type": "buff",
+      "beforeImg": "",
+      "afterImg": "",
+      "comment": "サンプルバフ調整"
+    }
+  ],
+  "rules": [
+    {
+      "title": "サンプルルール変更",
+      "text": "ルールのテスト記載です。"
+    }
+  ]
+}

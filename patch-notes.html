@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>パッチノート - DepenDrap Online</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body.patchNotesPage {
+      background: #0c0b12;
+      color: #f4f1d6;
+      overflow-y: auto;
+      padding: 40px 20px;
+      font-family: sans-serif;
+    }
+    .patch-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .top-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .top-header h1 {
+      color: #c89b3c;
+      margin: 0;
+      font-size: 32px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.447.0/dist/umd/lucide.min.js"></script>
+</head>
+<body class="patchNotesPage">
+
+  <div class="patch-container">
+    <div class="top-header">
+      <h1>Patch Notes</h1>
+      <p style="color:#aaa; margin-top:10px;"><a href="index.html" style="color:#2980b9; text-decoration:none;">&laquo; トップに戻る</a></p>
+    </div>
+    
+    <div id="patchNotesContent">
+      <p style="text-align:center; color:#888;">読み込み中...</p>
+    </div>
+  </div>
+
+  <script src="js/patchNotes/patchNotesLoader.js"></script>
+  <script src="js/patchNotes/patchNotesRenderer.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      window.PatchNotesRenderer.render("patchNotesContent");
+    });
+  </script>
+</body>
+</html>

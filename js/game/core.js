@@ -1,37 +1,5 @@
-// ===== 基礎となる初期状態（不変） =====
-const BASE_INITIAL_STATE = {
-  level: 1,      levelMax: 6,
-  exp: 0,        expMax: 2,
-  hp: 20,        hpMax: 20,
-  // NOTE: shield はゲーム上の「シールド」
-  shield: 0,      shieldMax: 5,
-  // NOTE: defstack はゲーム上の「防御力（スタック）」
-  defstack: 0,    defstackMax: 0, defstackOverMax: false,
-  atk: 1,        atkMax: 999,
-  def: 0,        defMax: 999,
-  instantDef: 0, instantDefMax: 999,
-  pp: 0,         ppMax: 2,
-  deck: [],
-  backImage: null,
-  statusBlocks: []
-};
+// state と初期状態は js/state/gameState.js に移動しました
 
-function makeCharState() {
-  return JSON.parse(JSON.stringify(BASE_INITIAL_STATE));
-}
-
-// ===== ゲーム状態 =====
-let state = {
-  player1: { ...makeCharState(), diceValue: -1 },
-  player2: { ...makeCharState(), diceValue: -1 },
-  matchData: {
-    round: 1, turn: 1,
-    turnPlayer: "player1",
-    status: "ready_check",
-    winner: null, firstPlayer: null
-  },
-  logs: []
-};
 
 // ===== 役割管理 =====
 const GAME_STARTED_KEY = "gameStarted";
@@ -279,45 +247,7 @@ async function syncLoop() {
 // 1秒ごとに同期
 setInterval(syncLoop, 1000);
 
-// ===== 状態正規化 =====
-window.calcExpMax = function(level) {
-  return Math.max(1, level) * 2;
-};
 
-window.normalizeState = function() {
-  ["player1", "player2"].forEach(p => {
-    // 完全に欠損している場合の安全な初期化
-    if (!state[p] || typeof state[p] !== "object") {
-      state[p] = { ...makeCharState(), diceValue: -1 };
-    }
-    if (!Array.isArray(state[p].deck)) state[p].deck = [];
-    // diceValue が undefined/null の場合は -1 に初期化
-    if (state[p].diceValue === undefined || state[p].diceValue === null) state[p].diceValue = -1;
-    // matchSetup 由来の一時フラグを除去（ゲーム状態を汚染しない）
-    delete state[p]._ready;
-    delete state[p]._deckCode;
-    ["hp", "shield", "defstack", "exp", "pp"].forEach(k => {
-      if (state[p][k] === undefined || state[p][k] === null) state[p][k] = 0;
-      const v  = Number(state[p][k]) || 0;
-      const defaultMax = (k === "hp" ? 20 : (k === "shield" ? 5 : (k === "pp" ? 2 : (k === "exp" ? calcExpMax(state[p].level || 1) : 99))));
-      const mx = Number(state[p][k + "Max"]) || defaultMax;
-      state[p][k + "Max"] = mx;
-      if (k !== "defstack" && v > mx) state[p][k] = mx;
-      if (v < 0) state[p][k] = 0;
-      else state[p][k] = v;
-    });
-    if (state[p].level === undefined || state[p].level === null) state[p].level = 1;
-    if (!Array.isArray(state[p].statusBlocks)) state[p].statusBlocks = [];
-  });
-  if (!state.matchData) {
-    state.matchData = {
-      round: 1, turn: 1, turnPlayer: "player1", status: "setup_dice",
-      winner: null, firstPlayer: null
-    };
-  }
-  state.logs = state.logs || [];
-  if (!Array.isArray(state.statusBlocks)) state.statusBlocks = [];
-}
 
 // ===== デッキ =====
 function initDeckFromCode() {

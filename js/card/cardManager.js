@@ -97,11 +97,7 @@ function nextZoneOrder() {
   return Date.now() + zoneOrderCounter;
 }
 
-function nextHandOrder() {
-  handOrderCounter += 1;
-  return (Date.now() * 1000) + handOrderCounter;
-}
-window.nextHandOrder = nextHandOrder;
+
 
 function getZoneAnchor(owner, type) {
   const myRole = window.myRole || "player1";
@@ -1371,68 +1367,7 @@ window.getHandLimit = function(owner) {
 
 window.prevMyHandCount = -1;
 
-window.organizeHands = function() {
-  const content = getFieldContent();
-  if (!content) return;
-  const myRole = window.myRole || "player1";
-  const opRole = myRole === "player1" ? "player2" : "player1";
 
-  const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && Number(c.dataset.y) >= HAND_ZONE_Y_MIN);
-  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && Number(c.dataset.y) >= HAND_ZONE_Y_MIN);
-
-  if (myHandCards.length > 0) {
-    myHandCards.sort((a, b) => {
-      const oa = Number(a.dataset.handOrder || 0);
-      const ob = Number(b.dataset.handOrder || 0);
-      return oa - ob;
-    });
-
-    const handY = FIELD_H - CARD_H - 20;
-    const startX0 = 36;
-    const maxRowW = Math.min(FIELD_W - 72, Math.floor(FIELD_W * 0.9));
-    const n = myHandCards.length;
-    /** この枚数を基準に「隙間あり」の密度を決め、それ以上はさらに詰める */
-    const HAND_LAYOUT_REF = 8;
-    const minStep = 10;
-    let step = 40;
-    if (n > 1) {
-      const stepFitN = (maxRowW - CARD_W) / (n - 1);
-      const stepFitRef = (maxRowW - CARD_W) / Math.max(1, HAND_LAYOUT_REF - 1);
-      if (n <= HAND_LAYOUT_REF) {
-        step = Math.max(minStep, Math.min(stepFitRef, stepFitN));
-      } else {
-        step = Math.max(minStep, stepFitN);
-      }
-    }
-
-    myHandCards.forEach((c, i) => {
-      if (c === draggingCard) return;
-      const x = startX0 + i * step;
-      c.style.left = x + "px";
-      c.style.top = handY + "px";
-      c.dataset.x = String(x);
-      c.dataset.y = String(handY);
-      const baseZ = 200 + i;
-      c.style.zIndex = String(baseZ);
-    });
-
-    const topHover = window._lastHandHoverEl;
-    if (topHover && myHandCards.includes(topHover) && topHover !== draggingCard) {
-      topHover.style.zIndex = String(9200 + (typeof cardZCounter !== "undefined" ? cardZCounter : 0));
-    }
-  }
-
-  if (window.prevMyHandCount !== -1 && window.prevMyHandCount !== myHandCards.length) {
-    if (typeof addGameLog === "function") {
-      addGameLog(`[SYSTEM] ${window.myUsername || state[myRole]?.username || myRole} の手札が ${myHandCards.length} 枚になりました。`);
-    }
-  }
-
-  // 手札枚数は HUD (renderOwnerUI) で自動更新されるため、ここでの個別更新は不要
-
-  window.prevMyHandCount = myHandCards.length;
-};
 
 function saveFieldCards(){
   lastLocalFieldSaveAt = Date.now();

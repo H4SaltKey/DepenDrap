@@ -2174,60 +2174,10 @@ async function initGame() {
   }
   _gameBootstrapped = true;
 
-  if (!_chatEventsBound) {
     setupChatUI();
-    const chatInput = document.getElementById("chatInput");
-    if (chatInput) {
-      let typingTimeout = null;
-      let lastTypingSent = 0;
-      chatInput.addEventListener("input", (e) => {
-        const isTyping = chatInput.value.trim().length > 0;
-        const now = Date.now();
-        if (isTyping && now - lastTypingSent > 2000) {
-          lastTypingSent = now;
-          const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-          const gameRoom = localStorage.getItem("gameRoom");
-          if (gameRoom && firebaseClient?.db) {
-            firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(true);
-          }
-        }
-        if (typingTimeout) clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-          const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-          const gameRoom = localStorage.getItem("gameRoom");
-          if (gameRoom && firebaseClient?.db) {
-            firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
-          }
-          lastTypingSent = 0;
-        }, 3000);
-      });
-
-      chatInput.addEventListener("keydown", (e) => {
-        if (e.isComposing) return;
-        if (e.key === "Enter") {
-          handleChatSend();
-          if (typingTimeout) clearTimeout(typingTimeout);
-          const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-          const gameRoom = localStorage.getItem("gameRoom");
-          if (gameRoom && firebaseClient?.db) {
-            firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
-          }
-        }
-      });
+    if (typeof window.setupChatEvents === "function") {
+      window.setupChatEvents();
     }
-    const chatBtn = document.getElementById("chatSendBtn");
-    if (chatBtn) {
-      chatBtn.addEventListener("click", () => {
-        handleChatSend();
-        const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-        const gameRoom = localStorage.getItem("gameRoom");
-        if (gameRoom && firebaseClient?.db) {
-          firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
-        }
-      });
-    }
-    _chatEventsBound = true;
-  }
 
   try {
     bindConnectionUiEvents();

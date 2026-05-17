@@ -49,4 +49,7 @@ window.setupPhaseWatcher = function(gameRoom) {
   if (typeof window.registerWatcher === "function") {
     window.registerWatcher("phase", unsubscribe);
   }
+
+  // Firebase 監視を開始（この行が抜けていたため待機側に status 変更が届かなかった）
+  matchDataRef.on('value', listener);
 };

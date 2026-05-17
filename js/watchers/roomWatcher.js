@@ -1,11 +1,12 @@
 /**
+ * roomWatcher.js
  * ルームの状態を監視して、両プレイヤーが退出したかチェック
  */
 window.roomWatcherUnsubscribe = window.roomWatcherUnsubscribe || null;
 window.playerDiceWatcherUnsubscribe = window.playerDiceWatcherUnsubscribe || null;
 window._bothPlayersConnected = false;
 
-function setupRoomWatcher() {
+window.setupRoomWatcher = function() {
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom) {
     console.warn("[Game] ゲームルーム情報がありません");
@@ -17,11 +18,11 @@ function setupRoomWatcher() {
     return;
   }
 
-  if (roomWatcherUnsubscribe) {
-    roomWatcherUnsubscribe();
+  if (window.roomWatcherUnsubscribe) {
+    window.roomWatcherUnsubscribe();
   }
-  if (playerDiceWatcherUnsubscribe) {
-    playerDiceWatcherUnsubscribe();
+  if (window.playerDiceWatcherUnsubscribe) {
+    window.playerDiceWatcherUnsubscribe();
   }
 
   const myKey   = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
@@ -147,7 +148,7 @@ function setupRoomWatcher() {
     }
   });
 
-  // ── 6. 相手からの変更リクエスト監視 ──────────────────────────────  // 相手が自分のステータスを変更したい時、pendingChange/{opKey} に書いてくる
+  // ── 6. 相手からの変更リクエスト監視 ──────────────────────────────
   const pendingRef = db.ref(`rooms/${gameRoom}/pendingChange/${opKey}`);
   const pendingListener = pendingRef.on('value', (snap) => {
     if (!snap || !snap.val()) return;
@@ -163,7 +164,6 @@ function setupRoomWatcher() {
     // リクエストを適用
     if (req.type === "set") {
       if (req.key === "_bulk" && typeof req.value === "object") {
-        // 複数フィールドを一括適用（ダメージ計算後の確定値）
         Object.assign(s, req.value);
       } else {
         s[req.key] = req.value;
@@ -188,26 +188,27 @@ function setupRoomWatcher() {
   });
 
   // ── クリーンアップ関数 ────────────────────────────────────────────
-  roomWatcherUnsubscribe = () => {
+  window.roomWatcherUnsubscribe = () => {
     playersRef.off('value', playersListener);
     opStateRef.off('value', opStateListener);
     if (typeof window.phaseWatcherUnsubscribe === "function") window.phaseWatcherUnsubscribe();
     logsRef.off('value', logsListener);
     opCardsRef.off('value', opCardsListener);
     pendingRef.off('value', pendingListener);
-    roomWatcherUnsubscribe = null;
+    window.roomWatcherUnsubscribe = null;
   };
 
   // ── 5. playerDice 監視（ダイスフェーズ専用）──────────────────────
   if (typeof window.setupPlayerDiceWatcher === "function") window.setupPlayerDiceWatcher(gameRoom);
-}
+};
 
-function stopAllWatchers() {
-  if (typeof roomWatcherUnsubscribe === "function") { roomWatcherUnsubscribe(); roomWatcherUnsubscribe = null; }
+window.stopAllWatchers = function() {
+  if (typeof window.roomWatcherUnsubscribe === "function") { window.roomWatcherUnsubscribe(); window.roomWatcherUnsubscribe = null; }
   if (typeof window.playerDiceWatcherUnsubscribe === "function") { window.playerDiceWatcherUnsubscribe(); window.playerDiceWatcherUnsubscribe = null; }
   window._bothPlayersConnected = false;
   applyInteractionLockState();
-}
+};
+
 window.startSoloGame = async function() {
   if (window._bothPlayersConnected) return;
   window._soloStartMode = true;

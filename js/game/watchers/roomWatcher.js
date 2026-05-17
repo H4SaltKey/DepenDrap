@@ -1,8 +1,8 @@
 /**
  * ルームの状態を監視して、両プレイヤーが退出したかチェック
  */
-let roomWatcherUnsubscribe = null;
-let playerDiceWatcherUnsubscribe = null;
+window.roomWatcherUnsubscribe = window.roomWatcherUnsubscribe || null;
+window.playerDiceWatcherUnsubscribe = window.playerDiceWatcherUnsubscribe || null;
 window._bothPlayersConnected = false;
 
 function setupRoomWatcher() {

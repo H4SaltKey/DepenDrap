@@ -9,6 +9,11 @@ window.isGameInteractionLocked = function() {
   if (!isGamePage) return false;
   const status = state.matchData?.status;
   if (state.matchData?.winner || window._lastWinner) return true;
+  
+  // 進行中のフェーズ（ready_check, setup_dice 以外）であれば、一時的な切断でロックしない
+  const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
+  if (inGamePhase) return false;
+  
   return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check");
 };
 
@@ -940,8 +945,8 @@ function update(skipLogCheck = false) {
     }
   }
 
-  // update() からは localStorage のみ保存（サーバーへの過剰POSTを防ぐ）
-  saveLocal();
+  // update() からはデバウンスされた保存を使用（localStorageのクォータ溢れと負荷を防ぐ）
+  if (typeof saveDebounced === "function") saveDebounced();
 }
 
 let lastTurnPlayer = null;

@@ -280,11 +280,11 @@ async function syncLoop() {
 setInterval(syncLoop, 1000);
 
 // ===== 状態正規化 =====
-function calcExpMax(level) {
+window.calcExpMax = function(level) {
   return Math.max(1, level) * 2;
-}
+};
 
-function normalizeState() {
+window.normalizeState = function() {
   ["player1", "player2"].forEach(p => {
     // 完全に欠損している場合の安全な初期化
     if (!state[p] || typeof state[p] !== "object") {

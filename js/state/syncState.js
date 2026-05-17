@@ -3,9 +3,10 @@
  * 状態の同期、正規化、派生ステータスの計算など
  */
 
-window.calcExpMax = function(level) {
+function calcExpMax(level) {
   return Math.max(1, level) * 2;
-};
+}
+window.calcExpMax = calcExpMax;
 
 window.normalizeState = function() {
   ["player1", "player2"].forEach(p => {
@@ -43,14 +44,15 @@ window.normalizeState = function() {
   if (!Array.isArray(state.statusBlocks)) state.statusBlocks = [];
 };
 
-window.syncDerivedStats = function(owner) {
+function syncDerivedStats(owner) {
   const s = state[owner];
   if (!s) return;
   // defstackMaxは常にdefと同じ
   s.defstackMax = s.def || 0;
   // expMaxはレベルから計算
   s.expMax = calcExpMax(s.level || 1);
-};
+}
+window.syncDerivedStats = syncDerivedStats;
 
 window.checkLevelUp = function(owner) {
   const s = state[owner];

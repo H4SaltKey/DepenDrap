@@ -26,41 +26,11 @@ const ClockSync = (() => {
    * 複数回測定して中央値を使う（外れ値除去）
    */
   async function sync(attempts = 3) {
-    const offsets = [];
-    for (let i = 0; i < attempts; i++) {
-      try {
-        const t0 = Date.now();
-        const res = await fetch('/api/time', {
-          headers: { 'X-Client-Time': String(t0) }
-        });
-        const t3 = Date.now();
-        if (!res.ok) continue;
-        const { serverTime } = await res.json();
-        // NTP offset formula: offset = ((t1 - t0) + (t2 - t3)) / 2
-        // t1 ≈ t2 ≈ serverTime（サーバー処理時間は無視）
-        const rtt    = t3 - t0;
-        const offset = serverTime - (t0 + rtt / 2);
-        offsets.push({ offset, rtt });
-        // 最小RTTのサンプルを優先（ネットワーク揺らぎを除去）
-        await new Promise(r => setTimeout(r, 50));
-      } catch {}
-    }
-    if (offsets.length === 0) return;
-
-    // 最小RTTのサンプルを採用（NTPのベストサンプル選択）
-    offsets.sort((a, b) => a.rtt - b.rtt);
-    const best = offsets[0];
-
-    _samples.push(best.offset);
-    if (_samples.length > MAX_SAMPLES) _samples.shift();
-
-    // 中央値でオフセット確定（外れ値に強い）
-    const sorted = [..._samples].sort((a, b) => a - b);
-    _offset = sorted[Math.floor(sorted.length / 2)];
-    _rtt    = best.rtt;
+    // GitHub Pages等で404になるため、サーバー時刻同期を廃止しローカル時刻を使用
+    _offset = 0;
+    _rtt = 0;
     _synced = true;
-
-    console.log(`[ClockSync] offset=${_offset.toFixed(1)}ms rtt=${_rtt}ms`);
+    console.log(`[ClockSync] fallback used: offset=0ms`);
   }
 
   /** サーバー時刻に同期した現在時刻 (ms) */

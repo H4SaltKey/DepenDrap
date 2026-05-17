@@ -58,7 +58,6 @@ let fieldPanY = Number(localStorage.getItem("fieldPanY")) || 0;
 let draggingCard = null; // { el, offsetX, offsetY }
 let lastLocalFieldSaveAt = 0;
 let zoneOrderCounter = 0;
-let handOrderCounter = 0;
 let prevZoneLogState = null;
 
 const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];

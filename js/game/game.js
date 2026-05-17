@@ -2068,9 +2068,7 @@ let lastStateJson = "";
 //       chatLogs.appendChild(div);
 //     });
 //     chatLogs.scrollTop = chatLogs.scrollHeight;
-//   }
 // }
-window.updateGameLogs = updateGameLogs;
 
 // LEGACY: moved to js/chat/chatUI.js
 // function checkAndLogStateChanges(oldState, newState) {

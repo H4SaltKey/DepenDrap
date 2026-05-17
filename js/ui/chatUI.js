@@ -96,7 +96,7 @@ window.setupChatUI = function() {
     <div class="chatColorContainer" style="position:relative; display:flex; align-items:center;">
       <button type="button" id="chatColorBtn" title="文字色変更" style="width: 32px; height: 32px; background: transparent; border: none; border-right: 1px solid rgba(199,179,119,0.2); font-size: 16px; cursor: pointer; padding:0; display:flex; align-items:center; justify-content:center;">🎨</button>
       <div id="chatColorPalette" style="display:none; position:absolute; bottom:100%; left:0; width:140px; background:rgba(10,8,20,0.95); border:1px solid #c89b3c; border-radius:4px; padding:6px; flex-wrap:wrap; gap:6px; z-index:10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-         \${["#ffffff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#ff99ff", "#99ffff", "#ffcc99", "#cc99ff", "#e0d0a0", "#cccccc", "#ff66b2"].map(c => `<div class="chat-color-opt" style="width:20px; height:20px; background:\${c}; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.2);" data-color="\${c}"></div>`).join("")}
+         ${["#ffffff", "#ff9999", "#99ff99", "#9999ff", "#ffff99", "#ff99ff", "#99ffff", "#ffcc99", "#cc99ff", "#e0d0a0", "#cccccc", "#ff66b2"].map(c => '<div class="chat-color-opt" style="width:20px; height:20px; background:' + c + '; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.2);" data-color="' + c + '"></div>').join("")}
       </div>
     </div>
   `;

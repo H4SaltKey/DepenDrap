@@ -18,16 +18,22 @@ window.setupRoomWatcher = function() {
     return;
   }
 
-  if (window.roomWatcherUnsubscribe) {
-    window.roomWatcherUnsubscribe();
-  }
-  if (window.playerDiceWatcherUnsubscribe) {
-    window.playerDiceWatcherUnsubscribe();
-  }
-
   const myKey   = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
   const opKey   = myKey === "player1" ? "player2" : "player1";
   const db      = firebaseClient.db;
+
+  const unsubscribe = () => {
+    playersRef.off('value', playersListener);
+    opStateRef.off('value', opStateListener);
+    if (typeof window.phaseWatcherUnsubscribe === "function") window.phaseWatcherUnsubscribe();
+    logsRef.off('value', logsListener);
+    opCardsRef.off('value', opCardsListener);
+    pendingRef.off('value', pendingListener);
+  };
+
+  if (typeof window.registerWatcher === "function") {
+    window.registerWatcher("room", unsubscribe);
+  }
 
   console.log("[Game] ルーム監視開始:", gameRoom, "自分:", myKey);
 
@@ -41,15 +47,7 @@ window.setupRoomWatcher = function() {
     window._bothPlayersConnected = !!players.player1 && !!players.player2;
     applyInteractionLockState();
 
-    // 両プレイヤーが接続したら、ready_check から次のフェーズへ
-    // 新規入室のみsetup_diceへ遷移。再接続時は既存statusを維持（Firebase復元値を尊重）
-    if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
-      if (!window._isReload) {
-        state.matchData.status = "setup_dice";
-        firebaseClient.writeMatchData(gameRoom, state.matchData);
-      }
-      // 再接続時は何もしない（既にFirebaseから正しいstatusが復元されている）
-    }
+
 
     const playerCount = Object.keys(players).length;
     if (playerCount === 0) {
@@ -187,16 +185,7 @@ window.setupRoomWatcher = function() {
     update();
   });
 
-  // ── クリーンアップ関数 ────────────────────────────────────────────
-  window.roomWatcherUnsubscribe = () => {
-    playersRef.off('value', playersListener);
-    opStateRef.off('value', opStateListener);
-    if (typeof window.phaseWatcherUnsubscribe === "function") window.phaseWatcherUnsubscribe();
-    logsRef.off('value', logsListener);
-    opCardsRef.off('value', opCardsListener);
-    pendingRef.off('value', pendingListener);
-    window.roomWatcherUnsubscribe = null;
-  };
+
 
   // ── 5. playerDice 監視（ダイスフェーズ専用）──────────────────────
   if (typeof window.setupPlayerDiceWatcher === "function") window.setupPlayerDiceWatcher(gameRoom);

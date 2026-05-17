@@ -884,32 +884,7 @@ function checkLevelUp(owner) {
 //   </div>`;
 // }
 
-function update(skipLogCheck = false) {
-  applyInteractionLockState();
-  const currentStateStr = JSON.stringify(state);
-  
-  // 状態が変わっていないならDOMの再構築をスキップ（フォーカス外れやホバーの点滅を防ぐ）
-  // ただし、カード枚数などの同期要素は常に最新を保つ
-  updateZoneCountsInState();
-
-  if (lastStateJson === currentStateStr) {
-    return;
-  }
-
-  // 初回呼び出し（lastStateJsonが空）の場合は、ログチェックをスキップ
-  if (!skipLogCheck && lastStateJson) {
-    const oldState = JSON.parse(lastStateJson);
-    checkAndLogStateChanges(oldState, state);
-  }
-  lastStateJson = currentStateStr;
-
-  // 手札上限超過時の破棄モーダルが表示されている間は、
-  // UIの再構築による干渉を避けるため、更新を最小限にする
-  if (handOverflowDiscardOpen) {
-    applyInteractionLockState();
-    return;
-  }
-
+function renderUI() {
   const playerEl = document.getElementById("gameUiPlayerInner");
   const enemyEl = document.getElementById("gameUiEnemy");
   const myOwner = window.myRole || "player1";
@@ -944,9 +919,52 @@ function update(skipLogCheck = false) {
       /* Lucide 未読込時は無視 */
     }
   }
+}
 
-  // update() からはデバウンスされた保存を使用（localStorageのクォータ溢れと負荷を防ぐ）
-  if (typeof saveDebounced === "function") saveDebounced();
+function update(skipLogCheck = false) {
+  applyInteractionLockState();
+  const currentStateStr = JSON.stringify(state);
+  
+  // 状態が変わっていないならDOMの再構築をスキップ
+  updateZoneCountsInState();
+
+  if (lastStateJson === currentStateStr) {
+    return;
+  }
+
+  // 初回呼び出しの場合は、ログチェックをスキップ
+  if (!skipLogCheck && lastStateJson) {
+    const oldState = JSON.parse(lastStateJson);
+    if (typeof checkAndLogStateChanges === "function") {
+      checkAndLogStateChanges(oldState, state);
+    }
+  }
+  lastStateJson = currentStateStr;
+
+  // 手札上限超過時の破棄モーダルが表示されている間は、更新を最小限にする
+  if (handOverflowDiscardOpen) {
+    applyInteractionLockState();
+    return;
+  }
+
+  // フェーズ管理の統一（Watcherから移行）
+  if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
+    if (!window._isReload) {
+      console.log("[PhaseManager] ready_check -> setup_dice");
+      state.matchData.status = "setup_dice";
+      if (firebaseClient?.db) {
+        const gameRoom = localStorage.getItem("gameRoom");
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
+    }
+  }
+
+  // 描画責務
+  renderUI();
+
+  // 保存最適化：毎updateの自動保存を廃止（localStorage溢れ防止）
+  // 状態変更が発生するアクション側で明示的に save() / saveDebounced() を呼び出すこと
+  // if (typeof saveDebounced === "function") saveDebounced();
 }
 
 let lastTurnPlayer = null;
@@ -2167,6 +2185,131 @@ function setupGameUiEnhancements() {
   });
 }
 
+async function handleFreshStart(currentRoom, myKey) {
+  console.log("[initGame] NEW ROOM: プレイヤーデータを完全初期化");
+
+  // プレイヤー状態を完全リセット（前のルームの残滓を消す）
+  state.player1 = { ...makeCharState(), diceValue: -1 };
+  state.player2 = { ...makeCharState(), diceValue: -1 };
+
+  // username / backImage は matchSetup から引き継ぐ
+  const matchSetupData = (() => {
+    try { return JSON.parse(localStorage.getItem("matchSetup")) || {}; } catch { return {}; }
+  })();
+  state[myKey].username  = matchSetupData.username || matchSetupData.self || localStorage.getItem("username") || myKey;
+  state[myKey].backImage = getBackImage() || null;
+
+  // matchData を初期状態にリセット
+  state.matchData = {
+    round: 1, turn: 1, turnPlayer: "player1",
+    status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null
+  };
+
+  // 各種フラグをクリア
+  window._gameStartInitiated = false;
+  window._lastRound          = undefined;
+  window._resultDismissed    = false;
+  window._resultShowing      = false;
+  window._lastWinner         = null;
+  window._gameStartedAt      = Date.now();
+  lastTurnPlayer             = null;
+
+  // 古いルームの残滓をFirebaseから削除（部屋作成者のみ実行して競合防止）
+  if (firebaseClient?.db && myKey === "player1") {
+    await firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).remove().catch(() => {});
+    await firebaseClient.db.ref(`rooms/${currentRoom}/fieldCards`).remove().catch(() => {});
+    await firebaseClient.db.ref(`rooms/${currentRoom}/pendingChange`).remove().catch(() => {});
+    await firebaseClient.db.ref(`rooms/${currentRoom}/logs`).remove().catch(() => {});
+    await firebaseClient.db.ref(`rooms/${currentRoom}/rematch`).remove().catch(() => {});
+  }
+
+  // デッキ初期化
+  initDeckFromCode();
+  state[myKey].backImage = getBackImage() || null;
+  shuffleDeck();
+  markGameStarted();
+  save();
+  addGameLog(`${window.myUsername || state[myKey]?.username || myKey} が入室しました。`);
+}
+
+async function handleReload(currentRoom, myKey, opKey) {
+  console.log("[initGame] RELOAD: Firebase から状態を完全復元");
+
+  // まずローカルキャッシュを読み込む（オフライン時のフォールバック）
+  load();
+
+  if (firebaseClient?.db) {
+    try {
+      // matchData 復元
+      const matchSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/matchData`).once('value');
+      if (matchSnap.exists()) {
+        const md = matchSnap.val();
+        // winner は復元しない（再判定させる）
+        const { winner: _w, winnerSetAt: _ws, ...mdRest } = md;
+        state.matchData = { ...state.matchData, ...mdRest };
+        console.log("[initGame] matchData 復元:", state.matchData.status);
+      }
+
+      // 相手の playerState を復元
+      const opSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${opKey}`).once('value');
+      if (opSnap.exists()) {
+        const { diceValue: _d, username: _u, deck: _deck, ...rest } = opSnap.val();
+        Object.assign(state[opKey], rest);
+        console.log("[initGame] 相手の状態を復元:", opKey);
+      }
+
+      // 自分の playerState を復元（ローカルより Firebase を優先）
+      const mySnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${myKey}`).once('value');
+      if (mySnap.exists()) {
+        const { diceValue: _d, username: _u, deck: _deck, ...rest } = mySnap.val();
+        Object.assign(state[myKey], rest);
+        // デッキの中身はローカルから維持（Firebase には HIDDEN しか入っていない）
+        initDeckFromCode();
+        console.log("[initGame] 自分の状態を復元:", myKey);
+      }
+
+      // ダイス値を復元
+      if (state.matchData.status === "setup_dice") {
+        const diceSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).once('value');
+        if (diceSnap.exists()) {
+          const diceData = diceSnap.val() || {};
+          if (diceData.player1 >= 0) state.player1.diceValue = diceData.player1;
+          if (diceData.player2 >= 0) state.player2.diceValue = diceData.player2;
+        }
+      }
+
+      normalizeState();
+      applyLevelStats("player1");
+      applyLevelStats("player2");
+
+      // 再開時は Firebase 側の進行ステータスを尊重し、上書きしない
+      console.log("[initGame] 再開ステータスを維持:", state.matchData.status);
+
+    } catch (e) {
+      console.warn("[initGame] Firebase 復元エラー:", e);
+    }
+
+    // ── リロード時: 自分を rooms/players に再登録 ──
+    try {
+      const myPlayerRef = firebaseClient.db.ref(`rooms/${currentRoom}/players/${myKey}`);
+      const myPlayerSnap = await myPlayerRef.once('value');
+      if (!myPlayerSnap.exists()) {
+        console.log("[initGame] リロード後に自分を rooms/players に再登録:", myKey);
+        await myPlayerRef.set({
+          username: window.myUsername || state[myKey].username || localStorage.getItem("username") || myKey,
+          sessionId: firebaseClient.sessionId,
+          ready: true,
+          joinedAt: firebase.database.ServerValue.TIMESTAMP
+        });
+      }
+      // onDisconnect を再設定
+      await firebaseClient.setupOnDisconnect(currentRoom, myKey);
+    } catch (e) {
+      console.warn("[initGame] 再登録エラー:", e);
+    }
+  }
+}
+
 async function initGame() {
   if (_gameBootstrapped) {
     console.log("[initGame] already bootstrapped - skip duplicate init");
@@ -2174,14 +2317,13 @@ async function initGame() {
   }
   _gameBootstrapped = true;
 
-    setupChatUI();
-    if (typeof window.setupChatEvents === "function") {
-      window.setupChatEvents();
-    }
+  setupChatUI();
+  if (typeof window.setupChatEvents === "function") {
+    window.setupChatEvents();
+  }
 
   try {
     bindConnectionUiEvents();
-    // ── 0. カードデータ読み込み ──
     console.log("[initGame] step0: loading assets");
     try {
       await loadCardData();
@@ -2199,140 +2341,13 @@ async function initGame() {
       throw new Error("gameRoom が未設定です。対戦ルーム情報を確認してください。");
     }
 
-    // ── 1. リロード vs 新規入室 を最初に確定 ──
-    //   wasInGame（sessionStorage）は同一タブのリロードでのみ生き残る。
-    //   タブを閉じた再開、別ルーム遷移では消える。
     const isReload = sessionStorage.getItem("wasInGame") === currentRoom;
-    const startedFlag = localStorage.getItem("gameStarted");
-    const localStarted = (startedFlag === "true" || startedFlag === "1") &&
-      localStorage.getItem("gameStartedRoom") === currentRoom;
     console.log(`[initGame] isReload=${isReload} room=${currentRoom}`);
 
-    // ── 2a. 新規入室フロー ──
     if (!isReload) {
-      console.log("[initGame] NEW ROOM: プレイヤーデータを完全初期化");
-
-      // プレイヤー状態を完全リセット（前のルームの残滓を消す）
-      state.player1 = { ...makeCharState(), diceValue: -1 };
-      state.player2 = { ...makeCharState(), diceValue: -1 };
-
-      // username / backImage は matchSetup から引き継ぐ
-      const matchSetupData = (() => {
-        try { return JSON.parse(localStorage.getItem("matchSetup")) || {}; } catch { return {}; }
-      })();
-      state[myKey].username  = matchSetupData.username || matchSetupData.self || localStorage.getItem("username") || myKey;
-      state[myKey].backImage = getBackImage() || null;
-
-      // matchData を初期状態にリセット
-      state.matchData = {
-        round: 1, turn: 1, turnPlayer: "player1",
-        status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null
-      };
-
-      // 各種フラグをクリア
-      window._gameStartInitiated = false;
-      window._lastRound          = undefined;
-      window._resultDismissed    = false;
-      window._resultShowing      = false;
-      window._lastWinner         = null;
-      window._gameStartedAt      = Date.now();
-      lastTurnPlayer             = null;
-
-      // 古いルームの残滓をFirebaseから削除（部屋作成者のみ実行して競合防止）
-      if (firebaseClient?.db && myKey === "player1") {
-        await firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).remove().catch(() => {});
-        await firebaseClient.db.ref(`rooms/${currentRoom}/fieldCards`).remove().catch(() => {});
-        await firebaseClient.db.ref(`rooms/${currentRoom}/pendingChange`).remove().catch(() => {});
-        await firebaseClient.db.ref(`rooms/${currentRoom}/logs`).remove().catch(() => {});
-        await firebaseClient.db.ref(`rooms/${currentRoom}/rematch`).remove().catch(() => {});
-      }
-
-      // デッキ初期化
-      initDeckFromCode();
-      state[myKey].backImage = getBackImage() || null;
-      shuffleDeck();
-      markGameStarted();
-      save();
-      addGameLog(`${window.myUsername || state[myKey]?.username || myKey} が入室しました。`);
-
-    // ── 2b. リロード（ページ更新）フロー ──
+      await handleFreshStart(currentRoom, myKey);
     } else {
-      console.log("[initGame] RELOAD: Firebase から状態を完全復元");
-
-      // まずローカルキャッシュを読み込む（オフライン時のフォールバック）
-      load();
-
-      if (firebaseClient?.db) {
-        try {
-          // matchData 復元
-          const matchSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/matchData`).once('value');
-          if (matchSnap.exists()) {
-            const md = matchSnap.val();
-            // winner は復元しない（再判定させる）
-            const { winner: _w, winnerSetAt: _ws, ...mdRest } = md;
-            state.matchData = { ...state.matchData, ...mdRest };
-            console.log("[initGame] matchData 復元:", state.matchData.status);
-          }
-
-          // 相手の playerState を復元
-          const opSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${opKey}`).once('value');
-          if (opSnap.exists()) {
-            const { diceValue: _d, username: _u, deck: _deck, ...rest } = opSnap.val();
-            Object.assign(state[opKey], rest);
-            console.log("[initGame] 相手の状態を復元:", opKey);
-          }
-
-          // 自分の playerState を復元（ローカルより Firebase を優先）
-          const mySnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${myKey}`).once('value');
-          if (mySnap.exists()) {
-            const { diceValue: _d, username: _u, deck: _deck, ...rest } = mySnap.val();
-            Object.assign(state[myKey], rest);
-            // デッキの中身はローカルから維持（Firebase には HIDDEN しか入っていない）
-            initDeckFromCode();
-            console.log("[initGame] 自分の状態を復元:", myKey);
-          }
-
-          // ダイス値を復元
-          if (state.matchData.status === "setup_dice") {
-            const diceSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerDice`).once('value');
-            if (diceSnap.exists()) {
-              const diceData = diceSnap.val() || {};
-              if (diceData.player1 >= 0) state.player1.diceValue = diceData.player1;
-              if (diceData.player2 >= 0) state.player2.diceValue = diceData.player2;
-            }
-          }
-
-          normalizeState();
-          applyLevelStats("player1");
-          applyLevelStats("player2");
-
-          // 再開時は Firebase 側の進行ステータスを尊重し、上書きしない
-          console.log("[initGame] 再開ステータスを維持:", state.matchData.status);
-
-        } catch (e) {
-          console.warn("[initGame] Firebase 復元エラー:", e);
-        }
-
-        // ── リロード時: 自分を rooms/players に再登録 ──
-        // onDisconnect でプレイヤーが削除された可能性があるため、再登録する
-        try {
-          const myPlayerRef = firebaseClient.db.ref(`rooms/${currentRoom}/players/${myKey}`);
-          const myPlayerSnap = await myPlayerRef.once('value');
-          if (!myPlayerSnap.exists()) {
-            console.log("[initGame] リロード後に自分を rooms/players に再登録:", myKey);
-            await myPlayerRef.set({
-              username: window.myUsername || state[myKey].username || localStorage.getItem("username") || myKey,
-              sessionId: firebaseClient.sessionId,
-              ready: true,
-              joinedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-          }
-          // onDisconnect を再設定
-          await firebaseClient.setupOnDisconnect(currentRoom, myKey);
-        } catch (e) {
-          console.warn("[initGame] 再登録エラー:", e);
-        }
-      }
+      await handleReload(currentRoom, myKey, opKey);
     }
 
     // ── 3. 接続プレイヤー数を確認して操作ロック解除判定 ──

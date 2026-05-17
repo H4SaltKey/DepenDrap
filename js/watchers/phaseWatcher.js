@@ -42,10 +42,11 @@ window.setupPhaseWatcher = function(gameRoom) {
     update();
   };
 
-  matchDataRef.on('value', listener);
-
-  window.phaseWatcherUnsubscribe = () => {
+  const unsubscribe = () => {
     matchDataRef.off('value', listener);
-    window.phaseWatcherUnsubscribe = null;
   };
+
+  if (typeof window.registerWatcher === "function") {
+    window.registerWatcher("phase", unsubscribe);
+  }
 };

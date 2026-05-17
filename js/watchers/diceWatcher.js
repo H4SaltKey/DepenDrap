@@ -66,8 +66,11 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
 
   diceRef.on('value', listener);
 
-  window.playerDiceWatcherUnsubscribe = () => {
+  const unsubscribe = () => {
     diceRef.off('value', listener);
-    window.playerDiceWatcherUnsubscribe = null;
   };
+
+  if (typeof window.registerWatcher === "function") {
+    window.registerWatcher("dice", unsubscribe);
+  }
 };

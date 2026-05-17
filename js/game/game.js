@@ -952,6 +952,10 @@ function update(skipLogCheck = false) {
     if (!window._isReload) {
       console.log("[PhaseManager] ready_check -> setup_dice");
       state.matchData.status = "setup_dice";
+      if (typeof GameTimer !== "undefined") {
+        console.log("[PhaseManager] Starting dice timer");
+        GameTimer.start('dice', 10000); // 10秒タイマー
+      }
       if (firebaseClient?.db) {
         const gameRoom = localStorage.getItem("gameRoom");
         firebaseClient.writeMatchData(gameRoom, state.matchData);

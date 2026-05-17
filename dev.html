@@ -386,9 +386,7 @@ if(localStorage.getItem("dev") !== "true"){
 <script src="js/ui/menu.js?v=5"></script>
 <script src="js/statusBlocks/statusBlockPresets.js"></script>
 <script src="js/statusBlocks/statusBlockPresetStorage.js"></script>
-<script src="js/patchNotes/patchNotesLoader.js"></script>
-<script src="js/patchNotes/patchNotesStorage.js"></script>
-<script src="js/patchNotes/patchNotesEditor.js"></script>
+<script type="module" src="js/patchnotes/patchnotesDev.js"></script>
 
 <div style="position:fixed; bottom:20px; left:20px; z-index:1000; display:flex; flex-direction:column; gap:10px;">
   <button onclick="if(window.openPatchNotesEditor) window.openPatchNotesEditor();" style="padding:10px 20px; background:#2980b9; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5);">

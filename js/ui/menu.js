@@ -195,7 +195,8 @@
       const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing" && !state?.matchData?.winner;
       surrenderBtn.style.display = (isGamePage && !isLocked && isPlaying) ? "block" : "none";
     }
-    if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked) ? "block" : "none";
+    // 両プレイヤーが接続している場合は「1人で開始」を非表示にする
+    if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked && !window._bothPlayersConnected) ? "block" : "none";
   };
 
   document.getElementById("backBtn").onclick = ()=>{

@@ -1,0 +1,32 @@
+{
+  "versions": [
+    {
+      "version": "v1.2.0",
+      "date": "2026-05-17",
+      "categories": [
+        {
+          "id": "cards",
+          "title": "カード調整",
+          "notify": true,
+          "description": "カードのバランス調整内容です。",
+          "entries": [
+            {
+              "type": "card",
+              "cardName": "サンプルカード",
+              "beforeImage": "assets/cards/sample_before.png",
+              "afterImage": "assets/cards/sample_after.png",
+              "comment": "コストを1下げました。"
+            }
+          ]
+        },
+        {
+          "id": "rules",
+          "title": "ゲームルール変更",
+          "notify": false,
+          "description": "ルールの変更内容です。",
+          "entries": []
+        }
+      ]
+    }
+  ]
+}

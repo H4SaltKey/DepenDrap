@@ -1554,7 +1554,8 @@ function updateMatchUI() {
       left: auto !important;
       top: auto !important;
       width: 380px !important;
-      height: 538px !important;
+      height: auto !important;
+      aspect-ratio: 210 / 297 !important;
       margin: 0 auto !important;
       padding: 0 !important;
       box-sizing: border-box !important;
@@ -1569,7 +1570,7 @@ function updateMatchUI() {
     .firstDrawLastPickPreview .firstDrawLastPickClone.card img {
       width: 100% !important;
       height: 100% !important;
-      object-fit: cover !important;
+      object-fit: contain !important;
     }
     .firstDrawCardOuter--kept {
       transform: scale(1.04);
@@ -1869,12 +1870,41 @@ async function executeReset(syncShared = true) {
   window._soloStartMode = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
-  // 既に直前に不要データを消去済みなので、ここでは共通マッチデータの書き込みと自分の状態のみ書き戻す
+  // 既に直前に不要データを消去済みなので、ここでは共通マッチデータの書き込みのみ行う
   if (gameRoom && firebaseClient?.db && syncShared) {
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
-    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-    await firebaseClient.writeMyState(gameRoom, me, state[me]);
   }
+
+  // ──【安定化：接続直後と同じ処理を挟む (rebuild watchers & gates)】──
+  console.log("[Reset] 接続直後と同じ処理（ウォッチャーと同期ゲートの再初期化）を実行します...");
+  window.notifySyncGate("initDone", false);
+  window.notifySyncGate("roomWatcherReady", false);
+  window.notifySyncGate("phaseReady", false);
+  updateSyncLoadingOverlay();
+
+  if (typeof setupRoomWatcher === "function") {
+    try {
+      setupRoomWatcher();
+      console.log("[Reset] ウォッチャーの再セットアップに成功しました。");
+    } catch (watcherErr) {
+      console.error("[Reset] ウォッチャー再セットアップ中にエラー:", watcherErr);
+    }
+  }
+
+  // 自分の最新状態を Firebase に送信（整合性担保）
+  if (gameRoom && firebaseClient?.db) {
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    try {
+      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+      console.log("[Reset] 自分の最新状態の同期に成功しました。");
+    } catch (writeErr) {
+      console.error("[Reset] 自分の最新状態の同期中にエラー:", writeErr);
+    }
+  }
+
+  window.notifySyncGate("initDone", true);
+  updateSyncLoadingOverlay();
+  // ────────────────────────────────────────────────────────────
 
   safeLocalSetItem("gameState", createSafeLocalStateCopy());
   localStorage.removeItem("fieldCards");

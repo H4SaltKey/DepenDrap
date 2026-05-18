@@ -1258,7 +1258,7 @@
 
 
 
-function tryAdvanceFirstDrawToPlayingIfBothReady() {
+async function tryAdvanceFirstDrawToPlayingIfBothReady() {
     // [追加] Firebase状態の最新値を強制取得
     await new Promise(resolve => setTimeout(resolve, 500)); // 同期待機
   const m = state.matchData;

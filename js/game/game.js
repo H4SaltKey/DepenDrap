@@ -1,30 +1,4 @@
-
-
-
-
-
-
-
-
-
-
-
-
 // js/game/phases/firstDrawPhase.js
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1779,45 +1753,7 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ritz.com
 
 
 
@@ -3042,4 +2978,5 @@ function updateFirebaseStatus(newStatus) {
 
 
 // ... rest of the original code remains exactly the same ...
+
 

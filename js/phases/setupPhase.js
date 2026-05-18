@@ -4,6 +4,7 @@
  */
 
 window.updateEvolutionPhaseUI = function() {
+  if (typeof window.traceFlow === "function") window.traceFlow("updateEvolutionPhaseUI", "start", state?.matchData?.status);
   const m = state.matchData;
   let overlay = document.getElementById("evolutionPhaseOverlay");
 
@@ -26,19 +27,31 @@ window.updateEvolutionPhaseUI = function() {
     if (m.turnPlayer === me && !window._evoPhaseTransitioning) {
       window._evoPhaseTransitioning = true;
       setTimeout(async () => {
-        m.status = "setup_first_draw";
-        m.firstDrawDone = false;
-        m.firstDrawP1Ready = false;
-        m.firstDrawP2Ready = false;
-        window._firstDrawPhaseStarted = false;
-        window._firstDrawAdvanceSent = false;
-        addGameLog(`[MATCH] 進化選択が完了しました。ファーストドローフェーズに移行します。`);
-        const gameRoom = localStorage.getItem("gameRoom");
-        if (gameRoom && firebaseClient?.db) {
-          await firebaseClient.writeMatchData(gameRoom, m);
+        try {
+          if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "start", "setup_evolution -> setup_first_draw");
+          m.status = "setup_first_draw";
+          m.firstDrawDone = false;
+          m.firstDrawP1Ready = false;
+          m.firstDrawP2Ready = false;
+          window._firstDrawPhaseStarted = false;
+          window._firstDrawAdvanceSent = false;
+          addGameLog(`[MATCH] 進化選択が完了しました。ファーストドローフェーズに移行します。`);
+          const gameRoom = localStorage.getItem("gameRoom");
+          if (gameRoom && firebaseClient?.db) {
+            await firebaseClient.writeMatchData(gameRoom, m);
+            if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "success", "writeMatchData");
+          } else if (typeof window.traceFlow === "function") {
+            window.traceFlow("phaseTransition", "failure", "gameRoom/firebase missing");
+          }
+          if (typeof update === "function") update();
+          else if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "failure", "update missing");
+        } catch (e) {
+          if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "failure", e?.message || e);
+          console.error("[setupEvolution->firstDraw] transition failed:", e);
+        } finally {
+          window._evoPhaseTransitioning = false;
+          if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "end", "setup_evolution -> setup_first_draw");
         }
-        window._evoPhaseTransitioning = false;
-        update();
       }, 1500);
     }
     if (overlay) overlay.innerHTML = `<h2 style="color:#fff; text-shadow: 0 0 10px #fff;">両プレイヤーが道を選択しました<br>ファーストドローフェーズへ移行します...</h2>`;

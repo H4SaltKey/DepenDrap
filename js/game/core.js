@@ -79,6 +79,17 @@ window.runtimeState = window.runtimeState || {
 };
 window.uiState = window.uiState || {};
 window.saveState = window.saveState || { reconnect: {} };
+window.TRACE_GAME_FLOW = true;
+
+function traceFlow(tag, stage, details) {
+  if (!window.TRACE_GAME_FLOW) return;
+  if (details !== undefined) {
+    console.log(`[TRACE] ${tag} ${stage}`, details);
+  } else {
+    console.log(`[TRACE] ${tag} ${stage}`);
+  }
+}
+window.traceFlow = traceFlow;
 
 function isQuotaExceededError(err) {
   return err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014);
@@ -383,26 +394,40 @@ let isPolling = false;
 let lastLocalLogSentAt = 0;
 
 async function syncLoop() {
+  traceFlow("syncLoop", "start");
   // Firebase watcher が state を直接更新するため、
   // syncLoop は levelStats ロードと UI 更新のみ担当
 
-  if (isPolling) return;
+  if (isPolling) {
+    traceFlow("syncLoop", "return", "already polling");
+    return;
+  }
   isPolling = true;
   try {
     if (!window._levelStatsLoaded) {
+      traceFlow("syncLoop", "await", "loadLevelStats");
       await loadLevelStats();
       window._levelStatsLoaded = true;
+      traceFlow("syncLoop", "success", "loadLevelStats");
     }
 
     normalizeState();
     applyLevelStats("player1");
     applyLevelStats("player2");
-    if (typeof update === "function") update();
+    if (typeof update === "function") {
+      traceFlow("syncLoop", "call", "update");
+      update();
+      traceFlow("syncLoop", "success", "update");
+    } else {
+      traceFlow("syncLoop", "failure", "update missing");
+    }
 
   } catch (e) {
+    traceFlow("syncLoop", "failure", e?.message || e);
     console.error("Sync error:", e);
   } finally {
     isPolling = false;
+    traceFlow("syncLoop", "end");
   }
 }
 

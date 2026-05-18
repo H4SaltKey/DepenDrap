@@ -1,5 +1,6 @@
 
 function updateFirstDrawPhaseUI() {
+  if (typeof window.traceFlow === "function") window.traceFlow("updateFirstDrawPhaseUI", "start", state?.matchData?.status);
   const m = state.matchData;
   if (m.status !== "setup_first_draw") {
     window._firstDrawPhaseStarted = false;
@@ -330,11 +331,22 @@ function startFirstDrawPhase() {
  * ファーストドロー: 双方が確定したら playing へ（各クライアントから idempotent に遷移可）
  */
 function tryAdvanceFirstDrawToPlayingIfBothReady() {
+  if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "check", "setup_first_draw -> playing");
   const m = state.matchData;
-  if (!m || m.status !== "setup_first_draw") return;
-  if (!m.firstDrawP1Ready || !m.firstDrawP2Ready) return;
-  if (window._firstDrawAdvanceSent) return;
+  if (!m || m.status !== "setup_first_draw") {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "not setup_first_draw");
+    return;
+  }
+  if (!m.firstDrawP1Ready || !m.firstDrawP2Ready) {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "both ready not satisfied");
+    return;
+  }
+  if (window._firstDrawAdvanceSent) {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "already sent");
+    return;
+  }
   window._firstDrawAdvanceSent = true;
+  if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "start", "setup_first_draw -> playing");
   
   // Clean up unchosen cards marked in first draw phase
   const field = getFieldContent();
@@ -359,10 +371,13 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   state.matchData = next;
   if (gameRoom && firebaseClient?.db) {
     firebaseClient.writeMatchData(gameRoom, next).catch((e) => {
+      if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "failure", e?.message || e);
       console.warn("[FirstDraw] playing への遷移エラー:", e);
       window._firstDrawAdvanceSent = false;
     });
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "success", "writeMatchData");
   } else {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "failure", "gameRoom/firebase missing");
     window._firstDrawAdvanceSent = false;
   }
 }

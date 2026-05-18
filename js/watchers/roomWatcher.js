@@ -7,13 +7,16 @@ window.playerDiceWatcherUnsubscribe = window.playerDiceWatcherUnsubscribe || nul
 window._bothPlayersConnected = false;
 
 window.setupRoomWatcher = function() {
+  if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "start");
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom) {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "failure", "gameRoom missing");
     console.warn("[Game] ゲームルーム情報がありません");
     return;
   }
 
   if (!firebaseClient || !firebaseClient.db) {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "failure", "firebase db missing");
     console.warn("[Game] Firebase 未初期化 - setupRoomWatcher をスキップ");
     return;
   }
@@ -40,11 +43,13 @@ window.setupRoomWatcher = function() {
   // ── 1. players ノード監視（接続/切断・username 取得）──────────────────
   const playersRef = db.ref(`rooms/${gameRoom}/players`);
   const playersListener = playersRef.on('value', (snap) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.players", "start");
     if (!snap) return;
     const players = snap.val() || {};
     if (players.player1?.username) state.player1.username = players.player1.username;
     if (players.player2?.username) state.player2.username = players.player2.username;
     window._bothPlayersConnected = !!players.player1 && !!players.player2;
+    if (typeof window.traceFlow === "function") window.traceFlow("bothConnected", "set", window._bothPlayersConnected);
     applyInteractionLockState();
 
 
@@ -56,12 +61,18 @@ window.setupRoomWatcher = function() {
       stopAllWatchers();
       firebaseClient.resetRoomGameState(gameRoom);
     }
-    update();
+    if (typeof update === "function") {
+      update();
+      if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.players", "success", "update");
+    } else {
+      if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.players", "failure", "update missing");
+    }
   });
 
   // ── 2. 相手の playerState 監視（相手のデータのみ受信）────────────────
   const opStateRef = db.ref(`rooms/${gameRoom}/playerState/${opKey}`);
   const opStateListener = opStateRef.on('value', (snap) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opState", "start");
     if (!snap || !snap.val()) return;
     const opData = snap.val();
     // diceValue は playerDice で管理、username は players で管理するため除外
@@ -102,7 +113,9 @@ window.setupRoomWatcher = function() {
     normalizeState();
     applyLevelStats(opKey);
     updateDeckObject(); // デッキ枚数表示を更新
-    update();
+    if (typeof update === "function") update();
+    else if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opState", "failure", "update missing");
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opState", "end");
   });
 
   // ── 3. matchData 監視（共有ターン情報）──────────────────────────────
@@ -111,10 +124,12 @@ window.setupRoomWatcher = function() {
   // ── 4. logs 監視──────────────────────────────────────────────────
   const logsRef = db.ref(`rooms/${gameRoom}/logs`);
   const logsListener = logsRef.on('value', (snap) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.logs", "start");
     if (!snap || !snap.val()) {
       // ログがクリアされた場合
       state.logs = [];
-      update(true); // skipLogCheck = true
+      if (typeof update === "function") update(true); // skipLogCheck = true
+      else if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.logs", "failure", "update missing");
       return;
     }
     const logsObj = snap.val();
@@ -132,23 +147,30 @@ window.setupRoomWatcher = function() {
       state.logs = state.logs.slice(-50);
     }
     
-    update(true); // skipLogCheck = true（ログ監視からの更新なので、checkAndLogStateChanges をスキップ）
+    if (typeof update === "function") update(true); // skipLogCheck = true（ログ監視からの更新なので、checkAndLogStateChanges をスキップ）
+    else if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.logs", "failure", "update missing");
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.logs", "end");
   });
 
   // ── 5. 相手のフィールドカード監視 ────────────────────────────────
   const opCardsRef = db.ref(`rooms/${gameRoom}/fieldCards/${opKey}`);
   const opCardsListener = opCardsRef.on('value', (snap) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opCards", "start");
     if (!snap || !snap.val()) return;
     const opCards = snap.val();
     // 相手の fieldCards（相手オーナーのカードのみ）を適用。applyFieldCardsFromServer は部分同期時に自席 DOM を消さない。
     if (typeof window.applyFieldCardsFromServer === "function") {
       window.applyFieldCardsFromServer(opCards);
+      if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opCards", "success", "applyFieldCardsFromServer");
+    } else if (typeof window.traceFlow === "function") {
+      window.traceFlow("roomWatcher.opCards", "failure", "applyFieldCardsFromServer missing");
     }
   });
 
   // ── 6. 相手からの変更リクエスト監視 ──────────────────────────────
   const pendingRef = db.ref(`rooms/${gameRoom}/pendingChange/${opKey}`);
   const pendingListener = pendingRef.on('value', (snap) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.pending", "start");
     if (!snap || !snap.val()) return;
     const req = snap.val();
     // 自分のステータスへのリクエストのみ処理
@@ -177,18 +199,27 @@ window.setupRoomWatcher = function() {
     applyLevelStats(myKey);
 
     // 自分のパスに書き込んで確定
-    pushMyStateDebounced();
+    if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+    else if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.pending", "failure", "pushMyStateDebounced missing");
 
     // リクエストをクリア（処理済み）
     firebaseClient.clearChangeRequest(gameRoom, opKey);
 
-    update();
+    if (typeof update === "function") update();
+    else if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.pending", "failure", "update missing");
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.pending", "end");
   });
 
 
 
   // ── 5. playerDice 監視（ダイスフェーズ専用）──────────────────────
-  if (typeof window.setupPlayerDiceWatcher === "function") window.setupPlayerDiceWatcher(gameRoom);
+  if (typeof window.setupPlayerDiceWatcher === "function") {
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "call", "setupPlayerDiceWatcher");
+    window.setupPlayerDiceWatcher(gameRoom);
+  } else if (typeof window.traceFlow === "function") {
+    window.traceFlow("roomWatcher", "failure", "setupPlayerDiceWatcher missing");
+  }
+  if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "end");
 };
 
 window.stopAllWatchers = function() {

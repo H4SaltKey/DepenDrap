@@ -4,7 +4,9 @@
  */
 
 window.setupPlayerDiceWatcher = function(gameRoom) {
+  if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher", "start", { gameRoom });
   if (!gameRoom || !firebaseClient || !firebaseClient.db) {
+    if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher", "failure", "missing gameRoom/firebase db");
     console.warn("[DiceWatcher] 開始できません");
     return;
   }
@@ -14,10 +16,14 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
   const diceRef = firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`);
 
   const listener = (snapshot) => {
+    if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher.callback", "start");
     if (!snapshot) return;
 
     // ダイスフェーズ以外は無視
-    if (state.matchData.status !== "setup_dice") return;
+    if (state.matchData.status !== "setup_dice") {
+      if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher.callback", "return", `status=${state.matchData.status}`);
+      return;
+    }
 
     const raw = snapshot.val() || {};
     const p1 = (raw.player1 !== null && raw.player1 !== undefined && raw.player1 >= 0)
@@ -61,7 +67,12 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
     }
 
     // UI を更新
-    update();
+    if (typeof update === "function") {
+      update();
+      if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher.callback", "success", "update");
+    } else if (typeof window.traceFlow === "function") {
+      window.traceFlow("diceWatcher.callback", "failure", "update missing");
+    }
   };
 
   diceRef.on('value', listener);

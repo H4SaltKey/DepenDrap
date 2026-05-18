@@ -1,4 +1,5 @@
 function updateDicePhaseUI() {
+  if (typeof window.traceFlow === "function") window.traceFlow("updateDicePhaseUI", "start", state?.matchData?.status);
   const m = state.matchData;
   let overlay = document.getElementById("dicePhaseOverlay");
 
@@ -229,7 +230,9 @@ function updateDicePhaseUI() {
 //   - 読み取りは各パスの watcher が担当
 
 async function handleDiceRoll() {
+  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "start");
   if (window.isGameInteractionLocked()) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "return", "interaction locked");
     console.warn("[handleDiceRoll] 接続待ち中のため操作不可");
     return;
   }
@@ -241,6 +244,7 @@ async function handleDiceRoll() {
     "firebase connected:", firebaseClient?.isConnected);
 
   if (!state[playerKey]) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "failure", "state[playerKey] missing");
     console.warn("[handleDiceRoll] state[playerKey] が存在しません:", playerKey);
     return;
   }
@@ -251,6 +255,7 @@ async function handleDiceRoll() {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (!gameRoom) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "failure", "gameRoom missing");
     console.warn("[handleDiceRoll] gameRoom が null です。localStorage:", {
       gameRoom: localStorage.getItem("gameRoom"),
       gamePlayerKey: localStorage.getItem("gamePlayerKey"),
@@ -259,6 +264,7 @@ async function handleDiceRoll() {
     return;
   }
   if (!firebaseClient?.db) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "failure", "firebase db missing");
     console.warn("[handleDiceRoll] firebaseClient.db が null です。isConnected:", firebaseClient?.isConnected);
     return;
   }
@@ -283,10 +289,14 @@ async function handleDiceRoll() {
   update();
 
   // Firebase: playerDice パスにのみ書く（相手のパスは触らない）
+  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "setPlayerDice");
   await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
+  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "setPlayerDice");
   
   // 初回ゲーム時のデッキ枚数同期漏れを防ぐため、ダイスロール直後に自分の状態を同期する
+  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "writeMyState");
   await firebaseClient.writeMyState(gameRoom, playerKey, _getMyStateForSync());
+  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "writeMyState");
 }
 
 function showDiceRollingAnimation() {
@@ -316,6 +326,7 @@ async function handleResetDice() {
 }
 
 async function handleChooseOrder(goFirst) {
+  if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "start", "setup_dice -> setup_evolution");
   const me = window.myRole || "player1";
   const op = me === "player1" ? "player2" : "player1";
 
@@ -348,9 +359,15 @@ async function handleChooseOrder(goFirst) {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMatchData");
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMyState player1");
     await firebaseClient.writeMyState(gameRoom, "player1", state.player1);
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMyState player2");
     await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "success", "setup_dice -> setup_evolution");
+  } else if (typeof window.traceFlow === "function") {
+    window.traceFlow("phaseTransition", "failure", "gameRoom/firebase missing");
   }
 
   update();

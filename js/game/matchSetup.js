@@ -12,6 +12,9 @@ let opponentName = null;
 let roomUnsubscribe = null;
 let roomListUnsubscribe = null;
 let isStartingGame = false;
+let roomListWatching = false;
+let roomListRefreshInFlight = false;
+let roomListRefreshToken = 0;
 
 let selectedDeckId = null;
 let popupSelectedDeckId = null;
@@ -56,6 +59,7 @@ async function initMatchSetup() {
   if (success) {
     updateFirebaseStatus("Firebase 接続済み ✓", true);
     watchRoomList();
+    setupRefreshButton();
     addLog("system", "Firebase に接続しました。");
   } else {
     updateFirebaseStatus("接続エラー", false);
@@ -247,7 +251,7 @@ async function createRoom() {
   updateUIForRoom();
   
   // ルーム一覧を即座に更新して「参加済み」表示を反映
-  watchRoomList();
+  requestRoomListRefresh();
 }
 
 async function joinRoom() {
@@ -271,7 +275,7 @@ async function joinRoom() {
   updateUIForRoom();
   
   // ルーム一覧を即座に更新して「参加済み」表示を反映
-  watchRoomList();
+  requestRoomListRefresh();
 }
 
 async function leaveRoom() {
@@ -334,9 +338,24 @@ function watchRoom(roomName) {
   });
 }
 
-function watchRoomList() {
+function watchRoomList(forceRestart = false) {
+  if (roomListWatching && roomListUnsubscribe && !forceRestart) return;
   if (roomListUnsubscribe) roomListUnsubscribe();
   roomListUnsubscribe = firebaseClient.watchRoomList(renderRoomList);
+  roomListWatching = true;
+}
+
+async function requestRoomListRefresh() {
+  if (!firebaseClient?.db || !firebaseClient?.fetchRoomListOnce) return;
+  const requestToken = ++roomListRefreshToken;
+  try {
+    const rooms = await firebaseClient.fetchRoomListOnce();
+    // 先に開始した古いリクエスト結果で上書きしない
+    if (requestToken !== roomListRefreshToken) return;
+    renderRoomList(rooms);
+  } catch (e) {
+    console.warn("[matchSetup] room list refresh failed:", e);
+  }
 }
 
 // ===== Ready =====
@@ -717,35 +736,29 @@ function startGame() {
 }
 
 // ===== ルーム一覧更新ボタン（5秒クールダウン） =====
-
-let _refreshCooldownTimer = null;
-
 function setupRefreshButton() {
   const btn = document.getElementById("roomRefreshBtn");
   const cooldownEl = document.getElementById("roomRefreshCooldown");
   if (!btn) return;
 
-  btn.addEventListener("click", () => {
-    if (btn.disabled) return;
+  if (btn.dataset.bound === "true") return;
+  btn.dataset.bound = "true";
 
-    // 手動でルーム一覧を再取得
-    watchRoomList();
-
-    // クールダウン開始
+  btn.addEventListener("click", async () => {
+    if (btn.disabled || roomListRefreshInFlight) return;
+    roomListRefreshInFlight = true;
+    const originalText = btn.textContent;
     btn.disabled = true;
-    let remaining = 5;
-    if (cooldownEl) cooldownEl.textContent = `(${remaining}s)`;
-
-    if (_refreshCooldownTimer) clearInterval(_refreshCooldownTimer);
-    _refreshCooldownTimer = setInterval(() => {
-      remaining -= 1;
-      if (cooldownEl) cooldownEl.textContent = remaining > 0 ? `(${remaining}s)` : "";
-      if (remaining <= 0) {
-        clearInterval(_refreshCooldownTimer);
-        _refreshCooldownTimer = null;
-        btn.disabled = false;
-      }
-    }, 1000);
+    btn.textContent = "更新中...";
+    if (cooldownEl) cooldownEl.textContent = "⟳";
+    try {
+      await requestRoomListRefresh();
+    } finally {
+      roomListRefreshInFlight = false;
+      btn.disabled = false;
+      btn.textContent = originalText || "更新";
+      if (cooldownEl) cooldownEl.textContent = "";
+    }
   });
 }
 
@@ -762,6 +775,8 @@ window.addEventListener("beforeunload", async () => {
   // リロード時の接続維持のため、自動退出はしない（onDisconnectに委譲）
   if (roomUnsubscribe)     roomUnsubscribe();
   if (roomListUnsubscribe) roomListUnsubscribe();
+  roomListUnsubscribe = null;
+  roomListWatching = false;
   if (_chatListenerRef)    _chatListenerRef.off();
   if (_typingListenerRef)  _typingListenerRef.off();
 });

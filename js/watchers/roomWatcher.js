@@ -32,7 +32,10 @@ window.setupRoomWatcher = function() {
     logsRef.off('value', logsListener);
     opCardsRef.off('value', opCardsListener);
     pendingRef.off('value', pendingListener);
+    if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "end");
   };
+
+  window.roomWatcherUnsubscribe = unsubscribe;
 
   if (typeof window.registerWatcher === "function") {
     window.registerWatcher("room", unsubscribe);
@@ -48,8 +51,14 @@ window.setupRoomWatcher = function() {
     const players = snap.val() || {};
     if (players.player1?.username) state.player1.username = players.player1.username;
     if (players.player2?.username) state.player2.username = players.player2.username;
+    const prevBothConnected = !!window._bothPlayersConnected;
     window._bothPlayersConnected = !!players.player1 && !!players.player2;
-    if (typeof window.traceFlow === "function") window.traceFlow("bothConnected", "set", window._bothPlayersConnected);
+    if (typeof window.notifySyncGate === "function") {
+      window.notifySyncGate("playersReady", window._bothPlayersConnected);
+    }
+    if (prevBothConnected !== window._bothPlayersConnected && typeof window.traceFlow === "function") {
+      window.traceFlow("bothConnected", "set", window._bothPlayersConnected);
+    }
     applyInteractionLockState();
 
 
@@ -120,6 +129,7 @@ window.setupRoomWatcher = function() {
 
   // ── 3. matchData 監視（共有ターン情報）──────────────────────────────
   if (typeof window.setupPhaseWatcher === "function") window.setupPhaseWatcher(gameRoom);
+  if (typeof window.notifySyncGate === "function") window.notifySyncGate("roomWatcherReady");
 
   // ── 4. logs 監視──────────────────────────────────────────────────
   const logsRef = db.ref(`rooms/${gameRoom}/logs`);
@@ -219,12 +229,13 @@ window.setupRoomWatcher = function() {
   } else if (typeof window.traceFlow === "function") {
     window.traceFlow("roomWatcher", "failure", "setupPlayerDiceWatcher missing");
   }
-  if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "end");
 };
 
 window.stopAllWatchers = function() {
   if (typeof window.roomWatcherUnsubscribe === "function") { window.roomWatcherUnsubscribe(); window.roomWatcherUnsubscribe = null; }
   if (typeof window.playerDiceWatcherUnsubscribe === "function") { window.playerDiceWatcherUnsubscribe(); window.playerDiceWatcherUnsubscribe = null; }
+  if (typeof window.phaseWatcherUnsubscribe === "function") { window.phaseWatcherUnsubscribe(); window.phaseWatcherUnsubscribe = null; }
+  if (typeof window.clearAllWatchers === "function") window.clearAllWatchers();
   window._bothPlayersConnected = false;
   applyInteractionLockState();
 };

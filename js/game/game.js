@@ -3,6 +3,37 @@ window._soloStartMode = false;
 let lastTurnDrawKey = "";
 let handOverflowDiscardOpen = false;
 window._lastRound = 0; // 初期化
+window._syncGate = window._syncGate || {
+  firebaseReady: false,
+  roomWatcherReady: false,
+  playersReady: false,
+  phaseReady: false,
+  initDone: false
+};
+
+function updateSyncLoadingOverlay() {
+  const overlay = document.getElementById("syncLoadingOverlay");
+  const detail = document.getElementById("syncLoadingDetail");
+  if (!overlay) return;
+  const gate = window._syncGate || {};
+  const ready = !!(gate.firebaseReady && gate.roomWatcherReady && gate.playersReady && gate.phaseReady && gate.initDone);
+  overlay.style.display = ready ? "none" : "flex";
+  if (!detail || ready) return;
+  const missing = [];
+  if (!gate.firebaseReady) missing.push("Firebase");
+  if (!gate.roomWatcherReady) missing.push("RoomWatcher");
+  if (!gate.playersReady) missing.push("対戦相手接続");
+  if (!gate.phaseReady) missing.push("Phase同期");
+  if (!gate.initDone) missing.push("初期化");
+  detail.textContent = missing.length > 0 ? `${missing.join(" / ")} を待機中` : "同期中";
+}
+
+window.notifySyncGate = function(flag, value = true) {
+  if (!window._syncGate) return;
+  if (!(flag in window._syncGate)) return;
+  window._syncGate[flag] = !!value;
+  updateSyncLoadingOverlay();
+};
 
 window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
@@ -58,6 +89,7 @@ function runPhaseProgression() {
     traceGame("phaseProgression", "transition", "ready_check -> setup_dice");
     const prev = state.matchData.status;
     state.matchData.status = "setup_dice";
+    console.log(`[PHASE] local -> ${state.matchData.status}`);
     if (typeof window.tracePhaseDiff === "function") {
       window.tracePhaseDiff("runPhaseProgression", state.matchData.status);
     } else if (window.debugMode) {
@@ -70,9 +102,13 @@ function runPhaseProgression() {
     if (firebaseClient?.db) {
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom) {
-        firebaseClient.writeMatchData(gameRoom, state.matchData).catch((e) => {
-          traceGame("phaseProgression", "failure", e?.message || e);
-        });
+        firebaseClient.writeMatchData(gameRoom, state.matchData)
+          .then((ok) => {
+            if (ok) console.log("[PHASE] firebase write success");
+          })
+          .catch((e) => {
+            traceGame("phaseProgression", "failure", e?.message || e);
+          });
       } else {
         traceGame("phaseProgression", "failure", "gameRoom missing");
       }
@@ -2414,6 +2450,8 @@ async function handleReload(currentRoom, myKey, opKey) {
 
 async function initGame() {
   traceGame("initGame", "start");
+  window.notifySyncGate("initDone", false);
+  updateSyncLoadingOverlay();
   if (_gameBootstrapped) {
     traceGame("initGame", "return", "already bootstrapped");
     console.log("[initGame] already bootstrapped - skip duplicate init");
@@ -2484,10 +2522,12 @@ async function initGame() {
         // 接続状態を即時反映（ウォッチャーの初回コールバック前にロックを解除するため）
         window._bothPlayersConnected = !!players.player1 && !!players.player2;
         traceGame("bothConnected", "set", window._bothPlayersConnected);
+        window.notifySyncGate("playersReady", window._bothPlayersConnected);
         // 両プレイヤー接続済みで ready_check なら setup_dice へ遷移
         if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
           const prevStatus = state.matchData.status;
           state.matchData.status = "setup_dice";
+          console.log(`[PHASE] local -> ${state.matchData.status}`);
           traceGame("initGame.phase", "transition", "ready_check -> setup_dice");
           if (typeof window.tracePhaseDiff === "function") {
             window.tracePhaseDiff("initGame", state.matchData.status);
@@ -2555,6 +2595,8 @@ async function initGame() {
       await firebaseClient.writeMyState(currentRoom, myKey, _getMyStateForSync());
       traceGame("initGame", "success", "writeMyState");
     }
+    window.notifySyncGate("initDone", true);
+    updateSyncLoadingOverlay();
 
   } catch (e) {
     traceGame("initGame", "failure", e?.message || e);
@@ -2564,6 +2606,7 @@ async function initGame() {
     if (playerEl) {
       playerEl.innerHTML = `<div class="lorPanel"><div class="statusMessage">対戦UIの初期化に失敗しました: ${e.message}<br><pre style="font-size:10px;color:#f88;white-space:pre-wrap;">${e.stack}</pre></div></div>`;
     }
+    updateSyncLoadingOverlay();
   }
   traceGame("initGame", "end");
 }

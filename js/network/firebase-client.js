@@ -158,6 +158,51 @@ class FirebaseClient {
   }
 
   /**
+   * players ノードから有効プレイヤーを抽出
+   */
+  getActivePlayerEntries(roomData) {
+    const players = roomData?.players;
+    if (!players || typeof players !== "object") return [];
+    return Object.entries(players).filter(([, v]) => !!v && typeof v === "object");
+  }
+
+  /**
+   * ルームの lifecycle 情報を更新
+   */
+  async touchRoomLifecycle(roomName, patch = {}) {
+    if (!this.db || !roomName) return;
+    try {
+      await this.db.ref(`rooms/${roomName}`).update({
+        ...patch,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+    } catch (e) {
+      console.warn("[FirebaseClient] touchRoomLifecycle エラー:", e.message);
+    }
+  }
+
+  /**
+   * rooms snapshot から一覧表示データへ変換
+   */
+  mapRoomList(snapshot) {
+    const rooms = [];
+    if (!snapshot || !snapshot.exists()) return rooms;
+
+    snapshot.forEach((childSnapshot) => {
+      const roomData = childSnapshot.val() || {};
+      const playerCount = this.getActivePlayerEntries(roomData).length;
+      if (playerCount < 2) {
+        rooms.push({
+          name: childSnapshot.key || roomData.name,
+          playerCount,
+          status: roomData.status || "waiting"
+        });
+      }
+    });
+    return rooms;
+  }
+
+  /**
    * ルームを作成
    */
   async createRoom(roomName) {
@@ -181,6 +226,9 @@ class FirebaseClient {
       const roomData = {
         name: finalName,
         createdAt: firebase.database.ServerValue.TIMESTAMP,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP,
+        active: true,
+        phase: "ready_check",
         status: 'waiting',
         players: {
           player1: {
@@ -193,6 +241,7 @@ class FirebaseClient {
       };
 
       await roomRef.set(roomData);
+      await this.setupOnDisconnect(finalName, "player1");
       console.log("[FirebaseClient] ✅ ルーム作成成功:", finalName);
       return finalName;
     } catch (error) {
@@ -243,6 +292,13 @@ class FirebaseClient {
         ready: false,
         joinedAt: firebase.database.ServerValue.TIMESTAMP
       });
+
+      await roomRef.update({
+        active: true,
+        status: "waiting",
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+      await this.setupOnDisconnect(roomName, playerKey);
 
       console.log("[FirebaseClient] ✅ ルーム参加成功:", roomName, "as", playerKey);
       return { roomName, playerKey };
@@ -295,24 +351,8 @@ class FirebaseClient {
 
     const roomsRef = this.db.ref('rooms');
     const listener = roomsRef.on('value', (snapshot) => {
-      const rooms = [];
       this.cleanupStaleRooms(snapshot);
-
-      if (snapshot.exists()) {
-        snapshot.forEach((childSnapshot) => {
-          const roomData = childSnapshot.val();
-          const playerCount = Object.keys(roomData.players || {}).length;
-
-          if (playerCount < 2) {
-            rooms.push({
-              name: childSnapshot.key || roomData.name,
-              playerCount,
-              status: roomData.status || 'waiting'
-            });
-          }
-        });
-      }
-
+      const rooms = this.mapRoomList(snapshot);
       callback(rooms);
     });
 
@@ -322,6 +362,21 @@ class FirebaseClient {
       roomsRef.off('value', listener);
       this.listeners.delete('roomList');
     };
+  }
+
+  /**
+   * ルーム一覧を単発取得（手動更新ボタン向け）
+   */
+  async fetchRoomListOnce() {
+    if (!this.db) return [];
+    try {
+      const snapshot = await this.db.ref("rooms").once("value");
+      this.cleanupStaleRooms(snapshot);
+      return this.mapRoomList(snapshot);
+    } catch (e) {
+      console.error("[FirebaseClient] ルーム一覧取得エラー:", e.message);
+      return [];
+    }
   }
 
   /**
@@ -336,9 +391,7 @@ class FirebaseClient {
     snapshot.forEach((childSnapshot) => {
       const roomName = childSnapshot.key;
       const roomData = childSnapshot.val() || {};
-      const players = roomData.players || {};
-      const playerEntries = Object.entries(players).filter(([, v]) => !!v);
-      const playerCount = playerEntries.length;
+      const playerCount = this.getActivePlayerEntries(roomData).length;
 
       if (playerCount === 0) {
         this.db.ref(`rooms/${roomName}`).remove();
@@ -346,8 +399,8 @@ class FirebaseClient {
       }
 
       const status = roomData.status || "waiting";
-      const createdAt = Number(roomData.createdAt) || 0;
-      const isOldWaitingSingle = status === "waiting" && playerCount === 1 && createdAt > 0 && (now - createdAt) > ONE_DAY_MS;
+      const updatedAt = Number(roomData.updatedAt || roomData.createdAt) || 0;
+      const isOldWaitingSingle = status === "waiting" && playerCount === 1 && updatedAt > 0 && (now - updatedAt) > ONE_DAY_MS;
       if (isOldWaitingSingle) {
         this.db.ref(`rooms/${roomName}`).remove();
       }
@@ -366,6 +419,7 @@ class FirebaseClient {
     try {
       const readyRef = this.db.ref(`rooms/${roomName}/players/${playerKey}/ready`);
       await readyRef.set(isReady);
+      await this.touchRoomLifecycle(roomName, { status: "waiting", active: true });
       console.log("[FirebaseClient] Ready 状態設定:", isReady);
       return true;
     } catch (error) {
@@ -384,12 +438,13 @@ class FirebaseClient {
     }
 
     try {
+      await this.cancelOnDisconnect(roomName, playerKey);
       const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
       await playerRef.remove();
       console.log("[FirebaseClient] ✅ ルーム退出");
       
       // ルームが空になったか確認
-      this.checkAndDeleteEmptyRoom(roomName);
+      await this.checkAndDeleteEmptyRoom(roomName);
       
       return true;
     } catch (error) {
@@ -406,7 +461,9 @@ class FirebaseClient {
     if (!this.db) return;
     try {
       const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
+      const roomUpdatedRef = this.db.ref(`rooms/${roomName}/updatedAt`);
       await playerRef.onDisconnect().remove();
+      await roomUpdatedRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
       console.log("[FirebaseClient] ✅ onDisconnect 設定完了:", roomName, playerKey);
     } catch (e) {
       console.warn("[FirebaseClient] onDisconnect 設定エラー:", e.message);
@@ -420,7 +477,9 @@ class FirebaseClient {
     if (!this.db) return;
     try {
       const playerRef = this.db.ref(`rooms/${roomName}/players/${playerKey}`);
+      const roomUpdatedRef = this.db.ref(`rooms/${roomName}/updatedAt`);
       await playerRef.onDisconnect().cancel();
+      await roomUpdatedRef.onDisconnect().cancel();
       console.log("[FirebaseClient] ✅ onDisconnect キャンセル完了");
     } catch (e) {
       console.warn("[FirebaseClient] onDisconnect キャンセルエラー:", e.message);
@@ -443,7 +502,7 @@ class FirebaseClient {
       }
 
       const roomData = snapshot.val();
-      const playerCount = Object.keys(roomData.players || {}).length;
+      const playerCount = this.getActivePlayerEntries(roomData).length;
 
       if (playerCount === 0) {
         console.log("[FirebaseClient] ルームが空になったため削除:", roomName);
@@ -452,6 +511,11 @@ class FirebaseClient {
         
         // ゲーム状態もリセット
         this.emit('roomEmpty', { roomName });
+      } else {
+        await this.touchRoomLifecycle(roomName, {
+          active: true,
+          status: roomData?.status || "waiting"
+        });
       }
     } catch (error) {
       console.error("[FirebaseClient] ルーム削除エラー:", error.message);
@@ -465,6 +529,7 @@ class FirebaseClient {
     if (!this.db) return false;
     try {
       await this.db.ref(`rooms/${roomName}/playerState/${playerKey}`).set(playerState);
+      this.touchRoomLifecycle(roomName, { active: true });
       return true;
     } catch (e) {
       console.error("[FirebaseClient] writeMyState エラー:", e.message);
@@ -478,7 +543,18 @@ class FirebaseClient {
   async writeMatchData(roomName, matchData) {
     if (!this.db) return false;
     try {
+      if (matchData?.status) {
+        console.log(`[PHASE] local -> ${matchData.status}`);
+      }
       await this.db.ref(`rooms/${roomName}/matchData`).set(matchData);
+      await this.touchRoomLifecycle(roomName, {
+        active: true,
+        phase: matchData?.status || null,
+        status: matchData?.status || "waiting"
+      });
+      if (matchData?.status) {
+        console.log(`[PHASE] firebase write success (${matchData.status})`);
+      }
       return true;
     } catch (e) {
       console.error("[FirebaseClient] writeMatchData エラー:", e.message);
@@ -515,6 +591,12 @@ class FirebaseClient {
       await this.db.ref(`rooms/${roomName}/playerState`).remove();
       await this.db.ref(`rooms/${roomName}/matchData`).remove();
       await this.db.ref(`rooms/${roomName}/logs`).remove();
+      await this.db.ref(`rooms/${roomName}`).update({
+        phase: "ready_check",
+        status: "waiting",
+        active: true,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
       console.log("[FirebaseClient] ✅ ゲーム状態をリセット:", roomName);
       return true;
     } catch (error) {

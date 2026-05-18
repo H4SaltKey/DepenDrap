@@ -15,11 +15,16 @@ window.setupPhaseWatcher = function(gameRoom) {
 
   const db = firebaseClient.db;
   const matchDataRef = db.ref(`rooms/${gameRoom}/matchData`);
+  const localRole = localStorage.getItem("gamePlayerKey") || window.myRole || "player1";
 
   const listener = (snap) => {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher.callback", "start");
     if (!snap || !snap.val()) return;
     const incoming = snap.val();
+    if (typeof window.notifySyncGate === "function") window.notifySyncGate("phaseReady");
+    if (incoming?.status && window.debugMode) {
+      console.log(`[PHASE] remote received ${incoming.status} (${localRole})`);
+    }
     if (typeof window.tracePhaseDiff === "function" && incoming?.status) {
       window.tracePhaseDiff("phaseWatcher", incoming.status);
     }
@@ -56,7 +61,11 @@ window.setupPhaseWatcher = function(gameRoom) {
 
   const unsubscribe = () => {
     matchDataRef.off('value', listener);
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher", "end");
   };
+
+  matchDataRef.on('value', listener);
+  window.phaseWatcherUnsubscribe = unsubscribe;
 
   if (typeof window.registerWatcher === "function") {
     window.registerWatcher("phase", unsubscribe);

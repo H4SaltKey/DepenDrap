@@ -60,9 +60,9 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
       const p1Name = state.player1.username || "Player1";
       const p2Name = state.player2.username || "Player2";
       if (p1 >= 0 && p2 < 0) {
-        statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">\${p2Name} がダイスを振るのを待っています...</span>`;
+        statusMsg.innerHTML = `<span style="color:#00ffcc;animation:pulse 2s infinite;display:inline-block;">${p2Name} がダイスを振るのを待っています...</span>`;
       } else if (p2 >= 0 && p1 < 0) {
-        statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">\${p1Name} がダイスを振るのを待っています...</span>`;
+        statusMsg.innerHTML = `<span style="color:#e24a4a;animation:pulse 2s infinite;display:inline-block;">${p1Name} がダイスを振るのを待っています...</span>`;
       }
     }
 
@@ -79,7 +79,10 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
 
   const unsubscribe = () => {
     diceRef.off('value', listener);
+    if (typeof window.traceFlow === "function") window.traceFlow("diceWatcher", "end");
   };
+
+  window.playerDiceWatcherUnsubscribe = unsubscribe;
 
   if (typeof window.registerWatcher === "function") {
     window.registerWatcher("dice", unsubscribe);

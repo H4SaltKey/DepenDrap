@@ -1038,13 +1038,6 @@ function renderUI() {
     traceGame("renderUI.updateGameLogs", "missing");
   }
 
-  if (typeof lucide !== "undefined" && lucide && typeof lucide.createIcons === "function") {
-    invokeGuarded("renderUI.lucide.createIcons", () => {
-      lucide.createIcons({ attrs: { "stroke-width": "1.75", width: "20", height: "20" } });
-    });
-  } else {
-    traceGame("renderUI.lucide", "missing");
-  }
   traceGame("renderUI", "end");
 }
 
@@ -1052,6 +1045,7 @@ function update(skipLogCheck = false) {
   traceGame("update", "start", { skipLogCheck, status: state?.matchData?.status, bothConnected: !!window._bothPlayersConnected });
   invokeGuarded("update.applyInteractionLockState", () => applyInteractionLockState());
   invokeGuarded("update.phaseProgression", () => runPhaseProgression());
+  invokeGuarded("update.handleMatchStateTransitions", () => handleMatchStateTransitions());
   const currentStateStr = invokeGuarded("update.stringifyState", () => JSON.stringify(state), "");
   
   // 状態が変わっていないならDOMの再構築をスキップ
@@ -1175,7 +1169,7 @@ let lastTurnPlayer = null;
   document.head.appendChild(s);
 })();
 
-function updateMatchUI() {
+function handleMatchStateTransitions() {
   const m = state.matchData;
   if (!m) return;
 
@@ -1221,8 +1215,6 @@ function updateMatchUI() {
       setTimeout(() => startR1T1(), 4500);
     }
 
-
-    
     // lastTurnPlayerを即座に更新（2重表示を防ぐ）
     lastTurnPlayer = m.turnPlayer;
     
@@ -1238,10 +1230,16 @@ function updateMatchUI() {
       const isMe = m.turnPlayer === window.myRole;
       showNotification(isMe ? "あなたのターン" : "相手のターン", isMe ? "#00ffcc" : "#e24a4a");
       lastTurnPlayer = m.turnPlayer;
-      
-
     }
   }
+
+  // 勝敗チェック（checkGameResult 内で showResultScreen も呼ぶ）
+  checkGameResult();
+}
+
+function updateMatchUI() {
+  const m = state.matchData;
+  if (!m) return;
 
   // 1. ラウンド・ターン表示（コンパクト + ホバーで展開）
   let info = document.getElementById("matchInfoDisplay");
@@ -1290,9 +1288,6 @@ function updateMatchUI() {
     infoWrap.innerHTML = html;
     infoWrap.dataset.lastHtml = html;
   }
-
-  // 勝敗チェック（checkGameResult 内で showResultScreen も呼ぶ）
-  checkGameResult();
 
   // 2. ターンエンドボタン
   let endBtn = document.getElementById("turnEndBtn");

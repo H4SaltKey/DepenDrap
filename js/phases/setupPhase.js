@@ -78,7 +78,7 @@ window.updateEvolutionPhaseUI = function() {
     overlay.innerHTML = `
       <div style="text-align:center;">
         <h2 style="color:#c7b377; font-size:24px;">相手の選択を待っています...</h2>
-        <div style="margin-top:20px; color:#aaa; font-size:14px;">あなたは「\${myPath}」を選択しました</div>
+        <div style="margin-top:20px; color:#aaa; font-size:14px;">あなたは「${myPath}」を選択しました</div>
       </div>
     `;
     return;
@@ -105,7 +105,7 @@ window.updateEvolutionPhaseUI = function() {
             <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。<br>さらに追加で、それぞれ3回目の発動に限り、1の貫通ダメージを与える。<br><span style="font-size:11px; color:#aaa;">※：この効果によるものは含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
           </button>
 
-          <!-- 奇撃の道 -->
+          <!-- 奇撃 of 道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('奇撃の道')">
             <div class="evo-path-title">奇撃の道</div>
             <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与える。<br><span class="evo-path-val">z=[1/3/4/6]</span></div>
@@ -119,9 +119,11 @@ window.updateEvolutionPhaseUI = function() {
         </div>
       </div>
       <style>
-        .evo-path-btn { background:rgba(20,20,30,0.8); border:1px solid #5a4b27; border-radius:8px; padding:20px; text-align:left; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
+        .evo-path-btn { background:rgba(20,20,30,0.8); border:1px solid #5a4b27; border-radius:8px; padding:20px; text-align:left; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.5); color:#ffffff; }
         .evo-path-btn:hover { background:rgba(40,40,50,0.9); border-color:#c7b377; transform:translateY(-2px); box-shadow:0 8px 24px rgba(199,179,119,0.25); }
         .evo-path-title { font-size:18px; font-weight:900; color:#f0d080; margin-bottom:8px; letter-spacing:1px; }
+        .evo-path-desc { font-size:13px; line-height:1.6; color:#e0e0e0; }
+        .evo-path-val { display:block; margin-top:8px; font-weight:bold; color:#00ffcc; }
       </style>
     `;
   }
@@ -131,7 +133,7 @@ window.selectEvolutionPath = async function(pathName) {
   if (window.isGameInteractionLocked()) return;
   const me = window.myRole || "player1";
   state[me].evolutionPath = pathName;
-  addGameLog(`[EVOLUTION] \${window.myUsername || state[me]?.username || me} が「\${pathName}」を選択しました。`);
+  addGameLog(`[EVOLUTION] ${window.myUsername || state[me]?.username || me} が「${pathName}」を選択しました。`);
   
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {

@@ -152,6 +152,9 @@ function updateFirstDrawPhaseUI() {
         outer.classList.add("firstDrawCardOuter--picked");
       }
       syncPickUi();
+    });
+
+    outer.addEventListener("pointerenter", () => {
       if (previewHost) {
         previewHost.innerHTML = "";
         const snap = useCandidates[index];

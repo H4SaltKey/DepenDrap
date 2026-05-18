@@ -133,6 +133,33 @@
       console.log("[Game] ✅ Firebase 初期化成功");
       if (typeof window.notifySyncGate === "function") window.notifySyncGate("firebaseReady", true);
 
+      // ── プレイヤーの再登録（matchSetup から移行時にセッションリセットされる可能性があるため）
+      try {
+        const gameRoomName = localStorage.getItem("gameRoom");
+        const gamePlayerKey = localStorage.getItem("gamePlayerKey");
+        if (gameRoomName && gamePlayerKey && firebaseClient.db) {
+          const playerRef = firebaseClient.db.ref(`rooms/${gameRoomName}/players/${gamePlayerKey}`);
+          const playerSnap = await playerRef.once('value');
+          
+          // プレイヤーが登録されていなければ、再度登録
+          if (!playerSnap.exists()) {
+            console.log("[Game] プレイヤーが未登録。再度登録します:", gamePlayerKey);
+            const username = localStorage.getItem("username") || "Player";
+            await playerRef.set({
+              username: username,
+              sessionId: firebaseClient.sessionId,
+              ready: false,
+              joinedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            console.log("[Game] ✅ プレイヤー再登録成功:", gamePlayerKey);
+          } else {
+            console.log("[Game] ✓ プレイヤーは既に登録済み:", gamePlayerKey);
+          }
+        }
+      } catch (e) {
+        console.warn("[Game] プレイヤー再登録エラー:", e);
+      }
+
       try {
         // rooms/players から両プレイヤーの username を取得して state に紐づける
         const roomSnap = await firebaseClient.db.ref(`rooms/${gameRoomName}/players`).once('value');

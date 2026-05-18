@@ -166,8 +166,8 @@ function renderOwnerUI(owner) {
       ${lorInstantDefStatRow(owner, s)}
       ${isMine ? `
         <div class="lorActionGroup">
-          <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button">瞬間防御</button>
-          <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" title="防御解除">解除</button>
+          <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button" data-tooltip="瞬間防御力分、合計防御力を増加させます (消費PP: 1)">瞬間防御</button>
+          <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" data-tooltip="現在の合計防御力を0に戻します" title="防御解除">解除</button>
         </div>
       ` : ""}
     </div>

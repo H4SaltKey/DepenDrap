@@ -130,7 +130,7 @@ function updateFirstDrawPhaseUI() {
     outer.className = "firstDrawCardOuter";
     outer.dataset.firstDrawIndex = String(index);
 
-    const clone = card.cloneNode(true);
+    const clone = typeof createCard === "function" ? createCard(card.dataset.id) : card.cloneNode(true);
     clone.classList.add("firstDrawCardClone");
 
     const ring = document.createElement("div");
@@ -159,7 +159,7 @@ function updateFirstDrawPhaseUI() {
         previewHost.innerHTML = "";
         const snap = useCandidates[index];
         if (snap) {
-          const pv = snap.cloneNode(true);
+          const pv = typeof createCard === "function" ? createCard(snap.dataset.id) : snap.cloneNode(true);
           pv.classList.add("firstDrawCardClone", "firstDrawLastPickClone");
           const pvLbl = pv.querySelector(".cardVisibilityLabel");
           if (pvLbl) pvLbl.remove();

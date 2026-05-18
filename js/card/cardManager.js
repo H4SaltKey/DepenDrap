@@ -1467,12 +1467,17 @@ window.applyFieldCardsFromServer = function(data){
     if(item.isDeck){
       // 自分のデッキの位置情報はサーバーからは無視する（ローカルのルールを優先）
       if(item.owner === window.myRole) return;
-      
+
       if(el){
-        el.style.left = localX + "px";
-        el.style.top = localY + "px";
-        el.dataset.x = localX;
-        el.dataset.y = localY;
+        // 差分更新: 位置が変わった場合のみ更新
+        const currentX = Number(el.dataset.x);
+        const currentY = Number(el.dataset.y);
+        if(currentX !== localX || currentY !== localY){
+          el.style.left = localX + "px";
+          el.style.top = localY + "px";
+          el.dataset.x = localX;
+          el.dataset.y = localY;
+        }
       } else {
         // まだ生成されていない相手のデッキ位置を保存しておく
         window._savedDeckPos = { x: localX, y: localY };
@@ -1486,42 +1491,83 @@ window.applyFieldCardsFromServer = function(data){
       el.dataset.instanceId = item.instanceId;
       content.appendChild(el);
     }
-    
-    el.style.left = localX + "px";
-    el.style.top = localY + "px";
-    el.dataset.x = localX;
-    el.dataset.y = localY;
-    if(item.owner) el.dataset.owner = item.owner;
-    if(item.origin) el.dataset.origin = item.origin; // 出自を復元
-    if (item.zoneType) el.dataset.zoneType = item.zoneType;
-    else delete el.dataset.zoneType;
-    if (item.zoneOwner) el.dataset.zoneOwner = item.zoneOwner;
-    else delete el.dataset.zoneOwner;
-    if (item.zoneOrder) el.dataset.zoneOrder = String(item.zoneOrder);
-    else delete el.dataset.zoneOrder;
-    if (item.handOrder) el.dataset.handOrder = String(item.handOrder);
-    else delete el.dataset.handOrder;
-    el.dataset.isTemp = item.isTemp ? "true" : "false";
-    
+
+    // 差分更新: プロパティが変わった場合のみ更新
+    const currentX = Number(el.dataset.x);
+    const currentY = Number(el.dataset.y);
+    if(currentX !== localX || currentY !== localY){
+      el.style.left = localX + "px";
+      el.style.top = localY + "px";
+      el.dataset.x = localX;
+      el.dataset.y = localY;
+    }
+
+    if(item.owner && el.dataset.owner !== item.owner){
+      el.dataset.owner = item.owner;
+    }
+    if(item.origin && el.dataset.origin !== item.origin){
+      el.dataset.origin = item.origin;
+    }
+
+    // zoneType 差分更新
+    if(item.zoneType !== undefined && el.dataset.zoneType !== item.zoneType){
+      el.dataset.zoneType = item.zoneType;
+    } else if(item.zoneType === undefined && el.dataset.zoneType !== undefined){
+      delete el.dataset.zoneType;
+    }
+
+    // zoneOwner 差分更新
+    if(item.zoneOwner !== undefined && el.dataset.zoneOwner !== item.zoneOwner){
+      el.dataset.zoneOwner = item.zoneOwner;
+    } else if(item.zoneOwner === undefined && el.dataset.zoneOwner !== undefined){
+      delete el.dataset.zoneOwner;
+    }
+
+    // zoneOrder 差分更新
+    if(item.zoneOrder !== undefined && el.dataset.zoneOrder !== String(item.zoneOrder)){
+      el.dataset.zoneOrder = String(item.zoneOrder);
+    } else if(item.zoneOrder === undefined && el.dataset.zoneOrder !== undefined){
+      delete el.dataset.zoneOrder;
+    }
+
+    // handOrder 差分更新
+    if(item.handOrder !== undefined && el.dataset.handOrder !== String(item.handOrder)){
+      el.dataset.handOrder = String(item.handOrder);
+    } else if(item.handOrder === undefined && el.dataset.handOrder !== undefined){
+      delete el.dataset.handOrder;
+    }
+
+    // isTemp 差分更新
+    const isTempStr = item.isTemp ? "true" : "false";
+    if(el.dataset.isTemp !== isTempStr){
+      el.dataset.isTemp = isTempStr;
+    }
+
     // 相手のカードかどうかを判定
     const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey");
     if(item.owner && item.owner !== myRole && myRole !== null){
-      el.classList.add("opponent-card");
+      if(!el.classList.contains("opponent-card")){
+        el.classList.add("opponent-card");
+      }
     } else {
-      el.classList.remove("opponent-card");
+      if(el.classList.contains("opponent-card")){
+        el.classList.remove("opponent-card");
+      }
     }
 
     const vis = item.visibility || "both";
-    el.dataset.visibility = vis;
-    el.classList.toggle("visibilitySelf", vis === "self");
-    el.classList.toggle("visibilityOpponent", vis === "opponent");
-    el.classList.toggle("visibilityNone", vis === "none");
-    
-    if (typeof updateVisibilityIcon === "function") {
-      updateVisibilityIcon(el, vis);
+    if(el.dataset.visibility !== vis){
+      el.dataset.visibility = vis;
+      el.classList.toggle("visibilitySelf", vis === "self");
+      el.classList.toggle("visibilityOpponent", vis === "opponent");
+      el.classList.toggle("visibilityNone", vis === "none");
+
+      if (typeof updateVisibilityIcon === "function") {
+        updateVisibilityIcon(el, vis);
+      }
+
+      applyCardFace(el, vis);
     }
-    
-    applyCardFace(el, vis);
   });
   if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
   if(normalized.repaired || domRepaired) saveFieldCards();

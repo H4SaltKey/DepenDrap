@@ -21,6 +21,13 @@ window.setupRoomWatcher = function() {
     return;
   }
 
+  // Prevent duplicate listeners by cleaning up first
+  if (typeof window.roomWatcherUnsubscribe === "function") {
+    console.log("[Game] Cleaning up existing roomWatcher before setup");
+    window.roomWatcherUnsubscribe();
+    window.roomWatcherUnsubscribe = null;
+  }
+
   const myKey   = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
   const opKey   = myKey === "player1" ? "player2" : "player1";
   const db      = firebaseClient.db;

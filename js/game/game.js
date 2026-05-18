@@ -1045,6 +1045,14 @@ function renderUI() {
 let renderRequested = false;
 let renderFrameId = null;
 
+// Debug overlay tracking
+let debugOverlay = null;
+let renderCount = 0;
+let renderCountLastSecond = 0;
+let firebaseWriteCount = 0;
+let firebaseWriteCountLastSecond = 0;
+let lastDebugUpdate = Date.now();
+
 function requestRender() {
   if (!renderRequested) {
     renderRequested = true;
@@ -1052,10 +1060,98 @@ function requestRender() {
       renderFrameId = requestAnimationFrame(() => {
         renderRequested = false;
         renderFrameId = null;
+        renderCount++;
         invokeGuarded("requestRender.renderUI", () => renderUI());
       });
     }
   }
+}
+
+function createDebugOverlay() {
+  if (debugOverlay) return;
+  
+  debugOverlay = document.createElement("div");
+  debugOverlay.id = "debugOverlay";
+  debugOverlay.style.cssText = `
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 10px;
+    border-radius: 4px;
+    z-index: 10000;
+    pointer-events: none;
+    border: 1px solid #00ff00;
+    min-width: 200px;
+  `;
+  document.body.appendChild(debugOverlay);
+  
+  // Update debug overlay every second
+  setInterval(() => {
+    if (!debugOverlay) return;
+    
+    const now = Date.now();
+    const elapsed = (now - lastDebugUpdate) / 1000;
+    lastDebugUpdate = now;
+    
+    const rendersPerSec = Math.round(renderCount / elapsed);
+    const writesPerSec = Math.round(firebaseWriteCount / elapsed);
+    
+    renderCount = 0;
+    firebaseWriteCount = 0;
+    
+    // Count listeners
+    let listenerCount = 0;
+    if (typeof window.roomWatcherUnsubscribe === "function") listenerCount++;
+    if (typeof window.playerDiceWatcherUnsubscribe === "function") listenerCount++;
+    if (typeof window.phaseWatcherUnsubscribe === "function") listenerCount++;
+    
+    // Calculate storage size
+    let storageSize = 0;
+    try {
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          storageSize += localStorage[key].length + key.length;
+        }
+      }
+      storageSize = Math.round(storageSize / 1024); // KB
+    } catch (e) {}
+    
+    const currentPhase = state?.matchData?.status || "unknown";
+    
+    debugOverlay.innerHTML = `
+      <div><strong>DEBUG OVERLAY</strong></div>
+      <div>Phase: ${currentPhase}</div>
+      <div>Renders/sec: ${rendersPerSec}</div>
+      <div>Firebase writes/sec: ${writesPerSec}</div>
+      <div>Listeners: ${listenerCount}</div>
+      <div>Storage: ${storageSize} KB</div>
+    `;
+  }, 1000);
+}
+
+// Track Firebase writes
+const originalWriteMyState = firebaseClient?.writeMyState;
+if (originalWriteMyState) {
+  firebaseClient.writeMyState = function(...args) {
+    firebaseWriteCount++;
+    return originalWriteMyState.apply(this, args);
+  };
+}
+
+// Initialize debug overlay on game start
+if (typeof gameReady !== "undefined" && gameReady) {
+  createDebugOverlay();
+} else {
+  const checkGameReady = setInterval(() => {
+    if (typeof gameReady !== "undefined" && gameReady) {
+      clearInterval(checkGameReady);
+      createDebugOverlay();
+    }
+  }, 100);
 }
 
 function update(skipLogCheck = false) {
@@ -2712,6 +2808,15 @@ function startTurnDraw() {
   const m = state.matchData || {};
   const me = window.myRole || "player1";
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
+
+  // Prevent multiple executions per turn
+  const currentTurn = `${m.round}-${m.turn}`;
+  if (window.__drawExecutedTurn === currentTurn) {
+    console.warn("[TurnDraw] Already executed for this turn:", currentTurn);
+    return;
+  }
+  window.__drawExecutedTurn = currentTurn;
+
   const myState = state[me];
   if (!myState || myState.deck.length === 0) {
     console.warn("[TurnDraw] デッキが空です。敗北判定を実行します。");

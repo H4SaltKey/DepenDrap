@@ -11,6 +11,13 @@ window.setupPlayerDiceWatcher = function(gameRoom) {
     return;
   }
 
+  // Prevent duplicate listeners by cleaning up first
+  if (typeof window.playerDiceWatcherUnsubscribe === "function") {
+    console.log("[DiceWatcher] Cleaning up existing playerDiceWatcher before setup");
+    window.playerDiceWatcherUnsubscribe();
+    window.playerDiceWatcherUnsubscribe = null;
+  }
+
   console.log("[DiceWatcher] 監視開始:", gameRoom);
 
   const diceRef = firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`);

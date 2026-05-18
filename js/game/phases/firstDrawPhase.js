@@ -341,10 +341,15 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "both ready not satisfied");
     return;
   }
+  if (window.__playingStarted) {
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "playing already started");
+    return;
+  }
   if (window._firstDrawAdvanceSent) {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "return", "already sent");
     return;
   }
+  window.__playingStarted = true;
   window._firstDrawAdvanceSent = true;
   if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "start", "setup_first_draw -> playing");
   

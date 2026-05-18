@@ -1,23 +1,16 @@
-# This is an example configuration file
-# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
-
-name: Example Config
+name: OpenRouter Config
 version: 1.0.0
 schema: v1
 
-# Define which models can be used
-# https://docs.continue.dev/customization/models
 models:
-  - name: my gpt-5
+  - name: DeepSeek V3
     provider: openai
-    model: gpt-5
-    apiKey: YOUR_OPENAI_API_KEY_HERE
-  - uses: ollama/qwen2.5-coder-7b
-  - uses: anthropic/claude-4-sonnet
-    with:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    model: deepseek/deepseek-chat-v3-0324
+    apiBase: https://openrouter.ai/api/v1
+    apiKey: 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
 
-# MCP Servers that Continue can access
-# https://docs.continue.dev/customization/mcp-tools
-mcpServers:
-  - uses: anthropic/memory-mcp
+  - name: Qwen Coder
+    provider: openai
+    model: qwen/qwen-2.5-coder-32b-instruct
+    apiBase: https://openrouter.ai/api/v1
+    apiKey: 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

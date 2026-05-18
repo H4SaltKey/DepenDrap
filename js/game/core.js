@@ -345,14 +345,25 @@ window._getMyStateForSync = function() {
   }) || {};
 };
 
-// 自分のデータをサーバーに送信（200msデバウンス）
+// State tracking for debounce optimization
+let lastSavedStateHash = null;
+let isStateDirty = false;
+
+// 自分のデータをサーバーに送信（800msデバウンス、状態比較付き）
 function saveDebounced() {
+  isStateDirty = true;
   if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => _pushMyState(), 200);
+  saveTimeout = setTimeout(() => {
+    if (isStateDirty) {
+      _pushMyState();
+      isStateDirty = false;
+    }
+  }, 800);
 }
 
 // 自分のデータをサーバーに即時送信（await可能）
 function saveImmediate() {
+  isStateDirty = false;
   if (saveTimeout) clearTimeout(saveTimeout);
   saveReconnectStateImmediate();
   return _pushMyState();
@@ -397,7 +408,17 @@ function _pushMyState() {
   if (!gameRoom || !firebaseClient?.db || !firebaseClient.writeMyState) {
     return Promise.resolve();
   }
-  return firebaseClient.writeMyState(gameRoom, me, window._getMyStateForSync())
+
+  // 状態ハッシュを計算して同一状態ならスキップ
+  const currentState = window._getMyStateForSync();
+  const currentStateHash = JSON.stringify(currentState);
+  if (currentStateHash === lastSavedStateHash) {
+    console.log("[Sync] State unchanged, skipping save");
+    return Promise.resolve();
+  }
+  lastSavedStateHash = currentStateHash;
+
+  return firebaseClient.writeMyState(gameRoom, me, currentState)
     .catch((e) => {
       console.warn("[Sync] writeMyState failed:", e?.message || e);
     });

@@ -56,7 +56,13 @@ function runPhaseProgression() {
   }
   if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
     traceGame("phaseProgression", "transition", "ready_check -> setup_dice");
+    const prev = state.matchData.status;
     state.matchData.status = "setup_dice";
+    if (typeof window.tracePhaseDiff === "function") {
+      window.tracePhaseDiff("runPhaseProgression", state.matchData.status);
+    } else if (window.debugMode) {
+      console.log(`[PHASE] ${prev} -> ${state.matchData.status} @runPhaseProgression`);
+    }
     if (typeof GameTimer !== "undefined") {
       traceGame("phaseProgression", "call", "GameTimer.start(dice)");
       GameTimer.start("dice", 10000);
@@ -2480,8 +2486,14 @@ async function initGame() {
         traceGame("bothConnected", "set", window._bothPlayersConnected);
         // 両プレイヤー接続済みで ready_check なら setup_dice へ遷移
         if (window._bothPlayersConnected && state.matchData.status === "ready_check") {
+          const prevStatus = state.matchData.status;
           state.matchData.status = "setup_dice";
           traceGame("initGame.phase", "transition", "ready_check -> setup_dice");
+          if (typeof window.tracePhaseDiff === "function") {
+            window.tracePhaseDiff("initGame", state.matchData.status);
+          } else if (window.debugMode) {
+            console.log(`[PHASE] ${prevStatus} -> ${state.matchData.status} @initGame`);
+          }
           firebaseClient.writeMatchData(currentRoom, state.matchData).catch((e) => {
             traceGame("initGame.phase", "failure", e?.message || e);
           });

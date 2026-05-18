@@ -20,7 +20,9 @@ window.setupPhaseWatcher = function(gameRoom) {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher.callback", "start");
     if (!snap || !snap.val()) return;
     const incoming = snap.val();
-    if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher.callback", "incoming", incoming?.status);
+    if (typeof window.tracePhaseDiff === "function" && incoming?.status) {
+      window.tracePhaseDiff("phaseWatcher", incoming.status);
+    }
 
     // winner が含まれている場合、stale チェックを行う
     if (incoming.winner) {

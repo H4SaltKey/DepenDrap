@@ -79,10 +79,47 @@ window.runtimeState = window.runtimeState || {
 };
 window.uiState = window.uiState || {};
 window.saveState = window.saveState || { reconnect: {} };
-window.TRACE_GAME_FLOW = true;
+window.debugMode = (localStorage.getItem("debugMode") === "true");
+window.TRACE_GAME_FLOW = window.debugMode;
+window._traceLastPhase = window._traceLastPhase || null;
+window.setDebugMode = function(enabled) {
+  const next = !!enabled;
+  window.debugMode = next;
+  window.TRACE_GAME_FLOW = next;
+  localStorage.setItem("debugMode", next ? "true" : "false");
+  console.log(`[Debug] debugMode=${next ? "ON" : "OFF"}`);
+};
+
+function shouldTrace(tag, stage) {
+  if (!window.debugMode) return false;
+  const s = String(stage || "");
+  const t = String(tag || "");
+
+  // 常時ループ系は出さない
+  const noisyStages = new Set(["start", "end", "call", "success", "await", "check", "incoming", "return"]);
+
+  // 常に出す: エラー/未定義系
+  if (s === "failure" || s === "missing" || s === "aborted") return true;
+
+  // フェーズ遷移
+  if (t === "phaseTransition" && (s === "start" || s === "success" || s === "failure" || s === "end")) return true;
+  if (t === "phaseProgression" && (s === "transition" || s === "failure")) return true;
+  if (t === "bothConnected" && s === "set") return true;
+
+  // watcher の開始/終了
+  if ((t === "roomWatcher" || t === "diceWatcher" || t === "phaseWatcher") && (s === "start" || s === "end" || s === "failure")) return true;
+
+  // init の開始/完了/失敗
+  if (t === "firebaseJoined" && s === "received") return true;
+  if (t === "initGame" && (s === "start" || s === "end" || s === "failure" || s === "return")) return true;
+
+  // その他は抑制（毎tick防止）
+  if (noisyStages.has(s)) return false;
+  return false;
+}
 
 function traceFlow(tag, stage, details) {
-  if (!window.TRACE_GAME_FLOW) return;
+  if (!shouldTrace(tag, stage)) return;
   if (details !== undefined) {
     console.log(`[TRACE] ${tag} ${stage}`, details);
   } else {
@@ -90,6 +127,15 @@ function traceFlow(tag, stage, details) {
   }
 }
 window.traceFlow = traceFlow;
+
+window.tracePhaseDiff = function(source, currentPhase) {
+  if (!window.debugMode) return;
+  const next = currentPhase || "";
+  const prev = window._traceLastPhase;
+  if (prev === next) return;
+  window._traceLastPhase = next;
+  console.log(`[PHASE] ${prev || "(none)"} -> ${next} @${source}`);
+};
 
 function isQuotaExceededError(err) {
   return err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014);

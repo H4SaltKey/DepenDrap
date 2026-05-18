@@ -1549,12 +1549,15 @@ function updateMatchUI() {
       padding: 10px 14px;
       overflow: visible;
     }
-    .firstDrawLastPickPreview .firstDrawLastPickClone.card {
+    .firstDrawLastPickClone {
       position: relative !important;
       left: auto !important;
       top: auto !important;
       width: 380px !important;
       height: 538px !important;
+      flex: none !important;
+      max-width: none !important;
+      min-width: none !important;
       margin: 0 auto !important;
       padding: 0 !important;
       box-sizing: border-box !important;
@@ -1566,10 +1569,13 @@ function updateMatchUI() {
       box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 32px rgba(199,179,119,0.3);
       transition: transform 0.3s ease;
     }
-    .firstDrawLastPickPreview .firstDrawLastPickClone.card img {
+    .firstDrawLastPickClone img {
       width: 100% !important;
       height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
       object-fit: contain !important;
+      aspect-ratio: auto !important;
     }
     .firstDrawCardOuter--kept {
       transform: scale(1.04);

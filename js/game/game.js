@@ -1041,6 +1041,23 @@ function renderUI() {
   traceGame("renderUI", "end");
 }
 
+// Render queue system to separate rendering from sync loop
+let renderRequested = false;
+let renderFrameId = null;
+
+function requestRender() {
+  if (!renderRequested) {
+    renderRequested = true;
+    if (!renderFrameId) {
+      renderFrameId = requestAnimationFrame(() => {
+        renderRequested = false;
+        renderFrameId = null;
+        invokeGuarded("requestRender.renderUI", () => renderUI());
+      });
+    }
+  }
+}
+
 function update(skipLogCheck = false) {
   traceGame("update", "start", { skipLogCheck, status: state?.matchData?.status, bothConnected: !!window._bothPlayersConnected });
   invokeGuarded("update.applyInteractionLockState", () => applyInteractionLockState());
@@ -1080,8 +1097,8 @@ function update(skipLogCheck = false) {
     return;
   }
 
-  // 描画責務
-  invokeGuarded("update.renderUI", () => renderUI());
+  // 描画リクエスト（即時実行ではなくキューに入れる）
+  requestRender();
 
   // 保存最適化：毎updateの自動保存を廃止（localStorage溢れ防止）
   // 状態変更が発生するアクション側で明示的に save() / saveDebounced() を呼び出すこと

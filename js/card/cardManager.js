@@ -39,7 +39,7 @@ const CARD_GRID_SIZE = 20;
 const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.05;
 const FIELD_SCROLL_ZOOM_STEP = 0.02; // 40% of button step
-let FIELD_ZOOM_MAX = 0.95; // 0.8 + 0.15
+let FIELD_ZOOM_MAX = 1.5; // 150% max zoom
 const FIELD_W = 3000;
 const FIELD_H = 2000;
 
@@ -1275,7 +1275,7 @@ async function initCards(){
 
   // 最小ズームをウィンドウサイズから計算
   FIELD_ZOOM_MIN = 0.15;
-  FIELD_ZOOM_MAX = 0.8;
+  FIELD_ZOOM_MAX = 1.5;
   const slider = document.getElementById("zoomSlider");
   if(slider) {
     slider.min = FIELD_ZOOM_MIN;

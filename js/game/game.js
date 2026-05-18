@@ -2143,6 +2143,14 @@ document.body.addEventListener("click", (e) => {
   if (t.dataset.action === "addInstantDef") {
     const owner = t.dataset.owner;
     const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    const currentPp = Number(state[owner].pp) || 0;
+    if (currentPp <= 0) {
+      if (typeof showErrorMessage === "function") {
+        showErrorMessage("PPが不足しています。");
+      }
+      return;
+    }
+    state[owner].pp = currentPp - 1;
     const next = (Number(state[owner].defstack) || 0) + (Number(state[owner].instantDef) || 0);
     state[owner].defstack = Math.max(0, next);
     state[owner].defstackOverMax = state[owner].defstack > (Number(state[owner].defstackMax) || 0);
@@ -2153,6 +2161,7 @@ document.body.addEventListener("click", (e) => {
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && firebaseClient?.db) {
         firebaseClient.sendChangeRequest(gameRoom, me, owner, "_bulk", "set", {
+          pp: state[owner].pp,
           defstack: state[owner].defstack,
           defstackOverMax: state[owner].defstackOverMax
         });

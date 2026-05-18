@@ -869,7 +869,7 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
       return;
     }
     if (st.pp < cost) {
-      showErrorMessage("PPが足りません。");
+      showErrorMessage("PPが不足しています。");
       return;
     }
     st.pp -= cost;

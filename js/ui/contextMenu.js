@@ -446,7 +446,7 @@ function openDeckMenu(deck, x, y){
   }));
   const subTakeOut = Array.from({length:10}, (_, i) => ({
     label: `${i+1}枚`,
-    action: () => takeOut(i+1)
+    action: () => takeOut(i+1, { visibility: "self" })
   }));
 
   const items = [

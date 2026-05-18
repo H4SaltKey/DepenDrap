@@ -5,17 +5,43 @@ function showNotification(text, color) {
     z-index: 9999; pointer-events: none; text-align: center;
     font-family: 'Outfit', sans-serif; white-space: nowrap;
   `;
+  
+  const isMyTurn = (text === "あなたのターン");
+  const subtextHtml = isMyTurn ? `
+    <div style="
+      font-size: 24px; font-weight: 600; color: #ffffff; margin-top: 15px;
+      letter-spacing: 4px; opacity: 0;
+      animation: subNotifyIn 0.6s 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                 notifyOut 0.5s 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
+    ">自動で1枚ドローします。</div>
+  ` : "";
+
   div.innerHTML = `
     <h2 style="
       font-size: 60px; font-weight: 900; color: ${color}; margin: 0;
       letter-spacing: 15px; text-transform: uppercase;
       animation: notifyIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-                 notifyOut 0.5s 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                 notifyOut 0.5s 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       text-shadow: 0 0 20px ${color}66;
     ">${text}</h2>
+    ${subtextHtml}
   `;
+  
+  if (!document.getElementById("notificationStyles")) {
+    const style = document.createElement("style");
+    style.id = "notificationStyles";
+    style.textContent = `
+      @keyframes subNotifyIn {
+        0% { transform: translateY(20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 0.9; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   document.body.appendChild(div);
-  setTimeout(() => div.remove(), 2500);
+  setTimeout(() => div.remove(), 2700);
 }
 
 function showRoundNotification(round) {

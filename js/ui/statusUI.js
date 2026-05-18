@@ -312,6 +312,11 @@ function updateFieldStatusPanels() {
 
     const s = state[owner];
 
+    const handCount =
+      (typeof countOwnerHandCardsOnField === "function")
+        ? countOwnerHandCardsOnField(owner)
+        : 0;
+
     const handLimit =
       (typeof window.getHandLimit === "function")
         ? window.getHandLimit(owner)
@@ -373,13 +378,13 @@ function updateFieldStatusPanels() {
           </span>
 
           <span style="
-            color: ${s.handCount > handLimit ? '#ff6666' : '#f0d080'};
+            color: ${handCount > handLimit ? '#ff6666' : '#f0d080'};
             font-size: 64px;
             font-weight: bold;
             min-width: 140px;
             text-align: center;
           ">
-            ${s.handCount} / ${handLimit}
+            ${handCount} / ${handLimit}
           </span>
         </div>
       </div>

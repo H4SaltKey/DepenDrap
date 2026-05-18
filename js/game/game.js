@@ -1553,11 +1553,8 @@ function updateMatchUI() {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: min(100%, 380px) !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: min(80vh, 620px) !important;
-      aspect-ratio: 320 / 453;
+      width: 380px !important;
+      height: 538px !important;
       margin: 0 auto !important;
       padding: 0 !important;
       box-sizing: border-box !important;
@@ -1565,17 +1562,14 @@ function updateMatchUI() {
       align-items: center !important;
       justify-content: center !important;
       overflow: hidden;
-      border-radius: 10px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 24px rgba(199,179,119,0.2);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 32px rgba(199,179,119,0.3);
       transition: transform 0.3s ease;
     }
     .firstDrawLastPickPreview .firstDrawLastPickClone.card img {
-      width: auto !important;
-      height: auto !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      object-fit: contain !important;
-      aspect-ratio: auto !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
     }
     .firstDrawCardOuter--kept {
       transform: scale(1.04);
@@ -1808,6 +1802,9 @@ async function executeReset(syncShared = true) {
         firebaseClient.db.ref(`rooms/${gameRoom}/pendingChange`).remove(),
         firebaseClient.db.ref(`rooms/${gameRoom}/logs`).remove(),
         firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/playerState`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/players/player1/ready`).set(false),
+        firebaseClient.db.ref(`rooms/${gameRoom}/players/player2/ready`).set(false),
         firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1),
         firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1)
       ]);

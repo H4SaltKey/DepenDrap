@@ -26,6 +26,13 @@ window.organizeHands = function() {
   const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= 1000);
   const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= 1000);
 
+  // プレイフェーズ中はファーストドローによる非表示制限を自動解除する
+  const isPlaying = state?.matchData?.status === "playing";
+  if (isPlaying) {
+    myHandCards.forEach(c => c.classList.remove("firstDrawHideVisLabel"));
+    opHandCards.forEach(c => c.classList.remove("firstDrawHideVisLabel"));
+  }
+
   const fieldW = 3000; // FIELD_W
   const cardW = 320;  // CARD_W
   const cardH = 453;  // CARD_H

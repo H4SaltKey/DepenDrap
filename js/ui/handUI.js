@@ -19,11 +19,18 @@ window.organizeHands = function() {
   const opRole = myRole === "player1" ? "player2" : "player1";
 
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-  const handMin = window.HAND_ZONE_Y_MIN || 1460;
   
-  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && Number(c.dataset.y) >= handMin);
-  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && Number(c.dataset.y) >= handMin);
+  // バトルゾーンに属しておらず、手札領域にあるカードを抽出
+  // 自分の手札： owner が自分、かつローカル座標で y >= 1000
+  // 相手の手札： owner が相手、かつローカル座標で y <= 1000
+  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= 1000);
+  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= 1000);
 
+  const fieldW = 3000; // FIELD_W
+  const cardW = 320;  // CARD_W
+  const cardH = 453;  // CARD_H
+
+  // 1. 自分の手札を整列
   if (myHandCards.length > 0) {
     myHandCards.sort((a, b) => {
       const oa = Number(a.dataset.handOrder || 0);
@@ -31,17 +38,24 @@ window.organizeHands = function() {
       return oa - ob;
     });
 
-    const handY = 2000 - 240 - 20; // FIELD_H - CARD_H - 20 (assuming FIELD_H=2000, CARD_H=240)
-    const fieldW = 1500; // Assuming FIELD_W=1500
-    const cardW = 170; // Assuming CARD_W=170
+    const handY = 2000 - cardH - 20; // 1527px
     
     // 中央寄せの計算
-    const totalW = myHandCards.length * (cardW + 10) - 10;
+    // カード同士の標準的な間隔（少し重ねる）
+    const spacing = cardW + 15;
+    const maxHandWidth = fieldW - 100;
+    let actualSpacing = spacing;
+    // 手札枚数が多くて領域からはみ出る場合、重なりを強める
+    if (myHandCards.length * spacing > maxHandWidth) {
+      actualSpacing = maxHandWidth / myHandCards.length;
+    }
+    
+    const totalW = (myHandCards.length - 1) * actualSpacing + cardW;
     let startX = (fieldW - totalW) / 2;
-    if (startX < 20) startX = 20;
+    if (startX < 50) startX = 50;
 
     myHandCards.forEach((c, idx) => {
-      const targetX = startX + idx * (cardW + 10);
+      const targetX = startX + idx * actualSpacing;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
       c.dataset.x = String(targetX);
@@ -49,6 +63,33 @@ window.organizeHands = function() {
     });
   }
 
-  // 相手の手札も同様に整列（必要であれば）
-  // ...
+  // 2. 相手の手札も同様に整列
+  if (opHandCards.length > 0) {
+    opHandCards.sort((a, b) => {
+      const oa = Number(a.dataset.handOrder || 0);
+      const ob = Number(b.dataset.handOrder || 0);
+      return oa - ob;
+    });
+
+    const handY = 20; // 画面上部 20px
+    
+    const spacing = cardW + 15;
+    const maxHandWidth = fieldW - 100;
+    let actualSpacing = spacing;
+    if (opHandCards.length * spacing > maxHandWidth) {
+      actualSpacing = maxHandWidth / opHandCards.length;
+    }
+    
+    const totalW = (opHandCards.length - 1) * actualSpacing + cardW;
+    let startX = (fieldW - totalW) / 2;
+    if (startX < 50) startX = 50;
+
+    opHandCards.forEach((c, idx) => {
+      const targetX = startX + idx * actualSpacing;
+      c.style.left = targetX + "px";
+      c.style.top = handY + "px";
+      c.dataset.x = String(targetX);
+      c.dataset.y = String(handY);
+    });
+  }
 };

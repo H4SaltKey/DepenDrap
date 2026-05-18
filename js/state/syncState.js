@@ -19,13 +19,13 @@ window.normalizeState = function() {
     delete state[p]._ready;
     delete state[p]._deckCode;
     
-    ["hp", "shield", "defstack", "exp", "pp"].forEach(k => {
+    ["hp", "shield", "exp", "pp"].forEach(k => {
       if (state[p][k] === undefined || state[p][k] === null) state[p][k] = 0;
       const v  = Number(state[p][k]) || 0;
       const defaultMax = (k === "hp" ? 20 : (k === "shield" ? 5 : (k === "pp" ? 2 : (k === "exp" ? calcExpMax(state[p].level || 1) : 99))));
       const mx = Number(state[p][k + "Max"]) || defaultMax;
       state[p][k + "Max"] = mx;
-      if (k !== "defstack" && v > mx) state[p][k] = mx;
+      if (v > mx) state[p][k] = mx;
       if (v < 0) state[p][k] = 0;
       else state[p][k] = v;
     });

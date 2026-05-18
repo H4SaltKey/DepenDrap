@@ -1797,6 +1797,27 @@ async function executeReset(syncShared = true) {
   // 盤面リセット中フラグを立てる
   window._isResetting = true;
   
+  // ──【安定化：処理の直前に不要な同期データをFirebaseから並列削除】──
+  const gameRoom = localStorage.getItem("gameRoom");
+  if (gameRoom && firebaseClient?.db && syncShared) {
+    console.log("[Reset] 不要なFirebase同期データを即時クリアします...");
+    try {
+      await Promise.all([
+        firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/fieldCards`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/pendingChange`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/logs`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove(),
+        firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1),
+        firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1)
+      ]);
+      console.log("[Reset] Firebase同期データの即時クリアが完了しました。");
+    } catch (e) {
+      console.warn("[Reset] 同期データ即時クリア中にエラーが発生しましたが、処理を続行します:", e);
+    }
+  }
+  // ────────────────────────────────────────────────────────────
+  
   lastResetAt = Date.now();
   lastTurnPlayer = null; // ターン通知用の記憶をリセット
   window._lastRound = undefined; // ラウンド通知用の記憶をリセット
@@ -1851,21 +1872,9 @@ async function executeReset(syncShared = true) {
   window._soloStartMode = false;
   window.serverInitialState = JSON.parse(JSON.stringify(state));
 
-  const gameRoom = localStorage.getItem("gameRoom");
+  // 既に直前に不要データを消去済みなので、ここでは共通マッチデータの書き込みと自分の状態のみ書き戻す
   if (gameRoom && firebaseClient?.db && syncShared) {
-    // playerDice を完全に削除してダイス値をリセット
-    await firebaseClient.db.ref(`rooms/${gameRoom}/playerDice`).remove();
-    // 前試合のカード同期をクリア
-    await firebaseClient.db.ref(`rooms/${gameRoom}/fieldCards`).remove();
-    // 前試合の変更要求・ログ・再戦フラグもクリア
-    await firebaseClient.db.ref(`rooms/${gameRoom}/pendingChange`).remove();
-    await firebaseClient.db.ref(`rooms/${gameRoom}/logs`).remove();
-    await firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove();
-    // 各プレイヤーの diceValue もリセット
-    await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player1/diceValue`).set(-1);
-    await firebaseClient.db.ref(`rooms/${gameRoom}/playerState/player2/diceValue`).set(-1);
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
-    // 自分の playerState のみ反映（同時再戦での相互上書きを防ぐ）
     const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
     await firebaseClient.writeMyState(gameRoom, me, state[me]);
   }

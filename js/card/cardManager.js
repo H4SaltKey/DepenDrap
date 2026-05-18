@@ -718,7 +718,7 @@ function updateVisibilityIcon(card, vis) {
   if (!label) return;
 
   if (vis === "self") {
-    label.innerHTML = '<i data-lucide="hat-glasses"></i>';
+    label.innerHTML = '<i data-lucide="user-lock"></i>';
   } else if (vis === "none") {
     label.innerHTML = '<i data-lucide="eye-off"></i>';
   } else {

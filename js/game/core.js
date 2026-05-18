@@ -64,45 +64,110 @@ window.resetPlayerState = resetPlayerState;
 //   値が変化した時のみサーバーに送る（毎秒ポーリングで受け取るだけ）
 
 let saveTimeout = null;
+let reconnectSaveTimer = null;
+let pushMyStateTimer = null;
+const STORAGE_WARN_BYTES = Math.floor(5 * 1024 * 1024 * 0.9); // 5MB の90%
+const RECONNECT_STATE_KEY = "reconnectState";
+const LEGACY_LARGE_KEYS = ["gameState", "fieldCards"];
+
+window.runtimeState = window.runtimeState || {
+  drag: {},
+  hover: {},
+  menu: {},
+  watcher: {},
+  effects: {}
+};
+window.uiState = window.uiState || {};
+window.saveState = window.saveState || { reconnect: {} };
 
 function isQuotaExceededError(err) {
   return err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014);
 }
 
-function createMinimalLocalState() {
-  const makePlayerSnapshot = (playerState) => ({
-    username: playerState.username,
-    backImage: playerState.backImage,
-    level: playerState.level,
-    exp: playerState.exp,
-    hp: playerState.hp,
-    hpMax: playerState.hpMax,
-    shield: playerState.shield,
-    defstack: playerState.defstack,
-    defstackMax: playerState.defstackMax,
-    atk: playerState.atk,
-    def: playerState.def,
-    instantDef: playerState.instantDef,
-    pp: playerState.pp || 0,
-    ppMax: playerState.ppMax || 2,
-    diceValue: playerState.diceValue,
-    deckCount: Array.isArray(playerState.deck) ? playerState.deck.length : 0,
-    evolutionPath: playerState.evolutionPath || null,
-    evoContinuousDmgCount: playerState.evoContinuousDmgCount || 0,
-    evoBackwaterExpGained: playerState.evoBackwaterExpGained || false
-  });
+function calcLocalStorageSizeBytes() {
+  let total = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    const value = localStorage.getItem(key) || "";
+    total += (key.length + value.length) * 2; // UTF-16概算
+  }
+  return total;
+}
 
+function getLocalStorageEntriesBySize() {
+  const rows = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    const value = localStorage.getItem(key) || "";
+    rows.push({
+      key,
+      bytes: (key.length + value.length) * 2
+    });
+  }
+  rows.sort((a, b) => b.bytes - a.bytes);
+  return rows;
+}
+
+function formatKB(bytes) {
+  return `${(bytes / 1024).toFixed(1)}KB`;
+}
+
+function logLocalStorageUsage(prefix = "[Storage]") {
+  const totalBytes = calcLocalStorageSizeBytes();
+  const msg = `${prefix} save size: ${formatKB(totalBytes)}`;
+  console.log(msg);
+  if (totalBytes >= STORAGE_WARN_BYTES) {
+    console.warn(`${prefix} WARNING: localStorage usage is near 5MB (${formatKB(totalBytes)})`);
+  }
+  return totalBytes;
+}
+window.logLocalStorageUsage = logLocalStorageUsage;
+
+window.inspectLocalStorageUsage = function() {
+  const rows = getLocalStorageEntriesBySize();
+  console.table(rows.map((r) => ({ key: r.key, sizeKB: (r.bytes / 1024).toFixed(1) })));
+  return logLocalStorageUsage("[Storage][inspect]");
+};
+
+function ensureReconnectToken() {
+  let token = localStorage.getItem("reconnectToken");
+  if (!token) {
+    token = (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+    localStorage.setItem("reconnectToken", token);
+  }
+  return token;
+}
+
+function buildReconnectState() {
+  const roomId = localStorage.getItem("gameRoom") || null;
+  const playerId = localStorage.getItem("gamePlayerKey") || window.myRole || null;
+  const playerName = window.myUsername || localStorage.getItem("username") || null;
+  const reconnectToken = ensureReconnectToken();
+  const ui = {
+    chatColor: localStorage.getItem("chatColor") || null,
+    fieldZoom: localStorage.getItem("fieldZoom") || null,
+    fieldPanX: localStorage.getItem("fieldPanX") || null,
+    fieldPanY: localStorage.getItem("fieldPanY") || null
+  };
   return {
-    player1: makePlayerSnapshot(state.player1),
-    player2: makePlayerSnapshot(state.player2),
-    matchData: state.matchData,
-    logs: Array.isArray(state.logs) ? state.logs.slice(-20) : []
+    roomId,
+    playerId,
+    reconnectToken,
+    playerName,
+    ui,
+    savedAt: Date.now()
   };
 }
 
-function createSafeLocalStateCopy() {
+function createSafeReconnectStateCopy() {
   try {
-    return JSON.stringify(createMinimalLocalState());
+    const reconnect = buildReconnectState();
+    window.saveState.reconnect = reconnect;
+    return JSON.stringify(reconnect);
   } catch (e) {
     return null;
   }
@@ -111,20 +176,19 @@ function createSafeLocalStateCopy() {
 function safeLocalSetItem(key, value) {
   try {
     localStorage.setItem(key, value);
+    logLocalStorageUsage();
     return true;
   } catch (e) {
     if (!isQuotaExceededError(e)) throw e;
     console.warn(`[Storage] Quota exceeded while writing ${key}. Trying fallback.`);
     try {
-      localStorage.removeItem("gameState");
-      localStorage.removeItem("fieldCards");
-      localStorage.removeItem("gameStarted");
-      localStorage.removeItem("gameStartedRoom");
+      LEGACY_LARGE_KEYS.forEach((k) => localStorage.removeItem(k));
     } catch (_) {}
-    const fallbackJson = createSafeLocalStateCopy();
+    const fallbackJson = createSafeReconnectStateCopy();
     if (!fallbackJson) return false;
     try {
       localStorage.setItem(key, fallbackJson);
+      logLocalStorageUsage("[Storage][fallback]");
       return true;
     } catch (err) {
       if (isQuotaExceededError(err)) {
@@ -136,6 +200,94 @@ function safeLocalSetItem(key, value) {
   }
 }
 
+function purgeLegacyLargeLocalKeys() {
+  let removed = false;
+  LEGACY_LARGE_KEYS.forEach((k) => {
+    if (localStorage.getItem(k) != null) {
+      localStorage.removeItem(k);
+      removed = true;
+    }
+  });
+  if (removed) {
+    console.log("[Storage] Removed legacy heavy localStorage keys: gameState, fieldCards");
+    logLocalStorageUsage("[Storage][purge]");
+  }
+}
+
+function saveReconnectStateDebounced() {
+  if (reconnectSaveTimer) clearTimeout(reconnectSaveTimer);
+  reconnectSaveTimer = setTimeout(() => {
+    const payload = createSafeReconnectStateCopy();
+    if (!payload) return;
+    safeLocalSetItem(RECONNECT_STATE_KEY, payload);
+  }, 250);
+}
+
+function saveReconnectStateImmediate() {
+  if (reconnectSaveTimer) clearTimeout(reconnectSaveTimer);
+  const payload = createSafeReconnectStateCopy();
+  if (!payload) return false;
+  return safeLocalSetItem(RECONNECT_STATE_KEY, payload);
+}
+
+function sanitizeForSync(value, depth = 0) {
+  if (value === null || value === undefined) return value;
+  if (depth > 8) return undefined;
+  const t = typeof value;
+  if (t === "number" || t === "string" || t === "boolean") return value;
+  if (t === "function" || t === "symbol") return undefined;
+  if (typeof Element !== "undefined" && value instanceof Element) return undefined;
+  if (typeof Node !== "undefined" && value instanceof Node) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => sanitizeForSync(v, depth + 1))
+      .filter((v) => v !== undefined);
+  }
+  if (t === "object") {
+    const out = {};
+    Object.entries(value).forEach(([k, v]) => {
+      if (k.startsWith("_")) return;
+      const cleaned = sanitizeForSync(v, depth + 1);
+      if (cleaned !== undefined) out[k] = cleaned;
+    });
+    return out;
+  }
+  return undefined;
+}
+
+window._getMyStateForSync = function() {
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  const s = state[me];
+  if (!s) return {};
+  const deck = Array.isArray(s.deck) ? s.deck.slice() : [];
+  return sanitizeForSync({
+    username: s.username || "",
+    backImage: s.backImage || "",
+    level: Number(s.level || 1),
+    exp: Number(s.exp || 0),
+    expMax: Number(s.expMax || calcExpMax(s.level || 1)),
+    hp: Number(s.hp || 0),
+    hpMax: Number(s.hpMax || 0),
+    shield: Number(s.shield || 0),
+    shieldMax: Number(s.shieldMax || 0),
+    defstack: Number(s.defstack || 0),
+    defstackMax: Number(s.defstackMax || 0),
+    defstackOverMax: !!s.defstackOverMax,
+    atk: Number(s.atk || 0),
+    def: Number(s.def || 0),
+    instantDef: Number(s.instantDef || 0),
+    pp: Number(s.pp || 0),
+    ppMax: Number(s.ppMax || 2),
+    diceValue: Number(s.diceValue ?? -1),
+    evolutionPath: s.evolutionPath || null,
+    evoContinuousDmgCount: Number(s.evoContinuousDmgCount || 0),
+    evoBackwaterExpGained: !!s.evoBackwaterExpGained,
+    statusBlocks: Array.isArray(s.statusBlocks) ? s.statusBlocks : [],
+    deck,
+    deckCount: deck.length
+  }) || {};
+};
+
 // 自分のデータをサーバーに送信（200msデバウンス）
 function saveDebounced() {
   if (saveTimeout) clearTimeout(saveTimeout);
@@ -145,20 +297,20 @@ function saveDebounced() {
 // 自分のデータをサーバーに即時送信（await可能）
 function saveImmediate() {
   if (saveTimeout) clearTimeout(saveTimeout);
-  safeLocalSetItem("gameState", createSafeLocalStateCopy());
+  saveReconnectStateImmediate();
   return _pushMyState();
 }
 
 // gameState + fieldCards を同時キャッシュ
 function saveAllImmediate(customFieldCards = null) {
   if (saveTimeout) clearTimeout(saveTimeout);
-  safeLocalSetItem("gameState", createSafeLocalStateCopy());
+  saveReconnectStateImmediate();
   if (typeof lastLocalFieldSaveAt !== "undefined") window.lastLocalFieldSaveAt = Date.now();
-  const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : []);
+  const fieldData = customFieldCards || (typeof getFieldData === "function" ? getFieldData() : null);
 
   // フィールドカードの同期も実施
   if (typeof saveFieldCards === "function") {
-    saveFieldCards();
+    saveFieldCards(fieldData);
   }
 
   // 可能ならステータス同期も行う
@@ -170,7 +322,7 @@ function saveAllImmediate(customFieldCards = null) {
 
 // localStorage のみ（UI更新用、サーバーには送らない）
 function saveLocal() {
-  safeLocalSetItem("gameState", createSafeLocalStateCopy());
+  saveReconnectStateDebounced();
 }
 
 // 後方互換
@@ -180,12 +332,26 @@ function save() {
 }
 
 // 実際の送信（自分のデータのみ送る、timeLeft は除外）
-// Firebase 接続中は Firebase 経由で送信
+// Firebase 接続中は Firebase 経由で送信。localStorageには再接続情報のみ保存。
 function _pushMyState() {
-  // ローカルストレージにのみ保存
-  safeLocalSetItem("gameState", createSafeLocalStateCopy());
-  return Promise.resolve();
+  saveReconnectStateDebounced();
+  const gameRoom = localStorage.getItem("gameRoom");
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (!gameRoom || !firebaseClient?.db || !firebaseClient.writeMyState) {
+    return Promise.resolve();
+  }
+  return firebaseClient.writeMyState(gameRoom, me, window._getMyStateForSync())
+    .catch((e) => {
+      console.warn("[Sync] writeMyState failed:", e?.message || e);
+    });
 }
+
+window.pushMyStateDebounced = function() {
+  if (pushMyStateTimer) clearTimeout(pushMyStateTimer);
+  pushMyStateTimer = setTimeout(() => {
+    _pushMyState();
+  }, 250);
+};
 
 window.saveImmediate    = saveImmediate;
 window.saveAllImmediate = saveAllImmediate;
@@ -193,13 +359,9 @@ window.saveDebounced    = saveDebounced;
 
 // ===== ローカル読み込み =====
 function load() {
-  const s = localStorage.getItem("gameState");
-  if (s) {
-    try {
-      const loaded = JSON.parse(s);
-      Object.keys(loaded).forEach(k => { if (state[k] !== undefined) state[k] = loaded[k]; });
-    } catch {}
-  }
+  purgeLegacyLargeLocalKeys();
+  saveReconnectStateImmediate();
+  window.inspectLocalStorageUsage();
   // matchSetup からの初期補完
   try {
     const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
@@ -278,10 +440,11 @@ function markGameStarted() {
   if (room) localStorage.setItem(GAME_STARTED_ROOM_KEY, room);
 }
 function clearGameState()  {
-  localStorage.removeItem("gameState");
+  localStorage.removeItem(RECONNECT_STATE_KEY);
   localStorage.removeItem("gameStarted");
   localStorage.removeItem("gameStartedRoom");
-  localStorage.removeItem("fieldCards");
+  LEGACY_LARGE_KEYS.forEach((k) => localStorage.removeItem(k));
+  logLocalStorageUsage("[Storage][clear]");
 }
 
 // ===== レベルステータス =====

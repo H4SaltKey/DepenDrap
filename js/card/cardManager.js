@@ -53,6 +53,8 @@ let FIELD_ZOOM_MIN = 0.1; // initCards後に更新
 let fieldZoom = Number(localStorage.getItem("fieldZoom")) || 0.3;
 let fieldPanX = Number(localStorage.getItem("fieldPanX")) || 0;
 let fieldPanY = Number(localStorage.getItem("fieldPanY")) || 0;
+let fieldViewPersistTimer = null;
+let fieldSyncTimer = null;
 
 // 現在ドラッグ中のカード情報
 let draggingCard = null; // { el, offsetX, offsetY }
@@ -508,7 +510,7 @@ function setFieldZoom(value, pivotX, pivotY){
     fieldPanY = pivotY - (pivotY - fieldPanY) * (fieldZoom / oldZoom);
   }
 
-  localStorage.setItem("fieldZoom", String(fieldZoom));
+  persistFieldViewToLocalDebounced();
   applyFieldView();
 
   const slider = document.getElementById("zoomSlider");
@@ -519,8 +521,19 @@ function applyFieldView(){
   const content = getFieldContent();
   if(!content) return;
   content.style.transform = `translate(${fieldPanX}px, ${fieldPanY}px) scale(${fieldZoom})`;
-  localStorage.setItem("fieldPanX", String(fieldPanX));
-  localStorage.setItem("fieldPanY", String(fieldPanY));
+  persistFieldViewToLocalDebounced();
+}
+
+function persistFieldViewToLocalDebounced() {
+  if (fieldViewPersistTimer) clearTimeout(fieldViewPersistTimer);
+  fieldViewPersistTimer = setTimeout(() => {
+    localStorage.setItem("fieldZoom", String(fieldZoom));
+    localStorage.setItem("fieldPanX", String(fieldPanX));
+    localStorage.setItem("fieldPanY", String(fieldPanY));
+    if (typeof window.logLocalStorageUsage === "function") {
+      window.logLocalStorageUsage("[Storage][ui]");
+    }
+  }, 180);
 }
 
 function zoomField(direction){
@@ -1368,10 +1381,26 @@ window.prevMyHandCount = -1;
 
 
 
-function saveFieldCards(){
+window._pushFieldCardsDebounced = function(data){
+  if (fieldSyncTimer) clearTimeout(fieldSyncTimer);
+  fieldSyncTimer = setTimeout(async () => {
+    const gameRoom = localStorage.getItem("gameRoom");
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    if (!gameRoom || !firebaseClient?.db || typeof firebaseClient.writeFieldCards !== "function") return;
+    try {
+      await firebaseClient.writeFieldCards(gameRoom, me, data);
+    } catch (e) {
+      console.warn("[FieldSync] writeFieldCards failed:", e?.message || e);
+    }
+  }, 180);
+};
+
+function saveFieldCards(precomputedData){
   lastLocalFieldSaveAt = Date.now();
-  const data = window.getFieldData();
-  localStorage.setItem("fieldCards", JSON.stringify(data));
+  const data = precomputedData || window.getFieldData();
+  if (window.runtimeState) {
+    window.runtimeState.fieldCardsCache = data;
+  }
 
   if (typeof _pushFieldCardsDebounced === "function") {
     _pushFieldCardsDebounced(data);
@@ -1379,11 +1408,24 @@ function saveFieldCards(){
 }
 
 function restoreFieldCards(){
-  const raw = localStorage.getItem("fieldCards");
-  if(!raw) return;
-  let data;
-  try{ data = JSON.parse(raw); } catch{ return; }
-  applyFieldCardsFromServer(data);
+  const fetchFromFirebase = async () => {
+    const gameRoom = localStorage.getItem("gameRoom");
+    const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    if (!gameRoom || !firebaseClient?.db) return;
+    try {
+      const snap = await firebaseClient.db.ref(`rooms/${gameRoom}/fieldCards/${me}`).once("value");
+      if (snap?.exists() && typeof window.applyFieldCardsFromServer === "function") {
+        window.applyFieldCardsFromServer(snap.val());
+      }
+    } catch (e) {
+      console.warn("[FieldSync] failed to restore own fieldCards from Firebase:", e?.message || e);
+    }
+  };
+  if (firebaseClient?.db) {
+    fetchFromFirebase();
+  } else {
+    document.addEventListener("firebaseJoined", fetchFromFirebase, { once: true });
+  }
 }
 
 window.applyFieldCardsFromServer = function(data){

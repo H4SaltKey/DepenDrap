@@ -127,7 +127,7 @@ body.deckPage{
   line-height: 50px;
   font-size: 20px;
   cursor: pointer;
-  z-index: 9999;
+  z-index: 9999999 !important;
 }
 
 /* メニュー */
@@ -137,7 +137,7 @@ body.deckPage{
   right: 15px;
   background: #222;
   border: 1px solid #555;
-  z-index: 9999;
+  z-index: 9999999 !important;
 }
 
 .menuItem{
@@ -161,7 +161,7 @@ body.deckPage{
   display:flex;
   justify-content:center;
   align-items:center;
-  z-index:10000;
+  z-index:10000000 !important;
 }
 
 .modalContent{

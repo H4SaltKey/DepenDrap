@@ -789,12 +789,10 @@ function addCardToField(id, visibility = "both"){
 
   if(visibility !== "both"){
     card.dataset.visibility = visibility;
-    const labels = { self:"自分のみ", opponent:"相手のみ", none:"非公開" };
     card.classList.toggle("visibilitySelf", visibility === "self");
     card.classList.toggle("visibilityOpponent", visibility === "opponent");
     card.classList.toggle("visibilityNone", visibility === "none");
-    const label = card.querySelector(".cardVisibilityLabel");
-    if(label) label.textContent = labels[visibility] || "";
+    updateVisibilityIcon(card, visibility);
     applyCardFace(card, visibility);
   }
   placeCard(field, card, getNextFieldPosition());

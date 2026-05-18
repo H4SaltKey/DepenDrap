@@ -2713,8 +2713,9 @@ function startR1T1() {
     card.dataset.owner = me;
     card.dataset.origin = me;
     card.classList.add("visibilityNone");
-    const lbl = card.querySelector(".cardVisibilityLabel");
-    if (lbl) lbl.textContent = "非公開";
+    if (typeof updateVisibilityIcon === "function") {
+      updateVisibilityIcon(card, "none");
+    }
     if (typeof applyCardFace === "function") applyCardFace(card, "none");
     if (typeof placeCard === "function") {
       card.style.zIndex = ++cardZCounter;
@@ -2759,8 +2760,9 @@ function startTurnDraw() {
   card.dataset.owner = me;
   card.dataset.origin = me;
   card.classList.add("visibilitySelf");
-  const lbl = card.querySelector(".cardVisibilityLabel");
-  if (lbl) lbl.textContent = "自分のみ";
+  if (typeof updateVisibilityIcon === "function") {
+    updateVisibilityIcon(card, "self");
+  }
   if (typeof applyCardFace === "function") applyCardFace(card, "self");
 
   const field = document.getElementById("field");

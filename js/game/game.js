@@ -1554,8 +1554,7 @@ function updateMatchUI() {
       left: auto !important;
       top: auto !important;
       width: 380px !important;
-      height: auto !important;
-      aspect-ratio: 210 / 297 !important;
+      height: 538px !important;
       margin: 0 auto !important;
       padding: 0 !important;
       box-sizing: border-box !important;

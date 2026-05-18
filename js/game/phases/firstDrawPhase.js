@@ -158,9 +158,6 @@ function updateFirstDrawPhaseUI() {
         if (snap) {
           const pv = snap.cloneNode(true);
           pv.classList.add("firstDrawCardClone", "firstDrawLastPickClone");
-          pv.style.width = "380px";
-          pv.style.height = "auto";
-          pv.style.aspectRatio = "210 / 297";
           const pvLbl = pv.querySelector(".cardVisibilityLabel");
           if (pvLbl) pvLbl.remove();
           previewHost.appendChild(pv);

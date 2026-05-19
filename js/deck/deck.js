@@ -873,7 +873,7 @@ function setupVerticalResizer() {
   let startY = 0;
   let startCatalogHeight = 0;
   let startDeckHeight = 0;
-  
+
   // 基準の高さを記録して拡縮比率のベースにする
   const baseCatalogHeight = catalogCol.offsetHeight || (window.innerHeight * 0.56);
   const baseDeckHeight = deckArea.offsetHeight || (window.innerHeight * 0.36);
@@ -892,7 +892,6 @@ function setupVerticalResizer() {
   window.addEventListener("mousemove", (e) => {
     if (!isResizingV) return;
     
-    // Dragging down (positive dy) increases catalog height and decreases deck area height.
     const dy = e.clientY - startY;
     let newCatalogHeight = startCatalogHeight + dy;
     let newDeckHeight = startDeckHeight - dy;
@@ -908,16 +907,15 @@ function setupVerticalResizer() {
       newCatalogHeight = totalHeight - minHeight;
     }
 
-    // Apply constraints explicitly using flex properties
-    catalogCol.style.height = newCatalogHeight + "px";
-    catalogCol.style.minHeight = newCatalogHeight + "px";
-    catalogCol.style.maxHeight = newCatalogHeight + "px";
-    catalogCol.style.flexBasis = newCatalogHeight + "px";
+    // flex-grow 比率で配分する（gap をコンテナ側に任せる）
+    const ratio = newCatalogHeight / newDeckHeight;
+    catalogCol.style.flex = `${ratio} 0 0px`;
+    catalogCol.style.maxHeight = "none";
+    catalogCol.style.minHeight = minHeight + "px";
 
-    deckArea.style.height = newDeckHeight + "px";
-    deckArea.style.minHeight = newDeckHeight + "px";
-    deckArea.style.maxHeight = newDeckHeight + "px";
-    deckArea.style.flexBasis = newDeckHeight + "px";
+    deckArea.style.flex = `1 0 0px`;
+    deckArea.style.maxHeight = "none";
+    deckArea.style.minHeight = minHeight + "px";
 
     // 縦幅の変更に合わせて、各キャンバスのローカルズーム率を更新
     if (window.updateDeckZooms) {

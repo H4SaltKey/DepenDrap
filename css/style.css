@@ -1088,11 +1088,13 @@ body.deckPage{
 }
 
 .deckVerticalResizer {
-    height: 16px;
-    margin: -12px 0; /* Keeps the effective visual gap perfectly at 8px */
+    position: absolute;
+    top: -12px;
+    left: 0;
+    right: 0;
+    height: 24px;
     cursor: row-resize;
-    z-index: 10;
-    position: relative;
+    z-index: 20;
 }
 .deckVerticalResizer::after {
     content: '';
@@ -1236,6 +1238,8 @@ body.deckPage{
 .deckArea{
     flex:0 0 36vh;
     min-height:240px;
+    position: relative;
+    overflow: visible;
 }
 
 /* ========================================

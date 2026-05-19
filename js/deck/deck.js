@@ -704,6 +704,8 @@ function setupDeckBuilder() {
   setupDropZone(document.getElementById("cards"), (id, source) => {
     if (source === "deck") removeCard(id);
   });
+
+  setupPreviewResizer();
 }
 
 // ===== デッキ名表示 =====
@@ -786,3 +788,49 @@ document.getElementById("codeImportInput").addEventListener("keydown", (e) => {
       });
     });
   }
+
+// ===== プレビュー枠のリサイズ機能 =====
+function setupPreviewResizer() {
+  const resizer = document.getElementById("previewResizer");
+  const previewCol = document.getElementById("deckPreviewCol");
+  if (!resizer || !previewCol) return;
+
+  let isResizing = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  resizer.addEventListener("mousedown", (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = previewCol.offsetWidth;
+    resizer.classList.add("resizing");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isResizing) return;
+    
+    // Preview is on the right side. Dragging left increases width.
+    const dx = startX - e.clientX; 
+    let newWidth = startWidth + dx;
+
+    // Maximum width is about half of the screen as requested
+    const maxWidth = Math.floor(window.innerWidth * 0.5);
+    const minWidth = 180;
+
+    if (newWidth > maxWidth) newWidth = maxWidth;
+    if (newWidth < minWidth) newWidth = minWidth;
+
+    previewCol.style.width = newWidth + "px";
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isResizing) {
+      isResizing = false;
+      resizer.classList.remove("resizing");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+  });
+}

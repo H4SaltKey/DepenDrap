@@ -1084,6 +1084,33 @@ body.deckPage{
     padding: 14px;
     flex-shrink: 0;
     box-sizing: border-box;
+    position: relative;
+}
+
+.deckPreviewResizer {
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    cursor: col-resize;
+    z-index: 10;
+}
+.deckPreviewResizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 40px;
+    background: rgba(199, 179, 119, 0.2);
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+.deckPreviewResizer:hover::after, .deckPreviewResizer.resizing::after {
+    background: rgba(199, 179, 119, 0.8);
+    box-shadow: 0 0 8px rgba(199, 179, 119, 0.5);
 }
 
 .deckBuilderPreviewCaption {

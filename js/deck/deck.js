@@ -696,13 +696,25 @@ function setupDeckBuilder() {
     updateDeckScrollButtons();
   });
 
+  window.deckGlobalZoom = 1;
+  window.deckCatalogLocalZoom = 1;
+  window.deckAreaLocalZoom = 1;
+
+  window.updateDeckZooms = function() {
+    const cards = document.getElementById("cards");
+    const deck = document.getElementById("deck");
+    if (cards) cards.style.zoom = window.deckGlobalZoom * window.deckCatalogLocalZoom;
+    if (deck) deck.style.zoom = window.deckGlobalZoom * window.deckAreaLocalZoom;
+  };
+
   const zoomSlider = document.getElementById("deckZoomSlider");
-  const workspace = document.querySelector(".deckBuilderWorkspace");
-  if (zoomSlider && workspace) {
+  if (zoomSlider) {
     zoomSlider.addEventListener("input", (e) => {
-      workspace.style.setProperty("--deck-scale", e.target.value);
+      window.deckGlobalZoom = parseFloat(e.target.value) || 1;
+      window.updateDeckZooms();
     });
-    workspace.style.setProperty("--deck-scale", zoomSlider.value);
+    window.deckGlobalZoom = parseFloat(zoomSlider.value) || 1;
+    window.updateDeckZooms();
   }
 
   setupFilters();
@@ -861,6 +873,10 @@ function setupVerticalResizer() {
   let startY = 0;
   let startCatalogHeight = 0;
   let startDeckHeight = 0;
+  
+  // 基準の高さを記録して拡縮比率のベースにする
+  const baseCatalogHeight = catalogCol.offsetHeight || (window.innerHeight * 0.56);
+  const baseDeckHeight = deckArea.offsetHeight || (window.innerHeight * 0.36);
 
   vResizer.addEventListener("mousedown", (e) => {
     e.preventDefault();
@@ -902,6 +918,13 @@ function setupVerticalResizer() {
     deckArea.style.minHeight = newDeckHeight + "px";
     deckArea.style.maxHeight = newDeckHeight + "px";
     deckArea.style.flexBasis = newDeckHeight + "px";
+
+    // 縦幅の変更に合わせて、各キャンバスのローカルズーム率を更新
+    if (window.updateDeckZooms) {
+      window.deckCatalogLocalZoom = newCatalogHeight / baseCatalogHeight;
+      window.deckAreaLocalZoom = newDeckHeight / baseDeckHeight;
+      window.updateDeckZooms();
+    }
   });
 
   window.addEventListener("mouseup", () => {

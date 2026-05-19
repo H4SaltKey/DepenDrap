@@ -697,9 +697,10 @@ function updateCardSizes() {
   const topHeight = catalogCol.getBoundingClientRect().height;
   const bottomHeight = deckArea.getBoundingClientRect().height;
   const catalogZoom = window.deckCatalogLocalZoom || 1;
+  const areaZoom = window.deckAreaLocalZoom || 1;
 
   const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)) * catalogZoom);
-  const deckCardHeight = Math.round(Math.max(120, Math.min(340, bottomHeight * 0.72)));
+  const deckCardHeight = Math.round(Math.max(120, Math.min(340, bottomHeight * 0.72)) * areaZoom);
   const topCardWidth = Math.round(topCardHeight * (118 / 168));
   const deckCardWidth = Math.round(deckCardHeight * (118 / 168));
 
@@ -776,6 +777,20 @@ function setupDeckBuilder() {
       deckArea.style.maxHeight = "none";
       deckArea.style.minHeight = "150px";
     }
+  }
+
+  // Deck area size slider
+  const areaZoomSlider = document.getElementById("deckAreaZoomSlider");
+  if (areaZoomSlider) {
+    if (editorSettings.deckAreaZoom !== undefined) {
+      areaZoomSlider.value = String(editorSettings.deckAreaZoom);
+    }
+    window.deckAreaLocalZoom = parseFloat(areaZoomSlider.value) || 1;
+    areaZoomSlider.addEventListener("input", (e) => {
+      window.deckAreaLocalZoom = parseFloat(e.target.value) || 1;
+      updateCardSizes();
+      updateDeckEditorSettings({ deckAreaZoom: window.deckAreaLocalZoom });
+    });
   }
 
   const zoomSlider = document.getElementById("deckZoomSlider");

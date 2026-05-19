@@ -463,7 +463,10 @@ function addVal(owner, key, delta) {
   }
   const prev = Number(s[key]) || 0;
   let v = prev + delta;
-  if (key === "defstack") {
+  if (key === "pp") {
+    const maxPp = Number(s.ppMax) || 2;
+    v = Math.min(Math.max(v, 0), maxPp);
+  } else if (key === "defstack") {
     if (v < 0 && prev === 0) v = s.defstackMax || 0;
     v = Math.max(0, v);
     if (delta > 0 && !s.defstackOverMax) v = Math.min(v, s.defstackMax || 0);

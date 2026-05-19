@@ -362,6 +362,10 @@ function createCardElement(id, count, source) {
     }
   });
 
+  el.addEventListener("mouseenter", () => {
+    updateDeckCardPreview(id);
+  });
+
   el.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     if (source === "cards") {
@@ -447,9 +451,9 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
           
           const performActualAction = () => {
             if (action === "add") {
-              for (let i = 0; i < actualCount; i++) addCard(id);
+              addCard(id);
             } else {
-              for (let i = 0; i < actualCount; i++) removeCard(id);
+              removeCard(id);
             }
           };
           animateCountActions(sourceEl, targetRect, actualCount, performActualAction);
@@ -487,6 +491,27 @@ function showCardZoom(id) {
 function hideCardZoom() {
   const modal = document.getElementById("cardZoomModal");
   if (modal) modal.classList.add("hidden");
+}
+
+function updateDeckCardPreview(id) {
+  const card = getCardData(id);
+  const previewDiv = document.getElementById("deckCardPreview");
+  if (!card || !previewDiv) return;
+
+  const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
+  const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
+
+  previewDiv.innerHTML = `
+    <div class="deckCardPreviewContainer">
+      <img src="${imageSrc}" alt="" class="deckCardPreviewImg" onerror="this.src='assets/404.png'">
+      <div class="deckCardPreviewDetails">
+        <div class="deckCardPreviewName">${card.name || ""}</div>
+        <div class="deckCardPreviewMeta">ID: ${card.id}</div>
+        <div class="deckCardPreviewMeta">属性: ${card.attribute || "近接"} │ タイプ: ${card.type || "アタッカー"}</div>
+        ${tags ? `<div class="deckCardPreviewTags">タグ: ${tags}</div>` : ""}
+      </div>
+    </div>
+  `;
 }
 
 window.addEventListener("keydown", (e) => {

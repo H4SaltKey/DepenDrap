@@ -1023,7 +1023,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     if (canApplyEvolution && type === "direct_attack" && me.evolutionPath === "背水の道") {
       const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
       if (handCount <= 2) actualAmount += 1;
-      if ((me.pp || 0) >= 2 && !me.evoBackwaterExpGained) {
+      if ((me.pp || 0) >= 2 && !me.evoBackwaterExpGained && handCount === 0) {
         const t = [1, 2, 3, 4][getLvIdx(me.level || 1)];
         actualAmount += t;
       }
@@ -1158,7 +1158,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
         }
       }
       
-      if (myState.pp >= 2) {
+      if (myState.pp >= 2 && handCount === 0) {
         if (!myState.evoBackwaterExpGained) {
           const lv = myState.level || 1;
           let idx = 0;
@@ -1173,7 +1173,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
           myState.evoBackwaterExpGained = true;
           
           if (typeof addGameLog === "function") {
-            addGameLog(`[EVOLUTION] ${actor} の「背水の道」効果（PP2以上）により、与ダメージが +${t} され、経験値1を獲得しました！`);
+            addGameLog(`[EVOLUTION] ${actor} の「背水の道」効果（PP2以上かつ手札0枚）により、与ダメージが +${t} され、経験値1を獲得しました！`);
           }
           if (typeof applyLevelStats === "function") applyLevelStats(meRole, true);
         }

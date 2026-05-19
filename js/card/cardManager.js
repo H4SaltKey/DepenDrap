@@ -897,7 +897,7 @@ function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   if (!dragEl || dragEl.dataset.owner !== myRole2) return;
 
   const handLineY = FIELD_H - CARD_H - 20;
-  let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
+  let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 20;
   const handBg = document.getElementById("myHandZoneBg");
   const field = document.getElementById("field");
   if (handBg && field) {
@@ -905,8 +905,8 @@ function updateHandReorderGuides(dragEl, fieldX, fieldY) {
     const cxc = fieldX + CARD_W / 2;
     const cyc = fieldY + CARD_H / 2;
     const br = handBg.getBoundingClientRect();
-    const padX = 90;
-    const padY = 110;
+    const padX = 20;
+    const padY = 20;
     const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
     const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
     const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;
@@ -1104,15 +1104,15 @@ function enablePointerDrag(el){
         }
 
         const handLineY = FIELD_H - CARD_H - 20;
-        let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 90;
+        let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 20;
         const handBg = document.getElementById("myHandZoneBg");
         if (handBg && field) {
           const fr = field.getBoundingClientRect();
           const cxc = fieldX + CARD_W / 2;
           const cyc = fieldY + CARD_H / 2;
           const br = handBg.getBoundingClientRect();
-          const padX = 90;
-          const padY = 110;
+          const padX = 20;
+          const padY = 20;
           const hx0 = (br.left - fr.left - fieldPanX) / fieldZoom - padX;
           const hx1 = (br.right - fr.left - fieldPanX) / fieldZoom + padX;
           const hy0 = (br.top - fr.top - fieldPanY) / fieldZoom - padY;

@@ -20,11 +20,10 @@ window.organizeHands = function() {
 
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
   
-  // バトルゾーンに属しておらず、手札領域にあるカードを抽出
-  // 自分の手札： owner が自分、かつローカル座標で y >= 1000
-  // 相手の手札： owner が相手、かつローカル座標で y <= 1000
-  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= 1000);
-  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= 1000);
+  const handMin = window.HAND_ZONE_Y_MIN || 1460;
+  const handMaxTop = 2000 - handMin;
+  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= handMin);
+  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= handMaxTop);
 
   // プレイフェーズ中はファーストドローによる非表示制限を自動解除する
   const isPlaying = state?.matchData?.status === "playing";

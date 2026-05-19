@@ -1530,13 +1530,13 @@ body.deckPage{
     align-content:start;
 }
 
-#cards.cardRow .card{
+#cards.cardRow .card,
+#deck.cardRow .card {
     width:100%;
-    flex-shrink:0;
-}
-
-#deck.cardRow .card{
-    width:100%;
+    height:auto;
+    min-width:0;
+    min-height:0;
+    aspect-ratio: 118 / 168;
     flex-shrink:0;
 }
 
@@ -1594,8 +1594,11 @@ body.deckPage{
 ======================================== */
 
 .cardRow .card{
-    width:auto;
-    min-width:auto;
+    width:100%;
+    height:auto;
+    min-width:0;
+    min-height:0;
+    aspect-ratio: 118 / 168;
     flex-shrink:0;
     transition:
         transform .15s ease;
@@ -1608,8 +1611,9 @@ body.deckPage{
 
 .cardRow .card img{
     width:100%;
-    height:auto;
+    height:100%;
     display:block;
+    object-fit: cover;
 }
 
 /* ========================================

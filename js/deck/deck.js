@@ -513,7 +513,7 @@ function updateDeckCardPreview(id) {
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
 
   previewDiv.innerHTML = `
-    <div class="deckCardPreviewContainer">
+    <div class="deckCardPreviewContainer" style="transform: scale(0.85); transform-origin: top center;">
       <img src="${imageSrc}" alt="" class="deckCardPreviewImg" onerror="this.src='assets/404.png'">
       <div class="deckCardPreviewDetails">
         <div class="deckCardPreviewName">${card.name || ""}</div>

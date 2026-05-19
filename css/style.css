@@ -1032,20 +1032,32 @@ body.deckPage{
     min-height:52px;
 }
 
+/* Workspace contains the main column area and the preview column. Use grid to allow the main area to take remaining space while the preview keeps its width. */
 .deckBuilderWorkspace {
-    display: flex;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr auto; /* main area expands, preview stays auto width */
+    gap: 8px;
     flex: 1 1 0;
     min-height: 0;
     width: 100%;
 }
 
 .deckBuilderMainCols {
+    /* Use flex column so that the vertical resizer can adjust heights via flex ratios */
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0; /* resizer provides visual gap */
     flex: 1;
     min-width: 0;
+    min-height: 0;
+    height: 100%;
+}
+
+/* Ensure the two panes inside .deckBuilderMainCols can shrink/grow via flex ratios set by JS */
+.deckBuilderMainCols > * {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .deckBuilderPreviewCol {
@@ -1211,10 +1223,11 @@ body.deckPage{
 }
 
 .deckArea{
+    /* Ensure the deck area can shrink when the resizer is moved */
     flex:2 1 0;
-    min-height:150px;
+    min-height:0;
     position: relative;
-    overflow: visible;
+    overflow:hidden;
 }
 
 /* ========================================

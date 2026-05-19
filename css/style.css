@@ -1515,7 +1515,7 @@ body.deckPage{
     gap:10px;
     padding:10px 12px 18px;
     scroll-behavior:smooth;
-    min-height:100%;
+    min-height:0;
     min-width:0;
     width:max-content;
     align-content:start;
@@ -1553,7 +1553,7 @@ body.deckPage{
     overflow-y:hidden;
     padding:10px 12px 18px;
     height:100%;
-    min-height:240px;
+    min-height:0;
     min-width:0;
     scroll-behavior:smooth;
     flex:1 1 0;
@@ -1561,13 +1561,16 @@ body.deckPage{
 
 #deck.cardRow .deckCard{
     width: var(--deck-card-width, 236px);
-    height: auto;
+    height: var(--deck-card-height, auto);
+    flex-shrink: 0;
+    aspect-ratio: 118 / 168;
 }
 
 #cards.cardRow .deckCard{
     width: var(--cards-card-width, 97px);
     min-width: var(--cards-card-width, 97px);
     height: auto;
+    aspect-ratio: 118 / 168;
 }
 
 
@@ -1649,6 +1652,14 @@ body.deckPage{
     gap:2px;
     background:#111;
     border:1px solid rgba(255,255,255,0.12);
+    min-height:0;
+    overflow:hidden;
+}
+
+/* deckArea内のpagedRowはoverflowを管理する */
+.deckArea > .pagedRow {
+    overflow: hidden;
+    min-height: 0;
 }
 
 /* ========================================

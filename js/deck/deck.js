@@ -700,7 +700,7 @@ function updateCardSizes() {
   const areaZoom = window.deckAreaLocalZoom || 1;
 
   const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)) * catalogZoom);
-  const deckCardHeight = Math.round(Math.max(120, Math.min(340, bottomHeight * 0.72)) * areaZoom);
+  const deckCardHeight = Math.round(Math.max(80, Math.min(340, bottomHeight * 0.72)) * areaZoom);
   const topCardWidth = Math.round(topCardHeight * (118 / 168));
   const deckCardWidth = Math.round(deckCardHeight * (118 / 168));
 

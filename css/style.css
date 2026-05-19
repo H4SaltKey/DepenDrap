@@ -1074,14 +1074,14 @@ body.deckPage{
 }
 
 .deckBuilderPreviewCol {
-    width: 320px;
+    width: 280px;
     background: rgba(14, 14, 22, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 14px;
     flex-shrink: 0;
     box-sizing: border-box;
 }
@@ -1128,7 +1128,7 @@ body.deckPage{
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: 65%;
+    max-height: 75%;
     object-fit: contain;
     border-radius: 8px;
     border: 1px solid rgba(199, 179, 119, 0.3);

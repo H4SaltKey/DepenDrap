@@ -689,6 +689,26 @@ function setupFilters() {
   });
 }
 
+function updateCardSizes() {
+  const catalogCol = document.getElementById("cardCatalogSection");
+  const deckArea = document.getElementById("deckDropZone");
+  if (!catalogCol || !deckArea) return;
+
+  const topHeight = catalogCol.getBoundingClientRect().height;
+  const bottomHeight = deckArea.getBoundingClientRect().height;
+
+  const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)));
+  const deckCardHeight = Math.round(Math.max(120, Math.min(340, bottomHeight * 0.72)));
+  const topCardWidth = Math.round(topCardHeight * (97 / 139));
+  const deckCardWidth = Math.round(deckCardHeight * (118 / 168));
+
+  const root = document.documentElement;
+  root.style.setProperty("--cards-card-height", `${topCardHeight}px`);
+  root.style.setProperty("--cards-card-width", `${topCardWidth}px`);
+  root.style.setProperty("--deck-card-height", `${deckCardHeight}px`);
+  root.style.setProperty("--deck-card-width", `${deckCardWidth}px`);
+}
+
 function setupDeckBuilder() {
   const cardsDiv = document.getElementById("cards");
   const deckDiv = document.getElementById("deck");
@@ -723,6 +743,7 @@ function setupDeckBuilder() {
   window.addEventListener("resize", () => {
     updateCardsScrollButtons();
     updateDeckScrollButtons();
+    updateCardSizes();
   });
 
   window.deckGlobalZoom = 1;
@@ -756,9 +777,7 @@ function setupDeckBuilder() {
 
   window.updateDeckZooms = function() {
     const cards = document.getElementById("cards");
-    const deck = document.getElementById("deck");
     if (cards) cards.style.zoom = window.deckCatalogLocalZoom;
-    if (deck) deck.style.zoom = window.deckAreaLocalZoom;
   };
 
   const zoomSlider = document.getElementById("deckZoomSlider");
@@ -786,6 +805,7 @@ function setupDeckBuilder() {
 
   setupPreviewResizer();
   setupVerticalResizer();
+  updateCardSizes();
 }
 
 // ===== デッキ名表示 =====
@@ -991,6 +1011,8 @@ function setupVerticalResizer() {
       if (currentCatalogHeight > 0 && currentDeckHeight > 0) {
         updateDeckEditorSettings({ verticalRatio: currentCatalogHeight / currentDeckHeight });
       }
+      updateCardSizes();
     }
   });
 }
+

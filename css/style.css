@@ -1520,7 +1520,7 @@ body.deckPage{
     grid-template-rows:
         repeat(2, minmax(0, auto));
     grid-auto-flow:column;
-    grid-auto-columns:108px;
+    grid-auto-columns: var(--cards-card-width, 108px);
     gap:10px;
     padding:10px 12px 18px;
     scroll-behavior:smooth;
@@ -1569,14 +1569,14 @@ body.deckPage{
 }
 
 #deck.cardRow .deckCard{
-    width:236px;
-    height:336px;
+    width: var(--deck-card-width, 236px);
+    height: var(--deck-card-height, 336px);
 }
 
 #cards.cardRow .deckCard{
-    width:97px;
-    min-width:97px;
-    height:139px;
+    width: var(--cards-card-width, 97px);
+    min-width: var(--cards-card-width, 97px);
+    height: var(--cards-card-height, 139px);
 }
 
 

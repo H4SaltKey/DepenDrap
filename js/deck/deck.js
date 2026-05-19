@@ -786,9 +786,13 @@ function setupDeckBuilder() {
       areaZoomSlider.value = String(editorSettings.deckAreaZoom);
     }
     window.deckAreaLocalZoom = parseFloat(areaZoomSlider.value) || 1;
+    // Apply initial sizes after reading saved value
+    updateCardSizes();
     areaZoomSlider.addEventListener("input", (e) => {
       window.deckAreaLocalZoom = parseFloat(e.target.value) || 1;
       updateCardSizes();
+      // ensure deck DOM reflow if necessary
+      if (typeof render === 'function') render();
       updateDeckEditorSettings({ deckAreaZoom: window.deckAreaLocalZoom });
     });
   }

@@ -975,7 +975,6 @@ function setupVerticalResizer() {
     deckArea.style.minHeight = minHeight + "px";
 
     if (window.updateDeckZooms) {
-      window.deckCatalogLocalZoom = newCatalogHeight / baseCatalogHeight;
       window.deckAreaLocalZoom = newDeckHeight / baseDeckHeight;
       window.updateDeckZooms();
     }

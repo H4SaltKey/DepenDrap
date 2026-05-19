@@ -1569,8 +1569,8 @@ body.deckPage{
 }
 
 #deck.cardRow .deckCard{
-    width:118px;
-    height:168px;
+    width:236px;
+    height:336px;
 }
 
 #cards.cardRow .deckCard{
@@ -2045,7 +2045,6 @@ button{
   width:110px;
   min-width:110px;
   height:170px;
-  border:1px solid rgba(255,255,255,0.08);
   background: rgba(16, 18, 28, 0.95);
   padding:0;
   box-sizing:border-box;

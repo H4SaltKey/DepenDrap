@@ -706,6 +706,7 @@ function setupDeckBuilder() {
   });
 
   setupPreviewResizer();
+  setupVerticalResizer();
 }
 
 // ===== デッキ名表示 =====
@@ -834,6 +835,70 @@ function setupPreviewResizer() {
     if (isResizing) {
       isResizing = false;
       resizer.classList.remove("resizing");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+  });
+}
+
+// ===== 縦枠（カード一覧・デッキ間）のリサイズ機能 =====
+function setupVerticalResizer() {
+  const vResizer = document.getElementById("verticalResizer");
+  const catalogCol = document.getElementById("cardCatalogSection");
+  const deckArea = document.getElementById("deckDropZone");
+  if (!vResizer || !catalogCol || !deckArea) return;
+
+  let isResizingV = false;
+  let startY = 0;
+  let startCatalogHeight = 0;
+  let startDeckHeight = 0;
+
+  vResizer.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    isResizingV = true;
+    startY = e.clientY;
+    startCatalogHeight = catalogCol.offsetHeight;
+    startDeckHeight = deckArea.offsetHeight;
+    vResizer.classList.add("resizing");
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isResizingV) return;
+    
+    // Dragging down (positive dy) increases catalog height and decreases deck area height.
+    const dy = e.clientY - startY;
+    let newCatalogHeight = startCatalogHeight + dy;
+    let newDeckHeight = startDeckHeight - dy;
+
+    const minHeight = 150;
+    const totalHeight = startCatalogHeight + startDeckHeight;
+
+    if (newCatalogHeight < minHeight) {
+      newCatalogHeight = minHeight;
+      newDeckHeight = totalHeight - minHeight;
+    } else if (newDeckHeight < minHeight) {
+      newDeckHeight = minHeight;
+      newCatalogHeight = totalHeight - minHeight;
+    }
+
+    // Apply constraints explicitly using flex properties
+    catalogCol.style.height = newCatalogHeight + "px";
+    catalogCol.style.minHeight = newCatalogHeight + "px";
+    catalogCol.style.maxHeight = newCatalogHeight + "px";
+    catalogCol.style.flexBasis = newCatalogHeight + "px";
+
+    deckArea.style.height = newDeckHeight + "px";
+    deckArea.style.minHeight = newDeckHeight + "px";
+    deckArea.style.maxHeight = newDeckHeight + "px";
+    deckArea.style.flexBasis = newDeckHeight + "px";
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isResizingV) {
+      isResizingV = false;
+      vResizer.classList.remove("resizing");
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     }

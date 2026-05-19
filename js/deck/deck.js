@@ -776,36 +776,6 @@ function setupDeckBuilder() {
     }
   }
 
-  // Deck area size slider
-  const areaZoomSlider = document.getElementById("deckAreaZoomSlider");
-  if (areaZoomSlider) {
-    if (editorSettings.deckAreaZoom !== undefined) {
-      areaZoomSlider.value = String(editorSettings.deckAreaZoom);
-    }
-    window.deckAreaLocalZoom = parseFloat(areaZoomSlider.value) || 1;
-    // Apply initial sizes after reading saved value
-    updateCardSizes();
-    areaZoomSlider.addEventListener("input", (e) => {
-      window.deckAreaLocalZoom = parseFloat(e.target.value) || 1;
-      updateCardSizes();
-      // ensure deck DOM reflow if necessary
-      if (typeof render === 'function') render();
-      updateDeckEditorSettings({ deckAreaZoom: window.deckAreaLocalZoom });
-    });
-  }
-
-  const zoomSlider = document.getElementById("deckZoomSlider");
-  if (zoomSlider) {
-    if (editorSettings.zoom !== undefined) {
-      zoomSlider.value = String(editorSettings.zoom);
-    }
-    window.deckCatalogLocalZoom = parseFloat(zoomSlider.value) || 1;
-    zoomSlider.addEventListener("input", (e) => {
-      window.deckCatalogLocalZoom = parseFloat(e.target.value) || 1;
-      updateCardSizes();
-      updateDeckEditorSettings({ zoom: window.deckCatalogLocalZoom });
-    });
-  }
 
   setupFilters();
 

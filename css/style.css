@@ -1564,15 +1564,15 @@ body.deckPage{
 }
 
 #deck.cardRow .deckCard{
-    width:118px;
-    min-width:118px;
-    height:168px;
+    width: calc(118px * var(--deck-scale, 1));
+    min-width: calc(118px * var(--deck-scale, 1));
+    height: calc(168px * var(--deck-scale, 1));
 }
 
 #cards.cardRow .deckCard{
-    width:97px;
-    min-width:97px;
-    height:139px;
+    width: calc(97px * var(--deck-scale, 1));
+    min-width: calc(97px * var(--deck-scale, 1));
+    height: calc(139px * var(--deck-scale, 1));
 }
 
 
@@ -2084,7 +2084,7 @@ button{
 }
 
 .deckCardName{
-  font-size:12px;
+  font-size: calc(12px * var(--deck-scale, 1));
   line-height:1.2;
   text-align:center;
   white-space:nowrap;
@@ -2098,7 +2098,7 @@ button{
   justify-content:center;
   align-items:center;
   gap:4px;
-  font-size:11px;
+  font-size: calc(11px * var(--deck-scale, 1));
   line-height:1.2;
 }
 
@@ -2107,7 +2107,7 @@ button{
 }
 
 .deckCardTags{
-  font-size:10px;
+  font-size: calc(10px * var(--deck-scale, 1));
   color:#ddd;
   white-space:nowrap;
   overflow:hidden;
@@ -2133,7 +2133,7 @@ button{
   background:#111;
   color:white;
   font-weight:bold;
-  font-size:12px;
+  font-size: calc(12px * var(--deck-scale, 1));
   line-height:1;
   padding:2px 4px;
 }

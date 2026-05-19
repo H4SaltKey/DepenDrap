@@ -696,6 +696,15 @@ function setupDeckBuilder() {
     updateDeckScrollButtons();
   });
 
+  const zoomSlider = document.getElementById("deckZoomSlider");
+  const workspace = document.querySelector(".deckBuilderWorkspace");
+  if (zoomSlider && workspace) {
+    zoomSlider.addEventListener("input", (e) => {
+      workspace.style.setProperty("--deck-scale", e.target.value);
+    });
+    workspace.style.setProperty("--deck-scale", zoomSlider.value);
+  }
+
   setupFilters();
 
   setupDropZone(document.getElementById("deck"), (id, source) => {

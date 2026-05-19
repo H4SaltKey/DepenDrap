@@ -82,35 +82,13 @@ body.deckPage{
 /* 戻るボタン */
 .back-btn {
   position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 10000;
-  background: rgba(10, 8, 20, 0.8);
-  border: 1px solid #c7b377;
-  color: #e0d0a0;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  backdrop-filter: blur(8px);
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-}
-.back-btn:hover {
-  background: rgba(199, 179, 119, 0.2);
-  border-color: #fff;
-  transform: translateX(-5px);
-  box-shadow: 0 4px 20px rgba(199, 179, 119, 0.2);
-}
-.back-btn::before {
-  content: "←";
-  font-size: 16px;
+  top: 16px;
+  left: 16px;
+  z-index: 100;
+  background: #34323c;
+  color: #f5e7b7;
+  border: 1px solid #8e7c58;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
 }
 
 /* ボタン */
@@ -226,7 +204,7 @@ body.deckPage{
   inset:0;
   background: url("../assets/title_bg.png") center center / cover no-repeat;
   filter: blur(8px) brightness(0.4);
-  transform: scale(1.05); /* ぼかしの端切れを防ぐ */
+  transform: scale(1.05);
   z-index:-1;
   pointer-events:none;
 }
@@ -563,7 +541,7 @@ body.isDraggingCard #field .deckObject{
 #gameUiEnemy .lorPanel{
   background: linear-gradient(0deg, rgba(10,8,20,0) 0%, rgba(10,8,20,0.85) 40%);
   flex-direction:row-reverse;
-  padding-right:90px; /* メニューボタン分だけ右側を空ける */
+  padding-right:90px;
   pointer-events:all !important;
 }
 
@@ -1915,25 +1893,6 @@ button{
    保存ボタン
 ======================================== */
 
-.back-btn{
-    position:fixed;
-
-    top:16px;
-    left:16px;
-
-    z-index:100;
-
-    background:#34323c;
-
-    color:#f5e7b7;
-
-    border:
-        1px solid #8e7c58;
-
-    box-shadow:
-        0 4px 12px rgba(0,0,0,.2);
-}
-
 /* ========================================
    スクロールバー
 ======================================== */
@@ -2344,11 +2303,6 @@ button{
   margin-right: 4px;
 }
 
-.log-ts {
-  color: rgba(200, 155, 60, 0.6);
-  margin-right: 4px;
-}
-
 @keyframes drawCardAnim {
   0% { opacity: 0; transform: translateY(-50px) scale(0.8); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
@@ -2465,4 +2419,47 @@ body.preGameLocked #optionsModal,
 body.preGameLocked #confirmModal {
   pointer-events: auto !important;
   opacity: 1 !important;
+}
+
+/* ========================================
+   レスポンシブ対応（モバイル/小画面）
+======================================== */
+@media (max-width: 600px) {
+  .deckBuilder {
+    padding: 4px;
+    gap: 4px;
+  }
+  .deckBuilderPreviewCol {
+    width: 100%;
+    padding: 8px;
+  }
+  .deckBuilderWorkspace {
+    flex-direction: column;
+    gap: 8px;
+  }
+  #zoomControls {
+    transform: scale(0.6);
+    bottom: 10px;
+    right: 10px;
+    padding: 10px;
+  }
+  #gameUiEnemy {
+    transform: scale(0.6);
+  }
+  .lorPanel {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .lorCenter {
+    max-width: 180px;
+  }
+  .filterGroup {
+    flex: 0 1 140px;
+    min-width: 100px;
+  }
+  .deckCodeInner input {
+    flex: 0 1 100px;
+    min-width: 80px;
+  }
 }

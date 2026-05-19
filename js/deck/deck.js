@@ -708,9 +708,6 @@ function updateCardSizes() {
   root.style.setProperty("--cards-card-width", `${topCardWidth}px`);
   root.style.setProperty("--deck-card-width", `${deckCardWidth}px`);
   root.style.setProperty("--deck-card-height", `${deckCardHeight}px`);
-  // If cards become small, add a class so CSS can disable rounded corners
-  const compact = (topCardWidth || 0) < 90 || (deckCardWidth || 0) < 160;
-  document.documentElement.classList.toggle('cards-compact', compact);
 }
 
 function setupDeckBuilder() {

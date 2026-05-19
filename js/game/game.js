@@ -464,6 +464,15 @@ function addVal(owner, key, delta) {
   const prev = Number(s[key]) || 0;
   let v = prev + delta;
   if (key === "pp") {
+    if (delta > 0) {
+      const isDev = window.devMode || localStorage.getItem("dev") === "true";
+      if (!isDev) {
+        if (typeof showErrorMessage === "function") {
+          showErrorMessage("ボタンによるPP回復はできません。");
+        }
+        return;
+      }
+    }
     const maxPp = Number(s.ppMax) || 2;
     v = Math.min(Math.max(v, 0), maxPp);
   } else if (key === "defstack") {

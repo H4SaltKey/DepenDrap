@@ -293,7 +293,7 @@ function showCardZoom(card){
   closeBtn.textContent = "✕";
   closeBtn.style.cssText = `
     position:fixed;
-    top:16px;right:16px;
+    top:16px;left:16px;
     width:36px;height:36px;
     background:rgba(0,0,0,0.6);
     color:white;

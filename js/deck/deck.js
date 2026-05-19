@@ -7,6 +7,35 @@ let cardFilters = {
 const DECK_MIN_SIZE = 30;
 const DECK_MAX_SIZE = 40;
 
+function getDeckEditorSettingsKey() {
+  const username = window.myUsername || localStorage.getItem("username") || "guest";
+  const safeUser = String(username || "guest").replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `deckEditorSettings:${safeUser}`;
+}
+
+function loadDeckEditorSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(getDeckEditorSettingsKey()) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDeckEditorSettings(settings) {
+  try {
+    localStorage.setItem(getDeckEditorSettingsKey(), JSON.stringify(settings || {}));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function updateDeckEditorSettings(updates) {
+  const current = loadDeckEditorSettings();
+  const merged = Object.assign({}, current, updates);
+  saveDeckEditorSettings(merged);
+  return merged;
+}
+
 // URLパラメータからデッキIDを取得
 const DECK_ID = new URLSearchParams(location.search).get("deckId");
 
@@ -700,6 +729,31 @@ function setupDeckBuilder() {
   window.deckCatalogLocalZoom = 1;
   window.deckAreaLocalZoom = 1;
 
+  const editorSettings = loadDeckEditorSettings();
+
+  const previewCol = document.getElementById("deckPreviewCol");
+  if (previewCol && editorSettings.previewWidth) {
+    const width = Math.max(180, Number(editorSettings.previewWidth) || 180);
+    previewCol.style.width = `${width}px`;
+    previewCol.style.minWidth = `${width}px`;
+    previewCol.style.maxWidth = `${width}px`;
+    previewCol.style.flexBasis = `${width}px`;
+  }
+
+  const catalogCol = document.getElementById("cardCatalogSection");
+  const deckArea = document.getElementById("deckDropZone");
+  if (catalogCol && deckArea && editorSettings.verticalRatio) {
+    const ratio = Number(editorSettings.verticalRatio);
+    if (ratio > 0) {
+      catalogCol.style.flex = `${ratio} 0 0px`;
+      catalogCol.style.maxHeight = "none";
+      catalogCol.style.minHeight = "150px";
+      deckArea.style.flex = "1 0 0px";
+      deckArea.style.maxHeight = "none";
+      deckArea.style.minHeight = "150px";
+    }
+  }
+
   window.updateDeckZooms = function() {
     const cards = document.getElementById("cards");
     const deck = document.getElementById("deck");
@@ -709,9 +763,13 @@ function setupDeckBuilder() {
 
   const zoomSlider = document.getElementById("deckZoomSlider");
   if (zoomSlider) {
+    if (editorSettings.zoom !== undefined) {
+      zoomSlider.value = String(editorSettings.zoom);
+    }
     zoomSlider.addEventListener("input", (e) => {
       window.deckGlobalZoom = parseFloat(e.target.value) || 1;
       window.updateDeckZooms();
+      updateDeckEditorSettings({ zoom: window.deckGlobalZoom });
     });
     window.deckGlobalZoom = parseFloat(zoomSlider.value) || 1;
     window.updateDeckZooms();
@@ -858,11 +916,11 @@ function setupPreviewResizer() {
       resizer.classList.remove("resizing");
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      updateDeckEditorSettings({ previewWidth: parseInt(previewCol.style.width || previewCol.offsetWidth, 10) || previewCol.offsetWidth });
     }
   });
 }
 
-// ===== 縦枠（カード一覧・デッキ間）のリサイズ機能 =====
 function setupVerticalResizer() {
   const vResizer = document.getElementById("verticalResizer");
   const catalogCol = document.getElementById("cardCatalogSection");
@@ -907,7 +965,6 @@ function setupVerticalResizer() {
       newCatalogHeight = totalHeight - minHeight;
     }
 
-    // flex-grow 比率で配分する（gap をコンテナ側に任せる）
     const ratio = newCatalogHeight / newDeckHeight;
     catalogCol.style.flex = `${ratio} 0 0px`;
     catalogCol.style.maxHeight = "none";
@@ -917,7 +974,6 @@ function setupVerticalResizer() {
     deckArea.style.maxHeight = "none";
     deckArea.style.minHeight = minHeight + "px";
 
-    // 縦幅の変更に合わせて、各キャンバスのローカルズーム率を更新
     if (window.updateDeckZooms) {
       window.deckCatalogLocalZoom = newCatalogHeight / baseCatalogHeight;
       window.deckAreaLocalZoom = newDeckHeight / baseDeckHeight;
@@ -931,6 +987,11 @@ function setupVerticalResizer() {
       vResizer.classList.remove("resizing");
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      const currentCatalogHeight = catalogCol.offsetHeight;
+      const currentDeckHeight = deckArea.offsetHeight;
+      if (currentCatalogHeight > 0 && currentDeckHeight > 0) {
+        updateDeckEditorSettings({ verticalRatio: currentCatalogHeight / currentDeckHeight });
+      }
     }
   });
 }

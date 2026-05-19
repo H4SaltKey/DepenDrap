@@ -800,6 +800,7 @@ function setupPreviewResizer() {
   let startWidth = 0;
 
   resizer.addEventListener("mousedown", (e) => {
+    e.preventDefault(); // ブラウザ標準のドラッグ等の動作を無効化
     isResizing = true;
     startX = e.clientX;
     startWidth = previewCol.offsetWidth;
@@ -822,7 +823,11 @@ function setupPreviewResizer() {
     if (newWidth > maxWidth) newWidth = maxWidth;
     if (newWidth < minWidth) newWidth = minWidth;
 
+    // Flexboxの制約を確実に上書きするために複数プロパティを指定
     previewCol.style.width = newWidth + "px";
+    previewCol.style.minWidth = newWidth + "px";
+    previewCol.style.maxWidth = newWidth + "px";
+    previewCol.style.flexBasis = newWidth + "px";
   });
 
   window.addEventListener("mouseup", () => {

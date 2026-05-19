@@ -2066,6 +2066,12 @@ button{
   cursor:default;
 }
 
+/* When cards are compacted (small), remove rounded corners to keep visual clarity */
+:root.cards-compact .deckCard,
+:root.cards-compact .card {
+  border-radius: 0 !important;
+}
+
 .deckCard img{
   width:100%;
   height:100%;

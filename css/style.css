@@ -1570,7 +1570,6 @@ body.deckPage{
 
 #deck.cardRow .deckCard{
     width:118px;
-    min-width:118px;
     height:168px;
 }
 

@@ -757,8 +757,8 @@ function setupDeckBuilder() {
   window.updateDeckZooms = function() {
     const cards = document.getElementById("cards");
     const deck = document.getElementById("deck");
-    if (cards) cards.style.zoom = window.deckGlobalZoom * window.deckCatalogLocalZoom;
-    if (deck) deck.style.zoom = window.deckGlobalZoom * window.deckAreaLocalZoom;
+    if (cards) cards.style.zoom = window.deckCatalogLocalZoom;
+    if (deck) deck.style.zoom = window.deckAreaLocalZoom;
   };
 
   const zoomSlider = document.getElementById("deckZoomSlider");
@@ -767,11 +767,11 @@ function setupDeckBuilder() {
       zoomSlider.value = String(editorSettings.zoom);
     }
     zoomSlider.addEventListener("input", (e) => {
-      window.deckGlobalZoom = parseFloat(e.target.value) || 1;
+      window.deckCatalogLocalZoom = parseFloat(e.target.value) || 1;
       window.updateDeckZooms();
-      updateDeckEditorSettings({ zoom: window.deckGlobalZoom });
+      updateDeckEditorSettings({ zoom: window.deckCatalogLocalZoom });
     });
-    window.deckGlobalZoom = parseFloat(zoomSlider.value) || 1;
+    window.deckCatalogLocalZoom = parseFloat(zoomSlider.value) || 1;
     window.updateDeckZooms();
   }
 

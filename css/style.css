@@ -1029,8 +1029,7 @@ body.deckPage{
     margin:0;
     background:#0c0b12;
     color:#f4f1d6;
-    overflow-x:hidden;
-    overflow-y:auto;
+    overflow:hidden;
     font-family:
         "Yu Gothic",
         sans-serif;
@@ -1043,13 +1042,11 @@ body.deckPage{
 .deckBuilder{
     display:flex;
     flex-direction:column;
-    min-height:100vh;
-    overflow:auto;
+    height:100vh;
+    overflow:hidden;
     gap:6px;
     padding:8px 8px 6px;
     box-sizing:border-box;
-    transform: scale(0.95);
-    transform-origin: top center;
 }
 
 .deckBuilder > .deckPageHeader{
@@ -1231,13 +1228,13 @@ body.deckPage{
 }
 
 .cardCatalog{
-    flex:0 0 56vh;
-    max-height: calc(100vh - 32px);
+    flex:3 1 0;
+    min-height:0;
 }
 
 .deckArea{
-    flex:0 0 36vh;
-    min-height:240px;
+    flex:2 1 0;
+    min-height:150px;
     position: relative;
     overflow: visible;
 }
@@ -1254,8 +1251,6 @@ body.deckPage{
     display:flex;
     flex-direction:column;
     gap:1px;
-    flex:0 0 56vh;
-    max-height: calc(100vh - 32px);
     min-height:0;
     min-width:0;
 }
@@ -1490,26 +1485,25 @@ body.deckPage{
 .cardListViewport{
     display:flex;
     flex-direction:column;
-    flex:1 1 auto;
-    min-height:460px;
+    flex:1 1 0;
+    min-height:0;
     min-width:0;
     overflow:hidden;
     background: rgba(8, 8, 14, 0.95);
     border-radius: 12px;
-    padding: 14px;
+    padding: 8px;
     border: 1px solid rgba(255,255,255,0.12);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
 }
 
 .cardListScroll{
     display:flex;
-    flex:1 1 auto;
-    height:100%;
-    min-height:420px;
+    flex:1 1 0;
+    min-height:0;
     min-width:0;
     overflow-x:auto;
     overflow-y:hidden;
-    padding:18px 0 32px;
+    padding:4px 0 8px;
     align-items:flex-start;
     box-sizing: border-box;
 }
@@ -1654,8 +1648,6 @@ body.deckPage{
     gap:2px;
     background:#111;
     border:1px solid rgba(255,255,255,0.12);
-    flex:0 0 28vh;
-    min-height:220px;
 }
 
 /* ========================================

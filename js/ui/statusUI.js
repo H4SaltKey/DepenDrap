@@ -233,8 +233,13 @@ function getHandLimit(owner) {
   if (!s) return 6;
   let limit = 6;
   if (s.evolutionPath === "忍耐の道") {
-    limit += 2;
-    if ((Number(s.level) || 1) >= 6) limit += 1;
+    const level = Number(s.level) || 1;
+    let x = 0;
+    if (level >= 6) x = 4;
+    else if (level >= 5) x = 3;
+    else if (level >= 3) x = 1;
+    else x = 0;
+    limit += (1 + x);
   }
   return limit;
 }

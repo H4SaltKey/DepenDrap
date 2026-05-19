@@ -1363,16 +1363,19 @@ window.getHandLimit = function(owner) {
   if (!s || !s.evolutionPath || s.evolutionPath !== "忍耐の道") {
     return baseLimit;
   }
-  // 忍耐の道: 手札上限+2、最大レベル時は+3
+  // 忍耐の道: 手札上限が 1 + x 増加する (x = [0/1/3/4])
   const level = s.level || 1;
+  let x = 0;
   if (level >= 6) {
-    return baseLimit + 3;
+    x = 4;
   } else if (level >= 5) {
-    return baseLimit + 2;
+    x = 3;
   } else if (level >= 3) {
-    return baseLimit + 1;
+    x = 1;
+  } else {
+    x = 0;
   }
-  return baseLimit;
+  return baseLimit + (1 + x);
 };
 
 window.prevMyHandCount = -1;

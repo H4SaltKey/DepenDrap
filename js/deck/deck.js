@@ -72,6 +72,11 @@ function canAddCard(id) {
     showDeckMessage(`デッキは最大 ${DECK_MAX_SIZE} 枚です`);
     return false;
   }
+  const currentCount = deck.filter(c => c === id).length;
+  if (currentCount >= 3) {
+    showDeckMessage(`同名カードは3枚までしか入れられません`);
+    return false;
+  }
   return true;
 }
 
@@ -416,7 +421,10 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
         const count = Number(item.dataset.count);
         const performAction = () => {
           if (action === "add") {
-            for (let i = 0; i < count; i++) addCard(id);
+            const currentCount = getDeckCount(id);
+            const remainingForCard = Math.max(0, 3 - currentCount);
+            const toAdd = Math.min(count, remainingForCard);
+            for (let i = 0; i < toAdd; i++) addCard(id);
           } else {
             for (let i = 0; i < count; i++) removeCard(id);
           }
@@ -429,7 +437,10 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
           let actualCount = 0;
           if (action === "add") {
             const currentLen = getDeckLength();
-            actualCount = Math.min(count, DECK_MAX_SIZE - currentLen);
+            const currentCount = getDeckCount(id);
+            const remainingForCard = Math.max(0, 3 - currentCount);
+            const remainingForDeck = Math.max(0, DECK_MAX_SIZE - currentLen);
+            actualCount = Math.min(count, remainingForCard, remainingForDeck);
             if (actualCount <= 0) {
               canAddCard(id); // メッセージ表示のため
               return;

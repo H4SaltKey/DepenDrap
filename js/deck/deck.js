@@ -696,17 +696,17 @@ function updateCardSizes() {
 
   const topHeight = catalogCol.getBoundingClientRect().height;
   const bottomHeight = deckArea.getBoundingClientRect().height;
+  const catalogZoom = window.deckCatalogLocalZoom || 1;
 
-  const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)));
+  const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)) * catalogZoom);
   const deckCardHeight = Math.round(Math.max(120, Math.min(340, bottomHeight * 0.72)));
-  const topCardWidth = Math.round(topCardHeight * (97 / 139));
+  const topCardWidth = Math.round(topCardHeight * (118 / 168));
   const deckCardWidth = Math.round(deckCardHeight * (118 / 168));
 
   const root = document.documentElement;
-  root.style.setProperty("--cards-card-height", `${topCardHeight}px`);
   root.style.setProperty("--cards-card-width", `${topCardWidth}px`);
-  root.style.setProperty("--deck-card-height", `${deckCardHeight}px`);
   root.style.setProperty("--deck-card-width", `${deckCardWidth}px`);
+  root.style.setProperty("--deck-card-height", `${deckCardHeight}px`);
 }
 
 function setupDeckBuilder() {
@@ -775,23 +775,17 @@ function setupDeckBuilder() {
     }
   }
 
-  window.updateDeckZooms = function() {
-    const cards = document.getElementById("cards");
-    if (cards) cards.style.zoom = window.deckCatalogLocalZoom;
-  };
-
   const zoomSlider = document.getElementById("deckZoomSlider");
   if (zoomSlider) {
     if (editorSettings.zoom !== undefined) {
       zoomSlider.value = String(editorSettings.zoom);
     }
+    window.deckCatalogLocalZoom = parseFloat(zoomSlider.value) || 1;
     zoomSlider.addEventListener("input", (e) => {
       window.deckCatalogLocalZoom = parseFloat(e.target.value) || 1;
-      window.updateDeckZooms();
+      updateCardSizes();
       updateDeckEditorSettings({ zoom: window.deckCatalogLocalZoom });
     });
-    window.deckCatalogLocalZoom = parseFloat(zoomSlider.value) || 1;
-    window.updateDeckZooms();
   }
 
   setupFilters();
@@ -994,10 +988,7 @@ function setupVerticalResizer() {
     deckArea.style.maxHeight = "none";
     deckArea.style.minHeight = minHeight + "px";
 
-    if (window.updateDeckZooms) {
-      window.deckAreaLocalZoom = newDeckHeight / baseDeckHeight;
-      window.updateDeckZooms();
-    }
+    updateCardSizes();
   });
 
   window.addEventListener("mouseup", () => {

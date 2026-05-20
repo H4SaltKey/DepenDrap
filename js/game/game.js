@@ -1370,6 +1370,17 @@ function updateMatchUI() {
   } else {
     traceGame("updateMatchUI.updateFirstDrawPhaseUI", "missing");
   }
+
+  // 7. フェーズオーバーレイ中の「デッキを確認」ボタン制御
+  // ダイス/進化/ファーストドローフェーズ中は左上にボタンを表示
+  if (typeof window.injectPhaseOverlayDeckBtn === "function") {
+    const phaseOverlayActive = ["setup_dice", "setup_evolution", "setup_first_draw"].includes(m.status);
+    if (phaseOverlayActive) {
+      window.injectPhaseOverlayDeckBtn();
+    } else {
+      window.removePhaseOverlayDeckBtn?.();
+    }
+  }
 }
 
 // アニメーション・結果画面・ダイスフェーズのスタイルを初回のみ注入

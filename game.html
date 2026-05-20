@@ -94,9 +94,17 @@
 <script src="js/ui/animationUI.js"></script>
 <script src="js/ui/chatUI.js"></script>
 <script src="js/game/game.js?v=54"></script>
+<script src="js/ui/deckViewer.js"></script>
 <script src="js/ui/menu.js?v=10"></script>
 <script src="js/dev/devTools.js?v=3"></script>
 <script src="js/card/damageCalc.js?v=4"></script>
+<!-- PvPvE モンスターシステム -->
+<script src="js/game/monsters/monsterData.js"></script>
+<script src="js/game/monsters/MonsterManager.js"></script>
+<script src="js/game/monsters/BattleTargetSystem.js"></script>
+<script src="js/game/monsters/MonsterCombatSystem.js"></script>
+<script src="js/game/monsters/MonsterUI.js"></script>
+<script src="js/game/monsters/pvpveWatcher.js"></script>
 
 <div id="field">
   <div id="fieldBgBlur"></div>
@@ -187,6 +195,11 @@
       }
 
       document.dispatchEvent(new Event("firebaseJoined"));
+
+      // PvPvE: Firebase接続後にモンスターウォッチャーを開始
+      if (typeof window.startPvpveWatcher === "function") {
+        window.startPvpveWatcher();
+      }
     });
 
     // beforeunload では退出しない（リロード時に接続を維持するため）

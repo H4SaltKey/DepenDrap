@@ -760,28 +760,44 @@ function updateCardSizes() {
   const catalogZoom = window.deckCatalogLocalZoom || 1;
   const areaZoom = window.deckAreaLocalZoom || 1;
 
+  // ── カード最小サイズ定数 ──
+  const CARD_MIN_W = 48;   // px: これ以下は読めない
+  const CARD_ASPECT = 168 / 118; // h/w
+
   // ── カード一覧（上段）──
-  // .cardListScroll の実際の高さを取得（UIバーを除いた純粋なカード領域）
+  // .cardListScroll の実際の高さを取得
   const scrollEl = catalogCol.querySelector(".cardListScroll");
   const topPaneH = scrollEl ? scrollEl.getBoundingClientRect().height : catalogCol.getBoundingClientRect().height;
 
-  // 2段グリッドなので 1行の高さ = (pane高さ - gap) / 2
+  // 2段グリッド: 1行の高さ = (pane高さ - gap - padding) / 2
   const gap = 8;
-  const rowH = Math.max(0, (topPaneH - gap - 20) / 2); // 20px = padding
-  const topCardH = Math.round(Math.max(60, Math.min(200, rowH)) * catalogZoom);
-  const topCardW = Math.round(topCardH * (118 / 168));
+  const padV = 20; // 上下padding合計
+  const rowH = Math.max(0, (topPaneH - gap - padV) / 2);
+  // カード幅 = 行高さ / aspect_ratio
+  const topCardHFromRow = rowH;
+  const topCardWFromRow = Math.round(topCardHFromRow / CARD_ASPECT);
+  // 上限: pane幅の1/4程度（横に詰めすぎない）
+  const topCardW = Math.round(Math.max(CARD_MIN_W, Math.min(topCardWFromRow, 160)) * catalogZoom);
 
   // ── デッキ（下段）──
-  // .pagedRow の実際の高さを取得
-  const deckPagedRow = deckArea.querySelector(".pagedRow");
-  const botPaneH = deckPagedRow ? deckPagedRow.getBoundingClientRect().height : deckArea.getBoundingClientRect().height;
-  const deckCardH = Math.round(Math.max(80, Math.min(340, botPaneH * 0.88)) * areaZoom);
-  const deckCardW = Math.round(deckCardH * (118 / 168));
+  // .deckField の実際の高さを取得（toolbarを除いた純粋なカード領域）
+  const deckField = deckArea.querySelector(".deckField");
+  const botPaneH = deckField ? deckField.getBoundingClientRect().height : deckArea.getBoundingClientRect().height;
+  const deckCardH = Math.round(Math.max(CARD_MIN_W * CARD_ASPECT, Math.min(botPaneH * 0.88, 340)) * areaZoom);
+  const deckCardW = Math.round(deckCardH / CARD_ASPECT);
 
   const root = document.documentElement;
   root.style.setProperty("--cards-card-width", `${topCardW}px`);
   root.style.setProperty("--deck-card-width", `${deckCardW}px`);
   root.style.setProperty("--deck-card-height", `${deckCardH}px`);
+
+  // pane最小サイズをカードサイズから逆算して返す（setupVerticalResizer で使用）
+  return {
+    // 上段: 2行 + gap + padding が最低限必要
+    catalogMin: Math.round(CARD_MIN_W * CARD_ASPECT * 2 + gap + padV + 40), // 40 = header
+    // 下段: 1行 + padding が最低限必要
+    deckMin: Math.round(CARD_MIN_W * CARD_ASPECT + 60), // 60 = toolbar
+  };
 }
 
 function setupDeckBuilder() {
@@ -1009,10 +1025,6 @@ function setupVerticalResizer() {
   let startCatalogHeight = 0;
   let startDeckHeight = 0;
 
-  // 基準の高さを記録して拡縮比率のベースにする
-  const baseCatalogHeight = catalogCol.offsetHeight || (window.innerHeight * 0.56);
-  const baseDeckHeight = deckArea.offsetHeight || (window.innerHeight * 0.36);
-
   vResizer.addEventListener("mousedown", (e) => {
     e.preventDefault();
     isResizingV = true;
@@ -1026,30 +1038,37 @@ function setupVerticalResizer() {
 
   window.addEventListener("mousemove", (e) => {
     if (!isResizingV) return;
-    
+
     const dy = e.clientY - startY;
     let newCatalogHeight = startCatalogHeight + dy;
     let newDeckHeight = startDeckHeight - dy;
-
-    const minHeight = 150;
     const totalHeight = startCatalogHeight + startDeckHeight;
 
-    if (newCatalogHeight < minHeight) {
-      newCatalogHeight = minHeight;
-      newDeckHeight = totalHeight - minHeight;
-    } else if (newDeckHeight < minHeight) {
-      newDeckHeight = minHeight;
-      newCatalogHeight = totalHeight - minHeight;
-    }
+    // カードサイズから逆算した最小値を取得
+    const limits = updateCardSizes() || {};
+    const catalogMin = limits.catalogMin || 160;
+    const deckMin = limits.deckMin || 120;
 
-    const ratio = newCatalogHeight / newDeckHeight;
+    // 両方の最小値を守る
+    if (newCatalogHeight < catalogMin) {
+      newCatalogHeight = catalogMin;
+      newDeckHeight = totalHeight - catalogMin;
+    }
+    if (newDeckHeight < deckMin) {
+      newDeckHeight = deckMin;
+      newCatalogHeight = totalHeight - deckMin;
+    }
+    // 再チェック（両方同時に下限を割る場合）
+    if (newCatalogHeight < catalogMin) newCatalogHeight = catalogMin;
+
+    const ratio = newCatalogHeight / Math.max(1, newDeckHeight);
     catalogCol.style.flex = `${ratio} 0 0px`;
     catalogCol.style.maxHeight = "none";
-    catalogCol.style.minHeight = minHeight + "px";
+    catalogCol.style.minHeight = catalogMin + "px";
 
     deckArea.style.flex = `1 0 0px`;
     deckArea.style.maxHeight = "none";
-    deckArea.style.minHeight = minHeight + "px";
+    deckArea.style.minHeight = deckMin + "px";
 
     updateCardSizes();
   });

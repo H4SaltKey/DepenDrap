@@ -1035,7 +1035,7 @@ body.deckPage{
 /* Workspace contains the main column area and the preview column. Use grid to allow the main area to take remaining space while the preview keeps its width. */
 .deckBuilderWorkspace {
     display: grid;
-    grid-template-columns: 1fr auto; /* main area expands, preview stays auto width */
+    grid-template-columns: 1fr minmax(200px, 25vw); /* preview は最大25vw */
     gap: 8px;
     flex: 1 1 0;
     min-height: 0;
@@ -1061,7 +1061,9 @@ body.deckPage{
 }
 
 .deckBuilderPreviewCol {
-    width: 20vw;
+    width: auto;
+    max-width: 25vw;
+    min-width: 200px;
     background: rgba(14, 14, 22, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius);
@@ -1529,7 +1531,7 @@ body.deckPage{
 }
 
 /* ── カード一覧グリッド（2段固定・列同期） ──
-   grid-template-rows: 2行固定（各行 auto）
+   grid-template-rows: auto auto（各行はカード幅から aspect-ratio で決まる）
    grid-auto-flow: column → 列方向に積む
    align-items: start → セル高さをカードに押し付けない
    カード自身は width 基準で aspect-ratio を維持
@@ -1539,14 +1541,14 @@ body.deckPage{
     grid-template-rows: auto auto;
     grid-auto-rows: auto;
     grid-auto-flow:column;
-    grid-auto-columns: var(--cards-card-width, 108px);
+    grid-auto-columns: var(--cards-card-width, 80px);
     gap:8px;
     padding:8px 10px 12px;
     scroll-behavior:smooth;
     min-height:0;
     min-width:0;
     width:max-content;
-    align-items:start;   /* セル高さをカードに押し付けない */
+    align-items:start;
     box-sizing: border-box;
 }
 
@@ -1685,39 +1687,92 @@ body.deckPage{
    下側：デッキ
 ======================================== */
 
+/* deckArea: flex-column で toolbar(固定) + deckViewport(残り) に分離 */
 .deckArea{
-    padding:4px;
-    display:grid;
-    grid-template-rows:auto minmax(0, 1fr);
-    gap:2px;
-    background:#111;
-    border:1px solid rgba(255,255,255,0.12);
+    display:flex;
+    flex-direction:column;
     min-height:0;
     overflow:hidden;
+    position: relative;
+    background: rgba(14, 14, 22, 0.95);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
 }
 
-/* deckArea内のpagedRowはoverflowを管理する */
-.deckArea > .pagedRow {
-    overflow: hidden;
-    min-height: 0;
-}
-
-/* ========================================
-   デッキヘッダー
-======================================== */
-
-/* ========================================
-   デッキコード
-======================================== */
-
+/* deckToolbar: 固定高さ。resize の影響を受けない */
 .deckToolbar {
+    flex: 0 0 auto;
     display:flex;
     align-items:center;
     justify-content:flex-end;
     gap:12px;
     flex-wrap:wrap;
     padding:8px 6px;
-    flex-shrink:0;
+    min-width:0;
+    /* フォント・ボタンサイズは固定 */
+    font-size: 13px;
+}
+
+/* deckField: 残り高さを全て取る。カードのみが resize に追従 */
+.deckField {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    padding: 4px 4px 6px;
+    overflow: hidden;
+}
+
+/* deckField内のpageButtonは高さを親に合わせる */
+.deckField > .pageButton {
+    flex: 0 0 auto;
+    min-height: 0;
+    height: auto;
+    align-self: stretch;
+}
+
+/* #deck.cardRow: deckField内でカードを横スクロール */
+#deck.cardRow{
+    flex: 1 1 0;
+    display:flex;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+    align-items:flex-start;
+    gap:8px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:6px 8px 10px;
+    min-height:0;
+    min-width:0;
+    scroll-behavior:smooth;
+    box-sizing: border-box;
+}
+
+#deck.cardRow .deckCard{
+    /* width のみ CSS変数で制御。height は aspect-ratio で決まる */
+    width: var(--deck-card-width, 120px);
+    height: auto;
+    flex-shrink: 0;
+    aspect-ratio: 118 / 168;
+}
+
+#deck.cardRow::-webkit-scrollbar {
+    height:8px;
+}
+
+#deck.cardRow::-webkit-scrollbar-thumb {
+    background: rgba(80, 64, 48, 0.35);
+    border-radius: 999px;
+}
+
+/* deckArea内の補助UI（codeImport等）は固定高さ */
+.deckDetails,
+#codeImportRow,
+#codeImportError {
+    flex: 0 0 auto;
+}
     min-width:0;
 }
 

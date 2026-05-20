@@ -228,20 +228,10 @@ function countOwnerHandCardsOnField(owner) {
   ).length;
 }
 
+// getHandLimit は gameRules.js (window.getHandLimit) に実装済み
+// 後方互換のためローカル参照を残す
 function getHandLimit(owner) {
-  const s = state[owner];
-  if (!s) return 6;
-  let limit = 6;
-  if (s.evolutionPath === "忍耐の道") {
-    const level = Number(s.level) || 1;
-    let x = 0;
-    if (level >= 6) x = 4;
-    else if (level >= 5) x = 3;
-    else if (level >= 3) x = 1;
-    else x = 0;
-    limit += (1 + x);
-  }
-  return limit;
+  return window.getHandLimit(owner);
 }
 
 function lorStatChip(icon, val, owner, key, title = "") {

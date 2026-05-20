@@ -3,8 +3,10 @@
  * 状態の同期、正規化、派生ステータスの計算など
  */
 
+// calcExpMax は gameRules.js (window.calcExpMax) に実装済み
+// 後方互換のためローカル参照を残す
 function calcExpMax(level) {
-  return Math.max(1, level) * 2;
+  return window.calcExpMax ? window.calcExpMax(level) : Math.max(1, level) * 2;
 }
 window.calcExpMax = calcExpMax;
 

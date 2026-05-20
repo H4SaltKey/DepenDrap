@@ -138,6 +138,8 @@ function resetAllGameVariables() {
   window._resultShowing = false; // リザルト表示フラグをクリア
   window._resultDismissed = false; // リザルト非表示フラグをクリア
   window._firstDrawPhaseStarted = false;
+  window._firstDrawAdvanceSent = false;  // ファーストドロー送信フラグをリセット
+  window.__playingStarted = false;       // ファーストドロー→playing遷移フラグをリセット
   window._orderPhaseAutoStartScheduled = false; // Order phase auto-start flag
   window._soloStartMode = false;
   cardsReadyFired = false;
@@ -1458,6 +1460,9 @@ async function executeReset(syncShared = true) {
   window._gameStartedAt = Date.now(); // 試合開始時刻を更新（以前の勝者情報を stale 判定するため）
   window._resultDismissed = false;     // 再戦時は判定を再開
   window._resultShowing = false;       // リザルト表示フラグをリセット
+  window.__playingStarted = false;     // ファーストドロー→playing遷移フラグをリセット
+  window._firstDrawPhaseStarted = false; // ファーストドローフェーズ開始フラグをリセット
+  window._firstDrawAdvanceSent = false;  // ファーストドロー送信フラグをリセット
   window._lastWinner = null;           // 勝者情報をクリア
   
   // DOM上のリザルト画面があれば削除

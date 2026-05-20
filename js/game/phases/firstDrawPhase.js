@@ -293,7 +293,8 @@ function updateFirstDrawPhaseUI() {
     update();
   };
 
-  overlay.dataset.cardsBound = "1";
+  // cardsBound は confirmBtn.onclick 内でのみセットする（ここでは設定しない）
+  // ここで設定すると、カードが配置される前にバインドがスキップされてしまう
 }
 
 /** 先攻は5枚、後攻は6枚をファーストドローで提示 */

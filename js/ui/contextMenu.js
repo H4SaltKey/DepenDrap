@@ -857,7 +857,7 @@ function applyDamageByRule(snapshot, type, amount) {
 function showDamagePopup(targetOwner, type, subType, options = {}) {
   // ラベル・説明文は damageCalc.js の関数を使用
   const fullLabel  = window.getDamageTypeLabel(type)
-    + (subType !== "none" ? ` + "`" + `(${subType === "additional" ? "追加" : subType})` + "`" + ` : "");
+    + (subType !== "none" ? `(${subType === "additional" ? "追加" : subType})` : "");
   const desc       = window.getDamageTypeDescription(type, subType);
   const targetName = targetOwner === window.myRole ? "自身" : "相手";
 

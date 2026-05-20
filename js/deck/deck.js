@@ -569,17 +569,80 @@ window.addEventListener("scroll", hideDeckContextMenu);
 window.addEventListener("resize", hideDeckContextMenu);
 
 // ===== 描画 =====
+
+/**
+ * カード一覧を「アタッカー/サポート（上段）」「スキル（下段）」の
+ * 2段固定・列同期グリッドで描画する。
+ * 下段が少ない列には空スロットを挿入して列位置を揃える。
+ */
+function renderCatalogGrid(cardsDiv, cardIds) {
+  if (!cardsDiv) return;
+  cardsDiv.innerHTML = "";
+
+  // タイプで分類
+  const topIds = [];   // アタッカー / サポート
+  const botIds = [];   // スキル
+
+  cardIds.forEach(id => {
+    const card = getCardData(id);
+    const type = card?.type || "アタッカー";
+    if (type === "スキル") {
+      botIds.push(id);
+    } else {
+      topIds.push(id);
+    }
+  });
+
+  // フィルターで片方が空の場合は通常の1段グリッドとして扱う
+  const useTwoRow = topIds.length > 0 && botIds.length > 0;
+
+  if (!useTwoRow) {
+    // 1段: 全カードをそのまま並べる
+    const allIds = topIds.length > 0 ? topIds : botIds;
+    allIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
+    // grid-template-rows を1行に上書き
+    cardsDiv.style.gridTemplateRows = "1fr";
+    return;
+  }
+
+  // 2段: 列数 = max(topIds.length, botIds.length)
+  cardsDiv.style.gridTemplateRows = "1fr 1fr";
+  const colCount = Math.max(topIds.length, botIds.length);
+
+  for (let col = 0; col < colCount; col++) {
+    // 上段
+    if (col < topIds.length) {
+      cardsDiv.appendChild(createCardElement(topIds[col], 0, "cards"));
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "cardSlotEmpty";
+      cardsDiv.appendChild(empty);
+    }
+    // 下段
+    if (col < botIds.length) {
+      cardsDiv.appendChild(createCardElement(botIds[col], 0, "cards"));
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "cardSlotEmpty";
+      cardsDiv.appendChild(empty);
+    }
+  }
+}
+
 function render() {
   const cardsDiv = document.getElementById("cards");
   const deckDiv = document.getElementById("deck");
   const cardIds = getFilteredCardIds();
   const deckEntries = getDeckEntries();
 
-  if (cardsDiv) cardsDiv.innerHTML = "";
-  if (deckDiv) deckDiv.innerHTML = "";
+  // カード一覧: 2段固定・列同期グリッド
+  renderCatalogGrid(cardsDiv, cardIds);
 
-  cardIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
-  deckEntries.forEach(entry => deckDiv.appendChild(createCardElement(entry.id, entry.count, "deck")));
+  // デッキ: 横スクロール1段
+  if (deckDiv) {
+    deckDiv.innerHTML = "";
+    deckEntries.forEach(entry => deckDiv.appendChild(createCardElement(entry.id, entry.count, "deck")));
+  }
 
   const code = encodeDeck(deck);
   saveCurrentDeckCode(code);
@@ -694,20 +757,31 @@ function updateCardSizes() {
   const deckArea = document.getElementById("deckDropZone");
   if (!catalogCol || !deckArea) return;
 
-  const topHeight = catalogCol.getBoundingClientRect().height;
-  const bottomHeight = deckArea.getBoundingClientRect().height;
   const catalogZoom = window.deckCatalogLocalZoom || 1;
   const areaZoom = window.deckAreaLocalZoom || 1;
 
-  const topCardHeight = Math.round(Math.max(80, Math.min(220, topHeight * 0.55)) * catalogZoom);
-  const deckCardHeight = Math.round(Math.max(80, Math.min(340, bottomHeight * 0.72)) * areaZoom);
-  const topCardWidth = Math.round(topCardHeight * (118 / 168));
-  const deckCardWidth = Math.round(deckCardHeight * (118 / 168));
+  // ── カード一覧（上段）──
+  // .cardListScroll の実際の高さを取得（UIバーを除いた純粋なカード領域）
+  const scrollEl = catalogCol.querySelector(".cardListScroll");
+  const topPaneH = scrollEl ? scrollEl.getBoundingClientRect().height : catalogCol.getBoundingClientRect().height;
+
+  // 2段グリッドなので 1行の高さ = (pane高さ - gap) / 2
+  const gap = 8;
+  const rowH = Math.max(0, (topPaneH - gap - 20) / 2); // 20px = padding
+  const topCardH = Math.round(Math.max(60, Math.min(200, rowH)) * catalogZoom);
+  const topCardW = Math.round(topCardH * (118 / 168));
+
+  // ── デッキ（下段）──
+  // .pagedRow の実際の高さを取得
+  const deckPagedRow = deckArea.querySelector(".pagedRow");
+  const botPaneH = deckPagedRow ? deckPagedRow.getBoundingClientRect().height : deckArea.getBoundingClientRect().height;
+  const deckCardH = Math.round(Math.max(80, Math.min(340, botPaneH * 0.88)) * areaZoom);
+  const deckCardW = Math.round(deckCardH * (118 / 168));
 
   const root = document.documentElement;
-  root.style.setProperty("--cards-card-width", `${topCardWidth}px`);
-  root.style.setProperty("--deck-card-width", `${deckCardWidth}px`);
-  root.style.setProperty("--deck-card-height", `${deckCardHeight}px`);
+  root.style.setProperty("--cards-card-width", `${topCardW}px`);
+  root.style.setProperty("--deck-card-width", `${deckCardW}px`);
+  root.style.setProperty("--deck-card-height", `${deckCardH}px`);
 }
 
 function setupDeckBuilder() {

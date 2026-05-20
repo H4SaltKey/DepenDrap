@@ -788,7 +788,7 @@ function takeOut(count, opts){
 
   if(typeof updateDeckObject === "function") updateDeckObject();
   if(typeof pushMyStateDebounced === "function") pushMyStateDebounced(); // デッキ枚数を同期
-  if(typeof update === "function") update();
+  if(typeof update === "function") update(true); // skipLogCheck=true: state比較をスキップしてrenderUIを確実に実行
 }
 
 function collectAllToDeck(){

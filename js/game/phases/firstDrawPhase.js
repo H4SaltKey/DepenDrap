@@ -345,13 +345,9 @@ function startFirstDrawPhase() {
     const n = getFirstDrawRevealCount(me, m);
     console.log(`[FirstDraw] takeOut(${n}) を呼び出します`);
     window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
-    // takeOut後、update()のstate比較で変化が検出されない場合があるため
-    // lastStateJsonを強制リセットしてrenderUIが必ず走るようにする
-    if (typeof lastStateJson !== "undefined") {
-      // eslint-disable-next-line no-global-assign
-      try { lastStateJson = ""; } catch(e) {}
-    }
-    // さらに直接スケジュールして確実にカードバインドを実行する
+    // update() の state 比較キャッシュを強制リセットして renderUI が必ず走るようにする
+    if (typeof window.resetLastStateJson === "function") window.resetLastStateJson();
+    // 100ms 後に直接 updateFirstDrawPhaseUI を呼んでカードバインドを確実に実行
     setTimeout(() => {
       if (typeof updateFirstDrawPhaseUI === "function") updateFirstDrawPhaseUI();
     }, 100);

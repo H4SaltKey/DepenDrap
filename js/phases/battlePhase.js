@@ -30,6 +30,13 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     }
   }
 
+  // ===== ターン終了前フック =====
+  if (Array.isArray(window._beforeTurnEndHooks)) {
+    for (const fn of window._beforeTurnEndHooks) {
+      try { fn(); } catch (e) { console.warn("[beforeTurnEndHook] error:", e); }
+    }
+  }
+
   const op          = me === "player1" ? "player2" : "player1";
   const firstPlayer = m.firstPlayer || "player1";
 
@@ -41,14 +48,14 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     if (m.turn > 5) {
       m.turn = 1;
       m.round += 1;
-      addGameLog(`[MATCH] 第 \${m.round} ラウンド開始！`);
+      addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
     }
   }
 
   const nextPlayerName = m.turnPlayer === "player1"
     ? (state.player1.username || "プレイヤー1")
     : (state.player2.username || "プレイヤー2");
-  addGameLog(`[TURN] \${window.myUsername || state[me]?.username || me} がターンを終了。次: \${nextPlayerName}`);
+  addGameLog(`[TURN] ${window.myUsername || state[me]?.username || me} がターンを終了。次: ${nextPlayerName}`);
 
   // 進化の道のターン依存変数をリセット
   state[me].evoContinuousDmgCount = 0;
@@ -57,7 +64,6 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
-    // matchData のみ書く（自分の playerState も更新）
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
     if (typeof _getMyStateForSync === "function") {
       await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
@@ -65,4 +71,11 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   }
 
   update();
+
+  // ===== ターン終了後フック =====
+  if (Array.isArray(window._afterTurnEndHooks)) {
+    for (const fn of window._afterTurnEndHooks) {
+      try { fn(); } catch (e) { console.warn("[afterTurnEndHook] error:", e); }
+    }
+  }
 };

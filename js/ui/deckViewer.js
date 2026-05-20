@@ -120,6 +120,28 @@ function injectDeckViewerStyle() {
       font-size: 14px;
       padding: 40px 0;
     }
+    /* フェーズオーバーレイ内の「デッキを確認」ボタン */
+    .phaseOverlayDeckBtn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10100;
+      background: rgba(14, 12, 28, 0.85);
+      border: 1px solid rgba(199, 179, 119, 0.5);
+      color: #f0d080;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      backdrop-filter: blur(8px);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .phaseOverlayDeckBtn:hover {
+      background: rgba(30, 25, 50, 0.95);
+      border-color: rgba(199, 179, 119, 0.9);
+    }
   `;
   document.head.appendChild(s);
 }
@@ -144,7 +166,6 @@ window.openDeckViewer = function() {
   let cardIds = [];
   if (deck.length > 0) {
     cardIds = deck.map(id => {
-      // TEMP: / HIDDEN プレフィックスを除去
       if (typeof id === "string") return id.replace(/^(TEMP:|HIDDEN)/, "");
       return id;
     }).filter(Boolean);
@@ -204,10 +225,8 @@ window.openDeckViewer = function() {
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 
-  // 閉じるボタン
   document.getElementById("deckViewerClose").addEventListener("click", closeDeckViewer);
 
-  // Escape キーで閉じる
   overlay._keyHandler = (e) => { if (e.key === "Escape") closeDeckViewer(); };
   document.addEventListener("keydown", overlay._keyHandler);
 };
@@ -220,5 +239,28 @@ function closeDeckViewer() {
 }
 
 window.closeDeckViewer = closeDeckViewer;
+
+/**
+ * フェーズオーバーレイに「デッキを確認」ボタンを追加する
+ * 既に追加済みの場合はスキップ
+ */
+window.injectPhaseOverlayDeckBtn = function() {
+  injectDeckViewerStyle();
+  if (document.getElementById("phaseOverlayDeckBtn")) return;
+  const btn = document.createElement("button");
+  btn.id = "phaseOverlayDeckBtn";
+  btn.className = "phaseOverlayDeckBtn";
+  btn.textContent = "デッキを確認";
+  btn.addEventListener("click", () => window.openDeckViewer());
+  document.body.appendChild(btn);
+};
+
+/**
+ * フェーズオーバーレイの「デッキを確認」ボタンを削除する
+ */
+window.removePhaseOverlayDeckBtn = function() {
+  const btn = document.getElementById("phaseOverlayDeckBtn");
+  if (btn) btn.remove();
+};
 
 })();

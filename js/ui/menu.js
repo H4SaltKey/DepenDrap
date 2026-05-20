@@ -189,6 +189,7 @@
     const resetBtn = document.getElementById("resetFieldBtn");
     const surrenderBtn = document.getElementById("surrenderBtn");
     const soloStartBtn = document.getElementById("soloStartBtn");
+    const deckViewerBtn = document.getElementById("deckViewerBtn");
     const isLocked = typeof window.isGameInteractionLocked === "function" ? window.isGameInteractionLocked() : false;
     if (resetBtn) resetBtn.style.display = (isGamePage && !isLocked) ? "block" : "none";
     if (surrenderBtn) {
@@ -198,6 +199,11 @@
     }
     // 両プレイヤーが接続している場合は「1人で開始」を非表示にする
     if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked && !window._bothPlayersConnected) ? "block" : "none";
+    // ゲーム画面（playing フェーズ）でデッキ確認を表示
+    if (deckViewerBtn) {
+      const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing";
+      deckViewerBtn.style.display = (isGamePage && isPlaying) ? "block" : "none";
+    }
   };
 
   document.getElementById("backBtn").onclick = ()=>{
@@ -233,6 +239,11 @@
   document.getElementById("soloStartBtn").onclick = ()=>{
     if (typeof window.startSoloGame === "function") window.startSoloGame();
     panel.classList.add("hidden");
+  };
+
+  document.getElementById("deckViewerBtn").onclick = ()=>{
+    panel.classList.add("hidden");
+    if (typeof window.openDeckViewer === "function") window.openDeckViewer();
   };
 
   document.getElementById("optBtn").onclick = ()=>{

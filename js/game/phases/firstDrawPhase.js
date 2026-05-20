@@ -107,15 +107,7 @@ function updateFirstDrawPhaseUI() {
   const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="self"]`));
   console.log(`[FirstDraw] candidates=${candidates.length}, pickN=${pickN}, cardsBound=${overlay.dataset.cardsBound}`);
   if (candidates.length < pickN) {
-    // カードが足りない場合、デッキから再取り出しを試みる
-    if (candidates.length === 0 && !overlay.dataset.retryTakeOut) {
-      overlay.dataset.retryTakeOut = "1";
-      console.warn(`[FirstDraw] カードが0枚。再取り出しを試みます。`);
-      window._firstDrawPhaseStarted = false;
-      startFirstDrawPhase();
-    } else {
-      messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…（現在${candidates.length}枚）`;
-    }
+    messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…（現在${candidates.length}枚）`;
     return;
   }
 
@@ -391,13 +383,7 @@ function startFirstDrawPhase() {
 
   // update() の state 比較キャッシュを強制リセットして renderUI が必ず走るようにする
   if (typeof window.resetLastStateJson === "function") window.resetLastStateJson();
-
-  // 100ms 後に直接 updateFirstDrawPhaseUI を呼んでカードバインドを確実に実行
-  setTimeout(() => {
-    if (state.matchData?.status === "setup_first_draw") {
-      if (typeof updateFirstDrawPhaseUI === "function") updateFirstDrawPhaseUI();
-    }
-  }, 100);
+  if (typeof update === "function") update(true);
 }
 
 /**

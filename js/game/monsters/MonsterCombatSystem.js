@@ -165,10 +165,6 @@ window.MonsterCombatSystem = (function() {
     // 成長スライム恩恵のカウントダウン
     if (window._slimeGrowthRoundsLeft > 0) {
       window._slimeGrowthRoundsLeft--;
-      const killer = window._slimeGrowthKiller;
-      if (killer && typeof window.addVal === "function") {
-        // 毎ターン経験値+1 は handleTurnEnd フックで処理
-      }
     }
 
     _syncMonsterState();

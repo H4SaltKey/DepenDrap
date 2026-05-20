@@ -469,7 +469,7 @@ function openDeckMenu(deck, x, y){
     {
       label: "全て集める",
       disabled: !getFieldContent() || Array.from(getFieldContent().querySelectorAll(".card:not(.deckObject)"))
-        .filter(c => (c.dataset.origin || c.dataset.owner || "player1") === (window.myRole || "player1")).length === 0,
+        .filter(c => (c.dataset.origin || c.dataset.owner || "player1") === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"))).length === 0,
       action: () => collectAllToDeck()
     }
   ];
@@ -489,7 +489,7 @@ function drawCards(count){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
-  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
+  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
   
@@ -598,7 +598,7 @@ function drawToHand(count){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
-  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
+  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
   
@@ -711,7 +711,7 @@ function takeOut(count, opts){
   if(typeof getMyState === "undefined" || !getMyState()) return;
   const dState = getMyState();
   
-  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole || "player1");
+  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
   
@@ -910,7 +910,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     const amount = parseInt(input.value) || 0;
     const s = state[targetOwner];
     if (!s) return;
-    const me = state[window.myRole || "player1"] || {};
+    const me = state[(window.getMyRole ? window.getMyRole() : window.myRole || "player1")] || {};
 
     let tHP = s.hp;
     let tDef = s.defstack;
@@ -932,7 +932,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
       tDef = next.defstack;
     };
 
-    const meRole = window.myRole || "player1";
+    const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     const canApplyEvolution = targetOwner !== meRole;
 
     // 奇撃の道（旧: 瞬発の道）: 本ダメージ前に脆弱ダメージ
@@ -1049,7 +1049,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   let actualAmount = amount;
   
   // 奇撃の道（旧: 瞬発の道）: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
-  const meRole = window.myRole || "player1";
+  const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const myState = state[meRole];
   const canApplyEvolution = targetOwner !== meRole;
   if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && (myState.evolutionPath === '奇撃の道' || myState.evolutionPath === '瞬発の道')) {
@@ -1069,7 +1069,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
 
   // 「直接攻撃」の処理と、背水の道効果の適用
   if (canApplyEvolution && type === "direct_attack") {
-    const meRole = window.myRole || "player1";
+    const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     const myState = state[meRole];
     if (myState && myState.evolutionPath === '背水の道') {
       const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
@@ -1133,7 +1133,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   }
 
   // 継続の道: 1以上のダメージを与える度に1ダメージ（3回目は1貫通ダメージ）
-  const myState2 = state[window.myRole || "player1"];
+  const myState2 = state[(window.getMyRole ? window.getMyRole() : window.myRole || "player1")];
   if (canApplyEvolution && !isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
     const lv = myState2.level || 1;
     let idx = 0;
@@ -1181,7 +1181,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
 };
 
 function openGraveZoneMenu(owner, x, y){
-  const me = window.myRole || "player1";
+  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const isMine = owner === me;
   const items = [
     { label: "墓地操作", disabled: true },
@@ -1445,7 +1445,7 @@ window.showZoneInspectorModal = function(owner, type) {
   };
 
   const showHandSelectionForInsert = (targetIdx, event) => {
-    const me = window.myRole || "player1";
+    const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     const handCards = Array.from(document.querySelectorAll(".card")).filter(c => c.dataset.owner === me && Number(c.dataset.y) >= (window.HAND_ZONE_Y_MIN || 1460));
     
     if (handCards.length === 0) {

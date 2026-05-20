@@ -101,7 +101,7 @@ function nextZoneOrder() {
 
 
 function getZoneAnchor(owner, type) {
-  const myRole = window.myRole || "player1";
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const isMine = owner === myRole;
   const midX = (FIELD_W / 2) - (CARD_W / 2);
   const midY = (FIELD_H / 2) - (CARD_H / 2);
@@ -176,7 +176,7 @@ function ensureBattleZoneUIs() {
   const content = getFieldContent();
   if (!content) return;
   ["player1", "player2"].forEach((owner) => {
-    const isMine = owner === (window.myRole || "player1");
+    const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
     BATTLE_ZONE_TYPES.forEach((type) => {
       const id = `battleZone_${owner}_${type}`;
       let el = document.getElementById(id);
@@ -192,7 +192,7 @@ function ensureBattleZoneUIs() {
         el.style.zIndex = "0";
         el.style.pointerEvents = type === "attacker" ? "none" : "auto";
         el.innerHTML = `<div class="battleZoneLabel">${type === "attacker" ? "ATK" : type === "skill" ? "SKILL" : "GRAVE"}</div><div class="battleZoneCount"></div>`;
-        if (owner !== (window.myRole || "player1")) {
+        if (owner !== ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"))) {
           el.style.transform = "rotate(180deg)";
         }
         content.appendChild(el);
@@ -219,7 +219,7 @@ function scheduleZoneHoverHide() {
 
 function beginZoneHoverCardDrag(card, startEvent) {
   if (!card || !startEvent || startEvent.button !== 0) return;
-  const myRole = window.myRole || "player1";
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (card.dataset.owner !== myRole) return;
   if ((card.dataset.zoneType === "skill" || card.dataset.zoneType === "grave") && !isTopZoneCard(card)) return;
 
@@ -331,7 +331,7 @@ function takeOutCardFromZone(card) {
 
 function updateBattleZoneUI() {
   ensureBattleZoneUIs();
-  const currentRole = window.myRole || "player1";
+  const currentRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   ["player1", "player2"].forEach((owner) => {
     BATTLE_ZONE_TYPES.forEach((type) => {
       const el = document.getElementById(`battleZone_${owner}_${type}`);
@@ -356,7 +356,7 @@ function updateBattleZoneUI() {
 }
 
 function logBattleZoneChanges() {
-  const myRole = window.myRole || "player1";
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const roleLabel = (owner) => owner === myRole ? "あなた" : "相手";
   const now = {
     player1: {
@@ -419,7 +419,7 @@ window.organizeBattleZones = function() {
 };
 
 window.sendZoneCardsToGrave = function(owner, fromType) {
-  const myRole = window.myRole || "player1";
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (owner !== myRole) return;
   const fromCards = getZoneCards(owner, fromType);
   if (fromType === "attacker") {
@@ -618,7 +618,7 @@ function createCard(id){
   wrapper.dataset.id = id;
   wrapper.dataset.instanceId = nextCardInstanceId();
   wrapper.dataset.visibility = "both";
-  wrapper.dataset.owner = window.myRole || "player1";
+  wrapper.dataset.owner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
   const img = document.createElement("img");
   setSafeSrc(img, data.image);
@@ -799,7 +799,7 @@ function restoreCardElToPrev(el) {
   el.dataset.x = String(px);
   el.dataset.y = String(py);
   const pz = el.dataset.prevZoneType || "";
-  const owner = el.dataset.owner || window.myRole || "player1";
+  const owner = el.dataset.owner || (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (pz === "attacker" || pz === "skill" || pz === "grave") {
     placeCardInZone(el, owner, pz);
     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
@@ -886,7 +886,7 @@ function clearHandReorderGuides() {
  */
 function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   clearHandReorderGuides();
-  const myRole2 = window.myRole || "player1";
+  const myRole2 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (!dragEl || dragEl.dataset.owner !== myRole2) return;
 
   const handLineY = FIELD_H - CARD_H - 20;
@@ -955,7 +955,7 @@ function enablePointerDrag(el){
 
   el.addEventListener("pointerdown", (e)=>{
     if(e.button !== 0) return;
-    const myRole = window.myRole || "player1";
+    const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     if (el.dataset.owner !== myRole) return;
     if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
     e.stopPropagation();
@@ -1066,7 +1066,7 @@ function enablePointerDrag(el){
         const fieldX = snapToGrid(fx - offsetX);
         const fieldY = snapToGrid(fy - offsetY);
 
-        const myRole2 = window.myRole || "player1";
+        const myRole2 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
         const centerX = fieldX + CARD_W / 2;
         const centerY = fieldY + CARD_H / 2;
         const zoneHit = battleZoneHitTypeAt(centerX, centerY, myRole2);
@@ -1185,7 +1185,7 @@ function enablePointerDrag(el){
   });
 
   el.addEventListener("pointerenter", () => {
-    const myRole = window.myRole || "player1";
+    const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     if (el.dataset.owner !== myRole || el.classList.contains("deckObject")) return;
     if (Number(el.dataset.y) >= HAND_ZONE_Y_MIN) {
       el.classList.add("handCardLift");

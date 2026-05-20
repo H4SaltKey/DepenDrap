@@ -55,7 +55,7 @@ function renderNumRow(owner, key, label) {
 function renderOwnerUI(owner) {
   // 副作用なし：state を変更せず、ローカル変数で計算する
   const s = state[owner];
-  const isMine = owner === (window.myRole || "player1");
+  const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
   const currentPp = Number.isFinite(Number(s.pp)) ? Number(s.pp) : 0;
   const maxPp = Number.isFinite(Number(s.ppMax)) ? Number(s.ppMax) : 2;
   const expMax = calcExpMax(s.level);
@@ -278,7 +278,7 @@ function updateFieldStatusPanels() {
   if (!content) return;
 
   ["player1", "player2"].forEach(owner => {
-    const isMine = owner === (window.myRole || "player1");
+    const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
     const id = `fieldStatusPanel_${owner}`;
 
     let el = document.getElementById(id);

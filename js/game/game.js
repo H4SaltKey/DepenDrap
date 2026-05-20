@@ -605,7 +605,7 @@ function renderUI() {
   traceGame("renderUI", "start");
   const playerEl = document.getElementById("gameUiPlayerInner");
   const enemyEl = document.getElementById("gameUiEnemy");
-  const myOwner = window.myRole || "player1";
+  const myOwner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const enemyOwner = myOwner === "player1" ? "player2" : "player1";
 
   invokeGuarded("renderUI.renderOwnerUI.my", () => {
@@ -824,7 +824,7 @@ function handleMatchStateTransitions() {
   // ダイスロールが完全に終了するまで通知を表示しない
   // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
-  const meRole = window.myRole || "player1";
+  const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
   // 判定用変数を先に計算
   const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
@@ -1416,7 +1416,7 @@ async function executeReset(syncShared = true) {
   lastResetAt = Date.now();
   lastTurnPlayer = null; // ターン通知用の記憶をリセット
   window._lastRound = undefined; // ラウンド通知用の記憶をリセット
-  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole} が再戦リセットを実行しました。`);
+  addGameLog(`[PROTOCOL:RESET] ${window.myUsername || state[(window.getMyRole ? window.getMyRole() : window.myRole || "player1")]?.username || window.myRole} が再戦リセットを実行しました。`);
 
   ["player1", "player2"].forEach(owner => {
     const s = state[owner];
@@ -1542,7 +1542,7 @@ async function executeReset(syncShared = true) {
  * deck の内容は送信せず、枚数のみ送信（相手には内容を見せない）
  */
 function _getMyStateForSync() {
-  const me = window.myRole || "player1";
+  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const myState = state[me];
   const { diceValue: _d, deck, ...rest } = myState;
   
@@ -1917,7 +1917,7 @@ async function initGame() {
     }
 
     const currentRoom = localStorage.getItem("gameRoom");
-    const myKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+    const myKey = localStorage.getItem("gamePlayerKey") || ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
     const opKey = myKey === "player1" ? "player2" : "player1";
 
     if (!currentRoom) {
@@ -2075,7 +2075,7 @@ function startR1T1() {
     console.log("[R1T1] ファーストドロー済みのためスキップします。");
     return;
   }
-  const me = window.myRole || "player1";
+  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const myState = state[me];
   if (!myState || myState.deck.length < 5) {
     console.warn("[R1T1] デッキが5枚未満です。処理をスキップします。");
@@ -2125,7 +2125,7 @@ function startR1T1() {
 
 function startTurnDraw() {
   const m = state.matchData || {};
-  const me = window.myRole || "player1";
+  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
   const myState = state[me];
   if (!myState || myState.deck.length === 0) {

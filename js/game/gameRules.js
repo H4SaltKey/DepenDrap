@@ -10,6 +10,16 @@
 window.TURNS_PER_ROUND = 5;   // 1ラウンドのターン数
 window.LEVEL_MAX_CONST = 6;   // レベル上限
 
+// ===== フェーズ定数 =====
+// 文字列リテラルの散在を防ぐ。各ファイルで window.PHASE.PLAYING 等を使用する。
+window.PHASE = Object.freeze({
+  READY_CHECK:      "ready_check",
+  SETUP_DICE:       "setup_dice",
+  SETUP_EVOLUTION:  "setup_evolution",
+  SETUP_FIRST_DRAW: "setup_first_draw",
+  PLAYING:          "playing"
+});
+
 // ===== 手札上限 =====
 /**
  * プレイヤーの手札上限を返す

@@ -10,7 +10,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
 
   if (window.isGameInteractionLocked()) return;
   const m  = state.matchData;
-  const me = window.myRole || "player1";
+  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
   if (m.turnPlayer !== me) return;
   if (m.winner) return;
@@ -45,7 +45,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   } else {
     m.turnPlayer = firstPlayer;
     m.turn += 1;
-    if (m.turn > 5) {
+    if (m.turn > (window.TURNS_PER_ROUND || 5)) {
       m.turn = 1;
       m.round += 1;
       addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);

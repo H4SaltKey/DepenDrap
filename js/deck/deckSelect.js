@@ -13,15 +13,57 @@ function saveDeckList(list) {
   localStorage.setItem("deckList", JSON.stringify(list));
 }
 
-function createNewDeck() {
+function createNewDeck(name) {
   const list = loadDeckList();
-
   const id = "deck_" + Date.now();
-  const entry = { id, name: "新しいデッキ", code: "empty", backImage: "" };
+  const entry = { id, name: name || "新しいデッキ", code: "empty", backImage: "" };
   list.push(entry);
   saveDeckList(list);
   return entry;
 }
+
+// ===== 新規デッキ作成モーダル =====
+function openCreateDeckModal() {
+  const input = document.getElementById("createDeckNameInput");
+  const errorEl = document.getElementById("createDeckError");
+  input.value = "";
+  errorEl.textContent = "";
+  document.getElementById("createDeckModal").classList.remove("hidden");
+  input.focus();
+}
+
+function closeCreateDeckModal() {
+  document.getElementById("createDeckModal").classList.add("hidden");
+}
+
+document.getElementById("createDeckCancel").addEventListener("click", closeCreateDeckModal);
+
+// モーダル背景クリックでキャンセル
+document.getElementById("createDeckModal").addEventListener("click", (e) => {
+  if (e.target.id === "createDeckModal") closeCreateDeckModal();
+});
+
+document.getElementById("createDeckConfirm").addEventListener("click", () => {
+  const input = document.getElementById("createDeckNameInput");
+  const errorEl = document.getElementById("createDeckError");
+  const name = input.value.trim();
+
+  if (!name) {
+    errorEl.textContent = "デッキ名を入力してください。";
+    input.focus();
+    return;
+  }
+
+  const newDeck = createNewDeck(name);
+  closeCreateDeckModal();
+  renderGrid();
+  selectDeck(newDeck.id);
+});
+
+document.getElementById("createDeckNameInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("createDeckConfirm").click();
+  if (e.key === "Escape") closeCreateDeckModal();
+});
 
 function deleteDeck(id) {
   const list = loadDeckList().filter(d => d.id !== id);
@@ -71,13 +113,9 @@ function renderGrid() {
   addEl.title = "新しいデッキを作成";
   addEl.textContent = "+";
   addEl.addEventListener("click", () => {
-    const newDeck = createNewDeck();
-      if (newDeck) {
-        renderGrid();
-        selectDeck(newDeck.id);
-      }
-    });
-    grid.appendChild(addEl);
+    openCreateDeckModal();
+  });
+  grid.appendChild(addEl);
 }
 
 function createDeckThumb(deck) {

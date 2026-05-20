@@ -505,13 +505,29 @@ setInterval(syncLoop, 1000);
 
 // ===== デッキ =====
 function initDeckFromCode() {
-  const deckCode = localStorage.getItem("deckCode");
-  if (!deckCode) return false;
+  // matchSetup.deckCode を優先し、なければ localStorage.deckCode にフォールバック
+  // （両者は matchSetup.js の startGame() で同時に書き込まれるため通常は同値だが、
+  //   chatUI の Remote Reset など matchSetup を経由しない経路でも確実に取得できるよう両方参照する）
+  let deckCode = null;
   try {
-    getMyState().deck = decodeDeck(deckCode);
+    const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
+    if (setup?.deckCode && setup.deckCode !== "empty") deckCode = setup.deckCode;
+  } catch {}
+  if (!deckCode) deckCode = localStorage.getItem("deckCode");
+  if (!deckCode || deckCode === "empty") return false;
+
+  try {
+    const decoded = decodeDeck(deckCode);
+    if (!decoded || decoded.length === 0) return false;
+    getMyState().deck = decoded;
     return true;
   } catch {
+    // 旧旧形式など変換不能なコードは両方クリア
     localStorage.removeItem("deckCode");
+    try {
+      const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
+      if (setup) { setup.deckCode = "empty"; localStorage.setItem("matchSetup", JSON.stringify(setup)); }
+    } catch {}
     getMyState().deck = [];
     window.deckLoadMessage = "カード構成が変わったためデッキをリセットしました。";
     return false;

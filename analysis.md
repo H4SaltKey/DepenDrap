@@ -688,3 +688,40 @@ if (round !== _lastRoundSeen) {
 - `js/game/game.js` の `executeReset()` → リセット後の watcher 再設定フロー
 - `js/game/core.js` の `addVal()` → `pushMyStateDebounced` の呼び出しタイミング
 
+
+---
+
+## Round 11 — PP増減ボタン / デッキコード統一 / 接続安定化（修正記録）
+
+### 修正内容
+
+**PP増減ボタンが機能しない**
+
+- **原因**: `fieldStatusPanel` が `#fieldContent`（フィールド座標系）に配置されていた
+  - `#fieldContent` は `transform: translate(${panX}px, ${panY}px) scale(${zoom})` で変換される
+  - ズームが 0.3 程度の場合、ボタンは画面上で極小サイズになりクリックが届かない
+- **修正**: `updateFieldStatusPanels()` を `#field`（固定座標系）に配置し直し、`position: fixed` で画面に固定
+  - 自分のパネル: 左下固定（`left: 16px; bottom: 16px`）
+  - 相手のパネル: 右上固定（`right: 16px; top: 80px`）、`pointer-events: none`
+
+**デッキコードのロジック統一化**
+
+- **問題**: `initDeckFromCode()` が `localStorage.deckCode` のみ参照し、`matchSetup.deckCode` を無視
+  - `firstDrawPhase.js` だけが独自の二段階フォールバックを持っていた（不統一）
+- **修正 1**: `initDeckFromCode()` を `matchSetup.deckCode` 優先・`localStorage.deckCode` フォールバックに変更
+- **修正 2**: `firstDrawPhase.js` の独自フォールバックを削除し、`initDeckFromCode()` 一本化
+
+**ゲーム中の接続安定化**
+
+- **問題**: 切断→再接続時に `onDisconnect().remove()` でプレイヤーノードが削除されるが再登録されない。`connected`/`disconnected` ハンドラ未実装。書き込みリトライなし。
+- **修正 1**: `roomWatcher.js` に再接続ハンドラを追加
+  - `disconnected` → フラグ立て、`connected` → 1.5秒後に players 再登録・onDisconnect 再設定・状態再送信
+  - watcher が死んでいれば `setupRoomWatcher()` を再呼び出し
+- **修正 2**: `firebase-client.js` の切断ログを「接続中→切断時のみ」に変更
+- **修正 3**: `writeMyState` / `writeMatchData` に最大3回リトライを追加（500ms × attempt 間隔）
+
+### 残存する潜在的問題
+
+- `executeReset()` の watcher 再設定フロー（未調査）
+- `addVal()` の `pushMyStateDebounced` と `writeMyState` の競合（低リスク）
+- モンスター攻撃ログ2行出力（意図的の可能性あり）

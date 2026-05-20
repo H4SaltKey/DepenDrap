@@ -147,7 +147,10 @@ class FirebaseClient {
         this.isConnected = true;
         this.emit('connected');
       } else {
-        // 切断時はログを出さない（ネットワーク問題の場合、大量のログが出るため）
+        if (this.isConnected) {
+          // 接続中→切断になった場合のみログを出す（初回の false は無視）
+          console.warn("[FirebaseClient] ⚠️ サーバーから切断されました。Firebase SDK が自動再接続します。");
+        }
         this.isConnected = false;
         this.emit('disconnected');
       }
@@ -524,42 +527,58 @@ class FirebaseClient {
 
   /**
    * 自分のプレイヤー状態を書き込む（自分のパスのみ）
+   * 切断中は最大3回リトライする
    */
   async writeMyState(roomName, playerKey, playerState) {
     if (!this.db) return false;
-    try {
-      await this.db.ref(`rooms/${roomName}/playerState/${playerKey}`).set(playerState);
-      this.touchRoomLifecycle(roomName, { active: true });
-      return true;
-    } catch (e) {
-      console.error("[FirebaseClient] writeMyState エラー:", e.message);
-      return false;
+    const MAX_RETRY = 3;
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      try {
+        await this.db.ref(`rooms/${roomName}/playerState/${playerKey}`).set(playerState);
+        this.touchRoomLifecycle(roomName, { active: true });
+        return true;
+      } catch (e) {
+        if (attempt < MAX_RETRY) {
+          await new Promise(r => setTimeout(r, 500 * attempt));
+        } else {
+          console.error("[FirebaseClient] writeMyState エラー（リトライ上限）:", e.message);
+        }
+      }
     }
+    return false;
   }
 
   /**
    * matchData を書き込む（ターン権を持つプレイヤーのみ呼ぶ）
+   * 切断中は最大3回リトライする
    */
   async writeMatchData(roomName, matchData) {
     if (!this.db) return false;
-    try {
-      if (matchData?.status) {
-        console.log(`[PHASE] local -> ${matchData.status}`);
+    const MAX_RETRY = 3;
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+      try {
+        if (matchData?.status) {
+          console.log(`[PHASE] local -> ${matchData.status}`);
+        }
+        await this.db.ref(`rooms/${roomName}/matchData`).set(matchData);
+        await this.touchRoomLifecycle(roomName, {
+          active: true,
+          phase: matchData?.status || null,
+          status: matchData?.status || "waiting"
+        });
+        if (matchData?.status) {
+          console.log(`[PHASE] firebase write success (${matchData.status})`);
+        }
+        return true;
+      } catch (e) {
+        if (attempt < MAX_RETRY) {
+          await new Promise(r => setTimeout(r, 500 * attempt));
+        } else {
+          console.error("[FirebaseClient] writeMatchData エラー（リトライ上限）:", e.message);
+        }
       }
-      await this.db.ref(`rooms/${roomName}/matchData`).set(matchData);
-      await this.touchRoomLifecycle(roomName, {
-        active: true,
-        phase: matchData?.status || null,
-        status: matchData?.status || "waiting"
-      });
-      if (matchData?.status) {
-        console.log(`[PHASE] firebase write success (${matchData.status})`);
-      }
-      return true;
-    } catch (e) {
-      console.error("[FirebaseClient] writeMatchData エラー:", e.message);
-      return false;
     }
+    return false;
   }
 
   /**

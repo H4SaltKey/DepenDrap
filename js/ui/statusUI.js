@@ -268,11 +268,10 @@ function lorInstantDefStatRow(owner, s) {
 }
 
 function updateFieldStatusPanels() {
-  const content = (typeof getFieldContent === "function")
-    ? getFieldContent()
-    : document.getElementById("fieldContent");
-
-  if (!content) return;
+  // fieldStatusPanel は #field（固定座標系）に配置する。
+  // #fieldContent に置くとフィールドのズーム・パンに追従してしまい
+  // ボタンのクリックが届かなくなるため。
+  const container = document.getElementById("field") || document.body;
 
   ["player1", "player2"].forEach(owner => {
     const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
@@ -284,22 +283,12 @@ function updateFieldStatusPanels() {
       el = document.createElement("div");
       el.id = id;
       el.className = "fieldStatusPanel";
+      container.appendChild(el);
+    }
 
-      el.style.cssText = `
-        position: absolute;
-        width: 660px;
-        padding: 36px;
-        background: rgba(15, 12, 28, 0.92);
-        border: 3px solid #c7b377;
-        border-radius: 24px;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        z-index: 50;
-        font-family: 'Outfit', sans-serif;
-        pointer-events: auto;
-      `;
-
-      content.appendChild(el);
+    // #field の外に出てしまっていたら移動し直す
+    if (el.parentElement !== container) {
+      container.appendChild(el);
     }
 
     const s = state[owner];
@@ -317,67 +306,79 @@ function updateFieldStatusPanels() {
     const currentPp = s.pp || 0;
     const maxPp = s.ppMax || 2;
 
-    // 位置調整
+    // position: fixed で画面に固定（フィールドのズーム・パンに影響されない）
     if (isMine) {
-      el.style.left = "40px";
-      el.style.top = "1180px";
-      el.style.transform = "scale(1)";
-      el.style.transformOrigin = "top left";
+      el.style.cssText = `
+        position: fixed;
+        left: 16px;
+        bottom: 16px;
+        width: 220px;
+        padding: 12px 16px;
+        background: rgba(15, 12, 28, 0.92);
+        border: 2px solid #c7b377;
+        border-radius: 14px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 5100;
+        font-family: 'Outfit', sans-serif;
+        pointer-events: auto;
+      `;
     } else {
-      el.style.left = "2300px";
-      el.style.top = "540px";
-      el.style.transform = "scale(0.8)";
-      el.style.transformOrigin = "top right";
+      el.style.cssText = `
+        position: fixed;
+        right: 16px;
+        top: 80px;
+        width: 180px;
+        padding: 10px 12px;
+        background: rgba(15, 12, 28, 0.85);
+        border: 1px solid #7a6a40;
+        border-radius: 10px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        z-index: 5100;
+        font-family: 'Outfit', sans-serif;
+        pointer-events: none;
+        opacity: 0.85;
+      `;
     }
 
     el.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
-            PP
-          </span>
-
-          <div style="display: flex; align-items: center; gap: 18px;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="color: #aaa; font-size: 13px; font-weight: 200; letter-spacing: 2px; white-space: nowrap;">PP</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
             ${isMine
               ? `<button class="lorSmBtn"
                   data-owner="${owner}"
                   data-key="pp"
                   data-delta="-1"
-                  style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
+                  style="width:28px;height:28px;padding:0;cursor:pointer;font-size:16px;line-height:1;border-radius:6px;">
                   −
                 </button>`
               : ""}
-
-            <span style="color: #00ffff; font-size: 64px; font-weight: bold; min-width: 140px; text-align: center;">
+            <span style="color: #00ffff; font-size: 22px; font-weight: bold; min-width: 52px; text-align: center;">
               ${currentPp}/${maxPp}
             </span>
-
             ${isMine
               ? `<button class="lorSmBtn"
                   data-owner="${owner}"
                   data-key="pp"
                   data-delta="1"
-                  style="width:60px;height:60px;padding:0;cursor:pointer;font-size:32px;">
+                  style="width:28px;height:28px;padding:0;cursor:pointer;font-size:16px;line-height:1;border-radius:6px;">
                   ＋
                 </button>`
               : ""}
           </div>
         </div>
-
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="color: #aaa; font-size: 32px; font-weight: 200; letter-spacing: 4px;">
-            手札
-          </span>
-
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="color: #aaa; font-size: 13px; font-weight: 200; letter-spacing: 2px; white-space: nowrap;">手札</span>
           <span style="
             color: ${handCount > handLimit ? '#ff6666' : '#f0d080'};
-            font-size: 64px;
+            font-size: 22px;
             font-weight: bold;
-            min-width: 140px;
+            min-width: 52px;
             text-align: center;
-          ">
-            ${handCount} / ${handLimit}
-          </span>
+          ">${handCount}/${handLimit}</span>
         </div>
       </div>
     `;

@@ -247,6 +247,68 @@ window.stopAllWatchers = function() {
   applyInteractionLockState();
 };
 
+// ===== 再接続ハンドラ =====
+// Firebase SDK は自動再接続するが、onDisconnect().remove() でプレイヤーノードが
+// 削除されているため、再接続時に自分を players に再登録する必要がある。
+(function setupReconnectHandler() {
+  let _wasDisconnected = false;
+  let _reconnectTimer = null;
+
+  firebaseClient.on('disconnected', () => {
+    _wasDisconnected = true;
+    console.log("[RoomWatcher] 切断を検知。再接続を待機中...");
+  });
+
+  firebaseClient.on('connected', () => {
+    if (!_wasDisconnected) return;
+    _wasDisconnected = false;
+
+    // 複数回発火しないようにデバウンス
+    if (_reconnectTimer) clearTimeout(_reconnectTimer);
+    _reconnectTimer = setTimeout(async () => {
+      _reconnectTimer = null;
+      const gameRoom = localStorage.getItem("gameRoom");
+      const myKey = localStorage.getItem("gamePlayerKey") || window.myRole || "player1";
+      if (!gameRoom || !firebaseClient?.db) return;
+
+      console.log("[RoomWatcher] 再接続。players ノードに再登録します:", myKey);
+
+      try {
+        // players ノードに自分を再登録（onDisconnect で削除されていた場合の復旧）
+        const playerRef = firebaseClient.db.ref(`rooms/${gameRoom}/players/${myKey}`);
+        const snap = await playerRef.once('value');
+        if (!snap.exists()) {
+          await playerRef.set({
+            username: window.myUsername || localStorage.getItem("username") || myKey,
+            sessionId: firebaseClient.sessionId,
+            ready: false,
+            joinedAt: firebase.database.ServerValue.TIMESTAMP
+          });
+          console.log("[RoomWatcher] ✅ players 再登録完了:", myKey);
+        }
+
+        // onDisconnect を再設定（再接続後はリセットされるため）
+        await firebaseClient.setupOnDisconnect(gameRoom, myKey);
+
+        // 自分の状態を再送信（切断中の変更を相手に届ける）
+        if (typeof pushMyStateDebounced === "function") {
+          pushMyStateDebounced();
+        }
+
+        // watcher が生きているか確認し、死んでいれば再設定
+        // Firebase SDK は自動再接続後にリスナーを自動復旧するが、
+        // 念のため roomWatcher が登録されていなければ再設定する
+        if (!window._activeWatchers?.room) {
+          console.log("[RoomWatcher] watcher が未登録のため再設定します");
+          window.setupRoomWatcher();
+        }
+      } catch (e) {
+        console.warn("[RoomWatcher] 再接続処理エラー:", e.message);
+      }
+    }, 1500); // 1.5秒待ってから実行（Firebase の自動再接続が完了するのを待つ）
+  });
+})();
+
 window.startSoloGame = async function() {
   if (window._bothPlayersConnected) return;
   window._soloStartMode = true;

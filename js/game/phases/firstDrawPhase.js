@@ -334,35 +334,13 @@ function startFirstDrawPhase() {
 
   // デッキが空またはundefinedの場合はデッキコードから再初期化
   if (deckLen <= 0) {
-    console.warn("[FirstDraw] デッキが空です。デッキコードから再初期化します。deckCode:", localStorage.getItem("deckCode"));
-    
-    // matchSetup の deckCode を優先して試みる
-    const matchSetupData = (() => {
-      try { return JSON.parse(localStorage.getItem("matchSetup")) || {}; } catch { return {}; }
-    })();
-    const deckCodeToUse = matchSetupData.deckCode || localStorage.getItem("deckCode");
-    
-    if (deckCodeToUse && deckCodeToUse !== "empty" && typeof decodeDeck === "function") {
-      try {
-        const decoded = decodeDeck(deckCodeToUse);
-        if (decoded && decoded.length > 0) {
-          state[me].deck = decoded;
-          if (typeof shuffleDeck === "function") shuffleDeck();
-          console.log(`[FirstDraw] matchSetup.deckCode から復元: ${decoded.length}枚`);
-        }
-      } catch (e) {
-        console.warn("[FirstDraw] decodeDeck 失敗:", e);
-      }
+    console.warn("[FirstDraw] デッキが空です。initDeckFromCode() で再初期化します。");
+
+    if (typeof initDeckFromCode === "function") {
+      initDeckFromCode();
+      if (typeof shuffleDeck === "function") shuffleDeck();
     }
-    
-    // それでも空なら initDeckFromCode を試みる
-    if ((state[me]?.deck?.length ?? 0) <= 0) {
-      if (typeof initDeckFromCode === "function") {
-        initDeckFromCode();
-        if (typeof shuffleDeck === "function") shuffleDeck();
-      }
-    }
-    
+
     const deckLenAfter = state[me]?.deck?.length ?? 0;
     console.log(`[FirstDraw] 再初期化後 deckLen=${deckLenAfter}`);
     if (deckLenAfter <= 0) {

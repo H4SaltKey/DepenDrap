@@ -107,7 +107,15 @@ function updateFirstDrawPhaseUI() {
   const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="self"]`));
   console.log(`[FirstDraw] candidates=${candidates.length}, pickN=${pickN}, cardsBound=${overlay.dataset.cardsBound}`);
   if (candidates.length < pickN) {
-    messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…`;
+    // カードが足りない場合、デッキから再取り出しを試みる
+    if (candidates.length === 0 && !overlay.dataset.retryTakeOut) {
+      overlay.dataset.retryTakeOut = "1";
+      console.warn(`[FirstDraw] カードが0枚。再取り出しを試みます。`);
+      window._firstDrawPhaseStarted = false;
+      startFirstDrawPhase();
+    } else {
+      messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…（現在${candidates.length}枚）`;
+    }
     return;
   }
 
@@ -323,37 +331,73 @@ function startFirstDrawPhase() {
   }
   window._firstDrawPhaseStarted = true;
 
-  const deckLen = state[me]?.deck?.length ?? -1;
+  const deckLen = state[me]?.deck?.length ?? 0;
   console.log(`[FirstDraw] startFirstDrawPhase: me=${me}, deckLen=${deckLen}, takeOut=${typeof window.takeOut}`);
 
-  if (deckLen === 0) {
-    // デッキが空の場合はデッキコードから再初期化を試みる
-    console.warn("[FirstDraw] デッキが空です。デッキコードから再初期化します。");
-    if (typeof initDeckFromCode === "function") {
-      initDeckFromCode();
-      if (typeof shuffleDeck === "function") shuffleDeck();
+  // デッキが空またはundefinedの場合はデッキコードから再初期化
+  if (deckLen <= 0) {
+    console.warn("[FirstDraw] デッキが空です。デッキコードから再初期化します。deckCode:", localStorage.getItem("deckCode"));
+    
+    // matchSetup の deckCode を優先して試みる
+    const matchSetupData = (() => {
+      try { return JSON.parse(localStorage.getItem("matchSetup")) || {}; } catch { return {}; }
+    })();
+    const deckCodeToUse = matchSetupData.deckCode || localStorage.getItem("deckCode");
+    
+    if (deckCodeToUse && deckCodeToUse !== "empty" && typeof decodeDeck === "function") {
+      try {
+        const decoded = decodeDeck(deckCodeToUse);
+        if (decoded && decoded.length > 0) {
+          state[me].deck = decoded;
+          if (typeof shuffleDeck === "function") shuffleDeck();
+          console.log(`[FirstDraw] matchSetup.deckCode から復元: ${decoded.length}枚`);
+        }
+      } catch (e) {
+        console.warn("[FirstDraw] decodeDeck 失敗:", e);
+      }
     }
+    
+    // それでも空なら initDeckFromCode を試みる
+    if ((state[me]?.deck?.length ?? 0) <= 0) {
+      if (typeof initDeckFromCode === "function") {
+        initDeckFromCode();
+        if (typeof shuffleDeck === "function") shuffleDeck();
+      }
+    }
+    
     const deckLenAfter = state[me]?.deck?.length ?? 0;
     console.log(`[FirstDraw] 再初期化後 deckLen=${deckLenAfter}`);
-    if (deckLenAfter === 0) {
-      console.error("[FirstDraw] デッキの再初期化に失敗しました。deckCode:", localStorage.getItem("deckCode"));
+    if (deckLenAfter <= 0) {
+      console.error("[FirstDraw] デッキの再初期化に失敗しました。");
+      // 再試行: 500ms後に再度試みる
+      window._firstDrawPhaseStarted = false;
+      setTimeout(() => {
+        if (state.matchData?.status === "setup_first_draw") {
+          startFirstDrawPhase();
+        }
+      }, 500);
       return;
     }
   }
 
-  if (typeof window.takeOut === "function") {
-    const n = getFirstDrawRevealCount(me, m);
-    console.log(`[FirstDraw] takeOut(${n}) を呼び出します`);
-    window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
-    // update() の state 比較キャッシュを強制リセットして renderUI が必ず走るようにする
-    if (typeof window.resetLastStateJson === "function") window.resetLastStateJson();
-    // 100ms 後に直接 updateFirstDrawPhaseUI を呼んでカードバインドを確実に実行
-    setTimeout(() => {
-      if (typeof updateFirstDrawPhaseUI === "function") updateFirstDrawPhaseUI();
-    }, 100);
-  } else {
+  if (typeof window.takeOut !== "function") {
     console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
+    return;
   }
+
+  const n = getFirstDrawRevealCount(me, m);
+  console.log(`[FirstDraw] takeOut(${n}) を呼び出します。デッキ枚数: ${state[me]?.deck?.length}`);
+  window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
+
+  // update() の state 比較キャッシュを強制リセットして renderUI が必ず走るようにする
+  if (typeof window.resetLastStateJson === "function") window.resetLastStateJson();
+
+  // 100ms 後に直接 updateFirstDrawPhaseUI を呼んでカードバインドを確実に実行
+  setTimeout(() => {
+    if (state.matchData?.status === "setup_first_draw") {
+      if (typeof updateFirstDrawPhaseUI === "function") updateFirstDrawPhaseUI();
+    }
+  }, 100);
 }
 
 /**

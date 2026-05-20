@@ -718,9 +718,15 @@ function takeOut(count, opts){
   let isOverdraw = false;
   let actual = count;
   if (count > dState.deck.length) {
-    console.warn(`[takeOut] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+    // ファーストドローフェーズ中はオーバードロー敗北を発動しない
+    const isFirstDraw = (typeof state !== "undefined") && state?.matchData?.status === "setup_first_draw";
+    if (!isFirstDraw) {
+      console.warn(`[takeOut] オーバードロー: ${count}枚引こうとしましたが、デッキは${dState.deck.length}枚しかありません。敗北判定を実行します。`);
+      isOverdraw = true;
+    } else {
+      console.warn(`[takeOut] ファーストドロー中: ${count}枚要求、デッキは${dState.deck.length}枚。引ける分だけ引きます。`);
+    }
     actual = dState.deck.length;
-    isOverdraw = true;
   }
 
   const deckX = deckObj ? Number(deckObj.dataset.x) : 0;

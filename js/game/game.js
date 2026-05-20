@@ -1796,9 +1796,12 @@ async function handleFreshStart(currentRoom, myKey) {
   }
 
   // デッキ初期化
+  const deckCodeCheck = localStorage.getItem("deckCode");
+  console.log(`[handleFreshStart] deckCode="${deckCodeCheck}", matchSetup.deckCode="${matchSetupData.deckCode}"`);
   initDeckFromCode();
   state[myKey].backImage = getBackImage() || null;
   shuffleDeck();
+  console.log(`[handleFreshStart] デッキ初期化完了: ${state[myKey]?.deck?.length ?? 0}枚`);
   markGameStarted();
   save();
   addGameLog(`${window.myUsername || state[myKey]?.username || myKey} が入室しました。`);

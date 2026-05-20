@@ -389,7 +389,7 @@ function updateFieldStatusPanels() {
 
 window.getHandLimit = getHandLimit;
 
-const ICON_BARRIER = lorLucide("orbit", "lorLxBarrier");
+const ICON_BARRIER = lorLucide("shield", "lorLxBarrier");
 const ICON_HP = lorLucide("heart", "lorLxHp");
 const ICON_SLD = lorLucide("shield", "lorLxDefTot");
 const ICON_ATK = lorLucide("sword", "lorLxAtk");

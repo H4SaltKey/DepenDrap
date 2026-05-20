@@ -105,6 +105,7 @@ function updateFirstDrawPhaseUI() {
   const field = getFieldContent();
   if (!field) return;
   const candidates = Array.from(field.querySelectorAll(`.card:not(.deckObject)[data-owner="${me}"][data-visibility="self"]`));
+  console.log(`[FirstDraw] candidates=${candidates.length}, pickN=${pickN}, cardsBound=${overlay.dataset.cardsBound}`);
   if (candidates.length < pickN) {
     messageEl.textContent = `山札から${pickN}枚が配置されるまでお待ちください…`;
     return;
@@ -321,9 +322,39 @@ function startFirstDrawPhase() {
     return;
   }
   window._firstDrawPhaseStarted = true;
+
+  const deckLen = state[me]?.deck?.length ?? -1;
+  console.log(`[FirstDraw] startFirstDrawPhase: me=${me}, deckLen=${deckLen}, takeOut=${typeof window.takeOut}`);
+
+  if (deckLen === 0) {
+    // デッキが空の場合はデッキコードから再初期化を試みる
+    console.warn("[FirstDraw] デッキが空です。デッキコードから再初期化します。");
+    if (typeof initDeckFromCode === "function") {
+      initDeckFromCode();
+      if (typeof shuffleDeck === "function") shuffleDeck();
+    }
+    const deckLenAfter = state[me]?.deck?.length ?? 0;
+    console.log(`[FirstDraw] 再初期化後 deckLen=${deckLenAfter}`);
+    if (deckLenAfter === 0) {
+      console.error("[FirstDraw] デッキの再初期化に失敗しました。deckCode:", localStorage.getItem("deckCode"));
+      return;
+    }
+  }
+
   if (typeof window.takeOut === "function") {
     const n = getFirstDrawRevealCount(me, m);
+    console.log(`[FirstDraw] takeOut(${n}) を呼び出します`);
     window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
+    // takeOut後、update()のstate比較で変化が検出されない場合があるため
+    // lastStateJsonを強制リセットしてrenderUIが必ず走るようにする
+    if (typeof lastStateJson !== "undefined") {
+      // eslint-disable-next-line no-global-assign
+      try { lastStateJson = ""; } catch(e) {}
+    }
+    // さらに直接スケジュールして確実にカードバインドを実行する
+    setTimeout(() => {
+      if (typeof updateFirstDrawPhaseUI === "function") updateFirstDrawPhaseUI();
+    }, 100);
   } else {
     console.error("[FirstDraw] window.takeOut が未定義です。contextMenu.js を game ページで読み込んでください。");
   }

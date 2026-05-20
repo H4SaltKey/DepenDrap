@@ -1719,6 +1719,9 @@ document.body.addEventListener("click", (e) => {
 let cardsReadyFired = false;
 let lastStateJson = "";
 
+// lastStateJson を外部からリセットする公開関数（ファーストドローフェーズ等で使用）
+window.resetLastStateJson = function() { lastStateJson = ""; };
+
 let _chatEventsBound = false;
 let _gameBootstrapped = false;
 let _connectionEventsBound = false;

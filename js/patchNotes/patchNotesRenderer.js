@@ -53,7 +53,7 @@ export class PatchNotesRenderer {
       toc.style.cssText = "background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; display: inline-block;";
       let tocHtml = "<strong style='color:#ccc; display:block; margin-bottom:5px;'>目次</strong><ul style='margin:0; padding-left:20px; color:#f0d080;'>";
       
-      const bellIcon = '<i data-lucide="bell-dot" width="16" height="16" style="vertical-align:text-bottom; color:#e74c3c; margin-left:6px;"></i>';
+      const bellIcon = '<i data-lucide="bell" width="16" height="16" style="vertical-align:text-bottom; color:#e74c3c; margin-left:6px;"></i>';
 
       vData.categories.forEach(cat => {
         const bd = cat.notify ? bellIcon : '';

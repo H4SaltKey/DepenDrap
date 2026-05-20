@@ -632,7 +632,7 @@ function createCard(id){
   // 複製（一時）カード用アイコン
   const tempIcon = document.createElement("div");
   tempIcon.classList.add("cardTempIcon");
-  tempIcon.innerHTML = '<i data-lucide="route-off"></i>';
+  tempIcon.innerHTML = '<i data-lucide="x-circle"></i>';
 
   wrapper.appendChild(img);
   wrapper.appendChild(label);

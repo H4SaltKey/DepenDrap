@@ -203,7 +203,11 @@ function ensureBattleZoneUIs() {
 }
 
 function hideZoneStackInspectPanel() {
-  // Obsolete: Replaced by context menu inspector
+  cancelZoneHoverHide();
+  if (zoneStackInspectPanel && zoneStackInspectPanel.parentNode) {
+    zoneStackInspectPanel.remove();
+  }
+  zoneStackInspectPanel = null;
 }
 
 function scheduleZoneHoverHide() {
@@ -211,14 +215,6 @@ function scheduleZoneHoverHide() {
   zoneHoverHideTimer = setTimeout(() => {
     hideZoneStackInspectPanel();
   }, 160);
-}
-
-function hideZoneStackInspectPanel() {
-  cancelZoneHoverHide();
-  if (zoneStackInspectPanel && zoneStackInspectPanel.parentNode) {
-    zoneStackInspectPanel.remove();
-  }
-  zoneStackInspectPanel = null;
 }
 
 function beginZoneHoverCardDrag(card, startEvent) {
@@ -284,9 +280,7 @@ function beginZoneHoverCardDrag(card, startEvent) {
 
 // showZoneStackInspectHover is now replaced by context menu "Inspect Contents"
 
-function attachZoneHoverListeners(card, owner, type) {
-  // Obsolete: Replaced by context menu
-}
+// attachZoneHoverListeners は右クリックコンテキストメニューに移行済みのため削除
 
 function bindBattleZoneStackInspect(zoneEl, owner, type) {
   if (!zoneEl || (type !== "skill" && type !== "grave")) return;
@@ -355,8 +349,7 @@ function updateBattleZoneUI() {
       if (type === "grave") countEl.textContent = `${cards.length}枚`;
       else countEl.textContent = cards.length > 0 ? "●" : "○";
       if ((type === "skill" || type === "grave") && cards.length >= 1) {
-        const topCard = cards[cards.length - 1];
-        if (topCard) attachZoneHoverListeners(topCard, owner, type);
+        // 右クリックコンテキストメニューで内容確認できるため、ホバーリスナーは不要
       }
     });
   });

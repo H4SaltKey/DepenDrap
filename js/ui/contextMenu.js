@@ -842,95 +842,17 @@ function collectAllToDeck(){
   if(typeof update === "function") update();
 }
 
+// applyDamageByRule は damageCalc.js (window.applyDamageByRule) に実装済み
+// 後方互換のためローカル参照を残す
 function applyDamageByRule(snapshot, type, amount) {
-  const result = {
-    hp: Number(snapshot.hp) || 0,
-    shield: Number(snapshot.shield) || 0,
-    defstack: Number(snapshot.defstack) || 0,
-    defstackMax: Math.max(0, Number(snapshot.defstackMax) || 0)
-  };
-  const hits = Math.max(0, Number(amount) || 0);
-  if (hits <= 0) return result;
-
-  const applyToShieldAndHp = (damageAmount) => {
-    let remain = Math.max(0, Number(damageAmount) || 0);
-    if (result.shield > 0) {
-      const absorbed = Math.min(result.shield, remain);
-      result.shield -= absorbed;
-      remain -= absorbed;
-    }
-    if (remain > 0) {
-      result.hp = Math.max(0, result.hp - remain);
-    }
-  };
-
-  if (type === "hp_reduce") {
-    result.hp = Math.max(0, result.hp - hits);
-    return result;
-  }
-
-  if (type === "fragile") {
-    result.defstack = Math.max(0, result.defstack - hits);
-    return result;
-  }
-
-  if (type === "pierce") {
-    applyToShieldAndHp(hits);
-    return result;
-  }
-
-  if (type === "arcana") {
-    const brokenDef = Math.min(result.defstack, hits);
-    result.defstack -= brokenDef;
-    applyToShieldAndHp(hits - brokenDef);
-    return result;
-  }
-
-  // 通常ダメージ（direct_attack含む）:
-  // 防御スタックを 0 まで減らし、0到達時のみ 1 ダメージ通過。その後防御を最大値へループ。
-  let passDamage = 0;
-  for (let i = 0; i < hits; i++) {
-    if (result.defstack > 0) {
-      result.defstack -= 1;
-      continue;
-    }
-    passDamage += 1;
-    result.defstack = result.defstackMax;
-  }
-  applyToShieldAndHp(passDamage);
-  return result;
+  return window.applyDamageByRule(snapshot, type, amount);
 }
 
 function showDamagePopup(targetOwner, type, subType, options = {}) {
-  const typeLabels = {
-    damage: "ダメージ",
-    pierce: "貫通ダメージ",
-    fragile: "脆弱ダメージ",
-    arcana: "アルカナダメージ",
-    hp_reduce: "HP減少",
-    direct_attack: "直接攻撃"
-  };
-  const subLabels = {
-    normal: "通常",
-    additional: "追加",
-    none: ""
-  };
-
-  // 説明文の生成
-  let desc = "";
-  if (type === "damage") desc = "通常のダメージ";
-  if (type === "pierce") desc = "防御力を無視";
-  if (type === "arcana") desc = "防御突破時のバースト";
-  if (type === "hp_reduce") desc = "HPを直に減らす";
-  if (type === "fragile") desc = "防御力を減少させる";
-  if (type === "direct_attack") desc = "アタッカーカードによる攻撃ダメージ";
-
-  if (subType === "additional") {
-    if (type === "damage") desc = "”追加”特性を持つ、通常のダメージ";
-    else desc = `”追加”特性を持ち、${desc}する`;
-  }
-
-  const fullLabel = typeLabels[type] + (subType !== "none" ? ` (${subLabels[subType]})` : "");
+  // ラベル・説明文は damageCalc.js の関数を使用
+  const fullLabel  = window.getDamageTypeLabel(type)
+    + (subType !== "none" ? ` + "`" + `(${subType === "additional" ? "追加" : subType})` + "`" + ` : "");
+  const desc       = window.getDamageTypeDescription(type, subType);
   const targetName = targetOwner === window.myRole ? "自身" : "相手";
 
   const modal = document.createElement("div");

@@ -335,13 +335,10 @@ async function handleChooseOrder(goFirst) {
   state.matchData.status      = "setup_evolution";
   state.matchData.round       = 1;
   state.matchData.turn        = 1;
-  state.matchData.winner      = null;   // 前回の winner を必ずクリア
-  state.matchData.winnerSetAt = null;   // タイムスタンプもクリア
+  state.matchData.winner      = null;
+  state.matchData.winnerSetAt = null;
 
-  // ゲーム開始時刻を記録（古い winner を無視するため）
-  // 3秒の猶予を持たせて、Firebase から古い winner が流れてきても無視できるようにする
-  // window._gameStartedAt = Date.now() + 3000; // 削除
-  window._resultDismissed = false;  // 新しいゲーム開始時は判定を有効化
+  window._resultDismissed = false;
 
   const firstPlayerName = state.matchData.turnPlayer === "player1"
     ? (state.player1.username || "P1")
@@ -349,22 +346,20 @@ async function handleChooseOrder(goFirst) {
 
   addGameLog(`[MATCH] 先攻: ${firstPlayerName}。進化の道を選択してください...`);
 
-  state.player1.evolutionPath = null;
-  state.player1.evoContinuousDmgCount = 0;
-  state.player1.evoBackwaterExpGained = false;
-
-  state.player2.evolutionPath = null;
-  state.player2.evoContinuousDmgCount = 0;
-  state.player2.evoBackwaterExpGained = false;
+  // 自分の evolutionPath のみリセット（相手のデータは書かない）
+  state[me].evolutionPath = null;
+  state[me].evoContinuousDmgCount = 0;
+  state[me].evoBackwaterExpGained = false;
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMatchData");
     await firebaseClient.writeMatchData(gameRoom, state.matchData);
-    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMyState player1");
-    await firebaseClient.writeMyState(gameRoom, "player1", state.player1);
-    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMyState player2");
-    await firebaseClient.writeMyState(gameRoom, "player2", state.player2);
+    // 自分のデータのみ書く（設計原則: 相手のデータは絶対に書かない）
+    if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "await", "writeMyState");
+    if (typeof _getMyStateForSync === "function") {
+      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+    }
     if (typeof window.traceFlow === "function") window.traceFlow("phaseTransition", "success", "setup_dice -> setup_evolution");
   } else if (typeof window.traceFlow === "function") {
     window.traceFlow("phaseTransition", "failure", "gameRoom/firebase missing");

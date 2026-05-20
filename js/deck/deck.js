@@ -761,29 +761,32 @@ function updateCardSizes() {
   const areaZoom = window.deckAreaLocalZoom || 1;
 
   // ── カード最小サイズ定数 ──
-  const CARD_MIN_W = 48;   // px: これ以下は読めない
+  const CARD_MIN_W = 48;    // px: これ以下は読めない
+  const CARD_MARGIN = 20;   // px: 余裕
   const CARD_ASPECT = 168 / 118; // h/w
 
   // ── カード一覧（上段）──
-  // .cardListScroll の実際の高さを取得
   const scrollEl = catalogCol.querySelector(".cardListScroll");
   const topPaneH = scrollEl ? scrollEl.getBoundingClientRect().height : catalogCol.getBoundingClientRect().height;
 
   // 2段グリッド: 1行の高さ = (pane高さ - gap - padding) / 2
   const gap = 8;
-  const padV = 20; // 上下padding合計
+  const padV = 20;
   const rowH = Math.max(0, (topPaneH - gap - padV) / 2);
-  // カード幅 = 行高さ / aspect_ratio
-  const topCardHFromRow = rowH;
-  const topCardWFromRow = Math.round(topCardHFromRow / CARD_ASPECT);
-  // 上限: pane幅の1/4程度（横に詰めすぎない）
-  const topCardW = Math.round(Math.max(CARD_MIN_W, Math.min(topCardWFromRow, 160)) * catalogZoom);
+  const topCardWFromRow = Math.round(rowH / CARD_ASPECT);
+  // 上限: CARD_MIN_W + CARD_MARGIN（余裕付き）
+  const topCardW = Math.round(
+    Math.max(CARD_MIN_W, Math.min(topCardWFromRow, CARD_MIN_W + CARD_MARGIN + 92)) * catalogZoom
+  );
 
   // ── デッキ（下段）──
-  // .deckField の実際の高さを取得（toolbarを除いた純粋なカード領域）
   const deckField = deckArea.querySelector(".deckField");
   const botPaneH = deckField ? deckField.getBoundingClientRect().height : deckArea.getBoundingClientRect().height;
-  const deckCardH = Math.round(Math.max(CARD_MIN_W * CARD_ASPECT, Math.min(botPaneH * 0.88, 340)) * areaZoom);
+  // 上限: CARD_MIN_W + CARD_MARGIN を基準に pane高さで縮放
+  const deckCardHMax = Math.min(botPaneH * 0.88, 340);
+  const deckCardH = Math.round(
+    Math.max(CARD_MIN_W * CARD_ASPECT, deckCardHMax) * areaZoom
+  );
   const deckCardW = Math.round(deckCardH / CARD_ASPECT);
 
   const root = document.documentElement;
@@ -791,13 +794,11 @@ function updateCardSizes() {
   root.style.setProperty("--deck-card-width", `${deckCardW}px`);
   root.style.setProperty("--deck-card-height", `${deckCardH}px`);
 
-  // pane最小サイズをカードサイズから逆算して返す（setupVerticalResizer で使用）
-  return {
-    // 上段: 2行 + gap + padding が最低限必要
-    catalogMin: Math.round(CARD_MIN_W * CARD_ASPECT * 2 + gap + padV + 40), // 40 = header
-    // 下段: 1行 + padding が最低限必要
-    deckMin: Math.round(CARD_MIN_W * CARD_ASPECT + 60), // 60 = toolbar
-  };
+  // pane最小サイズをカードサイズ + 余裕から逆算
+  const catalogMin = Math.round((CARD_MIN_W + CARD_MARGIN) * CARD_ASPECT * 2 + gap + padV + 40);
+  const deckMin    = Math.round((CARD_MIN_W + CARD_MARGIN) * CARD_ASPECT + 50);
+
+  return { catalogMin, deckMin };
 }
 
 function setupDeckBuilder() {
@@ -823,14 +824,32 @@ function setupDeckBuilder() {
     deckNext.onclick = () => scrollContainer(deckDiv, Math.max(deckDiv.clientWidth * 0.75, 240));
   }
 
+  // ── スクロールバー: scroll時に2秒間表示 ──
+  function flashScrollbar(el) {
+    if (!el) return;
+    el.classList.add("scrollbar-visible");
+    clearTimeout(el._scrollbarTimer);
+    el._scrollbarTimer = setTimeout(() => el.classList.remove("scrollbar-visible"), 2000);
+  }
+
   if (cardsDiv) {
     const scrollTarget = cardsDiv.closest(".cardListScroll");
-    if (scrollTarget) scrollTarget.addEventListener("scroll", updateCardsScrollButtons);
-    else cardsDiv.addEventListener("scroll", updateCardsScrollButtons);
+    if (scrollTarget) {
+      scrollTarget.addEventListener("scroll", () => {
+        updateCardsScrollButtons();
+        flashScrollbar(scrollTarget);
+      });
+    } else {
+      cardsDiv.addEventListener("scroll", updateCardsScrollButtons);
+    }
   }
   if (deckDiv) {
-    deckDiv.addEventListener("scroll", updateDeckScrollButtons);
+    deckDiv.addEventListener("scroll", () => {
+      updateDeckScrollButtons();
+      flashScrollbar(deckDiv);
+    });
   }
+
   window.addEventListener("resize", () => {
     updateCardsScrollButtons();
     updateDeckScrollButtons();
@@ -841,31 +860,24 @@ function setupDeckBuilder() {
   window.deckCatalogLocalZoom = 1;
   window.deckAreaLocalZoom = 1;
 
+  // 縦分割比率の復元（previewWidth の復元は setupPreviewResizer に委譲）
   const editorSettings = loadDeckEditorSettings();
-
-  const previewCol = document.getElementById("deckPreviewCol");
-  if (previewCol && editorSettings.previewWidth) {
-    const width = Math.max(180, Number(editorSettings.previewWidth) || 180);
-    previewCol.style.width = `${width}px`;
-    previewCol.style.minWidth = `${width}px`;
-    previewCol.style.maxWidth = `${width}px`;
-    previewCol.style.flexBasis = `${width}px`;
-  }
-
   const catalogCol = document.getElementById("cardCatalogSection");
   const deckArea = document.getElementById("deckDropZone");
   if (catalogCol && deckArea && editorSettings.verticalRatio) {
     const ratio = Number(editorSettings.verticalRatio);
     if (ratio > 0) {
+      const limits = updateCardSizes() || {};
+      const catalogMin = limits.catalogMin || 160;
+      const deckMin    = limits.deckMin    || 120;
       catalogCol.style.flex = `${ratio} 0 0px`;
       catalogCol.style.maxHeight = "none";
-      catalogCol.style.minHeight = "150px";
+      catalogCol.style.minHeight = catalogMin + "px";
       deckArea.style.flex = "1 0 0px";
       deckArea.style.maxHeight = "none";
-      deckArea.style.minHeight = "150px";
+      deckArea.style.minHeight = deckMin + "px";
     }
   }
-
 
   setupFilters();
 
@@ -966,14 +978,28 @@ document.getElementById("codeImportInput").addEventListener("keydown", (e) => {
 function setupPreviewResizer() {
   const resizer = document.getElementById("previewResizer");
   const previewCol = document.getElementById("deckPreviewCol");
-  if (!resizer || !previewCol) return;
+  const workspace = document.querySelector(".deckBuilderWorkspace");
+  if (!resizer || !previewCol || !workspace) return;
+
+  const MIN_WIDTH = 200;
+  const MAX_RATIO = 0.25; // 画面幅の25%上限
+
+  // 保存済み幅を復元
+  const editorSettings = loadDeckEditorSettings();
+  if (editorSettings.previewWidth) {
+    const saved = Math.max(MIN_WIDTH, Math.min(
+      Number(editorSettings.previewWidth) || MIN_WIDTH,
+      Math.floor(window.innerWidth * MAX_RATIO)
+    ));
+    _applyPreviewWidth(previewCol, saved);
+  }
 
   let isResizing = false;
   let startX = 0;
   let startWidth = 0;
 
   resizer.addEventListener("mousedown", (e) => {
-    e.preventDefault(); // ブラウザ標準のドラッグ等の動作を無効化
+    e.preventDefault();
     isResizing = true;
     startX = e.clientX;
     startWidth = previewCol.offsetWidth;
@@ -984,34 +1010,48 @@ function setupPreviewResizer() {
 
   window.addEventListener("mousemove", (e) => {
     if (!isResizing) return;
-    
-    // Preview is on the right side. Dragging left increases width.
-    const dx = startX - e.clientX; 
+
+    // 右端基準: 右端は固定、左端を動かす
+    // マウスを左に動かす（dx < 0）→ 幅が増える
+    const dx = startX - e.clientX;
     let newWidth = startWidth + dx;
 
-    // Maximum width is about half of the screen as requested
-    const maxWidth = Math.floor(window.innerWidth * 0.5);
-    const minWidth = 180;
+    const maxWidth = Math.floor(window.innerWidth * MAX_RATIO);
+    newWidth = Math.max(MIN_WIDTH, Math.min(newWidth, maxWidth));
 
-    if (newWidth > maxWidth) newWidth = maxWidth;
-    if (newWidth < minWidth) newWidth = minWidth;
-
-    // Flexboxの制約を確実に上書きするために複数プロパティを指定
-    previewCol.style.width = newWidth + "px";
-    previewCol.style.minWidth = newWidth + "px";
-    previewCol.style.maxWidth = newWidth + "px";
-    previewCol.style.flexBasis = newWidth + "px";
+    _applyPreviewWidth(previewCol, newWidth);
   });
 
   window.addEventListener("mouseup", () => {
-    if (isResizing) {
-      isResizing = false;
-      resizer.classList.remove("resizing");
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      updateDeckEditorSettings({ previewWidth: parseInt(previewCol.style.width || previewCol.offsetWidth, 10) || previewCol.offsetWidth });
-    }
+    if (!isResizing) return;
+    isResizing = false;
+    resizer.classList.remove("resizing");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    // 幅を保存
+    const w = previewCol.offsetWidth;
+    if (w > 0) updateDeckEditorSettings({ previewWidth: w });
+    updateCardSizes();
   });
+
+  // ウィンドウリサイズ時に上限を超えないよう調整
+  window.addEventListener("resize", () => {
+    const maxWidth = Math.floor(window.innerWidth * MAX_RATIO);
+    const current = previewCol.offsetWidth;
+    if (current > maxWidth) _applyPreviewWidth(previewCol, maxWidth);
+  });
+}
+
+/** プレビュー列の幅を一括適用（grid列も更新） */
+function _applyPreviewWidth(previewCol, width) {
+  previewCol.style.width = width + "px";
+  previewCol.style.minWidth = width + "px";
+  previewCol.style.maxWidth = width + "px";
+  // grid-template-columns を更新して main area が正しく伸縮するようにする
+  const workspace = document.querySelector(".deckBuilderWorkspace");
+  if (workspace) {
+    workspace.style.gridTemplateColumns = `1fr ${width}px`;
+  }
 }
 
 function setupVerticalResizer() {

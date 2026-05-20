@@ -1837,29 +1837,30 @@ body.deckPage{
 }
 
 /* ── スクロールバー: ホバー中 or 値変化後2秒のみ表示 ── */
+
+/* デフォルト: 非表示（高さ0） */
 #deck.cardRow::-webkit-scrollbar,
 .cardListScroll::-webkit-scrollbar {
-    height: 6px;
-    opacity: 0;
-    transition: opacity 0.3s;
+    height: 0;
+    transition: height 0.2s;
 }
 
 #deck.cardRow::-webkit-scrollbar-thumb,
 .cardListScroll::-webkit-scrollbar-thumb {
-    background: rgba(199, 179, 119, 0.5);  /* 黄色系に統一 */
+    background: rgba(199, 179, 119, 0.55);  /* 黄色系に統一 */
     border-radius: 999px;
 }
 
-/* ホバー時に表示 */
+/* ホバー時: 表示 */
 #deck.cardRow:hover::-webkit-scrollbar,
 .cardListScroll:hover::-webkit-scrollbar {
-    opacity: 1;
+    height: 6px;
 }
 
-/* JS制御用クラス: 値変化後2秒間表示 */
+/* JS制御: scroll後2秒間表示 */
 #deck.cardRow.scrollbar-visible::-webkit-scrollbar,
 .cardListScroll.scrollbar-visible::-webkit-scrollbar {
-    opacity: 1;
+    height: 6px;
 }
 
 /* deckArea内の補助UI（codeImport等）は固定高さ */

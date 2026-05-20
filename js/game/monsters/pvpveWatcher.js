@@ -2,6 +2,10 @@
  * pvpveWatcher.js
  * Firebase の pvpve ノードを監視してモンスター状態を同期する
  * 既存の roomWatcher を変更しない
+ *
+ * ⚠ 旧実装: window.update / window.handleTurnEnd のモンキーパッチ
+ *   → 再帰ループリスクがあるため廃止
+ *   → game.js の window._afterUpdateHooks / window._afterTurnEndHooks を使用
  */
 
 (function() {
@@ -10,10 +14,7 @@
   let _pvpveListener = null;
   let _lastRoundSeen = 0;
 
-  /**
-   * pvpve ウォッチャーを開始
-   * setupRoomWatcher() の後に呼ばれる想定
-   */
+  // ===== pvpve Firebase ウォッチャー =====
   window.startPvpveWatcher = function() {
     const gameRoom = localStorage.getItem("gameRoom");
     if (!gameRoom || !window.firebaseClient?.db) return;
@@ -26,21 +27,16 @@
       const data = snap.val();
       if (!data) return;
 
-      // MonsterCombatSystem に反映
       if (typeof window.MonsterCombatSystem?.applyRemoteState === "function") {
         window.MonsterCombatSystem.applyRemoteState(data);
       }
-
-      // UI 更新
-      if (typeof window.MonsterUI?.render === "function") {
-        window.MonsterUI.render();
-      }
-      if (typeof window.MonsterUI?.renderTargetBadge === "function") {
-        window.MonsterUI.renderTargetBadge();
-      }
+      _renderMonsterUI();
     });
 
     console.log("[pvpveWatcher] 開始:", gameRoom);
+
+    // フックを登録（モンキーパッチではなく公式フックポイント経由）
+    _registerHooks();
   };
 
   function stopPvpveWatcher() {
@@ -50,27 +46,31 @@
       _pvpveListener = null;
     }
   }
-
   window.stopPvpveWatcher = stopPvpveWatcher;
 
-  // ===== ラウンド変化を検知してモンスター初期化 =====
-  // update() が呼ばれるたびにチェック（既存の update フックを使う）
-  const _origUpdate = window.update;
-  // update は game.js で定義されるため、DOMContentLoaded 後にフックする
-  document.addEventListener("DOMContentLoaded", () => {
-    // update() が定義されるまで待つ
-    const waitForUpdate = setInterval(() => {
-      if (typeof window.update !== "function") return;
-      clearInterval(waitForUpdate);
+  // ===== フック登録 =====
+  function _registerHooks() {
+    // update() 後フック（game.js の window._afterUpdateHooks 配列を使用）
+    if (!Array.isArray(window._afterUpdateHooks)) window._afterUpdateHooks = [];
+    // 重複登録防止
+    if (!window._afterUpdateHooks.includes(_onAfterUpdate)) {
+      window._afterUpdateHooks.push(_onAfterUpdate);
+    }
 
-      const _origUpdate = window.update;
-      window.update = function(skipLogCheck) {
-        _origUpdate.call(this, skipLogCheck);
-        _onAfterUpdate();
-      };
-    }, 200);
-  });
+    // handleTurnEnd 後フック
+    if (!Array.isArray(window._afterTurnEndHooks)) window._afterTurnEndHooks = [];
+    if (!window._afterTurnEndHooks.includes(_onAfterTurnEnd)) {
+      window._afterTurnEndHooks.push(_onAfterTurnEnd);
+    }
 
+    // handleTurnEnd 前フック
+    if (!Array.isArray(window._beforeTurnEndHooks)) window._beforeTurnEndHooks = [];
+    if (!window._beforeTurnEndHooks.includes(_onBeforeTurnEnd)) {
+      window._beforeTurnEndHooks.push(_onBeforeTurnEnd);
+    }
+  }
+
+  // ===== update() 後処理 =====
   function _onAfterUpdate() {
     const m = window.state?.matchData;
     if (!m || m.status !== "playing") return;
@@ -82,71 +82,54 @@
       _lastRoundSeen = round;
       const me = window.myRole || "player1";
       if (me === (m.firstPlayer || "player1")) {
-        if (typeof window.MonsterCombatSystem?.onRoundStart === "function") {
-          window.MonsterCombatSystem.onRoundStart(round);
-        }
+        window.MonsterCombatSystem?.onRoundStart(round);
       }
-      // ターゲット変更ボタンを表示
-      if (typeof window.MonsterUI?.showTargetChangeButton === "function") {
-        window.MonsterUI.showTargetChangeButton();
-      }
+      window.MonsterUI?.showTargetChangeButton();
     }
 
-    // UI 更新
-    if (typeof window.MonsterUI?.render === "function") {
-      window.MonsterUI.render();
-    }
-    if (typeof window.MonsterUI?.renderTargetBadge === "function") {
-      window.MonsterUI.renderTargetBadge();
+    _renderMonsterUI();
+  }
+
+  // ===== ターン終了前処理 =====
+  function _onBeforeTurnEnd() {
+    const me = window.myRole || "player1";
+
+    // 後攻モンスターの攻撃
+    window.MonsterCombatSystem?.processTurnEndMonsterActions();
+
+    // ターゲットをロック
+    window.BattleTargetSystem?.lockTarget(me);
+
+    // 成長スライム恩恵（毎ターン経験値+1）
+    if (window._slimeGrowthRoundsLeft > 0 && window._slimeGrowthKiller === me) {
+      if (typeof window.addVal === "function") {
+        window.addVal(me, "exp", 1);
+      }
     }
   }
 
-  // ===== handleTurnEnd フック =====
-  // ターン終了時にモンスター行動・ターン開始処理を追加
-  document.addEventListener("DOMContentLoaded", () => {
-    const waitForTurnEnd = setInterval(() => {
-      if (typeof window.handleTurnEnd !== "function") return;
-      clearInterval(waitForTurnEnd);
+  // ===== ターン終了後処理 =====
+  function _onAfterTurnEnd() {
+    const me = window.myRole || "player1";
+    const nextPlayer = window.state?.matchData?.turnPlayer;
+    if (!nextPlayer) return;
 
-      const _origHandleTurnEnd = window.handleTurnEnd;
-      window.handleTurnEnd = async function(skipHandLimitCheck) {
-        const me = window.myRole || "player1";
+    // 次ターン開始: ターゲット変更許可
+    window.BattleTargetSystem?.onTurnStart(nextPlayer);
 
-        // ターン終了時: 後攻モンスターの攻撃
-        if (typeof window.MonsterCombatSystem?.processTurnEndMonsterActions === "function") {
-          window.MonsterCombatSystem.processTurnEndMonsterActions();
-        }
+    // 先攻モンスターの攻撃
+    window.MonsterCombatSystem?.processTurnStartMonsterActions();
 
-        // ターゲットをロック
-        if (typeof window.BattleTargetSystem?.lockTarget === "function") {
-          window.BattleTargetSystem.lockTarget(me);
-        }
+    // 自分のターンならターゲット変更ボタンを表示
+    if (nextPlayer === me) {
+      window.MonsterUI?.showTargetChangeButton();
+    }
+  }
 
-        // 成長スライム恩恵（毎ターン経験値+1）
-        if (window._slimeGrowthRoundsLeft > 0 && window._slimeGrowthKiller === me) {
-          if (typeof window.addVal === "function") {
-            window.addVal(me, "exp", 1);
-          }
-        }
-
-        // 元の処理
-        await _origHandleTurnEnd.call(this, skipHandLimitCheck);
-
-        // 次ターン開始時: 先攻モンスターの攻撃 & ターゲット変更許可
-        const nextPlayer = window.state?.matchData?.turnPlayer;
-        if (nextPlayer) {
-          if (typeof window.BattleTargetSystem?.onTurnStart === "function") {
-            window.BattleTargetSystem.onTurnStart(nextPlayer);
-          }
-          if (typeof window.MonsterCombatSystem?.processTurnStartMonsterActions === "function") {
-            window.MonsterCombatSystem.processTurnStartMonsterActions();
-          }
-          if (nextPlayer === me && typeof window.MonsterUI?.showTargetChangeButton === "function") {
-            window.MonsterUI.showTargetChangeButton();
-          }
-        }
-      };
-    }, 300);
-  });
+  // ===== UI 更新ヘルパー =====
+  function _renderMonsterUI() {
+    window.MonsterUI?.render();
+    window.MonsterUI?.renderTargetBadge();
+  }
 
 })();

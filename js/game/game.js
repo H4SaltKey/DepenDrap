@@ -1107,6 +1107,15 @@ function update(skipLogCheck = false) {
   // 保存最適化：毎updateの自動保存を廃止（localStorage溢れ防止）
   // 状態変更が発生するアクション側で明示的に save() / saveDebounced() を呼び出すこと
   // if (typeof saveDebounced === "function") saveDebounced();
+
+  // ===== 拡張フックポイント（モンキーパッチ不要） =====
+  // pvpveWatcher 等の外部モジュールはここに関数を登録する
+  if (Array.isArray(window._afterUpdateHooks)) {
+    window._afterUpdateHooks.forEach(fn => {
+      try { fn(); } catch (e) { console.warn("[afterUpdateHook] error:", e); }
+    });
+  }
+
   traceGame("update", "end");
 }
 

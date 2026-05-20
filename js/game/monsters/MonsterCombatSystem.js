@@ -39,34 +39,18 @@ window.MonsterCombatSystem = (function() {
     const result = window.MonsterManager.monsterAttack(slotIndex, targetKey);
     if (result.dmg <= 0) return;
 
-    // 既存の state に直接ダメージを適用
-    const targetState = window.state?.[targetKey];
-    if (!targetState) return;
-
-    // 防御計算（既存の defstack / shield を考慮）
-    let dmg = result.dmg;
-    if (targetState.defstack > 0) {
-      const absorbed = Math.min(targetState.defstack, dmg);
-      targetState.defstack -= absorbed;
-      dmg -= absorbed;
-    }
-    if (dmg > 0 && targetState.shield > 0) {
-      const absorbed = Math.min(targetState.shield, dmg);
-      targetState.shield -= absorbed;
-      dmg -= absorbed;
-    }
-    if (dmg > 0) {
-      targetState.hp -= dmg;
+    // addVal() 経由でダメージを適用（syncDerivedStats・checkGameResult・Firebase同期が走る）
+    if (typeof window.addVal === "function") {
+      window.addVal(targetKey, "hp", -result.dmg);
+    } else {
+      // フォールバック（addVal未定義時のみ）
+      const targetState = window.state?.[targetKey];
+      if (targetState) targetState.hp = Math.max(0, (targetState.hp || 0) - result.dmg);
+      if (typeof window.update === "function") window.update(true);
     }
 
     if (typeof window.addGameLog === "function") {
-      window.addGameLog(`[MONSTER] ${targetKey} が ${result.dmg} ダメージを受けた（実ダメ: ${dmg}）`);
-    }
-
-    // 既存の update() を呼んで UI 反映
-    if (typeof window.update === "function") window.update(true);
-    if (typeof window.pushMyStateDebounced === "function" && targetKey === window.myRole) {
-      window.pushMyStateDebounced();
+      window.addGameLog(`[MONSTER] ${targetKey} が ${result.dmg} ダメージを受けた`);
     }
   }
 
@@ -158,9 +142,11 @@ window.MonsterCombatSystem = (function() {
       // 撤退追撃処理
       const retreatAttacks = window.MonsterManager.processRetreatAttacks(playerKey);
       retreatAttacks.forEach(({ dmg }) => {
-        const targetState = window.state?.[playerKey];
-        if (targetState) {
-          targetState.hp = Math.max(0, (targetState.hp || 0) - dmg);
+        if (typeof window.addVal === "function") {
+          window.addVal(playerKey, "hp", -dmg);
+        } else {
+          const targetState = window.state?.[playerKey];
+          if (targetState) targetState.hp = Math.max(0, (targetState.hp || 0) - dmg);
         }
       });
     });

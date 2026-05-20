@@ -1493,6 +1493,11 @@ body.deckPage{
     flex:1 1 0;
 }
 
+/* cardListHeader は固定高さ（UIバー）、カード領域に高さを渡す */
+.cardListHeader{
+    flex: 0 0 auto;
+}
+
 /* ========================================
    viewport
 ======================================== */
@@ -1519,19 +1524,20 @@ body.deckPage{
     overflow-x:auto;
     overflow-y:hidden;
     padding:4px 0 8px;
-    align-items:stretch;
+    align-items:start;   /* グリッドを上揃え、stretch禁止 */
     box-sizing: border-box;
 }
 
 /* ── カード一覧グリッド（2段固定・列同期） ──
-   grid-template-rows: 2行固定（各行 1fr）
+   grid-template-rows: 2行固定（各行 auto）
    grid-auto-flow: column → 列方向に積む
-   height: 100% → 親（.cardListScroll）の高さに従う
+   align-items: start → セル高さをカードに押し付けない
    カード自身は width 基準で aspect-ratio を維持
 */
 #cards.cardRow{
     display:grid;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-auto-rows: auto;
     grid-auto-flow:column;
     grid-auto-columns: var(--cards-card-width, 108px);
     gap:8px;
@@ -1539,9 +1545,8 @@ body.deckPage{
     scroll-behavior:smooth;
     min-height:0;
     min-width:0;
-    height:100%;
     width:max-content;
-    align-items:stretch;
+    align-items:start;   /* セル高さをカードに押し付けない */
     box-sizing: border-box;
 }
 
@@ -1553,14 +1558,15 @@ body.deckPage{
     pointer-events: none;
 }
 
+/* カード自身は width 基準のみ。height は aspect-ratio で決まる */
 #cards.cardRow .card,
 #deck.cardRow .card {
     width:100%;
+    height:auto;   /* aspect-ratio + width で決まる */
     min-width:0;
     min-height:0;
     aspect-ratio: 118 / 168;
     flex-shrink:0;
-    /* height は aspect-ratio + width で決まる。auto禁止 */
 }
 
 #cards.cardRow::-webkit-scrollbar {

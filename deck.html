@@ -84,6 +84,8 @@
 
       <section class="deckSection deckArea" id="deckDropZone">
         <div class="deckVerticalResizer" id="verticalResizer"></div>
+
+        <!-- UIバー（固定高さ） -->
         <div class="deckToolbar">
           <div class="deckToolbarHeading">
             <h3>デッキ</h3>
@@ -97,26 +99,28 @@
           </div>
           <div class="deckHeaderControls">
             <div style="display:flex; align-items:center; gap:8px;">
-
               <div class="deckCodeBox">
-              <label for="deckCodeInput">デッキコード</label>
-              <div class="deckCodeInner">
-                <input id="deckCodeInput" type="text" readonly>
-                <button id="copyDeckCodeBtn" type="button">コピー</button>
+                <label for="deckCodeInput">デッキコード</label>
+                <div class="deckCodeInner">
+                  <input id="deckCodeInput" type="text" readonly>
+                  <button id="copyDeckCodeBtn" type="button">コピー</button>
+                </div>
               </div>
+              <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
             </div>
-            <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
           </div>
         </div>
-        <div class="deckDetails">
-        </div>
+
+        <div class="deckDetails"></div>
         <div id="codeImportRow" class="hidden" style="gap:6px;align-items:center;padding:4px 0;">
           <input type="text" id="codeImportInput" placeholder="デッキコードを入力" style="flex:1;font-size:13px;padding:4px 6px;border:1px solid #aaa;">
           <button id="codeImportConfirm" style="padding:4px 12px;font-size:13px;background:#2f80ed;color:white;border:none;border-radius:3px;cursor:pointer;">適用</button>
           <button id="codeImportCancel" style="padding:4px 10px;font-size:13px;cursor:pointer;">✕</button>
         </div>
         <div id="codeImportError" style="font-size:12px;color:#c00;min-height:14px;padding:0 2px;"></div>
-        <div class="pagedRow">
+
+        <!-- カードフィールド（残り高さを全て取る） -->
+        <div class="deckField">
           <button class="pageButton" id="deckPrev" type="button">‹</button>
           <div id="deck" class="cardRow cardRowDeck"></div>
           <button class="pageButton" id="deckNext" type="button">›</button>

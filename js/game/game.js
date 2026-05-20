@@ -1041,6 +1041,24 @@ function renderUI() {
     traceGame("renderUI.updateGameLogs", "missing");
   }
 
+  // Lucide アイコンを再生成（innerHTML 更新後に必ず呼ぶ）
+  if (window.lucide?.createIcons) {
+    try {
+      window.lucide.createIcons();
+    } catch (e) {
+      // アイコン名が見つからない場合は個別にフォールバック
+      document.querySelectorAll("i[data-lucide]").forEach(el => {
+        const name = el.getAttribute("data-lucide");
+        try {
+          window.lucide.createIcons({ nodes: [el] });
+        } catch {
+          // 存在しないアイコン名はスキップ（エラーを握りつぶす）
+          el.removeAttribute("data-lucide");
+        }
+      });
+    }
+  }
+
   traceGame("renderUI", "end");
 }
 

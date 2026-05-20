@@ -361,15 +361,23 @@ function startFirstDrawPhase() {
     console.log(`[FirstDraw] 再初期化後 deckLen=${deckLenAfter}`);
     if (deckLenAfter <= 0) {
       console.error("[FirstDraw] デッキの再初期化に失敗しました。");
-      // 再試行: 500ms後に再度試みる
-      window._firstDrawPhaseStarted = false;
-      setTimeout(() => {
-        if (state.matchData?.status === "setup_first_draw") {
-          startFirstDrawPhase();
-        }
-      }, 500);
+      // 再試行: 最大3回まで 500ms 間隔でリトライ
+      window._firstDrawRetryCount = (window._firstDrawRetryCount || 0) + 1;
+      if (window._firstDrawRetryCount <= 3) {
+        window._firstDrawPhaseStarted = false;
+        setTimeout(() => {
+          if (state.matchData?.status === "setup_first_draw") {
+            startFirstDrawPhase();
+          }
+        }, 500);
+      } else {
+        console.error("[FirstDraw] リトライ上限(3回)に達しました。デッキコードを確認してください。");
+        window._firstDrawRetryCount = 0;
+      }
       return;
     }
+    // 成功したらリトライカウントをリセット
+    window._firstDrawRetryCount = 0;
   }
 
   if (typeof window.takeOut !== "function") {

@@ -404,3 +404,287 @@ if (v > mx) state[p][k] = mx;
 - デッキ内容を `HIDDEN` で隠蔽 → セキュリティ考慮あり
 - 進化カウンターはターン終了時にリセット → 正しい
 
+
+---
+
+## Round 8 — PvE システム全体（MonsterCombatSystem / MonsterManager / pvpveWatcher）
+
+### 修正済み（前回コードレビューより）
+
+| 修正内容 | ファイル |
+|---------|---------|
+| `statusUI.js` のデッドコード `getHandLimit` ローカル関数を削除 | `statusUI.js` |
+| `startFirstDrawPhase` の再試行ループに上限3回を追加 | `firstDrawPhase.js` |
+
+### 発見事項
+
+**MonsterCombatSystem のモンスター攻撃が防御スタックを無視する件（Round 4 未解決）**
+
+- `monsterAttackPlayer()` → `addVal(targetKey, "hp", -result.dmg)` を使用
+- `addVal` の `hp` 処理は `Math.min/max` クランプのみ → **防御スタック・シールドを完全無視**
+- これは **意図的な設計**と判断できる根拠:
+  - コメントに「既存のPvP処理を一切変更しない」と明記
+  - モンスター攻撃は `hp_reduce` 相当として扱う設計思想
+  - `MonsterManager.monsterAttack()` が返す `dmg` は生の攻撃力（防御計算なし）
+
+**MonsterManager の設計**
+
+- 6スロット固定（`SLOT_COUNT = 6`）
+- ラウンド1: 全スロットにランダム配置
+- ラウンド2以降: 討伐済みスロットのみ再配置（生き残りは継続）
+- モンスター攻撃は行動パターンから重み付きランダム選択
+  - `attack_double` → ダメージ 1.5倍（切り捨て）
+- 撤退追撃: `retreatCountdown` ターン分、毎ターン開始時に 1.5倍ダメージ
+
+**pvpveWatcher の設計（モンキーパッチ廃止済み）**
+
+- 旧実装: `window.update` / `window.handleTurnEnd` をモンキーパッチ → 再帰ループリスクで廃止
+- 現実装: `window._afterUpdateHooks` / `window._afterTurnEndHooks` / `window._beforeTurnEndHooks` を使用
+- ラウンド変更検知: `_lastRoundSeen` と `m.round` を比較 → **先攻プレイヤーのみ** `onRoundStart` を実行（競合防止）
+
+**Firebase 同期フロー（PvE）**
+
+```
+rooms/{room}/pvpve
+  ├─ monsters: MonsterManager.serialize()  ← スロット状態
+  └─ targets:  BattleTargetSystem.serialize()  ← 各プレイヤーのターゲット
+```
+
+- 書き込み: `MonsterCombatSystem._syncMonsterState()` → 先攻プレイヤーが書く
+- 読み込み: `pvpveWatcher` の `value` リスナー → `applyRemoteState()` で両プレイヤーに反映
+
+**BattleTargetSystem の設計**
+
+- ターゲット: `"player"` または `{ slotIndex: number }`
+- 変更可能タイミング: ターン開始時のみ（`_canChange` フラグ）
+- 討伐直後は即時変更可能（`_justDefeated` フラグ）
+- `lockTarget()` はターン開始後の最初のアクション後に呼ばれる（`_onBeforeTurnEnd` 内）
+
+**ターン進行とモンスター攻撃のタイミング**
+
+```
+ターン終了ボタン押下
+  └─ _onBeforeTurnEnd (pvpveWatcher)
+       ├─ processTurnEndMonsterActions()  ← 後攻モンスターが攻撃
+       └─ lockTarget(me)
+
+  └─ battlePhase.js の handleTurnEnd()
+       └─ Firebase に matchData を書き込み → ターン交代
+
+  └─ _onAfterTurnEnd (pvpveWatcher)
+       ├─ BattleTargetSystem.onTurnStart(nextPlayer)
+       └─ processTurnStartMonsterActions()  ← 先攻モンスターが攻撃
+```
+
+### 潜在的な問題
+
+- **モンスター攻撃が防御スタックを無視** → 意図的だが、プレイヤーへの説明が必要
+- **先攻プレイヤーのみ `onRoundStart` を実行** → 後攻プレイヤーは Firebase 経由で状態を受け取る。ネットワーク遅延時に後攻側の表示が遅れる可能性
+- **`_onBeforeTurnEnd` と `_onAfterTurnEnd` の実行順序** → `_beforeTurnEndHooks` が `battlePhase.js` の `handleTurnEnd` より前に実行されることが前提。フック登録順序に依存
+
+### 未解決
+
+- [ ] `_beforeTurnEndHooks` の実行タイミングが `handleTurnEnd` より確実に前か確認
+- [ ] モンスター攻撃ダメージのログが `addGameLog` で2回出力されていないか（MonsterManager と MonsterCombatSystem の両方でログを出す）
+
+### 次に調べる場所
+
+- `js/phases/battlePhase.js` → `handleTurnEnd` と `_beforeTurnEndHooks` の実行順序
+- `js/watchers/phaseWatcher.js` → matchData の Firebase 監視フロー
+
+---
+
+## Round 9 — battlePhase / phaseWatcher
+
+### 発見事項
+
+**`handleTurnEnd` と `_beforeTurnEndHooks` の実行順序（確定）**
+
+```
+handleTurnEnd()
+  ├─ 手札枚数チェック（超過なら return）
+  ├─ _beforeTurnEndHooks を順番に実行  ← pvpveWatcher._onBeforeTurnEnd がここで走る
+  │    ├─ processTurnEndMonsterActions()  ← 後攻モンスター攻撃
+  │    ├─ BattleTargetSystem.lockTarget(me)
+  │    └─ 成長スライム経験値付与
+  ├─ turnPlayer / turn / round を更新
+  ├─ Firebase に matchData を書き込み（await）
+  ├─ Firebase に myState を書き込み（await）
+  ├─ update()
+  └─ _afterTurnEndHooks を順番に実行  ← pvpveWatcher._onAfterTurnEnd がここで走る
+       ├─ BattleTargetSystem.onTurnStart(nextPlayer)
+       ├─ processTurnStartMonsterActions()  ← 先攻モンスター攻撃
+       └─ MonsterUI.showTargetChangeButton()（自分のターンなら）
+```
+
+- **`_beforeTurnEndHooks` は Firebase 書き込みより前に実行される** ✅
+  - モンスター攻撃（`addVal` 経由）→ `pushMyStateDebounced()` が走る → Firebase 書き込みと競合する可能性
+  - ただし `handleTurnEnd` の `await firebaseClient.writeMyState()` が後から上書きするため最終的には正しい値が書かれる
+- **`_afterTurnEndHooks` は Firebase 書き込みと `update()` の後に実行される** ✅
+  - `processTurnStartMonsterActions()` が `addVal` を呼ぶ → `pushMyStateDebounced()` が走る → 正しいタイミング
+
+**phaseWatcher の matchData 監視フロー**
+
+```
+Firebase: rooms/{room}/matchData に変更があると発火
+
+処理フロー:
+1. リセット検知: incoming.status が "ready_check" / "setup_dice" かつ現在が playing → executeReset(false)
+2. winner の stale チェック:
+   - winnerSetAt < _gameStartedAt → winner を除いて適用（古い勝利判定を無視）
+   - _resultDismissed → 同上
+3. state.matchData を incoming で上書き（マージ）
+4. update()
+```
+
+**stale winner チェックの設計**
+
+- `_gameStartedAt` はゲーム開始時に記録されるタイムスタンプ
+- Firebase に残った古い winner データを無視するための仕組み
+- `executeReset(false)` の引数 `false` は「Firebase への再書き込みをしない」を意味する（ローカルリセットのみ）
+
+**diceWatcher の設計**
+
+- `setup_dice` フェーズ以外は無視（早期リターン）
+- `playerDice` ノードを監視 → `state.player1.diceValue` / `state.player2.diceValue` を更新
+- 相手のダイス表示をアニメーション付きで更新（DOM 直接操作）
+- 重複リスナー防止: `playerDiceWatcherUnsubscribe` を呼んでから再登録
+
+**watcherRegistry の設計**
+
+- `_activeWatchers` オブジェクトで名前→解除関数を管理
+- `registerWatcher(name, fn)`: 既存の同名ウォッチャーを解除してから登録
+- `clearAllWatchers()`: 全ウォッチャーを一括解除（ゲームリセット時に使用）
+- phaseWatcher / diceWatcher / roomWatcher が登録される
+
+### 潜在的な問題
+
+- **`_beforeTurnEndHooks` でのモンスター攻撃と `handleTurnEnd` の Firebase 書き込みの競合**
+  - `addVal` → `pushMyStateDebounced()` が走るが、直後に `writeMyState()` が上書きするため最終的には正しい
+  - ただし `pushMyStateDebounced` の 300ms デバウンス中に `writeMyState` が完了すると、デバウンスが後から古い値を書く可能性がある
+  - **実害**: モンスター攻撃ダメージが Firebase に反映されない瞬間がある（最終的には正しくなる）
+
+- **`executeReset(false)` のリセット後に watcher が再設定されるか**
+  - コメントに「executeReset 内で更新と watcher 再設定が行われる」とあるが、`false` 引数でローカルリセットのみの場合に watcher が正しく再設定されるか要確認
+
+### 未解決
+
+- [ ] `_beforeTurnEndHooks` でのモンスター攻撃 → `pushMyStateDebounced` と `writeMyState` の競合が実際に問題になるか
+- [ ] `executeReset(false)` 後の watcher 再設定フロー（game.js の executeReset 実装）
+
+### 次に調べる場所
+
+- `js/game/game.js` の `executeReset()` → リセット後の watcher 再設定フロー
+- `js/game/core.js` の `addVal()` → `pushMyStateDebounced` の呼び出しタイミング
+
+---
+
+## Round 10 — executeReset / addVal / ログ二重出力
+
+### 発見事項
+
+**モンスター攻撃ログの二重出力問題（Round 8 未解決）**
+
+`monsterAttackPlayer()` の呼び出しチェーン:
+
+```
+MonsterCombatSystem.monsterAttackPlayer(slotIndex, targetKey)
+  ├─ MonsterManager.monsterAttack(slotIndex, targetPlayer)
+  │    └─ addGameLog(`[MONSTER] ${def.name} の「${chosen.label}」→ ${targetPlayer} に ${dmg} ダメージ`)
+  │         ← MonsterManager 側でログ出力
+  └─ addVal(targetKey, "hp", -result.dmg)
+  └─ addGameLog(`[MONSTER] ${targetKey} が ${result.dmg} ダメージを受けた`)
+       ← MonsterCombatSystem 側でもログ出力
+```
+
+- **ログが2回出力される**: 攻撃宣言ログ（MonsterManager）+ ダメージ受けログ（MonsterCombatSystem）
+- これは意図的な設計の可能性もあるが、同じ攻撃に対して2行出るのは冗長
+
+**撤退追撃のログ出力**
+
+```
+MonsterCombatSystem.processTurnStartMonsterActions()
+  └─ MonsterManager.processRetreatAttacks(targetPlayer)
+       └─ addGameLog(`[MONSTER] ${def?.name} の背後攻撃！ ${targetPlayer} に ${dmg} ダメージ`)
+            ← MonsterManager 側でログ出力
+  └─ addVal(playerKey, "hp", -dmg)
+       ← ログなし（MonsterCombatSystem 側はログを出さない）
+```
+
+- 撤退追撃は MonsterManager 側のみログ → 通常攻撃と不統一
+
+**BattleTargetSystem の serialize/deserialize の問題**
+
+```js
+serialize() {
+  return {
+    targets: { ..._targets },  // "player" | { slotIndex: number }
+    canChange: { ..._canChange }
+  };
+}
+```
+
+- `_targets` の値が `{ slotIndex: number }` の場合、Firebase に保存・復元できる ✅
+- ただし `_justDefeated` は serialize されない → Firebase 同期後に討伐直後フラグが失われる
+  - 影響: 相手側で討伐が起きた場合、自分側の `_justDefeated` が更新されない
+  - ただし `_justDefeated` は自分のターン内でのみ意味を持つため、実害は少ない
+
+**pvpveWatcher のフック重複登録防止**
+
+```js
+if (!window._afterUpdateHooks.includes(_onAfterUpdate)) {
+  window._afterUpdateHooks.push(_onAfterUpdate);
+}
+```
+
+- 関数参照の同一性チェックで重複防止 ✅
+- `startPvpveWatcher()` が複数回呼ばれても安全
+
+**`_onAfterUpdate` でのラウンド変更検知**
+
+```js
+if (round !== _lastRoundSeen) {
+  _lastRoundSeen = round;
+  const me = window.myRole || "player1";
+  if (me === (m.firstPlayer || "player1")) {
+    window.MonsterCombatSystem?.onRoundStart(round);  // 先攻プレイヤーのみ実行
+  }
+}
+```
+
+- `update()` が呼ばれるたびに `_lastRoundSeen` と比較 → ラウンド変更を検知
+- **問題**: `update()` は頻繁に呼ばれる。`_lastRoundSeen` の初期値が 0 なので、ゲーム開始時（round=1）に必ず `onRoundStart(1)` が実行される ✅
+- **問題**: `_lastRoundSeen` は `pvpveWatcher` のクロージャ変数 → `stopPvpveWatcher()` を呼んでも `_lastRoundSeen` はリセットされない
+  - `startPvpveWatcher()` を再呼び出しすると `_lastRoundSeen = 0` にリセットされる（変数宣言が IIFE 内のため）
+  - ただし `stopPvpveWatcher()` は `_pvpveRef` と `_pvpveListener` のみクリアする → `_lastRoundSeen` は残る
+  - ゲームリセット後に `startPvpveWatcher()` を再呼び出しすれば問題ない
+
+### 全体サマリー更新（Round 1〜10）
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 8 | モンスター攻撃ログが2行出力される | 低 | MonsterManager.js / MonsterCombatSystem.js |
+| 9 | 撤退追撃のログ出力が通常攻撃と不統一 | 低 | MonsterCombatSystem.js |
+| 10 | `_beforeTurnEndHooks` でのモンスター攻撃と `writeMyState` の競合 | 低〜中 | battlePhase.js / MonsterCombatSystem.js |
+| 11 | `BattleTargetSystem._justDefeated` が Firebase 同期されない | 低 | BattleTargetSystem.js |
+
+**設計上の特徴（意図的）**
+
+- `_beforeTurnEndHooks` → Firebase 書き込み → `_afterTurnEndHooks` の順序は正しく設計されている
+- phaseWatcher の stale winner チェックでゲームリセット後の誤判定を防止
+- watcherRegistry で二重登録を防止
+- pvpveWatcher のフック重複登録防止（関数参照チェック）
+
+### 未解決
+
+- [ ] `executeReset()` の実装（game.js）→ watcher 再設定フロー
+- [ ] `addVal()` の実装（core.js）→ `pushMyStateDebounced` の呼び出しタイミング
+- [ ] モンスター攻撃ログ2行出力が意図的かどうか
+
+### 次に調べる場所
+
+- `js/game/game.js` の `executeReset()` → リセット後の watcher 再設定フロー
+- `js/game/core.js` の `addVal()` → `pushMyStateDebounced` の呼び出しタイミング
+

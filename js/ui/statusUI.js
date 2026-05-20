@@ -228,25 +228,8 @@ function countOwnerHandCardsOnField(owner) {
   ).length;
 }
 
-// getHandLimit は gameRules.js (window.getHandLimit) に実装済み
-// statusUI.js ではローカル参照のみ使用し、window.getHandLimit は上書きしない
-function getHandLimit(owner) {
-  // gameRules.js が読み込まれていればそちらを使用
-  // ただし window.getHandLimit が自分自身でないことを確認して無限再帰を防ぐ
-  const s = (typeof state !== "undefined") ? state[owner] : null;
-  if (!s) return 6;
-  let limit = 6;
-  if (s.evolutionPath === "忍耐の道") {
-    const level = Number(s.level) || 1;
-    let x = 0;
-    if (level >= 6) x = 4;
-    else if (level >= 5) x = 3;
-    else if (level >= 3) x = 1;
-    else x = 0;
-    limit += (1 + x);
-  }
-  return limit;
-}
+// getHandLimit は gameRules.js / cardManager.js で window.getHandLimit として定義済み
+// statusUI.js 内の呼び出しはすべて window.getHandLimit(owner) を使用する
 
 function lorStatChip(icon, val, owner, key, title = "") {
   const isEditable = window.devMode;

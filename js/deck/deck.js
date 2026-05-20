@@ -69,9 +69,40 @@ function saveCurrentDeckCode(code) {
   localStorage.setItem("deckCode", code);
 }
 
+/**
+ * deckList に保存されている v2 / 旧旧形式コードを v3 に一括変換する。
+ * loadDeck() の前に一度だけ呼ぶ。
+ */
+function migrateDeckListToV3() {
+  const list = loadDeckList();
+  let changed = false;
+  list.forEach(entry => {
+    if (!entry.code || entry.code === "empty" || entry.code.startsWith("v3|")) return;
+    try {
+      const decoded = decodeDeck(entry.code);
+      entry.code = encodeDeck(decoded);
+      changed = true;
+    } catch {
+      // 旧旧形式など変換不能なコードは "empty" にリセット
+      entry.code = "empty";
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveDeckList(list);
+    // game.html が参照する localStorage.deckCode も更新
+    const current = list.find(d => d.id === DECK_ID);
+    if (current) localStorage.setItem("deckCode", current.code);
+  }
+}
+
 // ===== デッキ読み込み =====
 async function loadDeck() {
   const deckMessage = document.getElementById("deckMessage");
+
+  // v2 / 旧旧形式コードを v3 に一括変換（初回のみ実行）
+  migrateDeckListToV3();
+
   const entry = getCurrentDeckEntry();
 
   let code = "empty";
@@ -84,6 +115,10 @@ async function loadDeck() {
 
   try {
     deck = decodeDeck(code);
+    // v2 以前のコードを読み込んだ場合は v3 形式に変換して保存
+    if (code !== "empty" && !code.startsWith("v3|")) {
+      saveCurrentDeckCode(encodeDeck(deck));
+    }
   } catch (e) {
     if (e.message === "OLD_DECK_CODE") {
       deckMessage.innerText = "カード構成が変わったためデッキをリセットしました。";

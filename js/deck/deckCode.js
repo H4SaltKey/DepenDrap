@@ -18,7 +18,7 @@ function decodeDeck(code){
 
   const value = String(code);
 
-  // 新形式 v3: id*count, id... のリスト
+  // 新形式 v3: id*count, id... のリスト（CARD_DB 不要・順序非依存）
   if(value.startsWith("v3|")){
     const payload = value.slice(3);
     if(payload === "") return [];
@@ -33,28 +33,15 @@ function decodeDeck(code){
     return deck;
   }
 
-  // 旧形式 v2: 直接 ID を保持
+  // 旧形式 v2: 直接 ID を保持（CARD_DB 不要）
   if(value.startsWith("v2|")){
     const payload = value.slice(3);
     if(payload === "") return [];
     return payload.split(",").map(part => decodeURIComponent(part));
   }
 
-  // 旧旧形式: cardId の順序に依存するカウントコード
-  const ids = getDeckCardIds();
-  const parts = value.split("-");
-  const countCode = parts[1] || "";
-
-  const deck = [];
-  ids.forEach((id, index) => {
-    const count = parseInt(countCode[index] || "0", 16);
-    if (!Number.isFinite(count) || count <= 0) return;
-    for(let i = 0; i < count; i++){
-      deck.push(id);
-    }
-  });
-
-  return deck;
+  // 旧旧形式: CARD_DB の順序に依存するカウントコード → 非対応
+  throw new Error("OLD_DECK_CODE");
 }
 
 async function loadDefaultDeckCode(){

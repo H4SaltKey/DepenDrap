@@ -79,6 +79,28 @@ function updateDeckName(id, name) {
   }
 }
 
+/**
+ * deckList に保存されている v2 / 旧旧形式コードを v3 に一括変換する。
+ * renderGrid() の前に一度だけ呼ぶ。
+ */
+function migrateDeckListToV3() {
+  const list = loadDeckList();
+  let changed = false;
+  list.forEach(entry => {
+    if (!entry.code || entry.code === "empty" || entry.code.startsWith("v3|")) return;
+    try {
+      const decoded = decodeDeck(entry.code);
+      entry.code = encodeDeck(decoded);
+      changed = true;
+    } catch {
+      // 旧旧形式など変換不能なコードは "empty" にリセット
+      entry.code = "empty";
+      changed = true;
+    }
+  });
+  if (changed) saveDeckList(list);
+}
+
 // ===== 状態 =====
 let selectedDeckId = null;
 
@@ -92,6 +114,7 @@ loadCardData()
   })
   .finally(() => {
     btnImport.disabled = false;
+    migrateDeckListToV3();
     renderGrid();
   });
 
@@ -335,11 +358,14 @@ document.getElementById("importConfirm").addEventListener("click", () => {
     return;
   }
 
+  // v2 以前のコードは v3 形式に変換してから保存
+  const normalizedCode = code.startsWith("v3|") ? code : encodeDeck(decodeDeck(code));
+
   // 新規デッキとして追加
   const list = loadDeckList();
 
   const id = "deck_" + Date.now();
-  const entry = { id, name: "インポートデッキ", code, backImage: "" };
+  const entry = { id, name: "インポートデッキ", code: normalizedCode, backImage: "" };
   list.push(entry);
   saveDeckList(list);
 

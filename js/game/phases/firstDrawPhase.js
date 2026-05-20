@@ -173,6 +173,12 @@ function updateFirstDrawPhaseUI() {
   });
   syncPickUi();
 
+  // カードを cardArea に追加し終えた時点で cardsBound をセットする。
+  // これ以降 update() → updateFirstDrawPhaseUI() が再呼び出しされても
+  // 冒頭の `if (overlay.dataset.cardsBound === "1" || myReady) return;` で早期リターンし、
+  // カードが二重・無限追加されるループを防ぐ。
+  overlay.dataset.cardsBound = "1";
+
   confirmBtn.onclick = async () => {
     if (selected.length !== 3 || overlay.dataset.localFirstDrawLocked === "1") return;
     overlay.dataset.localFirstDrawLocked = "1";
@@ -388,10 +394,9 @@ function startFirstDrawPhase() {
   const n = getFirstDrawRevealCount(me, m);
   console.log(`[FirstDraw] takeOut(${n}) を呼び出します。デッキ枚数: ${state[me]?.deck?.length}`);
   window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
-
-  // update() の state 比較キャッシュを強制リセットして renderUI が必ず走るようにする
-  if (typeof window.resetLastStateJson === "function") window.resetLastStateJson();
-  if (typeof update === "function") update(true);
+  // takeOut() 末尾で update(true) が呼ばれるため、ここでの重複呼び出しは不要。
+  // （以前は resetLastStateJson + update(true) を呼んでいたが、
+  //   takeOut → update(true) → updateFirstDrawPhaseUI のループを助長していたため削除）
 }
 
 /**

@@ -85,30 +85,19 @@
       <section class="deckSection deckArea" id="deckDropZone">
         <div class="deckVerticalResizer" id="verticalResizer"></div>
 
-        <!-- UIバー（固定高さ） -->
+        <!-- UIバー（固定高さ・1行） -->
         <div class="deckToolbar">
-          <div class="deckToolbarHeading">
-            <h3>デッキ</h3>
-            <div class="deckStatusBar">
-              <span id="deckThresholdText">30〜40 枚で構築してください</span>
-              <div class="deckProgress">
-                <div id="deckProgressBar"></div>
-                <div id="deckProgressLabel" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.8); pointer-events:none;">0 / 40</div>
-              </div>
-            </div>
+          <h3 class="deckToolbarTitle">デッキ</h3>
+          <span id="deckThresholdText" class="deckThresholdText">30〜40 枚で構築してください</span>
+          <div class="deckProgress">
+            <div id="deckProgressBar"></div>
+            <div id="deckProgressLabel" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.8); pointer-events:none;">0 / 40</div>
           </div>
-          <div class="deckHeaderControls">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div class="deckCodeBox">
-                <label for="deckCodeInput">デッキコード</label>
-                <div class="deckCodeInner">
-                  <input id="deckCodeInput" type="text" readonly>
-                  <button id="copyDeckCodeBtn" type="button">コピー</button>
-                </div>
-              </div>
-              <button id="btnLoadCode" class="smallBtn" type="button">コードから読み込み</button>
-            </div>
-          </div>
+          <span class="deckToolbarSep">|</span>
+          <label for="deckCodeInput" class="deckCodeLabel">デッキコード</label>
+          <input id="deckCodeInput" type="text" class="deckCodeInput" readonly>
+          <button id="copyDeckCodeBtn" class="deckToolbarBtn" type="button">コピー</button>
+          <button id="btnLoadCode" class="deckToolbarBtn" type="button">コードから読み込み</button>
         </div>
 
         <div class="deckDetails"></div>

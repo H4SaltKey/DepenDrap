@@ -1578,3 +1578,132 @@ window.startPvpveWatcher = function() {
 - `js/game/core.js` の `normalizeState` が毎秒 hp をクランプする問題の実害確認
 - `js/ui/statusUI.js` → PP ログの表示先（ゲームログ UI の実装）
 - `js/game/phases/battlePhase.js` → ターン終了時の PP 変更フロー（`addVal` 経由か直接変更か）
+
+---
+
+## Round 17 — battlePhase PP変更フロー / addGameLog 表示先 / PP ログ問題
+
+### A. ターン終了時の PP 変更フロー（確定）
+
+**battlePhase.js の handleTurnEnd は PP を変更しない**
+
+```
+handleTurnEnd()
+  ├─ _beforeTurnEndHooks（モンスター攻撃・ターゲットロック・成長スライム EXP）
+  ├─ turnPlayer / turn / round を更新
+  ├─ addGameLog("[TURN] ...")
+  ├─ evoContinuousDmgCount = 0 / evoBackwaterExpGained = false / _turnDmgHistory = {}
+  ├─ firebaseClient.writeMatchData()
+  ├─ firebaseClient.writeMyState()
+  ├─ update()
+  └─ _afterTurnEndHooks（モンスター先攻攻撃・ターゲット変更許可）
+```
+
+- **PP の変更は handleTurnEnd 内に存在しない**
+- PP+1 はドロー処理（`drawCard()` 相当）内で `myState.pp = Math.min(currentPp + 1, maxPp)` として直接変更
+  - `addVal()` を経由しない → PP ログが出ない ✅（意図的）
+  - `pushMyStateDebounced()` も呼ばない → `saveAllImmediate()` + `update()` のみ
+
+**PP が変わるタイミングの整理**
+
+| タイミング | 方法 | ログ出力 |
+|-----------|------|---------|
+| ドロー時（PP+1） | `myState.pp = ...` 直接変更 | なし |
+| PP ボタン（+/−） | `addVal()` 経由 | `[システム] PP: prev → next` |
+| カード召喚（PP消費） | `st.pp -= cost` 直接変更 | なし |
+| モンスター討伐（PP+2） | `addVal()` 経由 | `[システム] PP: prev → next` + `[MONSTER] PP +2 回復！` の2行 |
+| ゲームリセット | `s.pp = 0` 直接変更 | なし |
+
+- **`addVal()` 経由の PP 変更のみログが出る**
+- ドロー・召喚・リセットは直接変更のためログなし
+- PP ボタン操作のたびにゲームログ（相手にも見える）に出力されるのは**冗長**
+
+---
+
+### B. addGameLog の表示先（確定）
+
+**ログの表示先: `#chatLogs` 要素（チャット欄と共用）**
+
+```
+addGameLog(msg)
+  → state.logs に追加
+  → Firebase rooms/{room}/logs に push（相手にも届く）
+
+update()
+  → updateGameLogs(state.logs)
+       → #chatLogs の innerHTML を全再描画（logs.length が変わった場合のみ）
+```
+
+**chatUI.js の `updateGameLogs` の CSS クラス分類**
+
+| 条件 | クラス | 用途 |
+|------|--------|------|
+| `[システム]` で始まる | `log-system` | PP変更・ゾーン操作等 |
+| `[EXP\|HP\|PP\|DICE\|RESULT\|DEFEAT\|EVOLUTION\|MATCH\|TURN\|ZONE]` | `log-stat` | ゲームイベント |
+| `[CHAT:color]` | `log-chat` + 色付き | チャット |
+| `: ` を含む | `log-chat` + 白 | 旧形式チャット |
+
+- `[システム] PP: 0 → 2` は `log-system` クラス → チャット欄に**システムメッセージとして表示**
+- PP ボタンを押すたびにチャット欄が更新される → **ゲームプレイ中に非常に目立つ**
+
+**`updateGameLogs` の再描画条件**
+
+```js
+if (logs.length !== existingCount) {
+  chatLogs.innerHTML = "";  // 全クリア
+  // 再描画
+}
+```
+
+- ログ件数が変わった場合のみ再描画（差分更新なし）
+- `new Set(logs)` で重複排除してから表示 → 同一内容のログは1件のみ表示
+- ただし `addGameLog` の重複防止はタイムスタンプ付きのため、同じ内容でも時刻が違えば別エントリ → `new Set` では排除されない
+
+**`checkAndLogStateChanges` の役割**
+
+- `update()` 内で旧 state と新 state を比較
+- レベルアップのみ `addGameLog` を呼ぶ（HP/EXP の細かい変更はログに出さない）
+- `[PROTOCOL:RESET]` ログを検知して相手側のリセット追従処理を実行
+
+---
+
+### C. chatUI.js の重複定義問題
+
+**`js/chat/chatUI.js` と `js/ui/chatUI.js` の2ファイルが存在する**
+
+```
+js/chat/chatUI.js   ← 関数定義のみ（window.* への公開なし）
+js/ui/chatUI.js     ← window.updateGameLogs / window.checkAndLogStateChanges として公開
+```
+
+- 内容はほぼ同一（`js/ui/chatUI.js` が `window.*` 公開版）
+- `game.html` でどちらが読み込まれているか要確認
+
+---
+
+### Round 17 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 20 | PP ボタン操作のたびにチャット欄に `[システム] PP: prev → next` が出力される | 低〜中 | game.js addVal |
+| 21 | `chatUI.js` が2ファイル存在（`js/chat/` と `js/ui/`） | 低 | chatUI.js |
+| 22 | `updateGameLogs` がログ件数変化時に全再描画（差分更新なし） | 低 | chatUI.js |
+
+**設計上の特徴（意図的）**
+
+- ドロー時・召喚時・リセット時の PP 変更は直接変更 → ログなし（意図的）
+- `addVal()` 経由の PP 変更のみログが出る → PP ボタン操作の可視化が目的と思われる
+- チャット欄とゲームログが共用 → 全イベントが1か所に集約される設計
+
+**未解決**
+
+- [ ] `game.html` で `js/chat/chatUI.js` と `js/ui/chatUI.js` のどちらが読み込まれているか
+- [ ] PP ボタン操作ログを抑制するか（`addVal` の pp ログを削除 or デバッグフラグ化）
+
+### 次に調べる場所
+
+- `game.html` の script 読み込み順序（chatUI の重複確認）
+- `js/game/core.js` の `normalizeState` が毎秒 hp をクランプする実害確認（Round 16 未解決）
+- `js/ui/statusUI.js` → PP/HP バーの描画実装

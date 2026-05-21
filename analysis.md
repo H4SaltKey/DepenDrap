@@ -2222,3 +2222,199 @@ watchRematchRequest() (Firebase リスナー)
 - `js/ui/contextMenu.js` の `takeOut()` 全体（ドロー処理の詳細）
 - `js/game/game.js` の `update()` 全体フロー（checkGameResult の呼び出し位置）
 - `js/game/phases/dicePhase.js` → ダイスフェーズ全体フロー
+
+---
+
+## Round 21 — update() 全体フロー / takeOut() / dicePhase 全体フロー
+
+### A. update() の全体フロー（確定）
+
+```
+update(skipLogCheck = false)
+  ├─ applyInteractionLockState()
+  ├─ runPhaseProgression()
+  ├─ handleMatchStateTransitions()
+  │    ├─ ターン開始ドロー（startTurnDraw を setTimeout で遅延実行）
+  │    ├─ ラウンド通知 / ターン通知（showRoundNotification / showNotification）
+  │    └─ checkGameResult()  ← 勝敗判定
+  ├─ JSON.stringify(state) で状態文字列化
+  ├─ updateZoneCountsInState()
+  ├─ state 変化なし → 早期リターン（DOM 再構築スキップ）
+  ├─ checkAndLogStateChanges(oldState, state)  ← レベルアップ検知
+  ├─ lastStateJson = currentStateStr
+  ├─ handOverflowDiscardOpen → 最小限更新で早期リターン
+  ├─ renderUI()  ← 全 DOM 再描画
+  └─ _afterUpdateHooks を順番に実行  ← pvpveWatcher._onAfterUpdate
+```
+
+**`update()` の最適化設計**
+
+- `lastStateJson` との比較で state 変化がなければ DOM 再構築をスキップ ✅
+- `skipLogCheck = true` の場合は `checkAndLogStateChanges` をスキップ（ログ重複防止）
+- `invokeGuarded` でラップ → 各ステップの例外が他のステップに影響しない
+
+**`handleMatchStateTransitions` のターン開始ドロー**
+
+```js
+const drawKey = `${m.round}-${m.turn}-${m.turnPlayer}`;
+if (!shouldSkipNormalDrawInR1T1 && lastTurnDrawKey !== drawKey) {
+  lastTurnDrawKey = drawKey;
+  const drawDelay = roundChanged ? 4500 : 1500;
+  setTimeout(() => startTurnDraw(), drawDelay);
+}
+```
+
+- `drawKey` で同一ターンの二重ドローを防止 ✅
+- R1T1 かつ `firstDrawDone !== true` の場合はスキップ（ファーストドロー優先）
+- ラウンド変更時は 4500ms 遅延（ラウンド通知アニメーション後）
+
+**`checkGameResult` の呼び出し位置**
+
+- `handleMatchStateTransitions()` の末尾 → `update()` のたびに呼ばれる
+- `syncLoop` の毎秒 `update()` でも呼ばれる → 毎秒勝敗チェックが走る
+- `_resultShowing` / `_resultDismissed` フラグで多重表示を防止 ✅
+
+---
+
+### B. takeOut() の全体フロー（確定）
+
+```
+takeOut(count, opts)
+  ├─ visMode = opts.visibility === "self" ? "self" : "none"
+  ├─ オーバードローチェック:
+  │    count > deck.length かつ status !== "setup_first_draw"
+  │    → isOverdraw = true, actual = deck.length
+  ├─ actual 枚ループ:
+  │    ├─ deck.pop() でカードIDを取得
+  │    ├─ createCard(id) で DOM 生成
+  │    ├─ visibility / owner / origin を設定
+  │    └─ placeCard() でフィールドに配置（デッキ位置付近）
+  ├─ isOverdraw → addGameLog("[DEFEAT]") + setTimeout(triggerOverdrawDefeat, 500)
+  ├─ addGameLog("カードをN枚取り出した")
+  ├─ saveAllImmediate()
+  ├─ updateDeckObject()
+  ├─ pushMyStateDebounced()
+  └─ update(true)  ← skipLogCheck=true
+```
+
+**PP 回復は `takeOut` 内ではなく呼び出し元で行われる**
+
+- `takeOut()` 自体は PP を変更しない
+- PP 回復（`dState.pp += actual`）は `takeOut` の**呼び出し元**（`drawCards` 関数内）で行われる
+- Round 20 の「takeOut 内の PP 回復」は誤り → 正確には `drawCards()` 内
+
+**`drawCards` と `takeOut` の関係**
+
+```
+drawCards(count)  ← ターン開始ドロー・手動ドロー
+  ├─ takeOut(count, { visibility: "none" })  ← カードを引く
+  └─ dState.pp += actual  ← PP 回復（addVal 非経由）
+     addGameLog("[システム] PP: ...")
+
+takeOut(count, opts)  ← ファーストドロー・直接呼び出し
+  ← PP 変更なし
+```
+
+- `drawCards` 経由のドローのみ PP が回復する
+- ファーストドロー（`takeOut` 直接呼び出し）は PP を変更しない ✅
+
+**オーバードローの判定**
+
+- `status === "setup_first_draw"` の場合はオーバードロー敗北を発動しない
+  → ファーストドロー中にデッキが足りなくても敗北にならない ✅
+- それ以外の場合は 500ms 後に `triggerOverdrawDefeat()` を呼ぶ
+
+---
+
+### C. dicePhase 全体フロー（確定）
+
+**フロー全体**
+
+```
+status === "setup_dice" になると update() → updateDicePhaseUI() が呼ばれる
+
+updateDicePhaseUI()
+  ├─ status === "ready_check" → 「接続待ち」オーバーレイを表示
+  ├─ status !== "setup_dice" → オーバーレイを削除して return
+  └─ status === "setup_dice":
+       ├─ 両者 diceValue >= 0 → phase = "result"
+       │    ├─ 引き分け → 「振り直し」ボタン（handleResetDice）
+       │    ├─ 勝者 → 先攻/後攻選択ボタン（handleChooseOrder）
+       │    └─ 敗者 → 「相手が選択中...」表示
+       └─ 片方または両方 diceValue = -1 → phase = "rolling"
+            └─ 「ダイスを振る」ボタン（handleDiceRoll）
+
+handleDiceRoll()
+  ├─ diceValue !== -1 なら return（二重振り防止）
+  ├─ 1000ms アニメーション待機
+  ├─ Math.random() * 100 + 1 でロール（1〜100）
+  ├─ state[playerKey].diceValue = roll（ローカル即反映）
+  ├─ update()
+  ├─ firebaseClient.setPlayerDice(gameRoom, playerKey, roll)
+  └─ firebaseClient.writeMyState(gameRoom, playerKey, ...)
+
+handleChooseOrder(goFirst)
+  ├─ matchData.turnPlayer / firstPlayer / status / round / turn を設定
+  ├─ status = "setup_evolution"
+  ├─ 自分の evolutionPath / evoContinuousDmgCount / evoBackwaterExpGained をリセット
+  ├─ firebaseClient.writeMatchData()
+  └─ firebaseClient.writeMyState()
+
+handleResetDice()
+  ├─ 両者の diceValue を -1 にリセット
+  ├─ firebaseClient.resetPlayerDice()
+  └─ updateDicePhaseUI()
+```
+
+**ダイス値の管理パス**
+
+- 書き込み: `rooms/{room}/playerDice/{playerKey}` （`setPlayerDice`）
+- 読み込み: `diceWatcher.js` が `rooms/{room}/playerDice` を監視 → `state[p].diceValue` を更新
+- `playerState` パスには `diceValue` を含めない（`_getMyStateForSync` で除外）
+
+**引き分け時の振り直し**
+
+- `handleResetDice()` は両者の `diceValue` を -1 にリセット
+- Firebase の `playerDice` ノードを削除（`resetPlayerDice`）
+- 両者が再度ボタンを押す必要がある
+
+**先攻/後攻選択の設計**
+
+- ダイスで勝ったプレイヤーのみ選択ボタンが表示される
+- 選択後 `status = "setup_evolution"` → 進化の道選択フェーズへ
+- `handleChooseOrder` は**ダイス勝者のクライアントのみ**が呼ぶ
+  → `writeMatchData` で相手にも反映される ✅
+
+**潜在的な問題**
+
+- `handleDiceRoll` は `Math.random()` でクライアント側でロール → 両者が独立して乱数を生成
+  → 引き分けの場合は `handleResetDice` で振り直し（サーバー側での乱数生成なし）
+- ダイス値は 1〜100 の整数 → 引き分け確率は 1/100 = 1%
+
+---
+
+### Round 21 サマリー
+
+**Round 20 の誤りを訂正**
+
+- PP 回復は `takeOut()` 内ではなく `drawCards()` 内で行われる
+- `takeOut()` 直接呼び出し（ファーストドロー）は PP を変更しない
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 29 | ダイスロールがクライアント側の `Math.random()` → サーバー検証なし（不正ロール可能） | 低（信頼前提のゲーム） | dicePhase.js |
+
+**設計上の特徴（意図的）**
+
+- `update()` の `lastStateJson` 比較で不要な DOM 再構築をスキップ ✅
+- `drawKey` で同一ターンの二重ドローを防止 ✅
+- ファーストドロー中のオーバードロー敗北を抑制 ✅
+- ダイス勝者のみが先攻/後攻を選択 → `writeMatchData` で相手に反映 ✅
+
+### 次に調べる場所
+
+- `js/game/game.js` の `renderUI()` → 全 DOM 再描画の内容
+- `js/game/game.js` の `startTurnDraw()` → ターン開始ドローの実装
+- `js/phases/setupPhase.js` → 進化の道選択フェーズ

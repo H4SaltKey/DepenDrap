@@ -2418,3 +2418,592 @@ handleResetDice()
 - `js/game/game.js` の `renderUI()` → 全 DOM 再描画の内容
 - `js/game/game.js` の `startTurnDraw()` → ターン開始ドローの実装
 - `js/phases/setupPhase.js` → 進化の道選択フェーズ
+
+---
+
+## Round 22 — renderUI() / startTurnDraw() / setupPhase 進化の道選択
+
+### A. renderUI() の全体フロー（確定）
+
+```
+renderUI()
+  ├─ renderOwnerUI(myOwner)  → #gameUiPlayerInner に innerHTML 設定
+  ├─ renderOwnerUI(enemyOwner) → #gameUiEnemy に innerHTML 設定
+  ├─ updateMatchUI()          → ラウンド/ターン表示・TURN ENDボタン・リザルトボタン
+  ├─ updateDicePhaseUI()      → ダイスフェーズオーバーレイ
+  ├─ updateDeckObject()       → デッキ枚数表示
+  ├─ updateFieldStatusPanels() → PP/手札パネル（fixed）
+  ├─ renderStatusBlocks()     → ステータスブロック
+  ├─ updateGameLogs(state.logs) → チャット欄
+  └─ lucide.createIcons()     → Lucide アイコン再生成
+```
+
+**設計上の特徴**
+
+- `renderOwnerUI` は `innerHTML` を全置換 → 毎 `update()` で DOM を再構築
+  - `lastStateJson` 比較で state 変化がない場合はスキップされる ✅
+- `updateDicePhaseUI` / `updateMatchUI` は `renderUI` 内から呼ばれる
+  - `update()` → `renderUI()` → `updateDicePhaseUI()` の呼び出しチェーン
+  - `updateFirstDrawPhaseUI` / `updateEvolutionPhaseUI` は `updateMatchUI` 内から呼ばれる
+- Lucide アイコンは `innerHTML` 更新後に毎回 `createIcons()` を呼ぶ
+  - 存在しないアイコン名は `data-lucide` 属性を削除してスキップ（エラー握りつぶし）
+
+**`renderUI` が呼ばない処理**
+
+- `organizeBattleZones()` / `organizeHands()` → カード位置の整列は呼ばない
+  - これらはドロー・ゾーン配置等のアクション側で明示的に呼ぶ設計
+
+---
+
+### B. startTurnDraw() / startR1T1() の実装（確定）
+
+**startTurnDraw() — ターン開始ドロー（R1T1 以外）**
+
+```
+startTurnDraw()
+  ├─ status !== "playing" or turnPlayer !== me or winner → return
+  ├─ deck.length === 0 → addGameLog("[DEFEAT]") + triggerOverdrawDefeat()
+  ├─ deck.pop() で1枚取得
+  ├─ createCard(id) で DOM 生成
+  ├─ visibility = "self"（自分のみ見える）
+  ├─ placeCard() でフィールドに配置
+  ├─ myState.pp = Math.min(currentPp + 1, maxPp)  ← PP+1（直接変更）
+  ├─ organizeHands()
+  ├─ アニメーション（上から落下）
+  ├─ addGameLog("カードを1枚引いた")
+  ├─ saveAllImmediate()
+  └─ update()
+```
+
+- PP+1 は `addVal()` を経由しない → PP ログが出ない（意図的）
+- `addVal` 経由にすると `[システム] PP:` ログが毎ターン出てしまうため
+
+**startR1T1() — ラウンド1ターン1のフォールバック**
+
+- `firstDrawDone === true` の場合はスキップ（ファーストドロー済み）
+- `firstDrawDone !== true` の場合のみ実行（ファーストドローフェーズをスキップした場合）
+- 5枚を `deck.pop()` で取り出して盤面に配置（非公開）
+- `showR1T1Selection()` を呼ぶが、この関数は**空実装** `function showR1T1Selection(_n) {}`
+  → **フォールバックが機能しない**（カードが盤面に置かれるだけで選択 UI が出ない）
+
+**`drawCards()` との違い**
+
+| 関数 | PP 変更 | ログ | 呼び出し元 |
+|------|---------|------|-----------|
+| `startTurnDraw()` | `myState.pp += 1` 直接 | `カードを1枚引いた` | `handleMatchStateTransitions` の setTimeout |
+| `drawCards(n)` | `dState.pp += actual` 直接 | `[システム] PP: prev → next` | 手動ドロー操作 |
+| `takeOut(n)` | なし | `カードをN枚取り出した` | ファーストドロー・直接呼び出し |
+
+- `startTurnDraw` と `drawCards` はどちらも PP を直接変更するが、ログの出し方が異なる
+- `startTurnDraw` は PP ログを出さない（意図的）
+- `drawCards` は `[システム] PP:` ログを出す
+
+---
+
+### C. setupPhase.js — 進化の道選択フェーズ（確定）
+
+**フロー全体**
+
+```
+status === "setup_evolution" になると update() → renderUI() → updateMatchUI()
+  → updateEvolutionPhaseUI() が呼ばれる
+
+updateEvolutionPhaseUI()
+  ├─ status !== "setup_evolution" → オーバーレイを非表示
+  ├─ myPath && opPath（両者選択済み）:
+  │    ├─ turnPlayer === me かつ !_evoPhaseTransitioning → 1500ms 後に遷移
+  │    │    status = "setup_first_draw"
+  │    │    firstDrawDone / firstDrawP1Ready / firstDrawP2Ready = false
+  │    │    writeMatchData()
+  │    └─ 「ファーストドローフェーズへ移行します...」表示
+  ├─ myPath のみ選択済み → 「相手の選択を待っています...」表示
+  └─ 未選択 → 4択ボタン UI を表示（rendered フラグで1回のみ構築）
+
+selectEvolutionPath(pathName)
+  ├─ state[me].evolutionPath = pathName
+  ├─ addGameLog("[EVOLUTION] ...")
+  ├─ firebaseClient.writeMyState()
+  ├─ overlay.dataset.rendered を削除（強制再描画）
+  └─ update()
+```
+
+**遷移の責任分担**
+
+- `setup_evolution → setup_first_draw` の遷移は **turnPlayer（先攻）のクライアントのみ**が実行
+  - `_evoPhaseTransitioning` フラグで二重遷移を防止
+  - 後攻クライアントは Firebase 経由で `matchData.status` の変化を受け取る
+
+**`selectEvolutionPath` の設計**
+
+- 自分の `evolutionPath` のみ書き込む（相手のデータは触らない）
+- `writeMyState()` で Firebase に送信 → 相手の `roomWatcher` が `opStateListener` で受信
+- 相手の `evolutionPath` が更新されると `updateEvolutionPhaseUI()` が再評価される
+
+**潜在的な問題**
+
+- `_evoPhaseTransitioning` は `finally` でリセットされる → 遷移失敗時もリセット ✅
+- ただし `_evoPhaseTransitioning` はグローバル変数 → `executeReset` でリセットされるか要確認
+
+---
+
+### Round 22 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 30 | `showR1T1Selection()` が空実装 → R1T1 フォールバックが機能しない | 中 | game.js |
+| 31 | `_evoPhaseTransitioning` が `executeReset` でリセットされるか未確認 | 低 | setupPhase.js |
+
+**設計上の特徴（意図的）**
+
+- `renderUI` は `innerHTML` 全置換 → `lastStateJson` 比較でスキップ最適化 ✅
+- `startTurnDraw` は PP ログを出さない（`addVal` 非経由）→ チャット欄の汚染を防ぐ ✅
+- 進化の道遷移は先攻クライアントのみが実行 → 競合防止 ✅
+- `selectEvolutionPath` は自分のデータのみ書き込む → 設計原則遵守 ✅
+
+**全体の未解決リスト（Round 1〜22 最終版）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 2 | デッキ枚数 0 でも READY 可能 | 低 | matchSetup.js に枚数チェック追加 |
+| 3/25 | 進化の道ロジックが3箇所に重複 | 中 | `getEvolutionPathParam` を統一使用 |
+| 13 | arcana が defstackMax をリセットしない | 低〜中 | damageCalc.js に1行追加 |
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 中 | `startPvpveWatcher` に `_lastRoundSeen = 0` + `executeReset` から再呼び出し |
+| 18/26 | モンスター討伐 PP+2 ログ2行 / ドロー時 PP ログ | 低 | `addVal` の pp ログ削除 or `MonsterCombatSystem` 側のログ削除 |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低〜中 | `addVal` の pp ログをデバッグフラグ化 |
+| 24 | `calcNextTurn` デッドコード | 低 | `handleTurnEnd` で使用するか削除 |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし | 低 | 属性設定コードを追加 or クリーンアップ処理を削除 |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 | player1 のみ書き込む等の調整 |
+| 29 | ダイスロールがクライアント側 `Math.random()` のみ | 低 | 信頼前提のゲームなので許容 |
+| 30 | `showR1T1Selection()` が空実装 | 中 | 実装するか `startR1T1` 自体を削除 |
+| 31 | `_evoPhaseTransitioning` が `executeReset` でリセットされるか未確認 | 低 | `executeReset` に追加 |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低 | ファイル削除 |
+
+---
+
+## Round 23 — firebase-client.js / runPhaseProgression / applyInteractionLockState
+
+### A. firebase-client.js の設計（確定）
+
+**クラス構造**
+
+```
+FirebaseClient
+  ├─ initialize(config)          ← 匿名認証 → DB 接続
+  ├─ setupConnectionMonitoring() ← .info/connected 監視
+  ├─ createRoom / joinRoom       ← ルーム作成・参加
+  ├─ watchRoom / watchRoomList   ← ルーム監視
+  ├─ setReady / leaveRoom        ← プレイヤー操作
+  ├─ setupOnDisconnect           ← 切断時自動退出
+  ├─ writeMyState(roomName, playerKey, state)  ← 自分の状態書き込み（3回リトライ）
+  ├─ writeMatchData(roomName, matchData)       ← matchData 書き込み（3回リトライ）
+  ├─ sendChangeRequest(...)      ← 相手ステータス変更リクエスト
+  ├─ clearChangeRequest(...)     ← pendingChange クリア
+  ├─ setPlayerDice / resetPlayerDice ← ダイス値管理
+  ├─ appendLog / resetRoomGameState  ← ログ・リセット
+  └─ cleanupStaleRooms           ← ゴーストルーム削除
+```
+
+**Firebase パス構造（全体）**
+
+```
+rooms/{room}/
+  ├─ players/{playerKey}         ← 接続状態（onDisconnect で自動削除）
+  ├─ playerState/{playerKey}     ← ゲーム状態（writeMyState）
+  ├─ matchData                   ← 試合進行（writeMatchData）
+  ├─ playerDice/{playerKey}      ← ダイス値（setPlayerDice）
+  ├─ fieldCards/{playerKey}      ← フィールドカード（writeFieldCards）
+  ├─ pendingChange/{fromKey}     ← 相手ステータス変更リクエスト（sendChangeRequest）
+  ├─ logs                        ← ゲームログ（push）
+  ├─ rematch/{playerKey}         ← 再戦リクエスト
+  └─ pvpve/                      ← PvPvE モンスター状態
+       ├─ monsters               ← MonsterManager.serialize()
+       └─ targets                ← BattleTargetSystem.serialize()
+```
+
+**`writeMyState` / `writeMatchData` のリトライ設計**
+
+```js
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    await this.db.ref(...).set(data);
+    return true;
+  } catch (e) {
+    if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
+    // 500ms, 1000ms の間隔でリトライ
+  }
+}
+```
+
+- 最大3回リトライ（500ms → 1000ms 間隔）
+- 失敗時は `false` を返す（呼び出し元はエラーハンドリングなし）
+
+**`sendChangeRequest` の設計**
+
+```js
+await this.db.ref(`rooms/${roomName}/pendingChange/${fromKey}`).set({
+  target, key, type, value,
+  ts: firebase.database.ServerValue.TIMESTAMP
+});
+```
+
+- `fromKey`（送信者）のパスに上書き → 同一送信者からの複数リクエストは最後のみ残る
+- `roomWatcher.js` の `pendingListener` が受信 → `pendingChange` ハンドラで処理
+
+**`cleanupStaleRooms` の設計**
+
+- プレイヤー0人のルーム → 即削除
+- `waiting` かつ1人部屋で24時間超 → 削除
+- ルーム一覧取得時（`watchRoomList` / `fetchRoomListOnce`）に自動実行
+
+**`setupOnDisconnect` の設計**
+
+```js
+await playerRef.onDisconnect().remove();          // 切断時にプレイヤーノードを削除
+await roomUpdatedRef.onDisconnect().set(TIMESTAMP); // updatedAt を更新
+```
+
+- ブラウザを閉じた時・ネットワーク切断時に Firebase サーバーが自動実行
+- `cancelOnDisconnect()` でキャンセル可能（リロード前に呼ぶ）
+
+**`updateRoomGameState` は deprecated**
+
+- `@deprecated` コメントあり → `writeMyState` / `writeMatchData` を使うこと
+- 内部では `matchData` のみ書き込む（後方互換）
+
+---
+
+### B. runPhaseProgression() の設計（確定）
+
+```
+runPhaseProgression()
+  ├─ matchData がない → return
+  └─ _bothPlayersConnected かつ status === "ready_check"
+       → status = "setup_dice"（ローカル即反映）
+       → GameTimer.start("dice", 10000)（タイマー開始）
+       → firebaseClient.writeMatchData()（Firebase に書き込み）
+```
+
+- `update()` のたびに呼ばれる → 両者接続済みになった瞬間に `ready_check → setup_dice` へ遷移
+- **両者接続済みの判定は `_bothPlayersConnected` フラグ**（`roomWatcher.js` の `playersListener` が設定）
+- Firebase 書き込みは非同期（`.then().catch()`）→ ローカルは即時反映、Firebase は後から追従
+
+**`isGameInteractionLocked()` の判定ロジック**
+
+```js
+window.isGameInteractionLocked = function() {
+  if (!isGamePage) return false;
+  if (state.matchData?.winner || window._lastWinner) return true;  // 勝者決定後はロック
+  const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
+  if (inGamePhase) return false;  // ゲーム中フェーズは切断でもロックしない
+  return !window._soloStartMode && (!window._bothPlayersConnected || status === "ready_check");
+};
+```
+
+- 勝者決定後 → 常にロック（TURN END ボタン等が無効化）
+- `setup_evolution` / `setup_first_draw` / `playing` → 切断中でもロックしない
+- `ready_check` / `setup_dice` → 両者未接続の場合はロック
+
+**`_syncGate` の設計**
+
+```js
+window._syncGate = {
+  firebaseReady: false,
+  roomWatcherReady: false,
+  playersReady: false,
+  phaseReady: false,
+  initDone: false
+};
+```
+
+- 全フラグが `true` になるとローディングオーバーレイが非表示になる
+- `executeReset` では `initDone` / `roomWatcherReady` / `phaseReady` を `false` にリセット → オーバーレイ再表示
+
+---
+
+### C. resetAllGameVariables() の設計（確定）
+
+- 両プレイヤーが退出した場合（`roomWatcher.js` の `playerCount === 0`）に呼ばれる
+- `gameReady = false` / `state` を初期値にリセット / `localStorage` をクリア
+- `_evoPhaseTransitioning` は**リセットされない** → 問題 #31 確定
+
+**`executeReset` と `resetAllGameVariables` の違い**
+
+| 項目 | executeReset | resetAllGameVariables |
+|------|-------------|----------------------|
+| 呼び出し元 | 再戦合意時 | 両者退出時 |
+| Firebase 削除 | 不要データを削除 | `resetRoomGameState` を呼ぶ |
+| watcher 再設定 | `setupRoomWatcher()` を呼ぶ | `stopAllWatchers()` を呼ぶ |
+| localStorage | 一部削除 | 全削除（gameRoom 含む） |
+| `_evoPhaseTransitioning` | リセットされない | リセットされない |
+
+---
+
+### Round 23 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 31 | `_evoPhaseTransitioning` が `executeReset` / `resetAllGameVariables` でリセットされない | 低 | setupPhase.js / game.js |
+| 32 | `writeMyState` / `writeMatchData` のリトライ失敗時に呼び出し元がエラーハンドリングしない | 低 | firebase-client.js |
+
+**設計上の特徴（意図的）**
+
+- `sendChangeRequest` は `fromKey` パスに上書き → 同一送信者の複数リクエストは最後のみ残る（デバウンス効果）✅
+- `isGameInteractionLocked` はゲーム中フェーズ（`setup_evolution` 以降）では切断中でもロックしない → 一時的な切断でゲームが止まらない ✅
+- `runPhaseProgression` は `update()` のたびに呼ばれるが、`ready_check` 以外では何もしない → 軽量 ✅
+- `cleanupStaleRooms` はルーム一覧取得時に自動実行 → ゴーストルームが蓄積しない ✅
+
+### 次に調べる場所
+
+- `js/network/timerSync.js` → GameTimer の実装
+- `js/ui/animationUI.js` → showNotification / showRoundNotification の実装
+- `js/state/gameState.js` → makeCharState の定義（初期状態の全フィールド確認）
+
+
+---
+
+## Round 24 — timerSync.js / animationUI.js / gameState.js
+
+### A. timerSync.js — GameTimer の実装（確定）
+
+**ClockSync の設計**
+
+```js
+async function sync(attempts = 3) {
+  // GitHub Pages 等で /api/time が 404 になるため NTP 廃止
+  _offset = 0;
+  _rtt = 0;
+  _synced = true;
+}
+```
+
+- **NTP は実質無効化**（`_offset = 0` 固定）
+- `ClockSync.now()` は `Date.now() + 0` = `Date.now()` と等価
+- 「ホスト権威タイマー」の設計思想はあるが、クロック補正は機能していない
+- タブ非アクティブ復帰時に `ClockSync.sync(3)` を呼ぶが、`_offset = 0` のまま → 再同期の意味がない
+
+**GameTimer の設計**
+
+```
+start(key, remainingMs, seq=0)
+  → endTimestamp = Date.now() + remainingMs
+  → _timers[key] = { endTimestamp, pausedRemaining: null, seq, paused: false }
+
+getRemainingMs(key)
+  → Math.max(0, endTimestamp - Date.now())
+
+tick()  ← rAF ループで 100ms ごとに呼ばれる
+  → 各タイマーの _displayRemaining を trueVal に向けて lerp 補正
+  → |diff| > 2000ms なら即ジャンプ（reconnect 後の大きなズレ対応）
+```
+
+**rAF ループの設計**
+
+```js
+function _timerRafLoop(timestamp) {
+  _rafId = requestAnimationFrame(_timerRafLoop);
+  if (timestamp - _lastRafTime < 100) return;  // 100ms 未満はスキップ
+  _lastRafTime = timestamp;
+  GameTimer.tick();
+  if (typeof onTimerTick === "function") onTimerTick();
+}
+```
+
+- `requestAnimationFrame` を使用 → タブ非アクティブ時は停止（`setInterval` より省電力）
+- 100ms ごとに `GameTimer.tick()` + `onTimerTick()` を呼ぶ
+- `onTimerTick` は `game.js` 側で定義（タイマー切れ時の処理）
+
+**`applyFromServer` の seq チェック**
+
+```js
+if (seq < existing.seq) return;  // 古いパケットを無視
+if (seq === existing.seq && existing.endTimestamp === endTimestamp) return;  // 重複を無視
+```
+
+- seq 番号で古いパケットを無視 → パケット順序の乱れに対応
+- ただし `start()` は常に `seq=0` で呼ぶ → seq チェックが機能しない（全て seq=0）
+- `applyFromServer` は Firebase 経由でタイマー状態を受け取る想定だが、**Firebase へのタイマー書き込みコードが存在しない**
+
+**GameTimer の実際の使用状況**
+
+- `runPhaseProgression()` で `GameTimer.start("dice", 10000)` を呼ぶ（ダイスフェーズ 10 秒）
+- `onTimerTick` の定義が `game.js` にあるか要確認
+- `applyFromServer` / `serialize` / `pause` / `resume` の呼び出し元が存在しない可能性がある
+
+**潜在的な問題**
+
+- **NTP が無効化されているため、クライアント間のクロックズレが補正されない**
+  - 両クライアントの `Date.now()` が異なる場合、タイマーの残り時間表示がズレる
+  - ただし `endTimestamp` はホストが設定し Firebase 経由で共有する設計のため、`applyFromServer` が正しく呼ばれれば問題ない
+  - **実際には `applyFromServer` が呼ばれていない可能性がある**（Firebase 書き込みコードが見当たらない）
+- **`start()` の seq=0 固定** → 複数回 `start()` を呼んでも seq が増えない → `applyFromServer` の seq チェックが機能しない
+- **`onTimerTick` の定義場所が不明** → タイマー切れ時の処理が実装されているか要確認
+
+---
+
+### B. animationUI.js — showNotification / showRoundNotification（確定）
+
+**`showNotification(text, color)` の設計**
+
+```
+DOM 生成 → document.body.appendChild → 2700ms 後に自動削除
+```
+
+- `position: fixed; top: 40%; left: 50%` → 画面中央やや上に表示
+- `pointer-events: none` → クリックを透過（ゲーム操作を妨げない）
+- `text === "あなたのターン"` の場合のみサブテキスト「自動で1枚ドローします。」を表示
+- CSS アニメーション: `notifyIn`（0.8s）→ 表示 → `notifyOut`（0.5s、1.8s 後）
+- `notifyIn` / `notifyOut` のキーフレームは **animationUI.js に定義されていない**
+  → 別ファイル（おそらく CSS ファイル）で定義されているか、または未定義
+
+**`showRoundNotification(round)` の設計**
+
+```
+DOM 生成 → document.body.appendChild → 3200ms 後に自動削除
+```
+
+- `position: fixed; inset: 0` → 全画面オーバーレイ
+- `background: radial-gradient(...)` → 中央が明るい暗転エフェクト
+- `round === 1` の場合のみ「新たな戦いが始まる」サブタイトルを表示
+- CSS アニメーション: `roundFadeIn`（0.6s）→ 表示 → `roundFadeOut`（0.6s、2.4s 後）
+- `roundFadeIn` / `roundFadeOut` / `roundContentScale` / `roundNumberPulse` / `roundSubtitleSlide` のキーフレームも **animationUI.js に定義されていない**
+
+**潜在的な問題**
+
+- **CSS アニメーションのキーフレームが animationUI.js に定義されていない**
+  - `notifyIn` / `notifyOut` / `roundFadeIn` 等が未定義の場合、アニメーションが動作しない
+  - ただし `showNotification` 内で `notificationStyles` を動的に追加しているが、`subNotifyIn` のみ定義
+  - `notifyIn` / `notifyOut` は別の CSS ファイルで定義されている可能性がある
+- **`showRoundNotification` のアニメーションキーフレームは全て外部 CSS 依存**
+  - 外部 CSS が読み込まれていない場合、アニメーションなしで表示される（機能的には問題なし）
+- **複数の通知が同時に表示される可能性**
+  - `showNotification` は既存の通知を削除せずに新規追加する
+  - 連続して呼ばれると複数の通知が重なる
+
+---
+
+### C. gameState.js — makeCharState / 初期状態（確定）
+
+**`BASE_INITIAL_STATE` の全フィールド**
+
+```js
+{
+  level: 1,      levelMax: 6,
+  exp: 0,        expMax: 2,
+  hp: 20,        hpMax: 20,
+  shield: 0,     shieldMax: 5,
+  defstack: 0,   defstackMax: 0,   defstackOverMax: false,
+  atk: 1,        atkMax: 999,
+  def: 0,        defMax: 999,
+  instantDef: 0, instantDefMax: 999,
+  pp: 0,         ppMax: 2,
+  deck: [],
+  backImage: null,
+  statusBlocks: []
+}
+```
+
+**重要な発見: `defstackMax` の初期値が 0**
+
+- `defstackMax: 0` → 初期状態では防御スタックが機能しない
+- `defstack: 0` かつ `defstackMax: 0` の状態で `damage` 攻撃を受けると:
+  - `defstack > 0` は false → `passDamage += 1` + `defstack = defstackMax = 0` → 毎回1ダメ通過
+  - **初期状態では全ての通常ダメージが1ダメずつ通過する**
+- `defstackMax` は `applyLevelStats` または手動設定で増加する設計と思われる
+
+**`window.state` の初期構造**
+
+```js
+window.state = {
+  player1: { ...makeCharState(), diceValue: -1 },
+  player2: { ...makeCharState(), diceValue: -1 },
+  matchData: {
+    round: 1, turn: 1,
+    turnPlayer: "player1",
+    status: "ready_check",
+    winner: null, firstPlayer: null
+  },
+  logs: []
+};
+```
+
+- `diceValue: -1` は「未ロール」を示す（0〜100 がロール済み）
+- `matchData` は `state` の直下（`state.player1` / `state.player2` と同列）
+- `logs` は `state.logs`（`addGameLog` が追加する）
+
+**`makeCharState()` の実装**
+
+```js
+function makeCharState() {
+  return JSON.parse(JSON.stringify(BASE_INITIAL_STATE));
+}
+```
+
+- `JSON.parse(JSON.stringify(...))` でディープコピー → `deck: []` / `statusBlocks: []` が共有されない ✅
+- `BASE_INITIAL_STATE` は `Object.freeze` されていない → 直接変更可能（ただし `makeCharState` 経由で使う設計）
+
+**`normalizeState` との整合性**
+
+- `normalizeState` は `makeCharState()` で再生成する条件: `state.player1` / `state.player2` が不正な場合のみ
+- 通常は `makeCharState()` の初期値が `normalizeState` のデフォルト値として使われる
+- `defstackMax: 0` が `normalizeState` でクランプされると `defstack` も 0 にクランプされる → 問題なし
+
+**`evolutionPath` / `evoContinuousDmgCount` / `evoBackwaterExpGained` が `BASE_INITIAL_STATE` に含まれない**
+
+- これらは `game.js` の `executeReset` / `handleFreshStart` で直接 `state[p].evolutionPath = null` 等として設定される
+- `makeCharState()` には含まれない → `normalizeState` でも初期化されない
+- `executeReset` でリセットされるが、`resetAllGameVariables` でリセットされるか要確認（問題 #31 と関連）
+
+---
+
+### Round 24 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 33 | `ClockSync.sync()` が `_offset = 0` 固定で NTP が無効化されている | 低 | timerSync.js |
+| 34 | `GameTimer.start()` の `seq=0` 固定 → `applyFromServer` の seq チェックが機能しない | 低 | timerSync.js |
+| 35 | `GameTimer.applyFromServer` / `serialize` の呼び出し元が存在しない可能性 → タイマーが Firebase 同期されていない | 中 | timerSync.js |
+| 36 | `showNotification` / `showRoundNotification` の CSS アニメーションキーフレームが animationUI.js に未定義 | 低 | animationUI.js |
+| 37 | `showNotification` が既存通知を削除せずに追加 → 連続呼び出しで通知が重なる | 低 | animationUI.js |
+| 38 | `defstackMax` の初期値が 0 → 初期状態では全通常ダメージが通過する | 要確認 | gameState.js |
+| 39 | `evolutionPath` / `evoContinuousDmgCount` / `evoBackwaterExpGained` が `BASE_INITIAL_STATE` に含まれない → `makeCharState()` で初期化されない | 低 | gameState.js |
+
+**設計上の特徴（意図的）**
+
+- `GameTimer` は lerp による視覚的な滑らかさを重視した設計 ✅
+- rAF ループで 100ms ごとに tick → タブ非アクティブ時は停止（省電力）✅
+- `makeCharState()` は `JSON.parse(JSON.stringify(...))` でディープコピー → 参照共有なし ✅
+- `defstackMax: 0` は「防御スタックなし」の初期状態を表す（`applyLevelStats` で設定される設計）
+
+**全体の未解決リスト（Round 1〜24 最終版）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 2 | デッキ枚数 0 でも READY 可能 | 低 | matchSetup.js に枚数チェック追加 |
+| 3/25 | 進化の道ロジックが3箇所に重複 | 中 | `getEvolutionPathParam` を統一使用 |
+| 13 | arcana が defstackMax をリセットしない | 低〜中 | damageCalc.js に1行追加 |
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 中 | `startPvpveWatcher` に `_lastRoundSeen = 0` + `executeReset` から再呼び出し |
+| 18/26 | モンスター討伐 PP+2 ログ2行 / ドロー時 PP ログ | 低 | `addVal` の pp ログ削除 or `MonsterCombatSystem` 側のログ削除 |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低〜中 | `addVal` の pp ログをデバッグフラグ化 |
+| 24 | `calcNextTurn` デッドコード | 低 | `handleTurnEnd` で使用するか削除 |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし | 低 | 属性設定コードを追加 or クリーンアップ処理を削除 |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 | player1 のみ書き込む等の調整 |
+| 30 | `showR1T1Selection()` が空実装 | 中 | 実装するか `startR1T1` 自体を削除 |
+| 31 | `_evoPhaseTransitioning` が `executeReset` / `resetAllGameVariables` でリセットされない | 低 | `executeReset` / `resetAllGameVariables` に追加 |
+| 32 | `writeMyState` / `writeMatchData` のリトライ失敗時に呼び出し元がエラーハンドリングしない | 低 | 呼び出し元で `false` チェックを追加 |
+| 35 | `GameTimer` が Firebase 同期されていない可能性 | 中 | `onTimerTick` の実装確認 + Firebase 書き込み追加 |
+| 36 | アニメーションキーフレームが animationUI.js に未定義 | 低 | CSS ファイルの確認 |
+| 38 | `defstackMax: 0` 初期値 → 初期状態で全通常ダメージ通過 | 要確認 | `applyLevelStats` の確認 |
+| 39 | `evolutionPath` 等が `BASE_INITIAL_STATE` に含まれない | 低 | `BASE_INITIAL_STATE` に追加 or `executeReset` で確実にリセット |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低 | ファイル削除 |
+
+### 次に調べる場所
+
+- `game.js` の `onTimerTick` 定義 → タイマー切れ時の処理
+- `game.js` の `applyLevelStats` → `defstackMax` の設定タイミング
+- CSS ファイル（`notifyIn` / `roundFadeIn` 等のキーフレーム定義）

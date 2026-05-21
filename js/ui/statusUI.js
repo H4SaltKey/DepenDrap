@@ -327,21 +327,6 @@ function renderTargetStatus(owner) {
     </div>`;
 }
 
-  const isEditable = window.devMode;
-  const val = Number(s.instantDef) || 0;
-  return `
-  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
-    <span class="lorChipIcon">${lorLucide("shield-alert", "lorLxIdef")}</span>
-    ${isEditable ? `
-      <input class="lorChipInput" type="number" value="${val}"
-        data-owner="${owner}" data-key="instantDef" data-type="val"
-        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
-    ` : `
-      <span class="lorChipVal">${val}</span>
-    `}
-  </div>`;
-}
-
 function updateFieldStatusPanels() {
   // 手札/PP UIを盤面（#fieldContent）へ移動。ズーム・パンに連動させる。
   const container = document.getElementById("fieldContent") || document.getElementById("field") || document.body;

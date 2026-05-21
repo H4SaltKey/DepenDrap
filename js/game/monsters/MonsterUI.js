@@ -249,7 +249,7 @@ window.MonsterUI = (function() {
       panel.id = "monsterPanel";
       document.body.appendChild(panel);
     }
-    panel.style.display = "flex";
+    // monsterPanel はターゲットボタン押下時のみ表示（デフォルト非表示）
     panel.innerHTML = "";
 
     const me = window.myRole || "player1";
@@ -389,6 +389,9 @@ window.MonsterUI = (function() {
           window.BattleTargetSystem?.setTarget(me, { slotIndex });
         }
         panel.remove();
+        // monsterPanel を非表示に戻す
+        const mp = document.getElementById("monsterPanel");
+        if (mp) mp.style.display = "none";
         render();
         _syncTargetToFirebase();
       });
@@ -396,6 +399,9 @@ window.MonsterUI = (function() {
 
     document.getElementById("targetSelectCancel").addEventListener("click", () => {
       panel.remove();
+      // monsterPanel を非表示に戻す
+      const mp = document.getElementById("monsterPanel");
+      if (mp) mp.style.display = "none";
     });
   }
 
@@ -436,6 +442,9 @@ window.MonsterUI = (function() {
     `;
     btn.textContent = "🎯 攻撃対象を変更";
     btn.addEventListener("click", () => {
+      // monsterPanel を表示してからターゲット選択パネルを開く
+      const mp = document.getElementById("monsterPanel");
+      if (mp) mp.style.display = "flex";
       _showTargetSelectPanel();
       btn.remove();
     });

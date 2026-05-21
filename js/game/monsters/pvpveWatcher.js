@@ -183,6 +183,9 @@
     const slots = window.MonsterManager?.getAllSlots() || [];
     const me = window.myRole || "player1";
 
+    // ターゲット変更権限を確実にONにする
+    window.BattleTargetSystem?.onTurnStart(me);
+
     const panel = document.createElement("div");
     panel.id = "turnStartTargetPanel";
     panel.style.cssText = `
@@ -243,6 +246,8 @@
 
     const close = async (target) => {
       panel.remove();
+      // 念のためターゲット変更権限を付与してからセットする
+      window.BattleTargetSystem?.onTurnStart(me);
       if (target === "player") {
         window.BattleTargetSystem?.setTarget(me, "player");
       } else if (typeof target === "number") {

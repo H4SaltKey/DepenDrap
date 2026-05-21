@@ -574,7 +574,7 @@ function setupFieldPan(field){
 
   field.addEventListener("pointerdown", (e)=>{
     if(e.button !== 0) return;
-    if(e.target.closest(".card, .deckObject, #gameUi, #zoomControls, .status-block")) return;
+    if(e.target.closest(".card, .deckObject, #gameUi, #zoomControls, .status-block, .fieldStatusPanel, .evoPanelWrapper")) return;
     if(draggingCard) return;
 
     isPanning = true;

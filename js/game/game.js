@@ -1651,9 +1651,20 @@ document.body.addEventListener("click", (e) => {
     openEvolutionPathModal(evoTitle.dataset.owner);
     return;
   }
-  const t = e.target.closest(".lorSmBtn, .lorInstantDefBtn, .lorResetDefBtn");
+  const t = e.target.closest(".lorSmBtn, .lorInstantDefBtn, .lorResetDefBtn, .lorTargetBtn");
   if (!t || !t.dataset.owner) return;
   if (t.disabled) return;
+
+  if (t.dataset.action === "openTargetSelect") {
+    // 敵ステータスUIの「ターゲット」ボタン → MonsterUI のターゲット選択パネルを開く
+    if (typeof window.MonsterUI?._showTargetSelectPanel === "function") {
+      window.MonsterUI._showTargetSelectPanel();
+    } else if (typeof window.MonsterUI?.showTargetChangeButton === "function") {
+      // フォールバック: ターゲット変更ボタンを表示
+      window.MonsterUI.showTargetChangeButton();
+    }
+    return;
+  }
 
   if (t.dataset.action === "addInstantDef") {
     const owner = t.dataset.owner;

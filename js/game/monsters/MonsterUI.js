@@ -496,7 +496,8 @@ window.MonsterUI = (function() {
     render,
     renderTargetBadge,
     showTargetChangeButton,
-    hideTargetChangeButton
+    hideTargetChangeButton,
+    _showTargetSelectPanel  // ターゲットボタンから呼べるよう公開
   };
 
 })();

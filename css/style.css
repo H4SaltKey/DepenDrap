@@ -421,8 +421,7 @@ body.deckPage{
   top:50%;
   left:50%;
   transform:translate(-50%, -50%);
-  color:#000;
-  text-shadow:0 0 4px rgba(255,255,255,0.7);
+  color:#fff;
   user-select:none;
   pointer-events:none;
   z-index:2;
@@ -430,7 +429,14 @@ body.deckPage{
 .cardVisibilityLabel i {
   width: 48px;
   height: 48px;
-  filter: drop-shadow(0 0 2px rgba(255,255,255,0.8));
+  color: #fff;
+  /* 白アウトライン: 黒背景でも視認できるよう複数方向にドロップシャドウ */
+  filter:
+    drop-shadow(0 0 3px rgba(0,0,0,1))
+    drop-shadow(0  1px 0 rgba(0,0,0,1))
+    drop-shadow(0 -1px 0 rgba(0,0,0,1))
+    drop-shadow( 1px 0 0 rgba(0,0,0,1))
+    drop-shadow(-1px 0 0 rgba(0,0,0,1));
 }
 
 .cardTempIcon {
@@ -447,8 +453,15 @@ body.deckPage{
 .cardTempIcon i {
   width: 24px;
   height: 24px;
-  color: #000;
+  color: #fff;
   stroke-width: 2.5px;
+  /* 白アウトライン */
+  filter:
+    drop-shadow(0 0 2px rgba(0,0,0,1))
+    drop-shadow(0  1px 0 rgba(0,0,0,1))
+    drop-shadow(0 -1px 0 rgba(0,0,0,1))
+    drop-shadow( 1px 0 0 rgba(0,0,0,1))
+    drop-shadow(-1px 0 0 rgba(0,0,0,1));
 }
 
 /* デッキオブジェクト */

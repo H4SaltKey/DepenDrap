@@ -866,3 +866,168 @@ Firebase pvpve 変更時:
 | ログ2行出力 | `MonsterManager.monsterAttack()` と `MonsterCombatSystem.monsterAttackPlayer()` の両方で `addGameLog` を呼ぶ |
 | `_justDefeated` 非同期 | `BattleTargetSystem.serialize()` に含まれないため Firebase 同期後に失われる |
 | `setRetreatCountdown` | 定義はあるが呼び出し元が存在しない（撤退追撃は発動しない） |
+
+---
+
+## Round 13 — ゲーム画面モンスター関連コード実仕様
+
+> 「モンスター」= PvE の MonsterManager スロット（Round 12 で整理済み）
+> 「カード」= フィールド上の DOM カード要素（手札・ゾーン配置）
+> 両者は**完全に別系統**。カードに hp/attack フィールドは存在しない。
+
+---
+
+### A. カードのデータ構造（実仕様）
+
+**静的定義（`cards.json` → `CARD_DB`）**
+
+```js
+{
+  id: string,
+  name: string,
+  attribute: string,   // "近接" 等（デフォルト "近接"）
+  type: string,        // "アタッカー" | "スキル"（デフォルト "アタッカー"）
+  tags: string[],      // normalizeCardTags() で正規化
+  image: string        // normalizeCardImagePath() で正規化
+}
+```
+
+- `cost / attack / hp / maxHp / owner / controller / tribe / rarity / keywords / status flags` は **cards.json に定義なし**
+- `getCardData(id)` は CARD_INDEX から返すだけ。runtime 追加フィールドなし
+
+**DOM カード要素（`createCard(id)`）**
+
+```js
+wrapper.dataset.id          // カードID
+wrapper.dataset.instanceId  // 一意ID（nextCardInstanceId()）
+wrapper.dataset.visibility  // "both" | "self" | "none" | "opponent"
+wrapper.dataset.owner       // "player1" | "player2"
+// runtime で追加されるもの:
+wrapper.dataset.x / .y      // フィールド座標
+wrapper.dataset.zoneType    // "attacker" | "skill" | "grave"（ゾーン配置時）
+wrapper.dataset.zoneOwner   // ゾーン配置時
+wrapper.dataset.zoneOrder   // ゾーン内順序
+wrapper.dataset.handOrder   // 手札整列順
+wrapper.dataset.isTemp      // "true" = 一時カード
+wrapper.dataset.firstDrawReturned  // ファーストドロー返却済みフラグ
+```
+
+- clone/copy は `createCard(card.dataset.id)` で新規生成（cloneNode は使わない）
+- 初期化タイミング: `takeOut()` 呼び出し時に生成・フィールドに配置
+
+---
+
+### B. 召喚仕様（カードをゾーンに出す）
+
+**フロー**
+
+```
+ドラッグ drop → battleZoneHitTypeAt(centerX, centerY, owner)
+  ├─ zoneHit === "attacker" | "skill"
+  │    └─ showBattleZonePpCostModal({ zoneType, cardEl, owner })
+  │         ├─ PP消費量をユーザーが入力（0〜2、上限は state[owner].pp）
+  │         ├─ st.pp -= cost  ← state を直接変更
+  │         └─ placeCardInZone(cardEl, owner, zoneType)
+  └─ zoneHit === "grave"
+       └─ placeCardInZone(cardEl, owner, "grave")  ← PP消費なし
+```
+
+**placeCardInZone(card, owner, type)**
+- `clearZoneMarker(card)` → 既存ゾーン属性を削除
+- `card.dataset.visibility = "both"` → 強制公開
+- `card.dataset.zoneType / zoneOwner / zoneOrder` を付与
+- attacker に複数枚ある場合: 既存カードの zoneMarker を clearして重ねる（上限なし）
+
+**制限**
+- ゾーン上限: **なし**（コード上に ZONE_LIMIT 定義なし）
+- summon helper 関数: なし（`placeCardInZone` が直接 dataset を変更）
+- summon effect / animation: なし
+- token 生成: なし
+
+---
+
+### C. 攻撃仕様（カード間）
+
+**カード間の攻撃処理は存在しない。**
+
+- `contextMenu.js` の `applyCalculatedDamage` はプレイヤー HP/shield/defstack への直接ダメージ
+- カード同士の戦闘（attack/retaliation/simultaneous damage）は**未実装**
+- attack 済みフラグ、疾走/速攻、対象選択ロジックは**存在しない**
+- ゾーンに出したカードは「アタッカー場にある」という視覚的状態のみ
+
+---
+
+### D. 死亡処理（カード）
+
+**hp<=0 判定・destroy・graveyard 移動**
+
+```
+contextMenu.js の右クリックメニュー「墓地へ送る」
+  └─ placeCardInZone(card, owner, "grave")
+  └─ organizeBattleZones()
+
+overlayUI.js「全カードを墓地へ」ボタン
+  └─ field.querySelectorAll(".card:not(.deckObject)") を全て placeCardInZone(c, owner, "grave")
+```
+
+- hp<=0 による自動死亡判定: **なし**
+- lastword / deathrattle: **なし**
+- simultaneous death: **なし**
+- 死亡予約キュー: **なし**
+- effect 解決中の field 変更: **なし**（全て即時 DOM 操作）
+
+---
+
+### E. 継続効果・状態異常（カード）
+
+- buff / debuff / aura / silence / shield / poison / freeze: **カードには存在しない**
+- プレイヤーステータスの buff は `evolutionPath`（進化の道）のみ
+- turn end cleanup: `evoContinuousDmgCount = 0` / `evoBackwaterExpGained = false` のみ
+
+---
+
+### F. Render / UI
+
+```
+update() → renderUI() → updateFieldStatusPanels()  ← PP/手札パネル（fixed）
+         → updateBattleZoneUI()  ← ゾーン枠の位置・枚数表示
+         → organizeBattleZones()  ← カードをアンカー座標に整列
+```
+
+- render 中の state 変更: **なし**（renderUI は純粋描画）
+- UI が直接 game state を触る箇所: `showBattleZonePpCostModal` の `st.pp -= cost` のみ
+
+---
+
+### G. 主要関数
+
+| 関数 | 場所 | 役割 |
+|------|------|------|
+| `placeCardInZone(card, owner, type)` | cardManager.js | ゾーン配置（summon相当） |
+| `clearZoneMarker(card)` | cardManager.js | ゾーン属性削除 |
+| `organizeBattleZones()` | cardManager.js | 全ゾーンカードをアンカーへ整列 |
+| `showBattleZonePpCostModal()` | cardManager.js | PP消費モーダル |
+| `applyCalculatedDamage()` | contextMenu.js | プレイヤーへのダメージ適用 |
+| `createCard(id)` | cardManager.js | カードDOM生成 |
+
+---
+
+### H. 危険箇所
+
+| 箇所 | 内容 |
+|------|------|
+| `showBattleZonePpCostModal` | `state[owner].pp -= cost` を直接変更。`pushMyStateDebounced()` は呼ぶが `addVal()` を経由しない |
+| `placeCardInZone` の attacker 上限なし | 複数枚 attacker に積める。視覚的に重なるだけ |
+| `organizeBattleZones` の attacker 処理 | `cards.length > 1` の場合、先頭カードの zoneMarker を clearして手札扱いに戻す（意図的か不明） |
+
+---
+
+### I. 未使用・形骸化
+
+| 項目 | 内容 |
+|------|------|
+| `attack_all` action | monsterData.js に定義、MonsterCombatSystem で未処理 |
+| `setRetreatCountdown()` | 呼び出し元なし（撤退追撃は発動しない） |
+| `beginZoneHoverCardDrag` | ゾーンスタック検査パネルのドラッグ（`showZoneStackInspectHover` は削除済み） |
+| event/effect queue | 存在しない。全て即時解決 |
+| summon trigger / death trigger | 存在しない |

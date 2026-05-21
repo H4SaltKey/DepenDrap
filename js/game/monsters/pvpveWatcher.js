@@ -117,13 +117,122 @@
     // 次ターン開始: ターゲット変更許可
     window.BattleTargetSystem?.onTurnStart(nextPlayer);
 
-    // 先攻モンスターの攻撃
-    window.MonsterCombatSystem?.processTurnStartMonsterActions();
-
-    // 自分のターンならターゲット変更ボタンを表示
+    // 自分のターン開始時: ターゲット選択フェーズ（先攻モンスター攻撃より前）
     if (nextPlayer === me) {
-      window.MonsterUI?.showTargetChangeButton();
+      _showTurnStartTargetSelect(() => {
+        // ターゲット選択完了後に先攻モンスターの攻撃を実行
+        window.MonsterCombatSystem?.processTurnStartMonsterActions();
+        window.MonsterUI?.showTargetChangeButton();
+      });
+    } else {
+      // 相手のターン: 先攻モンスターの攻撃のみ実行
+      window.MonsterCombatSystem?.processTurnStartMonsterActions();
     }
+  }
+
+  // ===== ターン開始時ターゲット選択 =====
+  // モンスターが存在する場合のみ表示。なければ即コールバック。
+  function _showTurnStartTargetSelect(onDone) {
+    const slots = window.MonsterManager?.getAllSlots() || [];
+    const hasMonster = slots.some(s => s !== null);
+
+    // モンスターがいない場合はスキップ
+    if (!hasMonster) {
+      onDone();
+      return;
+    }
+
+    const me = window.myRole || "player1";
+    const existing = document.getElementById("turnStartTargetPanel");
+    if (existing) existing.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "turnStartTargetPanel";
+    panel.style.cssText = `
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20001;
+      background: rgba(10, 8, 20, 0.97);
+      border: 1px solid rgba(199, 179, 119, 0.5);
+      border-radius: 16px;
+      padding: 24px;
+      width: min(480px, 90vw);
+      font-family: 'Outfit', sans-serif;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+      backdrop-filter: blur(12px);
+    `;
+
+    let optionsHtml = `
+      <div class="targetOption pvp" data-target="player" style="
+        display:flex; align-items:center; gap:12px; padding:12px 16px;
+        border:1px solid rgba(224,74,74,0.3); border-radius:10px;
+        cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s;">
+        <div style="font-size:24px;">⚔️</div>
+        <div>
+          <div style="font-size:14px; font-weight:600;">相手プレイヤーを攻撃</div>
+          <div style="font-size:11px; color:#888; margin-top:2px;">PvP — 通常の対戦</div>
+        </div>
+      </div>
+    `;
+
+    slots.forEach((slot, i) => {
+      if (!slot) return;
+      const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
+      const hpPct = Math.round((slot.currentHp / slot.maxHp) * 100);
+      optionsHtml += `
+        <div class="targetOption" data-target="monster" data-slot="${i}" style="
+          display:flex; align-items:center; gap:12px; padding:12px 16px;
+          border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+          cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s;">
+          <div style="font-size:24px;">${def?.emoji || "👾"}</div>
+          <div>
+            <div style="font-size:14px; font-weight:600;">${def?.name || slot.monsterId}</div>
+            <div style="font-size:11px; color:#888; margin-top:2px;">HP: ${slot.currentHp}/${slot.maxHp} (${hpPct}%) | ${def?.initiative || "後攻"} | EXP+${def?.expReward || 1}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    panel.innerHTML = `
+      <h3 style="margin:0 0 8px; font-size:16px; color:#f0d080; text-align:center; letter-spacing:1px;">ターン開始 — 攻撃対象を選択</h3>
+      <p style="font-size:12px; color:#888; text-align:center; margin:0 0 16px;">このターンの攻撃対象を選んでください</p>
+      ${optionsHtml}
+    `;
+
+    document.body.appendChild(panel);
+
+    const close = (target) => {
+      panel.remove();
+      if (target === "player") {
+        window.BattleTargetSystem?.setTarget(me, "player");
+      } else if (typeof target === "number") {
+        window.BattleTargetSystem?.setTarget(me, { slotIndex: target });
+      }
+      // Firebase 同期
+      const gameRoom = localStorage.getItem("gameRoom");
+      if (gameRoom && window.firebaseClient?.db) {
+        const data = window.BattleTargetSystem?.serialize() || {};
+        window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve/targets`).set(data).catch(() => {});
+      }
+      _renderMonsterUI();
+      onDone();
+    };
+
+    panel.querySelectorAll(".targetOption").forEach(opt => {
+      opt.addEventListener("click", () => {
+        if (opt.dataset.target === "player") {
+          close("player");
+        } else {
+          close(parseInt(opt.dataset.slot, 10));
+        }
+      });
+      opt.addEventListener("mouseenter", () => {
+        opt.style.background = "rgba(199,179,119,0.1)";
+      });
+      opt.addEventListener("mouseleave", () => {
+        opt.style.background = "";
+      });
+    });
   }
 
   // ===== UI 更新ヘルパー =====

@@ -169,12 +169,18 @@ function renderOwnerUI(owner) {
           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button" data-tooltip="瞬間防御力分、合計防御力を増加させます (消費PP: 1)">瞬間防御</button>
           <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" data-tooltip="現在の合計防御力を0に戻します" title="防御解除">解除</button>
         </div>
-      ` : ""}
+      ` : `
+        <div class="lorActionGroup">
+          <button class="lorTargetBtn" data-owner="${owner}" data-action="openTargetSelect" type="button"
+            style="background:rgba(199,179,119,0.15); border:1px solid rgba(199,179,119,0.4); color:#f0d080; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer; letter-spacing:0.5px; font-family:'Outfit',sans-serif; white-space:nowrap;"
+            data-tooltip="攻撃対象を変更">🎯 ターゲット</button>
+        </div>
+      `}
     </div>
 
   </div>
   
-  <div style="display:flex; flex-direction:column; gap:8px;">
+  <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-end;">
   ${s.evolutionPath ? `
   <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
     <div class="evoPanel" style="
@@ -268,9 +274,9 @@ function lorInstantDefStatRow(owner, s) {
 }
 
 function updateFieldStatusPanels() {
-  // fieldStatusPanel は #field（固定座標系）に配置する。
-  // #fieldContent に置くとフィールドのズーム・パンに追従してしまい
-  // ボタンのクリックが届かなくなるため。
+  // fieldStatusPanel は #field（画面固定の親要素）に配置する。
+  // #fieldContent はズーム・パンに追従するため使わない。
+  // #field は position:fixed;inset:0 なので、absolute 子要素は画面座標と一致する。
   const container = document.getElementById("field") || document.body;
 
   ["player1", "player2"].forEach(owner => {
@@ -286,7 +292,6 @@ function updateFieldStatusPanels() {
       container.appendChild(el);
     }
 
-    // #field の外に出てしまっていたら移動し直す
     if (el.parentElement !== container) {
       container.appendChild(el);
     }
@@ -306,10 +311,10 @@ function updateFieldStatusPanels() {
     const currentPp = s.pp || 0;
     const maxPp = s.ppMax || 2;
 
-    // position: fixed で画面に固定（フィールドのズーム・パンに影響されない）
+    // #field は position:fixed;inset:0 なので absolute で画面座標に固定できる
     if (isMine) {
       el.style.cssText = `
-        position: fixed;
+        position: absolute;
         left: 16px;
         bottom: 16px;
         width: 220px;
@@ -325,7 +330,7 @@ function updateFieldStatusPanels() {
       `;
     } else {
       el.style.cssText = `
-        position: fixed;
+        position: absolute;
         right: 16px;
         top: 80px;
         width: 180px;

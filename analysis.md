@@ -4211,3 +4211,33 @@ grep 結果: game.js に window.startSoloGame が定義されている
 | 35 | `GameTimer` Firebase 未同期 | 設計判断 |
 | 2 | デッキ枚数 0 でも READY 可能 | 低 |
 | 18/26 | モンスター討伐 PP+2 ログ2行 | 低 |
+
+
+---
+
+## 修正ログ（Fix Log）
+
+### 完了済み修正
+
+| # | 問題 | ファイル | 修正内容 | ステータス |
+|---|------|---------|---------|-----------|
+| 15/17 | `_lastRoundSeen` リセット漏れ | `pvpveWatcher.js` / `game.js` | `startPvpveWatcher` 先頭に `_lastRoundSeen = 0` 追加。`executeReset` に `startPvpveWatcher()` 再呼び出しを追加 | ✅ 完了 |
+| 31 | `_evoPhaseTransitioning` リセット漏れ | `game.js` | `executeReset` と `resetAllGameVariables` の両方に `window._evoPhaseTransitioning = false` を追加 | ✅ 完了 |
+| 45 | `statusBlocks.js` デッキ内容漏洩 | `statusBlocks.js` | `updateAndSyncBlockOwner` で相手 state 送信時にデッキを `HIDDEN` 化するよう修正 | ✅ 完了 |
+| 20 | PP ログがチャット欄に毎回出力 | `game.js` | `addVal` の PP ログを `window.devMode` フラグ時のみ出力するよう変更 | ✅ 完了 |
+| 32 | Firebase 書き込み失敗時のエラーハンドリングなし | `battlePhase.js` | `writeMatchData` / `writeMyState` の戻り値を確認し、失敗時に `console.warn` を出力するよう修正 | ✅ 完了 |
+| 28 | 両者同時 HP=0 時の winner 競合 | `game.js` | `draw` の場合は `player1` のみ Firebase に書き込むよう修正 | ✅ 完了 |
+| 2 | デッキ枚数 0 でも READY 可能 | `matchSetup.js` | `toggleReady` に `getDeckCardCount` チェックを追加（0枚なら READY 不可） | ✅ 完了 |
+
+### 未対応（設計判断 or 低優先度）
+
+| # | 問題 | 理由 |
+|---|------|------|
+| 3/25 | 進化の道ロジック4箇所重複 | リファクタコスト中。動作に影響なし |
+| 13 | arcana が defstackMax をリセットしない | ゲームデザインの判断が必要 |
+| 24 | `calcNextTurn` デッドコード | 削除可能だが実害なし |
+| 30 | `showR1T1Selection()` 空実装 | 通常フローでは呼ばれない |
+| 35 | `GameTimer` Firebase 未同期 | 現状の仕様として許容 |
+| 40 | `showGameplayMessage` と `showNotification` 重複 | 動作に影響なし |
+| 41〜44, 47 | デッドファイル / デッドコード | 削除可能だが実害なし |
+| 46 | `deleteAccount` が Firebase データを削除しない | 別途 Firebase 側の実装が必要 |

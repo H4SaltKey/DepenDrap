@@ -1,22 +1,9 @@
-let dragged = null;
+/**
+ * drag.js
+ * 旧世代のドラッグ実装（render.js と共に使用されていたが現在は未使用）
+ * makeDraggable は cardManager.js の enablePointerDrag に置き換え済み。
+ * document.onmousemove の上書きを除去して無害化。
+ */
 
-function makeDraggable(el, obj){
-  el.onmousedown = (e)=>{
-    dragged = {el, obj};
-  };
-}
-
-document.onmousemove = (e)=>{
-  if(!dragged) return;
-
-  dragged.obj.x = e.pageX;
-  dragged.obj.y = e.pageY;
-
-  dragged.el.style.left = dragged.obj.x + "px";
-  dragged.el.style.top = dragged.obj.y + "px";
-};
-
-const releaseDrag = () => {
-  dragged = null;
-};
-window.DragManager.register(releaseDrag);
+// 現行のドラッグ処理は dragManager.js + cardManager.js の enablePointerDrag が担当。
+// このファイルは後方互換のために残しているが、実質的に何も行わない。

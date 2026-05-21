@@ -594,9 +594,18 @@ function updateAndSyncBlockOwner(owner) {
     if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
   } else {
     // 双方向編集のため相手のstateを直接Push
+    // _getMyStateForSync() 経由でデッキ内容を HIDDEN 化してから送信
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && typeof firebaseClient !== "undefined" && firebaseClient.db) {
-      firebaseClient.writeMyState(gameRoom, owner, state[owner]).catch(e => console.error(e));
+      // 相手の state からデッキ内容を隠蔽したオブジェクトを生成
+      const s = state[owner];
+      const deckLength = Array.isArray(s?.deck) ? s.deck.length : 0;
+      const safeState = {
+        ...s,
+        deck: Array(deckLength).fill("HIDDEN"),
+        deckCount: deckLength
+      };
+      firebaseClient.writeMyState(gameRoom, owner, safeState).catch(e => console.error(e));
     }
   }
   renderStatusBlocks();

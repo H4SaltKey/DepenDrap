@@ -141,6 +141,7 @@ function resetAllGameVariables() {
   window._firstDrawAdvanceSent = false;  // ファーストドロー送信フラグをリセット
   window.__playingStarted = false;       // ファーストドロー→playing遷移フラグをリセット
   window._orderPhaseAutoStartScheduled = false; // Order phase auto-start flag
+  window._evoPhaseTransitioning = false;         // 進化の道フェーズ遷移フラグをリセット
   window._soloStartMode = false;
   cardsReadyFired = false;
   lastStateJson = "";
@@ -482,7 +483,7 @@ function addVal(owner, key, delta) {
   }
   
   s[key] = v;
-  if (key === "pp" && typeof addGameLog === "function") {
+  if (key === "pp" && typeof addGameLog === "function" && window.devMode) {
     addGameLog(`[システム] ${s.username || owner} のPP: ${prev} → ${s[key]}`);
   }
   if (key === "exp") checkLevelUp(owner);
@@ -1378,7 +1379,11 @@ function checkGameResult() {
 
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && firebaseClient?.db) {
-      firebaseClient.writeMatchData(gameRoom, state.matchData);
+      // draw の場合は player1 のみ書き込む（両者が同時に書き込む競合を防止）
+      const shouldWrite = (winner !== 'draw') || (myRole === 'player1');
+      if (shouldWrite) {
+        firebaseClient.writeMatchData(gameRoom, state.matchData);
+      }
     }
     
     // 即座にリザルトを表示
@@ -1464,6 +1469,7 @@ async function executeReset(syncShared = true) {
   window._firstDrawPhaseStarted = false; // ファーストドローフェーズ開始フラグをリセット
   window._firstDrawAdvanceSent = false;  // ファーストドロー送信フラグをリセット
   window._lastWinner = null;           // 勝者情報をクリア
+  window._evoPhaseTransitioning = false; // 進化の道フェーズ遷移フラグをリセット
   
   // DOM上のリザルト画面があれば削除
   const overlay = document.getElementById('gameResultOverlay');
@@ -1490,6 +1496,16 @@ async function executeReset(syncShared = true) {
       console.log("[Reset] ウォッチャーの再セットアップに成功しました。");
     } catch (watcherErr) {
       console.error("[Reset] ウォッチャー再セットアップ中にエラー:", watcherErr);
+    }
+  }
+
+  // pvpveWatcher を再起動（_lastRoundSeen をリセットしてラウンド1のモンスター出現を保証）
+  if (typeof window.startPvpveWatcher === "function") {
+    try {
+      window.startPvpveWatcher();
+      console.log("[Reset] pvpveWatcher の再起動に成功しました。");
+    } catch (pvpveErr) {
+      console.error("[Reset] pvpveWatcher 再起動中にエラー:", pvpveErr);
     }
   }
 

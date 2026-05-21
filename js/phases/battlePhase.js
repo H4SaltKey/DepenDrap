@@ -38,17 +38,32 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   }
 
   const op          = me === "player1" ? "player2" : "player1";
-  const firstPlayer = m.firstPlayer || "player1";
 
-  if (m.turnPlayer === firstPlayer) {
-    m.turnPlayer = op;
-  } else {
-    m.turnPlayer = firstPlayer;
-    m.turn += 1;
-    if (m.turn > (window.TURNS_PER_ROUND || 5)) {
-      m.turn = 1;
-      m.round += 1;
+  // calcNextTurn（gameRules.js）でターン計算（純粋関数）
+  const next = (typeof window.calcNextTurn === "function")
+    ? window.calcNextTurn(m)
+    : null;
+
+  if (next) {
+    m.turnPlayer = next.turnPlayer;
+    m.turn       = next.turn;
+    m.round      = next.round;
+    if (next.roundChanged) {
       addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
+    }
+  } else {
+    // フォールバック（calcNextTurn が未定義の場合）
+    const firstPlayer = m.firstPlayer || "player1";
+    if (m.turnPlayer === firstPlayer) {
+      m.turnPlayer = op;
+    } else {
+      m.turnPlayer = firstPlayer;
+      m.turn += 1;
+      if (m.turn > (window.TURNS_PER_ROUND || 5)) {
+        m.turn = 1;
+        m.round += 1;
+        addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
+      }
     }
   }
 
@@ -64,9 +79,15 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {
-    await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    const matchOk = await firebaseClient.writeMatchData(gameRoom, state.matchData);
+    if (!matchOk) {
+      console.warn("[handleTurnEnd] writeMatchData 失敗。リトライ済みだが同期できませんでした。");
+    }
     if (typeof _getMyStateForSync === "function") {
-      await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+      const stateOk = await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync());
+      if (!stateOk) {
+        console.warn("[handleTurnEnd] writeMyState 失敗。リトライ済みだが同期できませんでした。");
+      }
     }
   }
 

@@ -19,6 +19,9 @@
     const gameRoom = localStorage.getItem("gameRoom");
     if (!gameRoom || !window.firebaseClient?.db) return;
 
+    // _lastRoundSeen をリセット（再戦時にラウンド1のモンスター出現を保証）
+    _lastRoundSeen = 0;
+
     stopPvpveWatcher();
 
     _pvpveRef = window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve`);

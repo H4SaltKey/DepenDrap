@@ -363,6 +363,10 @@ async function requestRoomListRefresh() {
 async function toggleReady() {
   if (!currentRoom || !currentPlayerKey) { addLog("system", "先にルームに参加してください。"); return; }
   if (!selectedDeck()) { addLog("system", "デッキを選択してください。"); return; }
+
+  // デッキ枚数チェック（0枚では READY 不可）
+  const deckCount = getDeckCardCount(selectedDeck());
+  if (deckCount === 0) { addLog("system", "デッキにカードがありません。カードを追加してください。"); return; }
   
   const newReady = !myReady;
   

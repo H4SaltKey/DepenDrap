@@ -1760,15 +1760,15 @@ function bindConnectionUiEvents() {
 
   firebaseClient.on("disconnected", () => {
     showWarningMessage("接続が切断されました。再接続を試みています…");
-    if (typeof showGameplayMessage === "function") {
-      showGameplayMessage("再接続中", "#ffb347");
+    if (typeof showNotification === "function") {
+      showNotification("再接続中", "#ffb347");
     }
   });
 
   firebaseClient.on("connected", () => {
     showSuccessMessage("接続が回復しました。");
-    if (typeof showGameplayMessage === "function") {
-      showGameplayMessage("接続復帰", "#00ff99");
+    if (typeof showNotification === "function") {
+      showNotification("接続復帰", "#00ff99");
     }
   });
 }

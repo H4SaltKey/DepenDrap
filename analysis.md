@@ -4228,6 +4228,10 @@ grep 結果: game.js に window.startSoloGame が定義されている
 | 32 | Firebase 書き込み失敗時のエラーハンドリングなし | `battlePhase.js` | `writeMatchData` / `writeMyState` の戻り値を確認し、失敗時に `console.warn` を出力するよう修正 | ✅ 完了 |
 | 28 | 両者同時 HP=0 時の winner 競合 | `game.js` | `draw` の場合は `player1` のみ Firebase に書き込むよう修正 | ✅ 完了 |
 | 2 | デッキ枚数 0 でも READY 可能 | `matchSetup.js` | `toggleReady` に `getDeckCardCount` チェックを追加（0枚なら READY 不可） | ✅ 完了 |
+| 24 | `calcNextTurn` デッドコード | `battlePhase.js` / `gameRules.js` | `handleTurnEnd` で `calcNextTurn` を使うよう統一。デッドコード解消 | ✅ 完了 |
+| 23/41/42/43 | デッドファイル削除 | 各ファイル | `chatUI.js`(chat/) / `card.js` / `render.js` / `firebase-sync.js` / `cardPreview.js` / `result.js` を削除 | ✅ 完了 |
+| 47 | `drag.js` の `document.onmousemove` 上書き | `drag.js` | 危険な `document.onmousemove` 上書きを除去してファイルを無害化 | ✅ 完了 |
+| 40 | `showGameplayMessage` と `showNotification` 重複 | `messaging.js` / `game.js` | `showGameplayMessage` を削除し、呼び出し元を `showNotification` に統一 | ✅ 完了 |
 
 ### 未対応（設計判断 or 低優先度）
 

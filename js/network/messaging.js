@@ -37,32 +37,6 @@ function showMessageToast(text, type = 'info') {
   }, 1700);
 }
 
-// ===== GAMEPLAY NOTIFICATIONS (center screen, blocking attention) =====
-/**
- * Show an important gameplay notification (centered, large)
- * @param {string} text - Message text
- * @param {string} color - Hex color code
- */
-function showGameplayMessage(text, color = "#e0d0a0") {
-  const div = document.createElement('div');
-  div.style.cssText = `
-    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
-    z-index: 9999; pointer-events: none; text-align: center;
-    font-family: 'Outfit', sans-serif; white-space: nowrap;
-  `;
-  div.innerHTML = `
-    <h2 style="
-      font-size: 48px; font-weight: 900; color: ${color}; margin: 0;
-      letter-spacing: 10px; text-transform: uppercase;
-      animation: notifyIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-                 notifyOut 0.5s 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      text-shadow: 0 0 20px ${color}66;
-    ">${text}</h2>
-  `;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 2500);
-}
-
 // ===== ERROR MESSAGES (red toast with error styling) =====
 /**
  * Show an error message
@@ -161,7 +135,6 @@ function showFallbackMessage(text) {
 // ===== BACKWARDS COMPATIBILITY =====
 // Make functions available globally for easy migration
 window.showMessageToast = showMessageToast;
-window.showGameplayMessage = showGameplayMessage;
 window.showErrorMessage = showErrorMessage;
 window.showWarningMessage = showWarningMessage;
 window.showSuccessMessage = showSuccessMessage;

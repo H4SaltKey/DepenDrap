@@ -3007,3 +3007,1207 @@ function makeCharState() {
 - `game.js` の `onTimerTick` 定義 → タイマー切れ時の処理
 - `game.js` の `applyLevelStats` → `defstackMax` の設定タイミング
 - CSS ファイル（`notifyIn` / `roundFadeIn` 等のキーフレーム定義）
+
+
+---
+
+## Round 25 — timerSync / animationUI / gameState 詳細確認（訂正・補足）
+
+### A. CSS アニメーションキーフレームの実際の定義場所（問題 #36 訂正）
+
+**`notifyIn` / `notifyOut` → `game.js` の `injectGameStyles()` IIFE で動的注入**
+
+```js
+(function injectGameStyles() {
+  if (document.getElementById('gameAnimStyles')) return;
+  const s = document.createElement('style');
+  s.id = 'gameAnimStyles';
+  s.textContent = `
+    @keyframes notifyIn { ... }
+    @keyframes notifyOut { ... }
+    @keyframes resultFadeIn { ... }
+    @keyframes fadeIn { ... }
+    @keyframes dicePulse { ... }
+    @keyframes diceRolling { ... }
+    @keyframes pulse { ... }
+    ...
+  `;
+  document.head.appendChild(s);
+})();
+```
+
+**`roundFadeIn` / `roundFadeOut` / `roundContentScale` / `roundNumberPulse` / `roundSubtitleSlide` → `game.js` の `injectRoundNotificationStyles()` IIFE で動的注入**
+
+```js
+(function injectRoundNotificationStyles() {
+  if (document.getElementById('roundNotificationStyles')) return;
+  const s = document.createElement('style');
+  s.id = 'roundNotificationStyles';
+  s.textContent = `
+    @keyframes roundFadeIn { ... }
+    @keyframes roundFadeOut { ... }
+    @keyframes roundContentScale { ... }
+    @keyframes roundNumberPulse { ... }
+    @keyframes roundSubtitleSlide { ... }
+  `;
+  document.head.appendChild(s);
+})();
+```
+
+- **問題 #36 は誤り** → キーフレームは `game.js` の IIFE で `<head>` に動的注入される ✅
+- `animationUI.js` が `game.js` より後に読み込まれるため、`showNotification` / `showRoundNotification` が呼ばれる時点でキーフレームは定義済み ✅
+- `subNotifyIn` のみ `animationUI.js` 内で動的追加（`notificationStyles` スタイルタグ）
+
+**`messaging.js` の `showNotification` との重複**
+
+- `messaging.js` にも `showNotification` 相当の関数が存在し、`notifyIn` / `notifyOut` を使用
+- `game.js` の `injectGameStyles` が先に実行されるため、`messaging.js` の通知も正しくアニメーションする ✅
+
+---
+
+### B. `onTimerTick` の実際の定義場所（確定）
+
+**`timerUI.js` に定義（`game.js` ではなかった）**
+
+```js
+window.onTimerTick = function() {
+  if (typeof GameTimer === "undefined") return;
+  const diceRemaining = GameTimer.getRemainingMs('dice');
+  const statusMsg = document.getElementById("dice-status-msg");
+  if (statusMsg) {
+    let html = "";
+    if (diceRemaining > 0) {
+      html = `ダイスロール開始まで: ${Math.ceil(diceRemaining / 1000)} 秒`;
+    } else if (state.matchData.status === "setup_dice" && s.diceValue < 0) {
+      html = `ダイスを振ってください！`;
+    }
+    if (html !== lastStatusHtml) {
+      statusMsg.innerHTML = html;
+      lastStatusHtml = html;
+    }
+  }
+};
+```
+
+- `onTimerTick` は **ダイスフェーズのカウントダウン表示のみ**を担当
+- タイマー切れ時の処理（自動ダイスロール等）は**実装されていない**
+- `GameTimer.isExpired('dice')` を呼ばない → タイマー切れを検知しない
+
+**`GameTimer` の実際の使用状況（確定）**
+
+| 関数 | 呼び出し元 | 用途 |
+|------|-----------|------|
+| `GameTimer.start('dice', 10000)` | `runPhaseProgression()` | ダイスフェーズ開始時に 10 秒タイマーをセット |
+| `GameTimer.getRemainingMs('dice')` | `timerUI.js` の `onTimerTick` | カウントダウン表示 |
+| `GameTimer.applyFromServer` | **呼び出し元なし** | Firebase 同期用だが未使用 |
+| `GameTimer.serialize` | **呼び出し元なし** | Firebase 書き込み用だが未使用 |
+| `GameTimer.pause` / `resume` / `stop` | **呼び出し元なし** | 未使用 |
+| `GameTimer.isExpired` | **呼び出し元なし** | タイマー切れ検知なし |
+
+**結論（問題 #35 確定）**
+
+- `GameTimer` は「ダイスフェーズのカウントダウン表示」にのみ使われている
+- Firebase 同期（`applyFromServer` / `serialize`）は**完全に未使用**
+- タイマー切れ時の自動処理（強制ダイスロール等）は**実装されていない**
+- 「ホスト権威タイマー」の設計思想は実装されていない → **表示専用タイマー**として機能している
+
+---
+
+### C. `_evoPhaseTransitioning` のリセット状況（問題 #31 確定）
+
+**`executeReset` のリセット対象フラグ一覧**
+
+```js
+window._gameStartInitiated = false;
+window._gameStartedAt = Date.now();
+window._resultDismissed = false;
+window._resultShowing = false;
+window.__playingStarted = false;
+window._firstDrawPhaseStarted = false;
+window._firstDrawAdvanceSent = false;
+window._lastWinner = null;
+window._soloStartMode = false;
+// ← _evoPhaseTransitioning は含まれない ❌
+```
+
+**`resetAllGameVariables` のリセット対象フラグ一覧**
+
+```js
+gameReady = false;
+lastResetAt = 0;
+lastTurnPlayer = null;
+window._lastRound = undefined;
+window._isResetting = false;
+window._resultShowing = false;
+window._resultDismissed = false;
+window._firstDrawPhaseStarted = false;
+window._firstDrawAdvanceSent = false;
+window.__playingStarted = false;
+window._orderPhaseAutoStartScheduled = false;
+window._soloStartMode = false;
+window._gameStartInitiated = false;
+// ← _evoPhaseTransitioning は含まれない ❌
+```
+
+**問題 #31 確定: `_evoPhaseTransitioning` は両方でリセットされない**
+
+- `setupPhase.js` の `finally` ブロックで `_evoPhaseTransitioning = false` にリセットされる
+- ただし遷移中に例外が発生して `finally` が実行されない場合（ページリロード等）は `true` のまま残る
+- リセット後に `setup_evolution` フェーズに入ると、`_evoPhaseTransitioning = true` のまま → 遷移が実行されない
+- **修正**: `executeReset` と `resetAllGameVariables` に `window._evoPhaseTransitioning = false;` を追加
+
+---
+
+### D. `applyLevelStats` と `defstackMax` の設定（問題 #38 確定）
+
+**`applyLevelStats` の実装（確定）**
+
+```js
+function applyLevelStats(owner, force = false) {
+  const s = state[owner];
+  const lv = s.level || 1;
+  if (!force && s._lastAppliedLv === lv) return;  // 同レベルなら再計算しない
+  const idx = Math.min(lv - 1, LEVEL_MAX - 1);
+  const prevDef = Number(s.def) || 0;
+  s.atk        = BASE_INITIAL_STATE.atk        + (LEVEL_STATS.atk[idx]        || 0);
+  s.def        = BASE_INITIAL_STATE.def        + (LEVEL_STATS.def[idx]        || 0);
+  s.instantDef = BASE_INITIAL_STATE.instantDef + (LEVEL_STATS.instantDef[idx] || 0);
+  const defIncrease = (Number(s.def) || 0) - prevDef;
+  if (defIncrease > 0) {
+    s.defstack = (Number(s.defstack) || 0) + defIncrease;  // def 増加分だけ defstack も増やす
+  }
+  s.defstackMax = Number(s.def) || 0;  // ← defstackMax = def に設定
+  s._lastAppliedLv = lv;
+}
+```
+
+**`syncDerivedStats` との関係**
+
+```js
+function syncDerivedStats(owner) {
+  const s = state[owner];
+  s.defstackMax = s.def || 0;  // ← defstackMax = def に設定（applyLevelStats と同じ）
+  s.expMax = calcExpMax(s.level || 1);
+}
+```
+
+**`defstackMax` の設定フロー（確定）**
+
+```
+ゲーム開始時:
+  makeCharState() → defstackMax = 0, def = 0
+  ↓
+  applyLevelStats(owner, true) が executeReset 内で呼ばれる
+  ↓
+  LEVEL_STATS.def[0] が設定されていれば def > 0 → defstackMax = def > 0
+  LEVEL_STATS.def[0] = 0 の場合は defstackMax = 0 のまま
+```
+
+**問題 #38 の評価（確定）**
+
+- `defstackMax: 0` は初期値だが、`applyLevelStats` が呼ばれると `LEVEL_STATS.def[0]` の値に更新される
+- `LEVEL_STATS.def[0]` が 0 の場合（レベル1の def ボーナスなし）は `defstackMax = 0` のまま
+- **実際の挙動は `LEVEL_STATS` の内容に依存** → `LEVEL_STATS` の確認が必要
+- `syncDerivedStats` も `defstackMax = def` を設定するため、`addVal` / `setVal` 後も正しく更新される ✅
+
+---
+
+### Round 25 サマリー
+
+**問題 #36 訂正**
+
+- CSS アニメーションキーフレームは `game.js` の IIFE で動的注入される → **問題なし** ✅
+- 問題 #36 を「解決済み」に変更
+
+**確定した問題（更新）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 31 | `_evoPhaseTransitioning` が `executeReset` / `resetAllGameVariables` でリセットされない | 低 | 両関数に `window._evoPhaseTransitioning = false;` を追加 |
+| 35 | `GameTimer` が表示専用タイマーとして機能（Firebase 同期・タイマー切れ処理なし） | 低〜中 | 仕様として許容するか、タイマー切れ時の自動処理を追加 |
+| 38 | `defstackMax` の初期値 0 → `LEVEL_STATS.def[0]` が 0 の場合は初期状態で防御スタックなし | 要確認 | `LEVEL_STATS` の内容確認 |
+
+**設計上の特徴（意図的）**
+
+- `injectGameStyles` / `injectRoundNotificationStyles` は IIFE で初回のみ実行 → 重複注入なし ✅
+- `onTimerTick` はダイスフェーズのカウントダウン表示のみ → シンプルな設計
+- `applyLevelStats` は `_lastAppliedLv` キャッシュで同レベルの再計算をスキップ → 最適化 ✅
+- `syncDerivedStats` と `applyLevelStats` の両方が `defstackMax = def` を設定 → 冗長だが安全
+
+**全体の未解決リスト（Round 1〜25 最終版）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 2 | デッキ枚数 0 でも READY 可能 | 低 | matchSetup.js に枚数チェック追加 |
+| 3/25 | 進化の道ロジックが3箇所に重複 | 中 | `getEvolutionPathParam` を統一使用 |
+| 13 | arcana が defstackMax をリセットしない | 低〜中 | damageCalc.js に1行追加 |
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 中 | `startPvpveWatcher` に `_lastRoundSeen = 0` + `executeReset` から再呼び出し |
+| 18/26 | モンスター討伐 PP+2 ログ2行 / ドロー時 PP ログ | 低 | `addVal` の pp ログ削除 or `MonsterCombatSystem` 側のログ削除 |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低〜中 | `addVal` の pp ログをデバッグフラグ化 |
+| 24 | `calcNextTurn` デッドコード | 低 | `handleTurnEnd` で使用するか削除 |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし | 低 | 属性設定コードを追加 or クリーンアップ処理を削除 |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 | player1 のみ書き込む等の調整 |
+| 30 | `showR1T1Selection()` が空実装 | 中 | 実装するか `startR1T1` 自体を削除 |
+| 31 | `_evoPhaseTransitioning` が `executeReset` / `resetAllGameVariables` でリセットされない | 低 | 両関数に `window._evoPhaseTransitioning = false;` を追加 |
+| 32 | `writeMyState` / `writeMatchData` のリトライ失敗時に呼び出し元がエラーハンドリングしない | 低 | 呼び出し元で `false` チェックを追加 |
+| 35 | `GameTimer` が表示専用タイマーとして機能（Firebase 同期・タイマー切れ処理なし） | 低〜中 | 仕様として許容するか、タイマー切れ時の自動処理を追加 |
+| 38 | `defstackMax` 初期値 0 → `LEVEL_STATS.def[0]` 依存 | 要確認 | `LEVEL_STATS` の内容確認 |
+| 39 | `evolutionPath` 等が `BASE_INITIAL_STATE` に含まれない | 低 | `BASE_INITIAL_STATE` に追加 or `executeReset` で確実にリセット（現状は `executeReset` でリセット済み） |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低 | ファイル削除 |
+
+### 次に調べる場所
+
+- `data/levelStats.json` または `LEVEL_STATS` の定義 → `def[0]` の値確認（問題 #38）
+- `js/game/core.js` の `load()` → `LEVEL_STATS` の読み込みフロー
+- `js/game/game.js` の `startR1T1()` → 空実装の `showR1T1Selection` の影響範囲（問題 #30）
+
+
+---
+
+## Round 26 — LEVEL_STATS 実データ / startR1T1 詳細 / firstDrawUnchosenMarked / calcNextTurn
+
+### A. LEVEL_STATS 実データ（問題 #38 確定）
+
+**`data/levelStats.json` の内容**
+
+```json
+{
+  "atk":        [0, 0, 1, 2, 2, 3],
+  "def":        [0, 1, 1, 2, 3, 4],
+  "instantDef": [1, 1, 2, 2, 3, 3]
+}
+```
+
+**`core.js` のデフォルト値（`loadLevelStats` 失敗時のフォールバック）**
+
+```js
+let LEVEL_STATS = {
+  atk:        [0, 0, 1, 2, 2, 3],
+  def:        [0, 1, 1, 2, 3, 4],
+  instantDef: [1, 1, 2, 2, 3, 3]
+};
+```
+
+- `data/levelStats.json` とデフォルト値が**完全に一致** → ファイル読み込み失敗時も同じ値が使われる ✅
+
+**`applyLevelStats` の計算結果（Lv1）**
+
+```
+BASE_INITIAL_STATE.def = 0
+LEVEL_STATS.def[0]     = 0   ← Lv1 の def ボーナスは 0
+
+s.def        = 0 + 0 = 0
+s.defstackMax = 0
+```
+
+- **Lv1 では `def = 0` → `defstackMax = 0`** → 初期状態で防御スタックなし
+- `defstack = 0` かつ `defstackMax = 0` → 通常ダメージが毎回1ダメ通過する
+- **これは意図的な設計**: Lv1 は防御スタックなし、Lv2 以降で `def` が増加して防御スタックが機能する
+
+**レベル別 def / defstackMax の推移**
+
+| Lv | def ボーナス | def 合計 | defstackMax |
+|----|------------|---------|-------------|
+| 1 | 0 | 0 | 0 |
+| 2 | 1 | 1 | 1 |
+| 3 | 1 | 1 | 1 |
+| 4 | 2 | 2 | 2 |
+| 5 | 3 | 3 | 3 |
+| 6 | 4 | 4 | 4 |
+
+- Lv2 で初めて `defstackMax = 1` → 通常ダメージを1回吸収できる
+- Lv6 で `defstackMax = 4` → 4回連続で通常ダメージを吸収できる
+
+**問題 #38 → 解決済み（意図的な設計）**
+
+- `defstackMax: 0` の初期値は「Lv1 は防御スタックなし」という仕様を正しく表現している ✅
+- `applyLevelStats` が Lv2 以降で `defstackMax` を増加させる設計 ✅
+
+---
+
+### B. startR1T1 の詳細（問題 #30 詳細確認）
+
+**`startR1T1()` の実装（確定）**
+
+```
+startR1T1()
+  ├─ firstDrawDone === true → return（ファーストドロー済みならスキップ）
+  ├─ deck.length < 5 → return（デッキ不足）
+  ├─ deck.pop() × 5 → takenCards（5枚取り出し）
+  ├─ 各カードを createCard() で DOM 生成
+  │    visibility = "none"（非公開）
+  │    placeCard() でデッキ位置付近に配置（x: deckX+100+i*80, y: deckY-200）
+  ├─ showR1T1Selection(takenCards.length)  ← 空実装
+  └─ addGameLog("R1T1を開始しました")
+```
+
+**`showR1T1Selection` の実装**
+
+```js
+/** R1T1 用の追加 UI（未実装）。盤面への5枚配置のみ startR1T1 が担当。 */
+function showR1T1Selection(_n) {}
+```
+
+- コメントに「未実装」と明記されている
+- `startR1T1` は5枚を盤面に配置するが、**3枚選択 UI が出ない**
+- 5枚が非公開で盤面に置かれたまま → プレイヤーは手動で3枚を選んで残り2枚を山札に戻す必要がある
+- ファーストドローフェーズ（`setup_first_draw`）が正常に動作している場合は `startR1T1` は呼ばれない
+  → `firstDrawDone === true` チェックで早期リターン
+
+**`startR1T1` が呼ばれる条件**
+
+```
+handleMatchStateTransitions()
+  └─ roundChanged && isFirstTurnOfRound && m.round === 1 && m.firstDrawDone !== true
+       → setTimeout(() => startR1T1(), 4500)
+```
+
+- `firstDrawDone !== true` の場合のみ呼ばれる
+- 通常フロー（`setup_first_draw` → `playing`）では `firstDrawDone = true` が設定される → `startR1T1` は呼ばれない
+- **フォールバックとして設計されているが、UI が未実装のため実質的に機能しない**
+
+**問題 #30 の評価（確定）**
+
+- `showR1T1Selection` が空実装 → 選択 UI なし
+- ただし通常フローでは呼ばれない（`firstDrawDone = true` で保護）
+- 呼ばれるのは「ファーストドローフェーズをスキップした場合」のみ → 現実的には発生しにくい
+- **深刻度: 低〜中**（通常フローでは問題なし、フォールバックが機能しないだけ）
+
+---
+
+### C. firstDrawUnchosenMarked の実態（問題 #27 確定）
+
+**読み取り箇所（firstDrawPhase.js）**
+
+```js
+const unchosenCards = Array.from(
+  field.querySelectorAll('[data-firstDrawUnchosenMarked="true"]')
+);
+unchosenCards.forEach((card) => {
+  if (card.dataset.firstDrawReturned !== "1") {
+    const rawId = card.dataset.id;
+    if (rawId) insertCardIntoDeckAtRandom(card.dataset.owner, storeId);
+  }
+  card.remove();
+});
+```
+
+- `tryAdvanceFirstDrawToPlayingIfBothReady()` 内で呼ばれる
+- `data-firstDrawUnchosenMarked="true"` を持つカードを山札に戻してから削除する
+
+**書き込み箇所（全ファイル検索結果）**
+
+- `data-firstDrawUnchosenMarked="true"` を**設定するコードが存在しない**（確定）
+- `querySelectorAll('[data-firstDrawUnchosenMarked="true"]')` は常に空配列を返す
+- クリーンアップ処理は**デッドコード**
+
+**問題 #27 の評価（確定）**
+
+- `firstDrawUnchosenMarked` 属性を設定するコードが存在しない → クリーンアップ処理は機能しない
+- ただし通常フローでは「確定ボタン押下時に未選択カードを `insertCardIntoDeckAtRandom` で戻す」処理が別途実装されている
+  → `firstDrawUnchosenMarked` なしでも正しく動作している ✅
+- このクリーンアップは「何らかの理由でカードが残った場合の安全弁」として設計されたが、属性設定コードが実装されなかった
+- **実害なし**（空のクリーンアップが走るだけ）
+
+---
+
+### D. calcNextTurn のデッドコード状況（問題 #24 確定）
+
+**`calcNextTurn` の定義**
+
+```js
+function calcNextTurn(matchData) {
+  const { turn, round, turnPlayer, firstPlayer } = matchData;
+  const op = turnPlayer === "player1" ? "player2" : "player1";
+  // ... ターン/ラウンド計算ロジック
+}
+window.calcNextTurn = calcNextTurn;
+```
+
+- `gameRules.js` に定義、`window.calcNextTurn` としてグローバル公開
+- `handleTurnEnd`（`battlePhase.js`）は `calcNextTurn` を**使わず**、直接 `m.turn` / `m.round` / `m.turnPlayer` を計算している
+
+**呼び出し元の検索結果**
+
+- `calcNextTurn` を呼ぶコードは `gameRules.js` の定義のみ → **完全なデッドコード**
+- `window.calcNextTurn` として公開されているが、どこからも参照されていない
+
+**問題 #24 の評価（確定）**
+
+- `calcNextTurn` は定義・公開されているが呼び出し元なし → デッドコード
+- `handleTurnEnd` が独自にターン計算を行っている → 将来的に `calcNextTurn` を使うよう統一するか削除するかの判断が必要
+- **実害なし**（デッドコードが存在するだけ）
+
+---
+
+### Round 26 サマリー
+
+**問題 #38 → 解決済み（意図的な設計）**
+
+- `defstackMax: 0` の初期値は「Lv1 は防御スタックなし」という仕様 ✅
+- Lv2 以降で `applyLevelStats` が `defstackMax` を増加させる ✅
+
+**問題 #27 → 実害なし（デッドコード）**
+
+- `firstDrawUnchosenMarked` 設定コードなし → クリーンアップは空振りするだけ
+- 通常フローは別の処理で正しく動作している ✅
+
+**問題 #24 → 実害なし（デッドコード）**
+
+- `calcNextTurn` は定義のみ、呼び出し元なし
+
+**問題 #30 → 低〜中（フォールバック未実装）**
+
+- `showR1T1Selection` は空実装、コメントに「未実装」と明記
+- 通常フローでは呼ばれない（`firstDrawDone = true` で保護）
+
+**全体の未解決リスト（Round 1〜26 最終版）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 2 | デッキ枚数 0 でも READY 可能 | 低 | matchSetup.js に枚数チェック追加 |
+| 3/25 | 進化の道ロジックが3箇所に重複 | 中 | `getEvolutionPathParam` を統一使用 |
+| 13 | arcana が defstackMax をリセットしない | 低〜中 | damageCalc.js に1行追加 |
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 中 | `startPvpveWatcher` に `_lastRoundSeen = 0` + `executeReset` から再呼び出し |
+| 18/26 | モンスター討伐 PP+2 ログ2行 / ドロー時 PP ログ | 低 | `addVal` の pp ログ削除 or `MonsterCombatSystem` 側のログ削除 |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低〜中 | `addVal` の pp ログをデバッグフラグ化 |
+| 24 | `calcNextTurn` デッドコード | 低 | `handleTurnEnd` で使用するか削除 |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし（クリーンアップが空振り） | 低 | 実害なし。属性設定コードを追加 or クリーンアップ処理を削除 |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 | player1 のみ書き込む等の調整 |
+| 30 | `showR1T1Selection()` が空実装（フォールバック未実装） | 低〜中 | 実装するか `startR1T1` 自体を削除 |
+| 31 | `_evoPhaseTransitioning` が `executeReset` / `resetAllGameVariables` でリセットされない | 低 | 両関数に `window._evoPhaseTransitioning = false;` を追加 |
+| 32 | `writeMyState` / `writeMatchData` のリトライ失敗時に呼び出し元がエラーハンドリングしない | 低 | 呼び出し元で `false` チェックを追加 |
+| 35 | `GameTimer` が表示専用タイマーとして機能（Firebase 同期・タイマー切れ処理なし） | 低〜中 | 仕様として許容するか、タイマー切れ時の自動処理を追加 |
+| 39 | `evolutionPath` 等が `BASE_INITIAL_STATE` に含まれない | 低 | `executeReset` で確実にリセット済み（現状は問題なし） |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低 | ファイル削除 |
+
+**解決済みに変更**
+
+| # | 問題 | 理由 |
+|---|------|------|
+| 36 | アニメーションキーフレーム未定義 | `game.js` の IIFE で動的注入済み ✅ |
+| 38 | `defstackMax` 初期値 0 | Lv1 は防御スタックなしという意図的な設計 ✅ |
+
+### 次に調べる場所
+
+- `js/game/phases/battlePhase.js` の `handleTurnEnd` → `calcNextTurn` を使わない独自ターン計算の詳細
+- `js/ui/contextMenu.js` の `arcana` ダメージ後の `defstackMax` リセット問題（問題 #13）の修正コスト確認
+- 問題 #15/17 の修正: `pvpveWatcher.js` の `_lastRoundSeen` リセット + `executeReset` からの `startPvpveWatcher` 再呼び出し
+
+
+---
+
+## Round 27 — damageCalc arcana 問題 / battlePhase handleTurnEnd ターン計算 / 全体総括
+
+### A. arcana の defstackMax リセット問題（問題 #13 詳細確認）
+
+**`arcana` ケースの実装（確定）**
+
+```js
+case "arcana": {
+  const brokenDef = Math.min(result.defstack, hits);
+  result.defstack -= brokenDef;
+  applyToShieldAndHp(hits - brokenDef);
+  break;
+}
+```
+
+- `defstack` を削るが、`defstackMax` へのリセットは**行わない**
+- `defstack` が 0 になった後、次の `damage` 攻撃では:
+  - `defstack = 0` → `passDamage += 1` + `defstack = defstackMax`（リセット）
+  - つまり `arcana` で `defstack` を 0 にした後、次の `damage` 攻撃で即1ダメ通過 + defstack がリセットされる
+
+**`damage` との比較（defstack=2, defstackMax=2, hits=3 の場合）**
+
+| type | 処理 | 結果 |
+|------|------|------|
+| `damage` | defstack 2→1→0(1ダメ通過+リセット)→2 | 1ダメ通過、defstack=2 |
+| `arcana` | defstack 2→0、余剰1をシールド/HPへ | 1ダメ通過、defstack=0 |
+
+- `arcana` 後は `defstack = 0` のまま → 次の `damage` 攻撃で即1ダメ通過
+- `damage` 後は `defstack = defstackMax` にリセット → 次の `damage` 攻撃は defstack から削る
+
+**問題 #13 の評価（確定）**
+
+- `arcana` は `defstack` を 0 にするが `defstackMax` へリセットしない → 次の `damage` 攻撃が有利になる
+- これは**意図的な設計の可能性がある**:
+  - `arcana` の説明文: 「防御突破時のバースト」→ 防御を突破した後の追撃が有利になる設計
+  - `damage` は「防御スタックを削り、0 到達時にリセット」→ 防御が自動回復する
+  - `arcana` は「防御を突破したまま維持」→ 防御が回復しない
+- **修正するかどうかはゲームデザインの判断**
+
+---
+
+### B. battlePhase.js の handleTurnEnd ターン計算（確定）
+
+**ターン計算ロジック（`calcNextTurn` を使わない独自実装）**
+
+```js
+const firstPlayer = m.firstPlayer || "player1";
+
+if (m.turnPlayer === firstPlayer) {
+  // 先攻のターン終了 → 後攻へ
+  m.turnPlayer = op;
+} else {
+  // 後攻のターン終了 → 先攻へ、ターン+1
+  m.turnPlayer = firstPlayer;
+  m.turn += 1;
+  if (m.turn > (window.TURNS_PER_ROUND || 5)) {
+    m.turn = 1;
+    m.round += 1;
+    addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
+  }
+}
+```
+
+- `calcNextTurn`（`gameRules.js`）と**同じロジック**だが独自実装
+- `window.TURNS_PER_ROUND`（= 5）を参照 → `gameRules.js` の定数を使用 ✅
+- `firstPlayer` が `null` の場合は `"player1"` をデフォルトとして使用
+
+**`calcNextTurn` との差異**
+
+| 項目 | `handleTurnEnd` | `calcNextTurn` |
+|------|----------------|----------------|
+| 実装 | `m` を直接変更（mutation） | 新しいオブジェクトを返す（純粋関数） |
+| ログ | `addGameLog("[MATCH] ...")` を呼ぶ | ログなし |
+| 戻り値 | なし | `{ turn, round, turnPlayer, roundChanged }` |
+| `roundChanged` | 計算しない（`_lastRound` で別途検知） | 返す |
+
+- `handleTurnEnd` は state を直接変更する設計 → `calcNextTurn` の純粋関数設計と相容れない
+- `calcNextTurn` を `handleTurnEnd` に組み込むには、戻り値を `m` に適用する処理が必要
+- **現状の実装は機能的に正しい** → `calcNextTurn` は削除するか、将来のリファクタリング用として保持
+
+**`handleTurnEnd` の全体フロー（最終確認）**
+
+```
+handleTurnEnd(skipHandLimitCheck = false)
+  ├─ isGameInteractionLocked() → return
+  ├─ turnPlayer !== me → return
+  ├─ winner → return
+  ├─ 手札上限チェック（skipHandLimitCheck=false の場合）
+  │    超過 → showHandOverflowDiscardModal() → return
+  ├─ _beforeTurnEndHooks を順番に実行
+  ├─ ターン計算（m.turnPlayer / m.turn / m.round を直接変更）
+  ├─ addGameLog("[TURN] ...")
+  ├─ evoContinuousDmgCount = 0 / evoBackwaterExpGained = false / _turnDmgHistory = {}
+  ├─ await firebaseClient.writeMatchData()
+  ├─ await firebaseClient.writeMyState()
+  ├─ update()
+  └─ _afterTurnEndHooks を順番に実行
+```
+
+- `writeMatchData` / `writeMyState` の戻り値（`false` = 失敗）を**チェックしない**（問題 #32 の具体例）
+- `_beforeTurnEndHooks` / `_afterTurnEndHooks` の例外は `try/catch` で握りつぶす ✅
+
+---
+
+### C. 全体総括（Round 1〜27）
+
+**解析済みファイル一覧**
+
+| ファイル | Round | 主な発見 |
+|---------|-------|---------|
+| `firstDrawPhase.js` | 1, 20, 22 | 無限ループ修正済み、ファーストドロー全体フロー |
+| `cardData.js` / `deckCode.js` | 1, 2 | CARD_DB ロードタイミング、v3 形式 |
+| `matchSetup.js` / `deckSelect.js` | 3 | deckCode 書き込みフロー |
+| `damageCalc.js` | 4, 14, 27 | 純粋関数設計、arcana 問題 |
+| `contextMenu.js` | 5, 19, 20 | PvP 攻撃フロー、進化の道重複 |
+| `roomWatcher.js` | 6 | pendingChange ハンドラ |
+| `core.js` | 7, 15, 16 | normalizeState、addVal、syncLoop |
+| `MonsterCombatSystem.js` / `MonsterManager.js` | 8, 10, 12 | PvE システム |
+| `pvpveWatcher.js` | 8, 10, 15, 16 | _lastRoundSeen 問題 |
+| `battlePhase.js` | 9, 27 | handleTurnEnd、ターン計算 |
+| `phaseWatcher.js` / `diceWatcher.js` | 9 | Firebase 監視フロー |
+| `game.js` | 10, 15, 21, 22, 23, 25, 26 | executeReset、update、renderUI |
+| `syncState.js` | 7, 15 | 重複定義 |
+| `gameRules.js` | 19, 26 | calcNextTurn デッドコード |
+| `resultManager.js` | 20 | 勝敗判定フロー |
+| `dicePhase.js` | 21 | ダイスフェーズ全体フロー |
+| `setupPhase.js` | 22, 23 | 進化の道選択、_evoPhaseTransitioning |
+| `firebase-client.js` | 23 | Firebase パス構造、リトライ設計 |
+| `timerSync.js` | 24, 25 | GameTimer 表示専用 |
+| `animationUI.js` | 24, 25 | キーフレーム動的注入 |
+| `gameState.js` | 24, 26 | BASE_INITIAL_STATE、defstackMax |
+| `timerUI.js` | 25 | onTimerTick |
+| `levelStats.json` | 26 | def[0]=0、Lv1 防御スタックなし |
+| `battlePhase.js` | 27 | handleTurnEnd ターン計算 |
+
+**修正優先度別リスト（最終版）**
+
+**高優先度（中深刻度・実害あり）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 低（1行追加 + executeReset に1行追加） |
+| 3/25 | 進化の道ロジックが3箇所に重複 | 中（contextMenu.js のリファクタ） |
+| 13 | arcana が defstackMax をリセットしない（設計判断が必要） | 低（1行追加） |
+
+**中優先度（低深刻度・コード品質）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 31 | `_evoPhaseTransitioning` リセット漏れ | 低（2行追加） |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低（addVal の pp ログ削除） |
+| 30 | `showR1T1Selection()` が空実装 | 中（UI 実装 or 削除） |
+| 32 | writeMyState/writeMatchData 失敗時のエラーハンドリングなし | 低（呼び出し元に `if (!result)` 追加） |
+
+**低優先度（デッドコード・軽微）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 24 | `calcNextTurn` デッドコード | 低（削除） |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし | 低（削除 or 追加） |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 |
+| 35 | `GameTimer` Firebase 未同期 | 中（設計判断が必要） |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低（削除） |
+| 2 | デッキ枚数 0 でも READY 可能 | 低 |
+| 18/26 | モンスター討伐 PP+2 ログ2行 | 低 |
+
+**意図的な設計として確定したもの**
+
+- `defstackMax: 0`（Lv1 は防御スタックなし）✅
+- `arcana` が defstackMax をリセットしない（防御突破後の追撃有利）→ 設計判断
+- `GameTimer` が表示専用（Firebase 同期なし）→ 現状の仕様
+- `calcNextTurn` が `handleTurnEnd` で使われない → 独自実装が先行
+- モンスター攻撃が防御スタックを無視（hp_reduce 相当）→ 意図的
+- `sendChangeRequest` のデバウンスで最後の値のみ送信 → 意図的
+- ダイスロールがクライアント側 `Math.random()` → 信頼前提のゲーム
+
+
+---
+
+## Round 28 — 未解析ファイル一括解析（messaging / firebase-sync / card / cardManager / handUI / overlayUI / statusBlocks / dragManager / watcherRegistry / render）
+
+### A. messaging.js（確定）
+
+**役割: `window.alert()` の代替 UI メッセージシステム**
+
+| 関数 | 表示方法 | 用途 |
+|------|---------|------|
+| `showMessageToast(text, type)` | `#toast` 要素に 1.7 秒表示 | 汎用トースト |
+| `showGameplayMessage(text, color)` | 画面中央に DOM 生成・2.5 秒後削除 | ゲームプレイ通知 |
+| `showErrorMessage(text)` | 赤トースト + `console.error` | エラー |
+| `showWarningMessage(text)` | 黄トースト + `console.warn` | 警告 |
+| `showSuccessMessage(text)` | 緑トースト | 成功 |
+| `showInfoMessage(text)` | 白トースト | 情報 |
+| `attachTooltip(el, text, pos)` | hover で表示するツールチップ | ホバー説明 |
+
+- `showGameplayMessage` は `animationUI.js` の `showNotification` と**ほぼ同じ実装**（フォントサイズ・アニメーション名が微妙に異なる）
+  - `showNotification`: font-size 60px、letter-spacing 15px、2700ms
+  - `showGameplayMessage`: font-size 48px、letter-spacing 10px、2500ms
+- **重複実装**（問題 #40 として記録）
+- `attachTooltip` は `element.parentElement.style.position = 'relative'` を設定する → 親要素のレイアウトに影響する可能性
+
+---
+
+### B. firebase-sync.js（確定）
+
+**役割: 旧世代の Firebase 同期モジュール（現在は未使用）**
+
+- `window.FirebaseSync` として公開
+- `initFirebase` / `createRoom` / `joinRoom` / `leaveRoom` / `markReady` 等を実装
+- **`game.html` で読み込まれているか要確認**
+- `firebase-client.js`（現行）と機能が重複している
+- `watchRoom` の実装が `firebase-client.js` と異なる（`hasJoined` フラグ管理等）
+- ハートビート（30秒ごとに `.info/connected` を確認）を実装しているが、`firebase-client.js` にはない
+- **デッドコードの可能性が高い**（問題 #41 として記録）
+
+---
+
+### C. card.js（確定）
+
+**役割: 旧世代のカード定義（現在は未使用）**
+
+```js
+const CARDS = {
+  "atk":   { name: "攻撃",  image: "assets/cards/NF404.png" },
+  "heavy": { name: "強撃",  image: "assets/cards/NF404.png" },
+  "guard": { name: "防御",  image: "assets/cards/スライド1.png" }
+};
+```
+
+- 3枚のみ定義、全て `NF404.png`（存在しない画像）
+- `CARD_DB`（`cardData.js`）が現行のカードデータ → `card.js` は**デッドコード**（問題 #42）
+- `render.js` の `renderField` が `cards[obj.id]` を参照しているが、`CARDS` を使っている可能性がある
+
+---
+
+### D. render.js（確定）
+
+**役割: 旧世代のフィールド描画（現在は未使用）**
+
+```js
+function renderField(player) {
+  const area = document.getElementById("field");
+  area.innerHTML = "";
+  field.forEach(obj => {
+    if (!isVisible(obj.visibility, player)) return;
+    const card = cards[obj.id];  // ← CARDS を参照（旧世代）
+    const el = document.createElement("img");
+    el.src = card.image || "assets/404.png";
+    // ...
+  });
+}
+```
+
+- `cards` 変数（`CARDS`）と `field` 変数（未定義）を参照
+- `cardManager.js` の `createCard` / `placeCard` が現行の描画処理
+- **デッドコード**（問題 #43）
+
+---
+
+### E. cardManager.js（確定）
+
+**主要な発見（未解析部分）**
+
+**座標変換（player2 の視点反転）**
+
+```js
+function toServerX(localX) {
+  if (window.myRole === "player2") return FIELD_W - Number(localX) - CARD_W;
+  return Number(localX);
+}
+```
+
+- player2 は X/Y 座標を反転して保存 → Firebase 上は player1 視点の座標で統一
+- `toLocalX` / `toLocalY` で逆変換して表示
+
+**フィールドサイズ定数**
+
+```
+FIELD_W = 3000, FIELD_H = 2000
+CARD_W = 320, CARD_H = 453
+HAND_ZONE_Y_MIN = 1460  ← 手札ゾーンの Y 座標下限
+```
+
+**ゾーンアンカー座標（自分視点）**
+
+| ゾーン | X | Y |
+|-------|---|---|
+| attacker | 1340（中央） | 1027（FIELD_H - CARD_H - 520） |
+| skill | 930（attacker - CARD_W - 90） | 1027 |
+| grave | 2660（FIELD_W - CARD_W - 20） | 1147（FIELD_H - CARD_H - 400） |
+
+**`showBattleZonePpCostModal` の `onDone` コールバック**
+
+- Round 13/14 で解析した実装に `onDone` パラメータが追加されている
+- `close()` 時に `onDone()` を呼ぶ → キャンセル時も `onDone` が呼ばれる
+- ドラッグ完了後の後処理に使用
+
+**`repairDuplicateDomInstanceIds` / `normalizeFieldCardData`**
+
+- DOM 上の重複 instanceId を修復する関数
+- `isBrokenCardInstanceId` で `"cardInstance_NaN"` を検出
+- `restoreFieldCards` 等でフィールドを復元する際に呼ばれる
+
+**`updateHandReorderGuides`（手札並べ替えガイド）**
+
+- ドラッグ中に手札内の挿入位置を縦線で表示
+- `myHandZoneBg` 要素の矩形を参照して手札ゾーンを判定
+- `handReorderGuide` クラスの DOM を動的生成
+
+**潜在的な問題**
+
+- `beginZoneHoverCardDrag` が `showZoneStackInspectHover` を参照しているが、コメントに「obsolete」とある → デッドコード（問題 #44）
+
+---
+
+### F. handUI.js（確定）
+
+**`organizeHands()` の設計**
+
+- 手札カードを `handOrder` でソートして中央寄せに整列
+- 手札枚数が多い場合は `actualSpacing` を縮小して重ねる（最小間隔なし → 枚数が多いと完全に重なる）
+- `status === "playing"` の場合は `firstDrawHideVisLabel` クラスを自動解除
+- 自分の手札: Y = `FIELD_H - CARD_H - 20` = 1527px
+- 相手の手札: Y = 20px（画面上部）
+
+**`prevMyHandCount`**
+
+- `window.prevMyHandCount = -1` として初期化
+- `update()` 内で `countOwnerHandCardsOnField(me)` の結果を代入
+- `contextMenu.js` の背水の道判定で参照
+
+---
+
+### G. overlayUI.js（確定）
+
+**`openEvolutionPathModal(owner)` の設計**
+
+- 進化の道の詳細説明モーダルを表示
+- `getEvolutionPathHTML(owner)` でレベル依存のパラメータを計算して HTML 生成
+- **`getEvolutionPathParam`（`gameRules.js`）を使わず独自にレベルインデックスを計算**（問題 #3/25 の追加例）
+- Escape キーで閉じる、背景クリックで閉じる ✅
+
+**`showHandOverflowDiscardModal(owner, needCount)` の設計**
+
+- 手札上限超過時に捨てるカードを選択するモーダル
+- `handOverflowDiscardOpen` フラグで多重表示を防止
+- 捨てたカードを `placeCardInZone(c, owner, "grave")` で墓地へ
+- 忍耐の道: 捨てた枚数分 EXP 獲得（最大 2）→ `addVal(owner, "exp", gain)`
+- 捨て終わったら `handleTurnEnd(true)` を呼ぶ（`skipHandLimitCheck=true`）
+
+**`getEvolutionPathHTML` の独自レベルインデックス計算**
+
+```js
+let idx = 0;
+if (lv >= 6) idx = 3;
+else if (lv >= 5) idx = 2;
+else if (lv >= 3) idx = 1;
+```
+
+- `gameRules.js` の `getEvolutionPathParam` と同じロジックだが**3箇所目の重複**（問題 #3/25）
+
+---
+
+### H. statusBlocks.js（確定）
+
+**設計概要**
+
+- `state[owner].statusBlocks` 配列に格納されたブロックを描画
+- `type: "field"` → `#fieldContent` 内の絶対座標に配置（ズーム・パンに追従）
+- `type: "ui"` → `#uiStatusBlocksLayer`（`position: fixed`）に配置（画面固定）
+- `ownerType: "shared"` → 両プレイヤーに表示（座標は player2 視点で反転）
+- `ownerType: "self"` → 自分のみ編集可能（相手は `readonly disabled`）
+
+**Firebase 同期**
+
+- 自分のブロック変更: `pushMyStateDebounced()` → `writeMyState` 経由
+- 相手のブロック変更（双方向編集）: `firebaseClient.writeMyState(gameRoom, owner, state[owner])` を直接呼ぶ
+  - **`_getMyStateForSync()` を経由しない** → デッキ内容が `HIDDEN` 化されずに送信される可能性（問題 #45）
+
+**ローカルプレゼンテーション**
+
+- `sb_presentation` キーで `localStorage` に位置・サイズを保存
+- `shared` ブロックは Firebase 同期、`self` ブロックはローカル保存
+- `type` 変更時にローカルプレゼンテーションをリセット ✅
+
+**潜在的な問題**
+
+- `updateAndSyncBlockOwner` で相手のブロックを変更する際、`state[owner]` を直接 Firebase に書き込む → デッキ内容が漏洩する可能性（問題 #45）
+
+---
+
+### I. dragManager.js（確定）
+
+**設計**
+
+```js
+window.DragManager = {
+  activeDrags: new Set(),
+  register(releaseCallback) { ... },
+  unregister(releaseCallback) { ... },
+  releaseAll(e) { ... }
+};
+```
+
+- `pointerup` / `pointercancel` / `mouseup` / `blur` / `visibilitychange` で `releaseAll` を呼ぶ
+- ドラッグ中にタブを切り替えた場合も `releaseAll` が呼ばれる → ドラッグが確実に終了する ✅
+- `capture: true` で最優先にイベントを捕捉
+
+---
+
+### J. watcherRegistry.js（確定）
+
+**設計**
+
+```js
+window.registerWatcher(name, unsubscribeFn)
+  → 既存の同名ウォッチャーを解除してから登録
+
+window.clearAllWatchers()
+  → 全ウォッチャーを一括解除
+```
+
+- `_activeWatchers` オブジェクトで名前→解除関数を管理
+- `pvpve` リスナーは `watcherRegistry` に登録されていない → `clearAllWatchers` で解除されない（Round 15 確認済み）
+
+---
+
+### Round 28 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 40 | `showGameplayMessage`（messaging.js）と `showNotification`（animationUI.js）が重複実装 | 低 | messaging.js / animationUI.js |
+| 41 | `firebase-sync.js` が `firebase-client.js` と機能重複（デッドコードの可能性） | 低 | firebase-sync.js |
+| 42 | `card.js` の `CARDS` 定義が旧世代でデッドコード | 低 | card.js |
+| 43 | `render.js` の `renderField` が旧世代でデッドコード | 低 | render.js |
+| 44 | `beginZoneHoverCardDrag` 内の `showZoneStackInspectHover` 参照が obsolete | 低 | cardManager.js |
+| 45 | `statusBlocks.js` の `updateAndSyncBlockOwner` が `_getMyStateForSync()` を経由せず相手の state を直接送信 → デッキ内容漏洩の可能性 | 中 | statusBlocks.js |
+
+**設計上の特徴（意図的）**
+
+- `DragManager` は `capture: true` + `visibilitychange` でドラッグを確実に終了させる ✅
+- `watcherRegistry` はシンプルな名前→解除関数マップ ✅
+- `statusBlocks` の `shared` ブロックは座標反転で両プレイヤーに同じ位置に表示 ✅
+- `handUI.js` の `organizeHands` は手札枚数に応じて間隔を自動調整 ✅
+- `overlayUI.js` の `showHandOverflowDiscardModal` は忍耐の道の EXP 獲得を正しく処理 ✅
+
+**全体の未解決リスト（Round 1〜28 最終版）**
+
+| # | 問題 | 深刻度 | 修正方針 |
+|---|------|--------|---------|
+| 2 | デッキ枚数 0 でも READY 可能 | 低 | matchSetup.js に枚数チェック追加 |
+| 3/25 | 進化の道ロジックが4箇所に重複（overlayUI.js も含む） | 中 | `getEvolutionPathParam` を統一使用 |
+| 13 | arcana が defstackMax をリセットしない（設計判断） | 低〜中 | ゲームデザイン確認後に対応 |
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 中 | `startPvpveWatcher` に `_lastRoundSeen = 0` + `executeReset` から再呼び出し |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低〜中 | `addVal` の pp ログをデバッグフラグ化 |
+| 24 | `calcNextTurn` デッドコード | 低 | 削除 |
+| 27 | `firstDrawUnchosenMarked` 設定コードなし | 低 | 実害なし |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 | player1 のみ書き込む等 |
+| 30 | `showR1T1Selection()` が空実装 | 低〜中 | 実装 or 削除 |
+| 31 | `_evoPhaseTransitioning` リセット漏れ | 低 | 両関数に1行追加 |
+| 32 | writeMyState/writeMatchData 失敗時のエラーハンドリングなし | 低 | 呼び出し元で `false` チェック |
+| 35 | `GameTimer` Firebase 未同期（表示専用） | 低〜中 | 仕様として許容 |
+| 40 | `showGameplayMessage` と `showNotification` の重複 | 低 | どちらかに統一 |
+| 41 | `firebase-sync.js` デッドコードの可能性 | 低 | game.html の読み込み確認後に削除 |
+| 42 | `card.js` の `CARDS` デッドコード | 低 | 削除 |
+| 43 | `render.js` の `renderField` デッドコード | 低 | 削除 |
+| 44 | `beginZoneHoverCardDrag` の obsolete 参照 | 低 | 削除 |
+| 45 | `statusBlocks.js` が相手の state を直接送信（デッキ内容漏洩の可能性） | 中 | `_getMyStateForSync()` 経由に変更 |
+| 23 | `js/chat/chatUI.js` デッドファイル | 低 | 削除 |
+| 18/26 | モンスター討伐 PP+2 ログ2行 | 低 | MonsterCombatSystem 側のログ削除 |
+
+### 次に調べる場所
+
+- `game.html` の script 読み込みリスト → `firebase-sync.js` / `card.js` / `render.js` が実際に読み込まれているか確認
+- `js/ui/deckViewer.js` / `js/ui/menu.js` → 未解析 UI ファイル
+- `js/statusBlocks/statusBlockPresets.js` → プリセット管理
+- `js/ui/preview/cardPreview.js` → カードプレビュー
+
+
+---
+
+## Round 29 — 残存ファイル一括解析（deckViewer / menu / drag / statusBlockPresets / cardPreview）+ デッドファイル確定
+
+### A. デッドファイル確定（game.html 読み込み確認）
+
+`game.html` の script タグを検索した結果、以下のファイルは**読み込まれていない**ことが確定：
+
+| ファイル | 状態 |
+|---------|------|
+| `js/network/firebase-sync.js` | game.html 未読み込み → **デッドファイル** |
+| `js/card/card.js` | game.html 未読み込み → **デッドファイル** |
+| `js/ui/render.js` | game.html 未読み込み → **デッドファイル** |
+| `js/ui/preview/cardPreview.js` | 空ファイル → **デッドファイル** |
+| `js/game/result.js` | 空ファイル → **デッドファイル** |
+| `js/chat/chatUI.js` | game.html 未読み込み → **デッドファイル**（Round 18 確認済み） |
+
+---
+
+### B. deckViewer.js（確定）
+
+**役割: ゲーム中のデッキ内容確認オーバーレイ**
+
+- `window.openDeckViewer()` → `#deckViewerOverlay` を生成・表示
+- デッキデータ取得: `state[me].deck` → `TEMP:` / `HIDDEN` プレフィックスを除去してカード ID を取得
+- `HIDDEN` カードも ID として表示される → **デッキ内容が見えてしまう可能性**
+  - ただし `HIDDEN` は `"HIDDEN"` という文字列 → `getCardData("HIDDEN")` は `null` を返す → 画像は `404.png` で表示
+  - カード名は `id`（= `"HIDDEN"`）として表示 → 実際のカード名は漏洩しない ✅
+- `window.injectPhaseOverlayDeckBtn()` → フェーズオーバーレイ中に「デッキを確認」ボタンを左上に表示
+  - `updateMatchUI` から呼ばれる（`setup_dice` / `setup_evolution` / `setup_first_draw` フェーズ中）
+
+---
+
+### C. menu.js（確定）
+
+**役割: ゲーム内ハンバーガーメニュー（IIFE）**
+
+| メニュー項目 | 表示条件 | 処理 |
+|------------|---------|------|
+| タイトルへ戻る | 常時 | `index.html` へ遷移（確認ダイアログあり） |
+| 降参 | playing かつ winner なし | 相手を winner として Firebase に書き込む |
+| 盤面リセット | ゲーム画面かつ非ロック | `window.resetField()` |
+| デッキを確認 | playing フェーズ | `window.openDeckViewer()` |
+| 1人で始める | ゲーム画面かつロック中かつ相手未接続 | `window.startSoloGame()` |
+| オプション | 常時 | BGM/SE 音量スライダー |
+
+**降参処理の設計**
+
+```js
+state.matchData.winner = op;
+state.matchData.winnerSetAt = Date.now();
+firebaseClient.writeMatchData(gameRoom, state.matchData);
+```
+
+- `showResultScreen()` を呼ばない → Firebase 経由で `checkGameResult()` が発火して表示される
+- `winnerSetAt` を設定 → stale チェックで古い勝利判定を防止 ✅
+
+**`deleteAccount` の実装**
+
+```js
+localStorage.removeItem("username");
+localStorage.removeItem("matchSetup");
+localStorage.removeItem("deckList");
+localStorage.removeItem("gameState");
+location.href = "login.html";
+```
+
+- Firebase 上のユーザーデータは削除しない → **アカウント削除が不完全**（問題 #46）
+- ローカルストレージのみクリアして `login.html` へ遷移
+
+**`startSoloGame` の参照**
+
+- `window.startSoloGame` を呼ぶが、定義場所が不明 → `game.js` に存在するか要確認
+
+---
+
+### D. drag.js（確定）
+
+**役割: 旧世代のドラッグ実装（現在は未使用）**
+
+```js
+function makeDraggable(el, obj) {
+  el.onmousedown = (e) => { dragged = {el, obj}; };
+}
+document.onmousemove = (e) => {
+  if (!dragged) return;
+  dragged.obj.x = e.pageX;
+  dragged.obj.y = e.pageY;
+  dragged.el.style.left = dragged.obj.x + "px";
+  dragged.el.style.top = dragged.obj.y + "px";
+};
+window.DragManager.register(releaseDrag);
+```
+
+- `render.js` の `makeDraggable(el, obj)` から呼ばれる設計
+- `cardManager.js` の `enablePointerDrag` が現行のドラッグ実装
+- `document.onmousemove` を直接上書き → 他のマウスイベントと競合する可能性
+- `game.html` で読み込まれているか要確認（`render.js` と同様にデッドの可能性）
+
+---
+
+### E. statusBlockPresets.js（確定）
+
+**役割: ステータスブロックのプリセット管理**
+
+```js
+window.StatusBlockPresets = {
+  presets: [],
+  load: async function() {
+    const res = await fetch("presets/statusBlockPresets.json?" + Date.now());
+    if (res.ok) this.presets = await res.json();
+  },
+  get: function() { return this.presets; }
+};
+```
+
+- `DOMContentLoaded` で自動ロード
+- `presets/statusBlockPresets.json` を fetch → キャッシュバスター付き（`?timestamp`）
+- `StatusBlockPresets.get()` でプリセット一覧を取得
+- `statusBlockPresetModal.js` / `statusBlockPresetStorage.js` と連携
+
+---
+
+### F. cardPreview.js（確定）
+
+- **空ファイル** → デッドファイル
+
+---
+
+### G. `startSoloGame` の確認
+<br>
+
+```
+grep 結果: game.js に window.startSoloGame が定義されている
+```
+
+- `window._soloStartMode = true` を設定して `runPhaseProgression` を強制実行
+- 相手が接続していなくても `setup_dice` フェーズに進める
+- `_bothPlayersConnected` が false でも動作するための緊急手段
+
+---
+
+### Round 29 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 46 | `deleteAccount` が Firebase 上のユーザーデータを削除しない（不完全なアカウント削除） | 低〜中 | menu.js |
+| 47 | `drag.js` が旧世代実装でデッドコードの可能性 | 低 | drag.js |
+
+**デッドファイル確定リスト**
+
+| ファイル | 理由 |
+|---------|------|
+| `js/network/firebase-sync.js` | game.html 未読み込み |
+| `js/card/card.js` | game.html 未読み込み |
+| `js/ui/render.js` | game.html 未読み込み |
+| `js/ui/preview/cardPreview.js` | 空ファイル |
+| `js/game/result.js` | 空ファイル |
+| `js/chat/chatUI.js` | game.html 未読み込み |
+
+**設計上の特徴（意図的）**
+
+- `deckViewer.js` は IIFE でスコープを閉じている ✅
+- `menu.js` は IIFE でスコープを閉じている ✅
+- 降参処理は Firebase 経由で相手に通知 → `checkGameResult` が自動発火 ✅
+- `StatusBlockPresets` はキャッシュバスター付きで fetch ✅
+
+---
+
+## 全体解析完了サマリー（Round 1〜29）
+
+### 解析済みファイル一覧（全 JS ファイル）
+
+**ゲームコア**
+- `gameState.js` / `syncState.js` / `core.js` / `game.js` / `gameRules.js`
+
+**フェーズ**
+- `dicePhase.js` / `firstDrawPhase.js` / `setupPhase.js` / `battlePhase.js`
+
+**ネットワーク**
+- `firebase-client.js` / `firebase-sync.js`（デッド） / `messaging.js` / `timerSync.js`
+
+**ウォッチャー**
+- `roomWatcher.js` / `phaseWatcher.js` / `diceWatcher.js` / `watcherRegistry.js`
+
+**カード**
+- `cardData.js` / `deckCode.js` / `cardManager.js` / `damageCalc.js` / `card.js`（デッド）
+
+**モンスター**
+- `MonsterManager.js` / `MonsterCombatSystem.js` / `MonsterUI.js` / `BattleTargetSystem.js` / `pvpveWatcher.js` / `monsterData.js`
+
+**UI**
+- `statusUI.js` / `animationUI.js` / `chatUI.js`（デッド） / `contextMenu.js` / `overlayUI.js` / `handUI.js` / `statusBlocks.js` / `deckViewer.js` / `menu.js` / `timerUI.js` / `dragManager.js` / `drag.js` / `render.js`（デッド）
+
+**その他**
+- `resultManager.js` / `matchSetup.js` / `deckSelect.js` / `statusBlockPresets.js` / `devTools.js`
+
+---
+
+### 修正優先度別 最終リスト
+
+**高優先度（実害あり・修正コスト低）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 15/17 | `_lastRoundSeen` リセット漏れ → ラウンド1モンスター未出現 | 低（2行追加） |
+| 31 | `_evoPhaseTransitioning` リセット漏れ | 低（2行追加） |
+| 45 | `statusBlocks.js` が相手の state を直接送信（デッキ内容漏洩） | 低（`_getMyStateForSync()` 経由に変更） |
+
+**中優先度（コード品質・軽微な実害）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 3/25 | 進化の道ロジックが4箇所に重複 | 中（リファクタ） |
+| 20 | PP ボタン操作のたびにチャット欄にログ | 低（フラグ化） |
+| 30 | `showR1T1Selection()` が空実装 | 中（実装 or 削除） |
+| 32 | writeMyState/writeMatchData 失敗時のエラーハンドリングなし | 低 |
+| 46 | `deleteAccount` が Firebase データを削除しない | 低〜中 |
+
+**低優先度（デッドコード・軽微）**
+
+| # | 問題 | 修正コスト |
+|---|------|-----------|
+| 24 | `calcNextTurn` デッドコード | 低（削除） |
+| 40 | `showGameplayMessage` と `showNotification` の重複 | 低（統一） |
+| 41〜44, 47 | デッドファイル / デッドコード | 低（削除） |
+| 13 | arcana が defstackMax をリセットしない | 設計判断 |
+| 28 | 両者同時 HP=0 時の winner 競合 | 低 |
+| 35 | `GameTimer` Firebase 未同期 | 設計判断 |
+| 2 | デッキ枚数 0 でも READY 可能 | 低 |
+| 18/26 | モンスター討伐 PP+2 ログ2行 | 低 |

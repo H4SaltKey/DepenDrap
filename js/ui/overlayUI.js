@@ -28,10 +28,10 @@ function getEvolutionPathHTML(owner) {
   const s = state[owner];
   if (!s || !s.evolutionPath) return "";
   const lv = s.level || 1;
-  let idx = 0;
-  if (lv >= 6) idx = 3;
-  else if (lv >= 5) idx = 2;
-  else if (lv >= 3) idx = 1;
+  // getEvolutionPathParam（gameRules.js）でレベル依存パラメータを取得（重複ロジック排除）
+  const param = (typeof window.getEvolutionPathParam === "function")
+    ? window.getEvolutionPathParam(s.evolutionPath, lv)
+    : 0;
 
   let desc = "";
   let tableHTML = "";
@@ -40,23 +40,19 @@ function getEvolutionPathHTML(owner) {
   const colorLevel = "#66ccff"; // レベルで変動する変数
 
   if (s.evolutionPath === '忍耐の道') {
-    const xArr = [0, 1, 3, 4];
-    const x = xArr[idx];
+    const x = param;
     desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
     tableHTML = `x = [0, 1, 3, 4]`;
   } else if (s.evolutionPath === '継続の道') {
-    const yArr = [1, 3, 4, 6];
-    const y = yArr[idx];
+    const y = param;
     desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
     tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
-    const zArr = [1, 3, 4, 6];
-    const z = zArr[idx];
+    const z = param;
     desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
     tableHTML = `z = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '背水の道') {
-    const tArr = [1, 2, 3, 4];
-    const t = tArr[idx];
+    const t = param;
     desc = `手札が2枚以下の状態なら、[直接攻撃/”直接攻撃時“効果]の<span style="color:${colorAction}">ダメージを +1</span> する。<br>また、自身のPPが2以上なら、<span style="color:${colorAction}">与ダメージを追加で</span> <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">+${t}</span> して、<span style="color:${colorAction}">1の経験値を獲得</span>する。<br><span style="font-size:12px; color:#aaa;">ただし、この効果による経験値は、ターン毎に1回まで獲得可能。</span>`;
     tableHTML = `t = [1, 2, 3, 4]`;
   }

@@ -2104,9 +2104,8 @@ document.addEventListener("firebaseJoined", () => {
 // 時間制限機能は Firebase では複雑なため、MVP では実装しません
 
 // ===== R1T1処理 =====
-/** R1T1 用の追加 UI（未実装）。盤面への5枚配置のみ startR1T1 が担当。 */
-function showR1T1Selection(_n) {}
-
+// ファーストドローフェーズをスキップした場合のフォールバック。
+// 通常フロー（firstDrawDone=true）では呼ばれない。
 function startR1T1() {
   const m = state.matchData;
   if (m && m.firstDrawDone === true) {
@@ -2150,9 +2149,6 @@ function startR1T1() {
       placeCard(field, card, { x: deckX + 100 + i * 80, y: deckY - 200 });
     }
   });
-
-  // UI: 5枚から3枚選択
-  showR1T1Selection(takenCards.length);
 
   // チャット記録
   if (typeof addGameLog === "function") {

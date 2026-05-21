@@ -4232,6 +4232,8 @@ grep 結果: game.js に window.startSoloGame が定義されている
 | 23/41/42/43 | デッドファイル削除 | 各ファイル | `chatUI.js`(chat/) / `card.js` / `render.js` / `firebase-sync.js` / `cardPreview.js` / `result.js` を削除 | ✅ 完了 |
 | 47 | `drag.js` の `document.onmousemove` 上書き | `drag.js` | 危険な `document.onmousemove` 上書きを除去してファイルを無害化 | ✅ 完了 |
 | 40 | `showGameplayMessage` と `showNotification` 重複 | `messaging.js` / `game.js` | `showGameplayMessage` を削除し、呼び出し元を `showNotification` に統一 | ✅ 完了 |
+| 3/25 | 進化の道ロジック重複（overlayUI.js） | `overlayUI.js` | `getEvolutionPathHTML` の独自 idx 計算を `getEvolutionPathParam` 呼び出しに統一 | ✅ 完了 |
+| 30 | `showR1T1Selection()` 空実装 | `game.js` | 空関数定義と呼び出しを削除。`startR1T1` にコメントで意図を明記 | ✅ 完了 |
 
 ### 未対応（設計判断 or 低優先度）
 

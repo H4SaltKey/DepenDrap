@@ -924,8 +924,6 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     const tDefMax = s.defstackMax || 0;
     let actualAmount = amount;
 
-    const getLvIdx = (lv) => (lv >= 6 ? 3 : lv >= 5 ? 2 : lv >= 3 ? 1 : 0);
-
     const applyHit = (hitType, hitAmount) => {
       const next = applyDamageByRule({
         hp: tHP,
@@ -943,7 +941,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
 
     // 奇撃の道（旧: 瞬発の道）: 本ダメージ前に脆弱ダメージ
     if (canApplyEvolution && actualAmount >= 6 && (me.evolutionPath === "奇撃の道" || me.evolutionPath === "瞬発の道")) {
-      const z = [1, 3, 4, 6][getLvIdx(me.level || 1)];
+      const z = window.getEvolutionPathParam("奇撃の道", me.level);
       applyHit("fragile", z);
     }
 
@@ -952,7 +950,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
       const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
       if (handCount <= 2) actualAmount += 1;
       if ((me.pp || 0) >= 2 && !me.evoBackwaterExpGained && handCount <= 2) {
-        const t = [1, 2, 3, 4][getLvIdx(me.level || 1)];
+        const t = window.getEvolutionPathParam("背水の道", me.level);
         actualAmount += t;
       }
     }
@@ -962,7 +960,7 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
 
     // 継続の道: 本ダメージ後に追加1ダメージ（3回目は貫通）
     if (canApplyEvolution && actualAmount >= 1 && me.evolutionPath === "継続の道") {
-      const y = [1, 3, 4, 6][getLvIdx(me.level || 1)];
+      const y = window.getEvolutionPathParam("継続の道", me.level);
       const cur = me.evoContinuousDmgCount || 0;
       if (cur < y) {
         const isThird = cur + 1 === 3;
@@ -1059,13 +1057,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   const myState = state[meRole];
   const canApplyEvolution = targetOwner !== meRole;
   if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && (myState.evolutionPath === '奇撃の道' || myState.evolutionPath === '瞬発の道')) {
-    const lv = myState.level || 1;
-    let idx = 0;
-    if (lv >= 6) idx = 3;
-    else if (lv >= 5) idx = 2;
-    else if (lv >= 3) idx = 1;
-    const zArr = [1, 3, 4, 6];
-    const z = zArr[idx];
+    const z = window.getEvolutionPathParam("奇撃の道", myState.level);
     
     s.defstack = Math.max(0, s.defstack - z);
     if (typeof addGameLog === "function") {
@@ -1088,13 +1080,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
       
       if (myState.pp >= 2 && handCount <= 2) {
         if (!myState.evoBackwaterExpGained) {
-          const lv = myState.level || 1;
-          let idx = 0;
-          if (lv >= 6) idx = 3;
-          else if (lv >= 5) idx = 2;
-          else if (lv >= 3) idx = 1;
-          const tArr = [1, 2, 3, 4];
-          const t = tArr[idx];
+          const t = window.getEvolutionPathParam("背水の道", myState.level);
           
           actualAmount += t;
           myState.exp += 1;
@@ -1141,13 +1127,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   // 継続の道: 1以上のダメージを与える度に1ダメージ（3回目は1貫通ダメージ）
   const myState2 = state[(window.getMyRole ? window.getMyRole() : window.myRole || "player1")];
   if (canApplyEvolution && !isEvoDmg && actualAmount >= 1 && myState2 && myState2.evolutionPath === '継続の道') {
-    const lv = myState2.level || 1;
-    let idx = 0;
-    if (lv >= 6) idx = 3;
-    else if (lv >= 5) idx = 2;
-    else if (lv >= 3) idx = 1;
-    const yArr = [1, 3, 4, 6];
-    const y = yArr[idx];
+    const y = window.getEvolutionPathParam("継続の道", myState2.level);
     
     if ((myState2.evoContinuousDmgCount || 0) < y) {
       myState2.evoContinuousDmgCount = (myState2.evoContinuousDmgCount || 0) + 1;

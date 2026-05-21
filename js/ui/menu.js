@@ -174,6 +174,15 @@
   }
 
   async function deleteAccount(){
+    const username = localStorage.getItem("username");
+    if (username && window.firebaseClient && window.firebaseClient.db) {
+      try {
+        await window.firebaseClient.db.ref(`accounts/${username}`).remove();
+        console.log(`[Account] Firebase account for ${username} deleted.`);
+      } catch (e) {
+        console.error("[Account] Failed to delete account from Firebase:", e);
+      }
+    }
     // Firebase 版：ローカルストレージのユーザー名を削除
     localStorage.removeItem("username");
     localStorage.removeItem("matchSetup");

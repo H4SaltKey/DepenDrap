@@ -422,7 +422,7 @@ function tryAdvanceFirstDrawToPlayingIfBothReady() {
   if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
 
   const gameRoom = localStorage.getItem("gameRoom");
-  const next = { ...m, status: "playing", firstDrawDone: true };
+  const next = { ...m, status: "playing", firstDrawDone: true, targetSelectionPending: true };
   state.matchData = next;
   if (gameRoom && firebaseClient?.db) {
     firebaseClient.writeMatchData(gameRoom, next).catch((e) => {

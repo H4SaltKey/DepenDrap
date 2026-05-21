@@ -194,8 +194,10 @@ function renderOwnerUI(owner) {
       ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
-      position: absolute; ${owner === window.myRole ? 'bottom: 100%; margin-bottom: 0; padding-bottom: 8px;' : 'top: 100%; margin-top: 0; padding-top: 8px;'} 
-      left: 50%; transform: translateX(-50%); width: 420px;
+      ${owner === window.myRole
+        ? 'position: absolute; bottom: 100%; margin-bottom: 0; padding-bottom: 8px; left: 50%; transform: translateX(-50%);'
+        : 'position: fixed; top: 10px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
+      width: 420px;
       z-index: 99999; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
@@ -274,10 +276,8 @@ function lorInstantDefStatRow(owner, s) {
 }
 
 function updateFieldStatusPanels() {
-  // fieldStatusPanel は #field（画面固定の親要素）に配置する。
-  // #fieldContent はズーム・パンに追従するため使わない。
-  // #field は position:fixed;inset:0 なので、absolute 子要素は画面座標と一致する。
-  const container = document.getElementById("field") || document.body;
+  // 手札/PP UIを盤面（#fieldContent）へ移動。ズーム・パンに連動させる。
+  const container = document.getElementById("fieldContent") || document.getElementById("field") || document.body;
 
   ["player1", "player2"].forEach(owner => {
     const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
@@ -311,12 +311,12 @@ function updateFieldStatusPanels() {
     const currentPp = s.pp || 0;
     const maxPp = s.ppMax || 2;
 
-    // #field は position:fixed;inset:0 なので absolute で画面座標に固定できる
+    // #fieldContent は 3000x2000 盤面なので、その座標系での絶対位置を指定する
     if (isMine) {
       el.style.cssText = `
         position: absolute;
-        left: 16px;
-        bottom: 16px;
+        left: 100px;
+        top: 1460px;
         width: 220px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.92);
@@ -331,8 +331,8 @@ function updateFieldStatusPanels() {
     } else {
       el.style.cssText = `
         position: absolute;
-        right: 16px;
-        top: 80px;
+        left: 100px;
+        top: 20px;
         width: 180px;
         padding: 10px 12px;
         background: rgba(15, 12, 28, 0.85);
@@ -342,7 +342,7 @@ function updateFieldStatusPanels() {
         box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         z-index: 5100;
         font-family: 'Outfit', sans-serif;
-        pointer-events: none;
+        pointer-events: auto;
         opacity: 0.85;
       `;
     }

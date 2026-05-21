@@ -48,6 +48,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     m.turnPlayer = next.turnPlayer;
     m.turn       = next.turn;
     m.round      = next.round;
+    m.targetSelectionPending = true;
     if (next.roundChanged) {
       addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
     }
@@ -65,6 +66,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
         addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);
       }
     }
+    m.targetSelectionPending = true;
   }
 
   const nextPlayerName = m.turnPlayer === "player1"

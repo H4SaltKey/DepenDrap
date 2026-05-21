@@ -113,41 +113,75 @@
 
   // ===== ターン終了後処理 =====
   function _onAfterTurnEnd() {
-    const me = window.myRole || "player1";
     const nextPlayer = window.state?.matchData?.turnPlayer;
     if (!nextPlayer) return;
 
     // 次ターン開始: ターゲット変更許可
     window.BattleTargetSystem?.onTurnStart(nextPlayer);
+  }
 
-    // 自分のターン開始時: ターゲット選択フェーズ（先攻モンスター攻撃より前）
+  // ターン開始時フック（ドロー直前）
+  window._onTurnStartCallback = function() {
+    const m = window.state?.matchData;
+    if (!m || m.status !== "playing") return;
+    const me = window.myRole || "player1";
+    const nextPlayer = m.turnPlayer;
+
     if (nextPlayer === me) {
-      _showTurnStartTargetSelect(() => {
-        // ターゲット選択完了後に先攻モンスターの攻撃を実行
-        window.MonsterCombatSystem?.processTurnStartMonsterActions();
-        window.MonsterUI?.showTargetChangeButton();
-      });
+      // 先攻モンスターの攻撃を実行
+      window.MonsterCombatSystem?.processTurnStartMonsterActions();
+      window.MonsterUI?.showTargetChangeButton();
     } else {
       // 相手のターン: 先攻モンスターの攻撃のみ実行
       window.MonsterCombatSystem?.processTurnStartMonsterActions();
     }
-  }
+  };
 
-  // ===== ターン開始時ターゲット選択 =====
-  // モンスターが存在する場合のみ表示。なければ即コールバック。
-  function _showTurnStartTargetSelect(onDone) {
+  // ===== 相手のターゲット選択待ちオーバーレイ表示 =====
+  window.showOpponentTargetSelectWaiting = function() {
+    if (document.getElementById("opponentTargetWaitingOverlay")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "opponentTargetWaitingOverlay";
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8, 6, 15, 0.75);
+      z-index: 15000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      pointer-events: auto;
+    `;
+
+    overlay.innerHTML = `
+      <div style="position: relative; width: 80px; height: 80px; margin-bottom: 24px;">
+        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #f0d080; border-radius: 50%; animation: spin 1.2s linear infinite;"></div>
+        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-bottom-color: rgba(199, 179, 119, 0.3); border-radius: 50%; animation: spin 1.8s linear infinite reverse;"></div>
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px;">🎯</div>
+      </div>
+      <div style="font-size: 18px; color: #f0d080; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px;">相手のターゲット選択中</div>
+      <div style="font-size: 12px; color: #aaa; letter-spacing: 0.5px;">対戦相手が攻撃対象を選択するまでお待ちください…</div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+    document.body.appendChild(overlay);
+  };
+
+  // ===== ターン開始時ターゲット選択ダイアログの表示 =====
+  window.showTurnStartTargetSelectDialog = function() {
+    if (document.getElementById("turnStartTargetPanel")) return;
+
     const slots = window.MonsterManager?.getAllSlots() || [];
-    const hasMonster = slots.some(s => s !== null);
-
-    // モンスターがいない場合はスキップ
-    if (!hasMonster) {
-      onDone();
-      return;
-    }
-
     const me = window.myRole || "player1";
-    const existing = document.getElementById("turnStartTargetPanel");
-    if (existing) existing.remove();
 
     const panel = document.createElement("div");
     panel.id = "turnStartTargetPanel";
@@ -155,24 +189,25 @@
       position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       z-index: 20001;
-      background: rgba(10, 8, 20, 0.97);
-      border: 1px solid rgba(199, 179, 119, 0.5);
+      background: rgba(10, 8, 20, 0.98);
+      border: 2px solid rgba(199, 179, 119, 0.5);
       border-radius: 16px;
       padding: 24px;
       width: min(480px, 90vw);
       font-family: 'Outfit', sans-serif;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.8);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.85);
+      backdrop-filter: blur(16px);
+      color: #fff;
     `;
 
     let optionsHtml = `
       <div class="targetOption pvp" data-target="player" style="
         display:flex; align-items:center; gap:12px; padding:12px 16px;
         border:1px solid rgba(224,74,74,0.3); border-radius:10px;
-        cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s;">
+        cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s, border-color 0.15s, transform 0.15s;">
         <div style="font-size:24px;">⚔️</div>
         <div>
-          <div style="font-size:14px; font-weight:600;">相手プレイヤーを攻撃</div>
+          <div style="font-size:14px; font-weight:600; color: #f07070;">相手プレイヤーを攻撃</div>
           <div style="font-size:11px; color:#888; margin-top:2px;">PvP — 通常の対戦</div>
         </div>
       </div>
@@ -185,40 +220,45 @@
       optionsHtml += `
         <div class="targetOption" data-target="monster" data-slot="${i}" style="
           display:flex; align-items:center; gap:12px; padding:12px 16px;
-          border:1px solid rgba(255,255,255,0.1); border-radius:10px;
-          cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s;">
+          border:1px solid rgba(199, 179, 119, 0.25); border-radius:10px;
+          cursor:pointer; margin-bottom:8px; color:#e0d0a0; transition:background 0.15s, border-color 0.15s, transform 0.15s;">
           <div style="font-size:24px;">${def?.emoji || "👾"}</div>
           <div>
-            <div style="font-size:14px; font-weight:600;">${def?.name || slot.monsterId}</div>
-            <div style="font-size:11px; color:#888; margin-top:2px;">HP: ${slot.currentHp}/${slot.maxHp} (${hpPct}%) | ${def?.initiative || "後攻"} | EXP+${def?.expReward || 1}</div>
+            <div style="font-size:14px; font-weight:600; color: #c7b377;">${def?.name || slot.monsterId}</div>
+            <div style="font-size:11px; color:#aaa; margin-top:2px;">HP: ${slot.currentHp}/${slot.maxHp} (${hpPct}%) | ${def?.initiative || "後攻"} | EXP+${def?.expReward || 1}</div>
           </div>
         </div>
       `;
     });
 
     panel.innerHTML = `
-      <h3 style="margin:0 0 8px; font-size:16px; color:#f0d080; text-align:center; letter-spacing:1px;">ターン開始 — 攻撃対象を選択</h3>
-      <p style="font-size:12px; color:#888; text-align:center; margin:0 0 16px;">このターンの攻撃対象を選んでください</p>
-      ${optionsHtml}
+      <h3 style="margin:0 0 8px; font-size:18px; color:#f0d080; text-align:center; letter-spacing:1px; font-weight:bold;">ターン開始 — 攻撃対象を選択</h3>
+      <p style="font-size:12px; color:#aaa; text-align:center; margin:0 0 20px; letter-spacing:0.5px;">このターンの攻撃対象を選んでください</p>
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        ${optionsHtml}
+      </div>
     `;
 
     document.body.appendChild(panel);
 
-    const close = (target) => {
+    const close = async (target) => {
       panel.remove();
       if (target === "player") {
         window.BattleTargetSystem?.setTarget(me, "player");
       } else if (typeof target === "number") {
         window.BattleTargetSystem?.setTarget(me, { slotIndex: target });
       }
-      // Firebase 同期
+      
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && window.firebaseClient?.db) {
-        const data = window.BattleTargetSystem?.serialize() || {};
-        window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve/targets`).set(data).catch(() => {});
+        const targetsData = window.BattleTargetSystem?.serialize() || {};
+        await window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve/targets`).set(targetsData).catch(() => {});
+        const nextMatch = { ...window.state.matchData, targetSelectionPending: false };
+        await window.firebaseClient.writeMatchData(gameRoom, nextMatch).catch(() => {});
+      } else {
+        window.state.matchData.targetSelectionPending = false;
+        if (typeof update === "function") update();
       }
-      _renderMonsterUI();
-      onDone();
     };
 
     panel.querySelectorAll(".targetOption").forEach(opt => {
@@ -230,13 +270,17 @@
         }
       });
       opt.addEventListener("mouseenter", () => {
-        opt.style.background = "rgba(199,179,119,0.1)";
+        opt.style.background = "rgba(199,179,119,0.15)";
+        opt.style.borderColor = "rgba(199,179,119,0.6)";
+        opt.style.transform = "translateY(-2px)";
       });
       opt.addEventListener("mouseleave", () => {
         opt.style.background = "";
+        opt.style.borderColor = opt.classList.contains("pvp") ? "rgba(224,74,74,0.3)" : "rgba(199, 179, 119, 0.25)";
+        opt.style.transform = "";
       });
     });
-  }
+  };
 
   // ===== UI 更新ヘルパー =====
   function _renderMonsterUI() {

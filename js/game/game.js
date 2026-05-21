@@ -829,6 +829,51 @@ function handleMatchStateTransitions() {
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
   const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
+  // ターゲット選択フェーズの割り込み処理
+  if (isDicePhaseComplete && m.status === "playing" && m.targetSelectionPending && !m.winner) {
+    if (m.turnPlayer === meRole) {
+      const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
+      if (opOverlay) opOverlay.remove();
+
+      const slots = window.MonsterManager?.getAllSlots() || [];
+      const hasMonster = slots.some(s => s !== null);
+      if (!hasMonster) {
+        // モンスターがいない場合は自動で相手プレイヤーをターゲットにする
+        (async () => {
+          if (window.BattleTargetSystem) {
+            window.BattleTargetSystem.onTurnStart(meRole);
+            window.BattleTargetSystem.setTarget(meRole, "player");
+          }
+          const gameRoom = localStorage.getItem("gameRoom");
+          if (gameRoom && window.firebaseClient?.db) {
+            const targetsData = window.BattleTargetSystem?.serialize() || {};
+            await window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve/targets`).set(targetsData).catch(() => {});
+            const nextMatch = { ...state.matchData, targetSelectionPending: false };
+            await window.firebaseClient.writeMatchData(gameRoom, nextMatch).catch(() => {});
+          } else {
+            state.matchData.targetSelectionPending = false;
+            update();
+          }
+        })();
+      } else {
+        if (typeof window.showTurnStartTargetSelectDialog === "function") {
+          window.showTurnStartTargetSelectDialog();
+        }
+      }
+    } else {
+      if (typeof window.showOpponentTargetSelectWaiting === "function") {
+        window.showOpponentTargetSelectWaiting();
+      }
+    }
+    return; // ターゲット決定待ちの間は、ターン開始（ドローや通知）を保留
+  }
+
+  // ターゲット選択フェーズでない場合のクリーンアップ
+  const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
+  if (opOverlay) opOverlay.remove();
+  const targetSelectDlg = document.getElementById("turnStartTargetPanel");
+  if (targetSelectDlg) targetSelectDlg.remove();
+
   // 判定用変数を先に計算
   const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
   const isFirstTurnOfRound = m.turn === 1;

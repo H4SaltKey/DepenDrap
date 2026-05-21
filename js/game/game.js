@@ -483,8 +483,8 @@ function addVal(owner, key, delta) {
   }
   
   s[key] = v;
-  if (key === "pp" && typeof addGameLog === "function" && window.devMode) {
-    addGameLog(`[システム] ${s.username || owner} のPP: ${prev} → ${s[key]}`);
+  if (key === "pp") {
+    addGameLog(`[PP] ${s.username || owner} のPP: ${prev} → ${s[key]}`);
   }
   if (key === "exp") checkLevelUp(owner);
   syncDerivedStats(owner);

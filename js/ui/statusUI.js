@@ -182,7 +182,7 @@ function renderOwnerUI(owner) {
   
   <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-end;">
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative;">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:-20px;">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -275,6 +275,73 @@ function lorInstantDefStatRow(owner, s) {
   </div>`;
 }
 
+// Render the current target's status (HP, Shield, Defstack). Falls back to 0/0 if not available.
+function renderTargetStatus(owner) {
+  if (!window.BattleTargetSystem) return '';
+  const target = window.BattleTargetSystem.getTarget(owner);
+  let tState = null;
+  if (target === "player") {
+    const opponent = owner === "player1" ? "player2" : "player1";
+    tState = state[opponent] || {};
+  } else if (target && typeof target === "object" && typeof target.slotIndex === "number") {
+    const monster = window.MonsterManager?.getSlot(target.slotIndex);
+    if (monster) {
+      tState = {
+        hp: monster.hp,
+        hpMax: monster.hpMax,
+        shield: monster.shield,
+        shieldMax: monster.shieldMax,
+        defstack: monster.defstack,
+        defstackMax: monster.defstackMax
+      };
+    }
+  }
+  if (!tState) return '';
+  const hpPct = Math.min(100, Math.max(0, (tState.hp / (tState.hpMax || 100)) * 100));
+  const shieldPct = Math.min(100, Math.max(0, (tState.shield / (tState.shieldMax || 100)) * 100));
+  const defPct = Math.min(100, Math.max(0, (tState.defstack / (tState.defstackMax || 1)) * 100));
+  return `
+    <div style="margin-top:8px;">
+      <div style="font-size:12px;color:#aaa;">ターゲットステータス</div>
+      <div class="statBarWrap">
+        <div class="statBarLabel">HP</div>
+        <div class="statBarOuter">
+          <div class="statBarInner lorHpFill" style="width:${hpPct}%"></div>
+        </div>
+        <div class="statBarControls"><span>${tState.hp}/${tState.hpMax}</span></div>
+      </div>
+      <div class="statBarWrap">
+        <div class="statBarLabel">シールド</div>
+        <div class="statBarOuter">
+          <div class="statBarInner lorShieldFill" style="width:${shieldPct}%"></div>
+        </div>
+        <div class="statBarControls"><span>${tState.shield}/${tState.shieldMax}</span></div>
+      </div>
+      <div class="statBarWrap">
+        <div class="statBarLabel">防御</div>
+        <div class="statBarOuter">
+          <div class="statBarInner lorDefstackFill" style="width:${defPct}%"></div>
+        </div>
+        <div class="statBarControls"><span>${tState.defstack}/${tState.defstackMax}</span></div>
+      </div>
+    </div>`;
+}
+
+  const isEditable = window.devMode;
+  const val = Number(s.instantDef) || 0;
+  return `
+  <div class="lorChip lorIdefChip" data-tooltip="瞬間防御力">
+    <span class="lorChipIcon">${lorLucide("shield-alert", "lorLxIdef")}</span>
+    ${isEditable ? `
+      <input class="lorChipInput" type="number" value="${val}"
+        data-owner="${owner}" data-key="instantDef" data-type="val"
+        style="width:40px;background:none;border:none;color:inherit;font-family:inherit;font-size:inherit;text-align:center;padding:0;">
+    ` : `
+      <span class="lorChipVal">${val}</span>
+    `}
+  </div>`;
+}
+
 function updateFieldStatusPanels() {
   // 手札/PP UIを盤面（#fieldContent）へ移動。ズーム・パンに連動させる。
   const container = document.getElementById("fieldContent") || document.getElementById("field") || document.body;
@@ -331,10 +398,10 @@ function updateFieldStatusPanels() {
     } else {
       el.style.cssText = `
         position: absolute;
-        left: 100px;
-        top: 20px;
-        width: 180px;
-        padding: 10px 12px;
+        right: 30px;
+        bottom: 10px;
+        width: 360px;
+        padding: 12px 16px;
         background: rgba(15, 12, 28, 0.85);
         border: 1px solid #7a6a40;
         border-radius: 10px;
@@ -344,6 +411,8 @@ function updateFieldStatusPanels() {
         font-family: 'Outfit', sans-serif;
         pointer-events: auto;
         opacity: 0.85;
+        transform: scale(2);
+        transform-origin: right bottom;
       `;
     }
 
@@ -361,9 +430,7 @@ function updateFieldStatusPanels() {
                   −
                 </button>`
               : ""}
-            <span style="color: #00ffff; font-size: 22px; font-weight: bold; min-width: 52px; text-align: center;">
-              ${currentPp}/${maxPp}
-            </span>
+            <span style="color: #00ffff; font-size: 22px; font-weight: bold; min-width: 52px; text-align: center;">${currentPp}/${maxPp}</span>
             ${isMine
               ? `<button class="lorSmBtn"
                   data-owner="${owner}"
@@ -385,6 +452,7 @@ function updateFieldStatusPanels() {
             text-align: center;
           ">${handCount}/${handLimit}</span>
         </div>
+        ${renderTargetStatus(owner)}
       </div>
     `;
   });

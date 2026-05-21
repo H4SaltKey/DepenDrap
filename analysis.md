@@ -725,3 +725,144 @@ if (round !== _lastRoundSeen) {
 - `executeReset()` の watcher 再設定フロー（未調査）
 - `addVal()` の `pushMyStateDebounced` と `writeMyState` の競合（低リスク）
 - モンスター攻撃ログ2行出力（意図的の可能性あり）
+
+---
+
+## Round 12 — Monster システム実仕様（battle.js / monster 関連）
+
+> `battle.js` は存在しない。モンスター関連は以下5ファイルで完結。
+
+---
+
+### Monster Object Structure
+
+**定義（`MONSTER_DEFINITIONS` / `monsterData.js`）**
+```js
+{
+  id: string,           // "goblin" 等
+  name: string,
+  emoji: string,
+  hp: number,
+  atk: number,
+  initiative: "先攻" | "後攻",
+  traits: [{ id, label, description, onDamageReceived?(dmg, ctx), onDefeat?(ctx) }],
+  actions: [{ type: "attack" | "attack_double" | "attack_all", label, weight }],
+  expReward: number
+}
+```
+
+**スロット状態（`MonsterManager` 内部 `_slots[i]`）**
+```js
+{
+  slotIndex: number,
+  monsterId: string,
+  currentHp: number,
+  maxHp: number,
+  hitCountThisTurn: number,   // ターン内被弾カウント（traits 判定用）
+  retreatCountdown: number    // 撤退追撃残りターン数
+} | null  // null = 討伐済み
+```
+
+---
+
+### Summon Flow
+
+```
+onRoundStart(round)  ← pvpveWatcher._onAfterUpdate() が先攻プレイヤーのみ呼ぶ
+  └─ MonsterManager.initRound(round)
+       ├─ round === 1: 全6スロットにランダム配置（重複なし）
+       ├─ round >= 2: _defeatedSlots のみ再配置（生存スロットは継続）
+       └─ _defeatedSlots.clear()
+  └─ _syncMonsterState()  → Firebase rooms/{room}/pvpve/monsters に set
+  └─ pvpveWatcher Firebase リスナー → applyRemoteState() → 後攻側に反映
+```
+
+---
+
+### Attack Flow
+
+**プレイヤー → モンスター**
+```
+playerAttackMonster(attackerKey, slotIndex, rawDmg)
+  └─ MonsterManager.dealDamage(slotIndex, rawDmg, attacker)
+       ├─ slot.hitCountThisTurn++
+       ├─ traits.onDamageReceived(dmg, { attacker, hitCountThisTurn }) で dmg 変換
+       ├─ slot.currentHp -= dmg
+       └─ currentHp <= 0 → _defeatMonster()
+  └─ result.defeated → _handleDefeat()
+  └─ _syncMonsterState()
+```
+
+**モンスター → プレイヤー（ターン終了時・後攻）**
+```
+_onBeforeTurnEnd()  ← battlePhase.handleTurnEnd() の前フック
+  └─ processTurnEndMonsterActions()
+       └─ initiative === "後攻" のスロットのみ
+            └─ monsterAttackPlayer(slotIndex, playerKey)
+                 ├─ MonsterManager.monsterAttack() → 重み付きランダムで action 選択
+                 │    attack_double: dmg = floor(atk * 1.5)
+                 │    attack_all: 定義あるが MonsterCombatSystem 側で未処理（dmg 計算のみ）
+                 └─ addVal(targetKey, "hp", -dmg)  ← 防御スタック・シールド無視（hp_reduce 相当）
+```
+
+**モンスター → プレイヤー（ターン開始時・先攻）**
+```
+_onAfterTurnEnd()  ← battlePhase.handleTurnEnd() の後フック
+  └─ processTurnStartMonsterActions()
+       ├─ initiative === "先攻" のスロット → monsterAttackPlayer()
+       └─ MonsterManager.processRetreatAttacks(playerKey)
+            ├─ retreatCountdown > 0 のスロット: countdown-- → dmg = ceil(atk * 1.5)
+            └─ addVal(playerKey, "hp", -dmg)
+```
+
+---
+
+### Death Flow
+
+```
+MonsterManager._defeatMonster(slotIndex, killer)
+  ├─ traits.onDefeat({ killer, slotIndex }) 実行
+  │    growth_slime: window._slimeGrowthRoundsLeft = 3, _slimeGrowthKiller = killer
+  ├─ _defeatedSlots.add(slotIndex)
+  └─ _slots[slotIndex] = null
+  → { defeated: true, expReward, killer, monsterId } を返す
+
+MonsterCombatSystem._handleDefeat(slotIndex, killer, result)
+  ├─ addVal(killer, "exp", expReward)
+  ├─ addVal(killer, "pp", 2)
+  └─ BattleTargetSystem.onMonsterDefeated(killer)  → _justDefeated = true（即時ターゲット変更許可）
+```
+
+---
+
+### Render Flow
+
+```
+pvpveWatcher._onAfterUpdate()  ← update() 後フック
+  └─ MonsterUI.render()
+       ├─ status !== "playing" → #monsterPanel を非表示
+       ├─ MonsterManager.getAllSlots() でスロット一覧取得
+       ├─ slot === null → 討伐済み表示（💀）
+       └─ slot あり → HP バー・initiative バッジ・trait バッジ・ラストヒット圏表示
+            ├─ isTargeted: BattleTargetSystem.getTarget(me).slotIndex === i
+            └─ click → canChangeTarget(me) なら即 setTarget、なければ _showTargetSelectPanel()
+  └─ MonsterUI.renderTargetBadge()
+       └─ #currentTargetBadge に現在のターゲット名を表示
+
+Firebase pvpve 変更時:
+  pvpveWatcher Firebase リスナー → applyRemoteState(data)
+    ├─ MonsterManager.deserialize(data.monsters)
+    └─ BattleTargetSystem.deserialize(data.targets)
+  → _renderMonsterUI() → MonsterUI.render() + renderTargetBadge()
+```
+
+---
+
+### 既知の未実装・問題点
+
+| 項目 | 内容 |
+|------|------|
+| `attack_all` | `monsterData.js` に定義あり（古代竜）、`MonsterCombatSystem` で未処理（通常 atk として扱われる） |
+| ログ2行出力 | `MonsterManager.monsterAttack()` と `MonsterCombatSystem.monsterAttackPlayer()` の両方で `addGameLog` を呼ぶ |
+| `_justDefeated` 非同期 | `BattleTargetSystem.serialize()` に含まれないため Firebase 同期後に失われる |
+| `setRetreatCountdown` | 定義はあるが呼び出し元が存在しない（撤退追撃は発動しない） |

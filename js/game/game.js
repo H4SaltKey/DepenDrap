@@ -1637,23 +1637,28 @@ let ppRepeatTimer = null;
 let ppRepeatTarget = null;
 
 document.body.addEventListener("pointerdown", (e) => {
+  // Prioritize PP button handling even when interaction is locked (e.g., target selection phase)
+  const ppBtn = e.target.closest('.lorPpBtn');
+  if (ppBtn) {
+    const owner = ppBtn.dataset.owner;
+    const key = ppBtn.dataset.key;
+    const delta = Number(ppBtn.dataset.delta || 0);
+    if (owner && key === 'pp' && delta) {
+      ppRepeatTarget = { owner, key, delta };
+      ppRepeatTimer = setTimeout(() => {
+        const loop = () => {
+          if (!ppRepeatTarget) return;
+          addVal(ppRepeatTarget.owner, ppRepeatTarget.key, ppRepeatTarget.delta);
+          ppRepeatTimer = setTimeout(loop, 70);
+        };
+        loop();
+      }, 260);
+      return; // handled PP, skip further processing
+    }
+  }
+
   if (window.isGameInteractionLocked()) return;
-  if (e.target.classList.contains("lorSlider")) sliderActive = true;
-  const ppBtn = e.target.closest(".lorPpBtn");
-  if (!ppBtn) return;
-  const owner = ppBtn.dataset.owner;
-  const key = ppBtn.dataset.key;
-  const delta = Number(ppBtn.dataset.delta || 0);
-  if (!owner || key !== "pp" || !delta) return;
-  ppRepeatTarget = { owner, key, delta };
-  ppRepeatTimer = setTimeout(() => {
-    const loop = () => {
-      if (!ppRepeatTarget) return;
-      addVal(ppRepeatTarget.owner, ppRepeatTarget.key, ppRepeatTarget.delta);
-      ppRepeatTimer = setTimeout(loop, 70);
-    };
-    loop();
-  }, 260);
+  if (e.target.classList.contains('lorSlider')) sliderActive = true;
 });
 
 document.body.addEventListener("pointerup", (e) => {

@@ -45,6 +45,7 @@ window.BattleTargetSystem = (function() {
    */
   function setTarget(playerKey, target) {
     if (!_canChange[playerKey] && !_justDefeated[playerKey]) {
+      console.warn(`[BattleTargetSystem] setTarget failed: ターン開始時のみ変更できます`);
       return { ok: false, reason: "ターン開始時のみ変更できます" };
     }
 
@@ -57,6 +58,17 @@ window.BattleTargetSystem = (function() {
     }
 
     _targets[playerKey] = target;
+    // Expose a helper for external callers
+    // (Will be used by applyTargetSelectionResult)
+    window.BattleTargetSystem.applySelectionResult = async function(owner, tgt) {
+      const res = window.BattleTargetSystem.setTarget(owner, tgt);
+      if (!res.ok) {
+        console.warn(`[BattleTargetSystem] applySelectionResult failed: ${res.reason}`);
+        return res;
+      }
+      // Serialize and write to Firebase if needed (handled by caller)
+      return { ok: true };
+    };
     _canChange[playerKey] = false;
     _justDefeated[playerKey] = false;
 

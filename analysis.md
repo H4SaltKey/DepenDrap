@@ -1031,3 +1031,550 @@ update() → renderUI() → updateFieldStatusPanels()  ← PP/手札パネル（
 | `beginZoneHoverCardDrag` | ゾーンスタック検査パネルのドラッグ（`showZoneStackInspectHover` は削除済み） |
 | event/effect queue | 存在しない。全て即時解決 |
 | summon trigger / death trigger | 存在しない |
+
+---
+
+## Round 14 — organizeBattleZones の attacker 処理 / damageCalc.js / PP 直接変更
+
+### A. organizeBattleZones の attacker 処理（Round 13 未解決）
+
+**問題の箇所**
+
+```js
+if (type === "attacker" && cards.length > 1) {
+  cards.slice(0, -1).forEach((c) => clearZoneMarker(c));
+}
+const list = getZoneCards(owner, type);  // ← clearZoneMarker 後に再取得
+```
+
+**`clearZoneMarker` の実装**
+
+```js
+function clearZoneMarker(card) {
+  delete card.dataset.zoneType;
+  delete card.dataset.zoneOwner;
+  delete card.dataset.zoneOrder;
+}
+```
+
+- `zoneType` / `zoneOwner` / `zoneOrder` を削除するだけ。DOM からカードを除去しない。
+- `getZoneCards` は `zoneType === type` でフィルタするため、clearZoneMarker 後は `list` に含まれない。
+- つまり「手札に戻る」のではなく、**ゾーン属性が消えてフィールド上に浮いた状態**になる。
+
+**実際の挙動（確定）**
+
+1. attacker に2枚以上ある場合、`organizeBattleZones` が呼ばれるたびに先頭〜末尾-1枚の `zoneType` が消える
+2. それらのカードは `getZoneCards("attacker")` に含まれなくなる → 整列対象外
+3. ただし DOM 上には残り、`dataset.x / y` も更新されない → 前回の座標に留まる
+4. `organizeHands` が呼ばれると `zoneType` のないカードは手札として扱われる可能性がある
+
+**`placeCardInZone` の attacker 処理との矛盾**
+
+```js
+// placeCardInZone 内（attacker に出す時）
+const prev = getZoneCards(owner, "attacker").filter((c) => c !== card);
+prev.forEach((c, i) => {
+  clearZoneMarker(c);          // ← 既存カードのゾーン属性を消す
+  const nx = a.x + 30 + (i * 20);
+  const ny = a.y + 30 + (i * 20);
+  c.style.left = `${nx}px`;   // ← ずらして配置
+  c.dataset.x = nx;
+  c.dataset.y = ny;
+});
+card.dataset.zoneType = type;  // ← 新しいカードだけ zoneType を付与
+```
+
+- `placeCardInZone` は「attacker に出す時、既存カードの zoneType を消してずらす」設計
+- つまり **attacker ゾーンには常に1枚しか zoneType を持つカードが存在しない**
+- `organizeBattleZones` の `cards.length > 1` チェックは **通常は発動しない**（placeCardInZone が先に処理するため）
+- 発動するのは `restoreFieldCards()` 等でゾーン状態を復元した際に複数枚が同じ zoneType を持つ場合のみ
+
+**結論: 意図的な設計**
+
+- attacker は「スタック」ではなく「最後に出したカードが有効」という仕様
+- `placeCardInZone` が主処理、`organizeBattleZones` の `cards.length > 1` チェックは復元時の安全弁
+- 「先頭カードを手札扱いに戻す」ではなく「ゾーン属性を消してフィールド上に浮かせる」が正確
+- ただし浮いたカードの扱いが不明確（`organizeHands` が手札として拾う可能性あり）
+
+---
+
+### B. damageCalc.js の解析
+
+**ファイルの役割**
+
+- `applyDamageByRule` / `getDamageTypeLabel` / `getDamageTypeDescription` の3関数のみ
+- Round 4 で解析済みの `applyDamageByRule` の**正式な実装ファイル**
+- `contextMenu.js` の同名関数はこのファイルから移植・統一されたもの
+
+**`applyDamageByRule` の実装（確定）**
+
+| type | 挙動 |
+|------|------|
+| `hp_reduce` | `hp -= hits`（防御・シールド完全無視） |
+| `fragile` | `defstack -= hits`（HP/シールドに影響なし） |
+| `pierce` | シールド → HP の順に吸収（defstack 無視） |
+| `arcana` | `defstack` を削り、余剰分をシールド → HP へ |
+| `damage` / `direct_attack` / default | defstack を1ずつ削り、0到達時に1ダメ通過 + defstackMax へリセット |
+
+**`arcana` の挙動（詳細）**
+
+```js
+const brokenDef = Math.min(result.defstack, hits);
+result.defstack -= brokenDef;
+applyToShieldAndHp(hits - brokenDef);
+```
+
+- `hits <= defstack` の場合: defstack を削るだけ（HP/シールドに影響なし）
+- `hits > defstack` の場合: defstack を 0 にして、余剰分（`hits - defstack`）をシールド → HP へ
+- `damage` と異なり、defstack を超えた分が**全て**シールド/HP に通る（ループなし）
+
+**`damage` vs `arcana` の比較（例: defstack=2, defstackMax=2, hits=5）**
+
+| type | 結果 |
+|------|------|
+| `damage` | defstack 2→1→0(1ダメ通過+リセット)→2→1→0(1ダメ通過+リセット) → 2ダメ |
+| `arcana` | defstack 2→0(余剰3をシールド/HPへ) → 3ダメ |
+
+- `arcana` は `damage` より**常に多くのダメージが通る**（defstack が残っている場合）
+
+**`getDamageTypeDescription` の `subType` 対応**
+
+- `subType === "additional"` の場合のみ説明文を変える
+- `damage` + `additional` → `"追加"特性を持つ、通常のダメージ`
+- それ以外 + `additional` → `"追加"特性を持ち、${desc}する`
+- `subType === "none"` / `"normal"` は通常の説明文と同じ
+
+**グローバル公開**
+
+```js
+window.applyDamageByRule       = applyDamageByRule;
+window.getDamageTypeLabel       = getDamageTypeLabel;
+window.getDamageTypeDescription = getDamageTypeDescription;
+```
+
+- `contextMenu.js` / `MonsterCombatSystem.js` から `window.applyDamageByRule` で参照
+
+**潜在的な問題**
+
+- `default` ケースが `damage` / `direct_attack` と同じ挙動 → 未知の type が来ても通常ダメージとして処理される（サイレントフォールバック）
+- `arcana` は defstackMax をリセットしない → defstack が 0 になった後、次の `damage` 攻撃で即1ダメ通過する
+
+---
+
+### C. showBattleZonePpCostModal の PP 直接変更（Round 13 危険箇所）
+
+**実装の確認**
+
+```js
+overlay.querySelector("#zonePpOk").onclick = () => {
+  const cost = clamp(parseInt(inp.value, 10) || 0);
+  const st = typeof state !== "undefined" ? state[owner] : null;
+  if (!st) { close(); return; }
+  if (st.pp < cost) { showErrorMessage("PPが不足しています。"); return; }
+  st.pp -= cost;                          // ← state を直接変更
+  placeCardInZone(cardEl, owner, zoneType);
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  if (typeof saveFieldCards === "function") saveFieldCards();
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();  // ← Firebase 同期
+  if (typeof update === "function") update();
+  close();
+};
+```
+
+**`addVal()` を経由しない影響**
+
+- `addVal()` は `normalizeState()` / `syncDerivedStats()` / `checkLevelUp()` を呼ぶ可能性がある
+- `st.pp -= cost` の直接変更後は `pushMyStateDebounced()` のみ → 派生ステータス再計算なし
+- PP は派生ステータスに影響しないため、**実害はほぼない**
+- ただし `addVal()` が将来 PP 変更時のフック（ログ出力等）を持つ場合は不整合になる
+
+**PP 上限チェックの問題**
+
+```js
+const clamp = (v) => Math.max(0, Math.min(2, v));
+```
+
+- モーダルの入力値を 0〜2 にクランプしているが、**実際の PP 上限（ppMax）を参照していない**
+- `st.pp < cost` チェックはあるが、`cost` の上限が 2 固定
+- PP が 3 以上の場合でも最大 2 しか消費できない（意図的な仕様の可能性あり）
+
+**結論**
+
+- `addVal()` 非経由は低リスク（PP は派生ステータスに影響しない）
+- PP 消費上限が 2 固定なのは仕様（召喚コストの最大値が 2）
+- `pushMyStateDebounced()` + `update()` で Firebase 同期と UI 更新は正しく行われる ✅
+
+---
+
+### Round 14 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 12 | attacker の clearZoneMarker 後カードがフィールドに浮く | 低 | cardManager.js |
+| 13 | arcana が defstackMax をリセットしない（次の damage で即1ダメ通過） | 低〜中 | damageCalc.js |
+| 14 | damageCalc.js の default ケースがサイレントフォールバック | 低 | damageCalc.js |
+
+**設計上の特徴（意図的）**
+
+- attacker ゾーンは「最後に出したカードが有効」の1枚スタック設計
+- `organizeBattleZones` の `cards.length > 1` チェックは復元時の安全弁
+- PP 消費上限 2 固定は召喚コストの仕様
+- `damageCalc.js` は純粋関数のみ → テスト可能・副作用なし ✅
+
+### 次に調べる場所
+
+- `js/game/core.js` の `addVal()` → `pushMyStateDebounced` の呼び出しタイミング（Round 10 未解決）
+- `js/game/game.js` の `executeReset()` → watcher 再設定フロー（Round 9/10 未解決）
+
+---
+
+## Round 15 — addVal / executeReset / syncDerivedStats 重複問題
+
+### A. addVal の実装（確定）
+
+```
+addVal(owner, key, delta)
+  ├─ key === "level"
+  │    → level をクランプ、exp を上限以下に切り詰め、applyLevelStats()
+  │    → pushMyStateDebounced() or sendChangeRequest()
+  │    → update()
+  │
+  ├─ key === "exp" && delta > 0 && maxLv 到達 → 早期リターン（EXP 増加なし）
+  ├─ key === "exp" && delta < 0 && Lv1 → exp を 0 以上にクランプして同期
+  │
+  ├─ key === "pp"
+  │    → [0, ppMax] にクランプ
+  │    → addGameLog("[システム] PP: prev → next")
+  │
+  ├─ key === "defstack"
+  │    → delta < 0 かつ prev === 0 → v = defstackMax（アンダーフロー時にリセット）
+  │    → delta > 0 かつ !defstackOverMax → v = min(v, defstackMax)（上限超え防止）
+  │    → v <= defstackMax → defstackOverMax = false
+  │
+  ├─ key === "exp" → addGameLog("[EXP] ...")
+  ├─ key === "exp" → checkLevelUp(owner)
+  ├─ syncDerivedStats(owner)
+  ├─ pushMyStateDebounced() or sendChangeRequest()
+  └─ update()
+```
+
+**`defstackOverMax` フラグの仕組み**
+
+- `addInstantDef` ボタン（PP消費で defstack を即時増加）でのみ `defstackOverMax = true` になる
+- `addVal("defstack", +n)` では `!defstackOverMax` の場合のみ defstackMax を上限とする
+  → `defstackOverMax = true` の状態では上限を超えた defstack を保持できる
+- `resetDefense` ボタンで `defstack = defstackMax`, `defstackOverMax = false` に戻す
+- `setVal("defstack", v)` は常に `defstackMax` を上限とし `defstackOverMax = false` にリセット
+
+**`addVal` が `addGameLog` を出すケース**
+
+| key | 条件 | ログ内容 |
+|-----|------|---------|
+| `pp` | 常に | `[システム] PP: prev → next` |
+| `exp` | delta > 0 | `[EXP] X EXPを獲得` |
+| `exp` | delta < 0 かつ exp > 0 or Lv > 1 | `[EXP] X EXPを失いました` |
+
+- `hp` / `shield` / `defstack` の変更はログを出さない（`applyCalculatedDamage` 側でログを出す）
+
+**`pushMyStateDebounced` の呼び出しタイミング**
+
+- `owner === me` の場合のみ `pushMyStateDebounced()` を呼ぶ
+- `owner !== me`（相手への変更）の場合は `sendChangeRequest()` を呼ぶ
+- `addVal` は必ず `update()` を呼ぶ → UI は即時更新される
+
+**Round 9 の競合問題（確定）**
+
+- `_beforeTurnEndHooks` でモンスター攻撃 → `addVal(targetKey, "hp", -dmg)` → `pushMyStateDebounced()`（300ms デバウンス）
+- その後 `handleTurnEnd` が `await firebaseClient.writeMyState()` を呼ぶ
+- `writeMyState` は即時書き込み → デバウンス中の `pushMyStateDebounced` より先に Firebase に届く
+- 300ms 後に `pushMyStateDebounced` が発火 → **モンスター攻撃前の古い hp を上書きする可能性がある**
+- ただし `pushMyStateDebounced` は `_getMyStateForSync()` を使うため、その時点の `state[me]` を送る
+  → `addVal` で `state[me].hp` は既に更新済み → **最終的には正しい値が送られる** ✅
+- 実害: なし（デバウンスが発火する時点では state は正しい）
+
+---
+
+### B. syncDerivedStats / checkLevelUp の重複定義（Round 7 未解決）
+
+**2つの定義の比較**
+
+| 項目 | `syncState.js` | `game.js` |
+|------|---------------|-----------|
+| `syncDerivedStats` | `window.syncDerivedStats = syncDerivedStats` でグローバル公開 | ローカル関数（グローバル公開なし） |
+| `checkLevelUp` | `window.checkLevelUp = function(...)` でグローバル公開 | ローカル関数（グローバル公開なし） |
+| 内容 | 同一 | 同一 |
+| `applyLevelStats` の呼び出し | `typeof applyLevelStats === "function"` でガード | ガードなし（直接呼び出し） |
+
+**実行順序（確定）**
+
+- `game.js` は `syncState.js` より後に読み込まれる（HTML の script 順序）
+- `game.js` のローカル `syncDerivedStats` / `checkLevelUp` は `window.*` を上書きしない
+- `addVal` / `setVal` は `game.js` 内のローカル関数を呼ぶ（スコープ内）
+- `roomWatcher.js` の `pendingChange` ハンドラは `window.syncDerivedStats` / `window.checkLevelUp` を呼ぶ
+  → `syncState.js` の版が使われる
+
+**結論: 実害なし（内容が同一のため）**
+
+- ただし将来どちらかを変更した場合に不整合が生じるリスクがある
+- `syncState.js` 版を正とし、`game.js` のローカル定義を削除するのが望ましい
+
+---
+
+### C. executeReset の watcher 再設定フロー（確定）
+
+**フロー全体**
+
+```
+executeReset(syncShared = true)
+  ├─ Firebase 不要データを並列削除（playerDice, fieldCards, pendingChange, logs, rematch, playerState）
+  ├─ state をリセット（hp/shield/defstack/level/exp/pp/diceValue/evolutionPath 等）
+  ├─ initDeckFromCode() → デッキ再構築
+  ├─ shuffleDeck()
+  ├─ DOM カードを全削除
+  ├─ resetBattleZoneState()
+  ├─ localStorage から fieldCards / gameStarted / gameStartedRoom を削除
+  ├─ state.matchData を初期値に戻す（status: "ready_check"）
+  ├─ 各種フラグをリセット（_gameStartInitiated, _firstDrawPhaseStarted 等）
+  ├─ notifySyncGate("initDone", false) / ("roomWatcherReady", false) / ("phaseReady", false)
+  │    → ローディングオーバーレイを再表示
+  ├─ setupRoomWatcher()  ← watcher 再設定
+  │    └─ 既存 roomWatcherUnsubscribe を解除してから再登録
+  │    └─ clearAllWatchers() は呼ばない（setupRoomWatcher 内で個別に解除）
+  ├─ firebaseClient.writeMyState()  ← 自分の最新状態を送信
+  ├─ notifySyncGate("initDone", true)  ← ローディングオーバーレイを解除
+  ├─ safeLocalSetItem("gameState", ...)
+  ├─ createDeckObject(true)
+  ├─ syncLoop()
+  ├─ _bothPlayersConnected かつ status === "ready_check" → status を "setup_dice" に進める
+  └─ update()
+```
+
+**`startPvpveWatcher` の再呼び出し問題（重要な発見）**
+
+- `startPvpveWatcher` は `game.html` の Firebase 接続コールバック（`firebaseJoined` イベント）でのみ呼ばれる
+- `executeReset` は `startPvpveWatcher` を**呼ばない**
+- `setupRoomWatcher` も `startPvpveWatcher` を**呼ばない**
+- **結果**: リセット後に pvpve Firebase ウォッチャーが再起動されない
+  - ただし `_registerHooks` で登録したフック（`_afterUpdateHooks` 等）は残る
+  - `_pvpveRef` / `_pvpveListener` は `stopPvpveWatcher` が呼ばれない限り生きている
+  - `executeReset` は `stopPvpveWatcher` を呼ばない → **pvpve リスナーはリセット後も生き続ける** ✅
+  - ただし `_lastRoundSeen` がリセットされないため、リセット後の round=1 で `onRoundStart(1)` が発火しない可能性がある
+    → `_lastRoundSeen` は前回ゲームの最終ラウンド値のまま残る
+    → round=1 に戻っても `_lastRoundSeen !== 1` にならない（前回が round=1 で終わった場合）
+
+**`clearAllWatchers` の呼び出しタイミング**
+
+- `setupRoomWatcher` の `unsubscribe` 関数内で `clearAllWatchers()` を呼ぶ
+- `unsubscribe` は次回 `setupRoomWatcher` 呼び出し時に実行される
+- つまり `executeReset` → `setupRoomWatcher()` → 既存 `unsubscribe` 実行 → `clearAllWatchers()` → 全 watcher 解除 → 新規登録
+- **pvpve リスナーは `clearAllWatchers` で解除されない**（`watcherRegistry` に登録されていないため）
+
+---
+
+### Round 15 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 15 | リセット後 `_lastRoundSeen` がリセットされず、round=1 で `onRoundStart` が発火しない可能性 | 中 | pvpveWatcher.js |
+| 16 | `syncDerivedStats` / `checkLevelUp` の重複定義（内容は同一） | 低 | syncState.js / game.js |
+
+**確定した設計（意図的）**
+
+- `addVal` の `defstackOverMax` フラグは `addInstantDef` 専用の上限超え許可機構 ✅
+- `addVal` の `pushMyStateDebounced` と `writeMyState` の競合は実害なし（state は既に更新済み） ✅
+- `executeReset` は `setupRoomWatcher` を再呼び出しして watcher を再設定する ✅
+- pvpve リスナーはリセット後も生き続ける（`stopPvpveWatcher` が呼ばれないため）
+
+**未解決**
+
+- [ ] `_lastRoundSeen` リセット問題: リセット後の round=1 で `onRoundStart(1)` が発火するか
+  - 前回ゲームが round=2 以上で終わった場合は `_lastRoundSeen=2` → round=1 で発火する ✅
+  - 前回ゲームが round=1 で終わった場合は `_lastRoundSeen=1` → round=1 で発火しない ❌
+- [ ] `addVal` の `pp` 変更ログが毎回出るのは意図的か（PP ボタン操作のたびにゲームログに出る）
+
+### 次に調べる場所
+
+- `js/game/monsters/pvpveWatcher.js` の `_lastRoundSeen` リセット問題の修正要否
+- `js/game/game.js` の `syncLoop()` → リセット後の同期フロー
+- `js/ui/statusUI.js` → PP ログの表示先（ゲームログ or デバッグログ）
+
+---
+
+## Round 16 — _lastRoundSeen リセット問題 / syncLoop / addGameLog / PP ログ
+
+### A. _lastRoundSeen リセット問題（Round 15 未解決）
+
+**pvpveWatcher.js の全体構造（確定）**
+
+- IIFE（即時実行関数）内のクロージャ変数 `_lastRoundSeen = 0`
+- `startPvpveWatcher()` を呼ぶと `stopPvpveWatcher()` → Firebase リスナー再登録 → `_registerHooks()` の順で実行
+- `_lastRoundSeen` は `startPvpveWatcher()` を呼んでも**リセットされない**（変数宣言は IIFE 内の let）
+- `stopPvpveWatcher()` も `_lastRoundSeen` をリセットしない
+
+**リセット後の `onRoundStart` 発火条件**
+
+| 前回ゲームの最終ラウンド | リセット後の `_lastRoundSeen` | round=1 で発火するか |
+|------------------------|------------------------------|---------------------|
+| round=1 で終了 | 1 | ❌ 発火しない（1 === 1） |
+| round=2 以上で終了 | 2以上 | ✅ 発火する（1 !== 2以上） |
+
+- **前回ゲームが round=1 で終わった場合のみ問題が発生**
+  - モンスターが召喚されない（`onRoundStart(1)` が呼ばれない）
+  - ただし `_onAfterUpdate` は `status === "playing"` の間は毎回呼ばれる
+  - `update()` が呼ばれるたびに `round !== _lastRoundSeen` を評価するため、
+    **round が 1 → 2 に変わった瞬間に `onRoundStart(2)` は発火する** ✅
+  - 問題は「ゲーム開始直後の round=1 の `onRoundStart(1)`」のみ
+
+**影響範囲**
+
+- `onRoundStart(1)` が呼ばれない → `MonsterCombatSystem.onRoundStart(1)` が呼ばれない
+  → `MonsterManager.initRound(1)` が呼ばれない → **ラウンド1のモンスターが出現しない**
+- ラウンド2以降は正常に動作する
+- 前回ゲームが round=2 以上で終わった場合は問題なし
+
+**修正方針**
+
+```js
+// executeReset() 内または startPvpveWatcher() 内で _lastRoundSeen をリセットする
+// 現状 _lastRoundSeen はクロージャ変数のため外部からアクセス不可
+// → startPvpveWatcher() 内でリセットするのが最も安全
+window.startPvpveWatcher = function() {
+  _lastRoundSeen = 0;  // ← 追加
+  // ...
+};
+```
+
+---
+
+### B. syncLoop の設計（確定）
+
+**syncLoop の役割**
+
+```js
+async function syncLoop() {
+  if (isPolling) return;  // 多重実行防止
+  isPolling = true;
+  try {
+    if (!window._levelStatsLoaded) {
+      await loadLevelStats();
+      window._levelStatsLoaded = true;
+    }
+    normalizeState();
+    applyLevelStats("player1");
+    applyLevelStats("player2");
+    update();
+  } finally {
+    isPolling = false;
+  }
+}
+setInterval(syncLoop, 1000);  // 1秒ごとに実行
+```
+
+- **Firebase ポーリングではない**（Firebase watcher が state を直接更新するため不要）
+- 役割は3つのみ:
+  1. `loadLevelStats()` の遅延ロード（初回のみ）
+  2. `normalizeState()` で state の整合性を毎秒チェック
+  3. `applyLevelStats()` + `update()` で UI を毎秒更新
+
+**`executeReset` 後の `syncLoop` 呼び出し**
+
+- `executeReset` 末尾で `await syncLoop()` を呼ぶ
+- `isPolling` フラグで多重実行を防止 → `setInterval` の定期実行と競合しない
+- `_levelStatsLoaded` は `executeReset` でリセットされない → 再ロードは不要（仕様通り）
+
+**潜在的な問題**
+
+- `setInterval(syncLoop, 1000)` は `core.js` のロード時に即時登録される
+- ページ遷移なしでゲームをリセットしても `setInterval` は生き続ける → 問題なし
+- `normalizeState()` が毎秒 hp を max にクランプする → `hpMax` が正しくないと毎秒 hp が削られる
+  - ただし `applyLevelStats` が `hpMax` を正しく設定するため実害なし
+
+---
+
+### C. addGameLog の設計（確定）
+
+**ログの流れ**
+
+```
+addGameLog(msg)
+  ├─ [EVOLUTION] → [進化の道] に変換
+  ├─ [ZONE] → [システム] に変換
+  ├─ [SYSTEM|DICE|MATCH] → [システム] に変換
+  ├─ 重複チェック（state.logs に同じエントリがあればスキップ）
+  ├─ state.logs に追加（上限50件、超えたら先頭を削除）
+  ├─ Firebase rooms/{room}/logs に push（相手にも届く）
+  └─ saveLocal()（localStorage に保存）
+```
+
+- **全ログが Firebase 経由で相手にも届く**（`logRef.push(entry)`）
+- 重複防止: タイムスタンプ付きエントリで完全一致チェック → 同一ミリ秒に同じメッセージが来た場合のみ防止（実質的には重複防止にならない）
+
+**PP ログの問題（確定）**
+
+`addVal` で `key === "pp"` の場合:
+```js
+addGameLog(`[システム] ${s.username || owner} のPP: ${prev} → ${s[key]}`);
+```
+
+- PP が変わるたびに**ゲームログ（相手にも見える）**に出力される
+- 出力されるケース:
+  - PP ボタン（+/−）を押すたびに出力
+  - モンスター討伐時の PP+2 回復（`addVal(killer, "pp", 2)`）→ `addVal` 内のログ + `MonsterCombatSystem` 側のログ `[MONSTER] PP +2 回復！` の**2行出力**
+  - ターン終了時の PP 変更（`addVal` 経由の場合）
+
+- `contextMenu.js` の PP 変更は `addVal` を経由せず直接 `state.pp` を変更 → ログなし（別途 `addGameLog` を呼ぶ）
+- `showBattleZonePpCostModal` の PP 変更も `addVal` を経由しない → ログなし
+
+**PP ログ2行出力の詳細**
+
+```
+MonsterCombatSystem._handleDefeat()
+  └─ addVal(killer, "pp", 2)
+       └─ addGameLog("[システム] PP: 0 → 2")   ← addVal 内
+  └─ addGameLog("[MONSTER] PP +2 回復！")       ← MonsterCombatSystem 内
+```
+
+- 同じ PP 変更に対して2行出力される（意図的かどうか不明）
+
+---
+
+### Round 16 サマリー
+
+**確定した問題（追加分）**
+
+| # | 問題 | 深刻度 | 場所 |
+|---|------|--------|------|
+| 17 | `_lastRoundSeen` がリセットされず、前回 round=1 終了時にリセット後のモンスターが出現しない | 中 | pvpveWatcher.js |
+| 18 | モンスター討伐時の PP+2 ログが2行出力（`addVal` 内 + `MonsterCombatSystem` 内） | 低 | MonsterCombatSystem.js / game.js |
+| 19 | `addGameLog` の重複防止がタイムスタンプ付きのため実質機能しない | 低 | core.js |
+
+**設計上の特徴（意図的）**
+
+- `syncLoop` は Firebase ポーリングではなく、毎秒の state 正規化 + UI 更新のみ ✅
+- `addGameLog` は全ログを Firebase 経由で相手にも届ける設計 ✅
+- `[EVOLUTION]` → `[進化の道]` 等のラベル変換は表示用の正規化 ✅
+
+**修正が必要なもの**
+
+```js
+// pvpveWatcher.js の startPvpveWatcher() 内に1行追加するだけで修正可能
+window.startPvpveWatcher = function() {
+  _lastRoundSeen = 0;  // ← リセット追加
+  stopPvpveWatcher();
+  // ...
+};
+```
+
+ただし `startPvpveWatcher` はゲーム開始時の1回のみ呼ばれるため、
+`executeReset` 後に `startPvpveWatcher` を再呼び出しするか、
+`executeReset` 内で `_lastRoundSeen` をリセットする外部 API を追加する必要がある。
+
+### 次に調べる場所
+
+- `js/game/core.js` の `normalizeState` が毎秒 hp をクランプする問題の実害確認
+- `js/ui/statusUI.js` → PP ログの表示先（ゲームログ UI の実装）
+- `js/game/phases/battlePhase.js` → ターン終了時の PP 変更フロー（`addVal` 経由か直接変更か）

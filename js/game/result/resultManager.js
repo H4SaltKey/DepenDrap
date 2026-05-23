@@ -104,16 +104,6 @@ function closeResultScreen() {
   // リザルト表示中フラグを解除
   window._resultShowing = false;
 
-  // winner を state と Firebase からクリア（再流入防止）
-  if (state?.matchData) {
-    state.matchData.winner = null;
-    state.matchData.winnerSetAt = null;
-    const gameRoom = localStorage.getItem("gameRoom");
-    if (gameRoom && firebaseClient?.db) {
-      firebaseClient.writeMatchData(gameRoom, state.matchData);
-    }
-  }
-
   // 閉じた後は再度 winner 判定を行わない（executeReset / handleChooseOrder まで維持）
   window._resultDismissed = true;
 }

@@ -2378,6 +2378,13 @@ button{
   min-height: 160px;
   max-height: min(48vh, 380px);
 }
+#chatArea.chat-expanded.chat-zoomed {
+  width: min(46vw, 720px);
+}
+#chatArea.chat-expanded.chat-zoomed #chatLogs {
+  min-height: 300px;
+  max-height: min(70vh, 640px);
+}
 
 .opHandLimitDisplay {
   top: auto !important;

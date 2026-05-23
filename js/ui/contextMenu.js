@@ -257,6 +257,14 @@ function openCardMenu(card, x, y){
     });
     items.splice(card.dataset.zoneType !== "grave" ? 3 : 1, 0, { sep: true });
   }
+  // 「拡大表示」を常に最上部へ固定
+  const zoomIdx = items.findIndex((it) => it && !it.sep && it.label === "拡大表示");
+  if (zoomIdx > 0) {
+    const [zoomItem] = items.splice(zoomIdx, 1);
+    while (items[0] && items[0].sep) items.shift();
+    items.unshift(zoomItem);
+    if (items[1] && !items[1].sep) items.splice(1, 0, { sep: true });
+  }
 
   buildMenu(items, x, y, card);
 }

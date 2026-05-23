@@ -134,7 +134,16 @@ window.setupChatEvents = function() {
       if (e.target.closest("#chatInputRow")) return;
       if (e.target.closest("#chatInput") || e.target.closest("#chatSendBtn")) return;
       chat.classList.toggle("chat-expanded");
+      const logs = document.getElementById("chatLogs");
+      if (logs) logs.scrollTop = logs.scrollHeight;
     });
+    const logs = document.getElementById("chatLogs");
+    if (logs) {
+      logs.addEventListener("click", () => {
+        chat.classList.toggle("chat-zoomed");
+        logs.scrollTop = logs.scrollHeight;
+      });
+    }
   }
 
   const chatInput = document.getElementById("chatInput");

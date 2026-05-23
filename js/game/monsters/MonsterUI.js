@@ -312,41 +312,47 @@ window.MonsterUI = (function() {
       panel = document.createElement("div");
       panel.id = "monsterBattlefieldPanel";
       panel.style.cssText = `
-        position:absolute; left:6200px; top:900px; width:1400px; min-height:800px; z-index:3000;
+        position:absolute; left:6200px; top:900px; width:3000px; min-height:2000px; z-index:3000;
         border:1px solid rgba(199,179,119,0.4); border-radius:12px; overflow:hidden;
         background:rgba(8,8,14,0.9); box-shadow:0 10px 28px rgba(0,0,0,0.45);
         font-family:'Outfit',sans-serif; color:#efe4bc;
       `;
       fieldContent.appendChild(panel);
     }
-    const cards = Array.from(fieldContent.querySelectorAll(".card:not(.deckObject)"));
     const myKey = window.myRole || "player1";
-    const atkCount = cards.filter(c => c.dataset.owner === myKey && c.dataset.zoneType === "attacker").length;
-    const skillCount = cards.filter(c => c.dataset.owner === myKey && c.dataset.zoneType === "skill").length;
+    const opKey = myKey === "player1" ? "player2" : "player1";
+    const target = window.BattleTargetSystem?.getTarget?.(myKey) || "player";
     const slotsHtml = slots.map((slot, i) => {
-      if (!slot) return `<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;">${i + 1}: 討伐済み</div>`;
+      if (!slot || target === "player" || target.slotIndex !== i) return "";
       const hpPct = Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100));
       return `
-        <div style="display:flex;gap:8px;align-items:center;padding:8px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;">
-          <img src="assets/System/enemy_${i + 1}.png" alt="enemy_${i + 1}" style="width:48px;height:48px;object-fit:contain;background:rgba(0,0,0,0.35);border-radius:6px;">
+        <div style="display:flex;gap:12px;align-items:center;padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+          <img src="assets/System/enemy_${i + 1}.png" alt="enemy_${i + 1}" style="width:140px;height:140px;object-fit:contain;background:rgba(0,0,0,0.35);border-radius:8px;">
           <div style="flex:1;">
-            <div style="font-size:12px;">モンスター ${i + 1}</div>
-            <div style="height:5px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;"><div style="width:${hpPct}%;height:100%;background:#ef6a6a;"></div></div>
-            <div style="font-size:11px;color:#c6c6c6;">HP ${slot.currentHp}/${slot.maxHp}</div>
+            <div style="font-size:18px;">現在ターゲット: モンスター ${i + 1}</div>
+            <div style="height:10px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;"><div style="width:${hpPct}%;height:100%;background:#ef6a6a;"></div></div>
+            <div style="font-size:14px;color:#c6c6c6;">HP ${slot.currentHp}/${slot.maxHp}</div>
           </div>
-          <div style="font-size:11px;color:#9cc6ff;">次: 通常攻撃</div>
+          <div style="font-size:13px;color:#9cc6ff;">次: 通常攻撃</div>
         </div>
       `;
     }).join("");
+    const playerTargetHtml = target === "player" ? `
+      <div style="padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
+        <div style="font-size:18px;margin-bottom:8px;">現在ターゲット: 相手プレイヤー</div>
+        <div style="font-size:14px;color:#c6c6c6;">HP ${window.state?.[opKey]?.hp || 0}/${window.state?.[opKey]?.hpMax || 0}</div>
+        <div style="font-size:14px;color:#c6c6c6;">シールド ${window.state?.[opKey]?.shield || 0}/${window.state?.[opKey]?.shieldMax || 0}</div>
+        <div style="font-size:14px;color:#c6c6c6;">防御 ${window.state?.[opKey]?.defstack || 0}/${window.state?.[opKey]?.def || 0}</div>
+      </div>
+    ` : "";
     panel.innerHTML = `
       <div style="position:relative;">
-        <img src="assets/System/monsterBG.png" alt="monster-bg" style="width:100%;height:260px;object-fit:cover;display:block;opacity:0.8;">
+        <img src="assets/System/monsterBG.png" alt="monster-bg" style="width:100%;height:520px;object-fit:cover;display:block;opacity:0.8;">
         <div style="position:absolute;left:10px;bottom:8px;font-size:14px;font-weight:700;">モンスター戦闘フィールド</div>
       </div>
-      <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        ${playerTargetHtml}
         ${slotsHtml}
-        <div style="margin-top:4px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;">プレイヤーアタッカー場: ${atkCount}</div>
-        <div style="font-size:12px;">プレイヤースキル場: ${skillCount}</div>
       </div>
     `;
   }

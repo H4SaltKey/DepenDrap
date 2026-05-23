@@ -167,7 +167,7 @@ function renderOwnerUI(owner) {
       ${isMine ? `
         <div class="lorActionGroup">
           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button" data-tooltip="瞬間防御力分、合計防御力を増加させます (消費PP: 1)">瞬間防御</button>
-          <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" data-tooltip="現在の合計防御力を0に戻します" title="防御解除">解除</button>
+          <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" data-tooltip="現在の合計防御力を上限値まで戻します" title="防御解除">解除</button>
         </div>
       ` : `<div class="lorActionGroup"></div>`}
     </div>
@@ -335,9 +335,9 @@ function updateFieldStatusPanels() {
       // 相手ステータスはフィールド固定
       el.style.cssText = `
         position: absolute;
-        left: 1220px;
+        left: 1600px;
         top: 120px;
-        width: 360px;
+        width: 240px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.85);
         border: 1px solid #7a6a40;
@@ -351,8 +351,6 @@ function updateFieldStatusPanels() {
       `;
     }
     const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
-    const attackerCount = countZoneCards(owner, "attacker");
-    const skillCount = countZoneCards(owner, "skill");
     const graveCount = countZoneCards(owner, "grave");
 
     el.innerHTML = `
@@ -388,6 +386,7 @@ function updateFieldStatusPanels() {
         </div>
         ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>` : ""}
         ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>` : ""}
+        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>` : ""}
       </div>
     `;
   });

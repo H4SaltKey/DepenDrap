@@ -55,7 +55,8 @@ function renderNumRow(owner, key, label) {
 function renderOwnerUI(owner) {
   // 副作用なし：state を変更せず、ローカル変数で計算する
   const s = state[owner];
-  const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+  const myRole = ((window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1");
+  const isMine = owner === myRole;
   const currentPp = Number.isFinite(Number(s.pp)) ? Number(s.pp) : 0;
   const maxPp = Number.isFinite(Number(s.ppMax)) ? Number(s.ppMax) : 2;
   const expMax = calcExpMax(s.level);
@@ -188,7 +189,7 @@ function renderOwnerUI(owner) {
       ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
-      ${owner === window.myRole
+      ${owner === myRole
         ? 'position: absolute; bottom: 100%; margin-bottom: 0; padding-bottom: 8px; left: 50%; transform: translateX(-50%);'
         : 'position: fixed; top: 10px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
       width: 420px;

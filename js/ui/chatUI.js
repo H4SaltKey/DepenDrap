@@ -140,6 +140,7 @@ window.setupChatEvents = function() {
     const logs = document.getElementById("chatLogs");
     if (logs) {
       logs.addEventListener("click", () => {
+        chat.classList.add("chat-expanded");
         chat.classList.toggle("chat-zoomed");
         logs.scrollTop = logs.scrollHeight;
       });
@@ -191,6 +192,12 @@ window.setupChatEvents = function() {
           firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
         }
       }
+    });
+    chatInput.addEventListener("focus", () => {
+      const chat = document.getElementById("chatArea");
+      const logs = document.getElementById("chatLogs");
+      if (chat) chat.classList.add("chat-expanded");
+      if (logs) logs.scrollTop = logs.scrollHeight;
     });
   }
 

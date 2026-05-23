@@ -15,7 +15,7 @@ window.prevMyHandCount = -1;
 window.organizeHands = function() {
   const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("field");
   if (!content) return;
-  const myRole = window.myRole || "player1";
+  const myRole = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
   const opRole = myRole === "player1" ? "player2" : "player1";
 
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));

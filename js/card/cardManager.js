@@ -92,7 +92,17 @@ function restoreCardDragZIndex(cardEl) {
   delete cardEl.dataset._dragSavedZIndex;
 }
 
+function canShowSingleTapPreview(cardEl) {
+  if (!cardEl || cardEl.classList.contains("deckObject")) return false;
+  if (state?.matchData?.status === "setup_first_draw") return false;
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
+  const owner = cardEl.dataset.owner || "";
+  if (owner === myRole) return true;
+  return (cardEl.dataset.visibility || "both") === "both";
+}
+
 function showCardHoverPreview(cardEl, clientX, clientY) {
+  if (!canShowSingleTapPreview(cardEl)) return;
   const img = cardEl?.querySelector?.("img");
   if (!img) return;
   if (!cardHoverPreviewEl) {
@@ -108,8 +118,8 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
     document.body.appendChild(cardHoverPreviewEl);
   }
   cardHoverPreviewEl.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">`;
-  cardHoverPreviewEl.style.left = `${Math.min(window.innerWidth - 240, clientX + 16)}px`;
-  cardHoverPreviewEl.style.top = `${Math.min(window.innerHeight - 332, Math.max(12, clientY - 24))}px`;
+  cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 236)}px`;
+  cardHoverPreviewEl.style.top = `12px`;
   cardHoverPreviewEl.style.display = "block";
   setTimeout(() => {
     if (cardHoverPreviewEl) cardHoverPreviewEl.style.display = "none";

@@ -169,13 +169,7 @@ function renderOwnerUI(owner) {
           <button class="lorInstantDefBtn" data-owner="${owner}" data-action="addInstantDef" type="button" data-tooltip="瞬間防御力分、合計防御力を増加させます (消費PP: 1)">瞬間防御</button>
           <button class="lorResetDefBtn" data-owner="${owner}" data-action="resetDefense" type="button" data-tooltip="現在の合計防御力を0に戻します" title="防御解除">解除</button>
         </div>
-      ` : `
-        <div class="lorActionGroup">
-          <button class="lorTargetBtn" data-owner="${owner}" data-action="openTargetSelect" type="button"
-            style="background:rgba(199,179,119,0.15); border:1px solid rgba(199,179,119,0.4); color:#f0d080; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer; letter-spacing:0.5px; font-family:'Outfit',sans-serif; white-space:nowrap;"
-            data-tooltip="攻撃対象を変更">🎯 ターゲット</button>
-        </div>
-      `}
+      ` : `<div class="lorActionGroup"></div>`}
     </div>
 
   </div>
@@ -276,60 +270,17 @@ function lorInstantDefStatRow(owner, s) {
 }
 
 // Render the current target's status (HP, Shield, Defstack). Falls back to 0/0 if not available.
-function renderTargetStatus(owner) {
-  if (!window.BattleTargetSystem) return '';
-  const target = window.BattleTargetSystem.getTarget(owner);
-  let tState = null;
-  if (target === "player") {
-    const opponent = owner === "player1" ? "player2" : "player1";
-    tState = state[opponent] || {};
-  } else if (target && typeof target === "object" && typeof target.slotIndex === "number") {
-    const monster = window.MonsterManager?.getSlot(target.slotIndex);
-    if (monster) {
-      tState = {
-        hp: monster.hp,
-        hpMax: monster.hpMax,
-        shield: monster.shield,
-        shieldMax: monster.shieldMax,
-        defstack: monster.defstack,
-        defstackMax: monster.defstackMax
-      };
-    }
-  }
-  if (!tState) return '';
-  const hpPct = Math.min(100, Math.max(0, (tState.hp / (tState.hpMax || 100)) * 100));
-  const shieldPct = Math.min(100, Math.max(0, (tState.shield / (tState.shieldMax || 100)) * 100));
-  const defPct = Math.min(100, Math.max(0, (tState.defstack / (tState.defstackMax || 1)) * 100));
-  return `
-    <div style="margin-top:8px;">
-      <div style="font-size:12px;color:#aaa;">ターゲットステータス</div>
-      <div class="statBarWrap">
-        <div class="statBarLabel">HP</div>
-        <div class="statBarOuter">
-          <div class="statBarInner lorHpFill" style="width:${hpPct}%"></div>
-        </div>
-        <div class="statBarControls"><span>${tState.hp}/${tState.hpMax}</span></div>
-      </div>
-      <div class="statBarWrap">
-        <div class="statBarLabel">シールド</div>
-        <div class="statBarOuter">
-          <div class="statBarInner lorShieldFill" style="width:${shieldPct}%"></div>
-        </div>
-        <div class="statBarControls"><span>${tState.shield}/${tState.shieldMax}</span></div>
-      </div>
-      <div class="statBarWrap">
-        <div class="statBarLabel">防御</div>
-        <div class="statBarOuter">
-          <div class="statBarInner lorDefstackFill" style="width:${defPct}%"></div>
-        </div>
-        <div class="statBarControls"><span>${tState.defstack}/${tState.defstackMax}</span></div>
-      </div>
-    </div>`;
+function countZoneCards(owner, zoneType) {
+  const c = typeof getFieldContent === "function" ? getFieldContent() : null;
+  if (!c) return 0;
+  return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
+    (el) => el.dataset.owner === owner && el.dataset.zoneType === zoneType
+  ).length;
 }
 
 function updateFieldStatusPanels() {
   // 手札/PP UIを盤面（#fieldContent）へ移動。ズーム・パンに連動させる。
-  const container = document.getElementById("fieldContent") || document.getElementById("field") || document.body;
+  const container = document.getElementById("field") || document.body;
 
   ["player1", "player2"].forEach(owner => {
     const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
@@ -366,9 +317,9 @@ function updateFieldStatusPanels() {
     // #fieldContent は 3000x2000 盤面なので、その座標系での絶対位置を指定する
     if (isMine) {
       el.style.cssText = `
-        position: absolute;
-        left: 100px;
-        top: 1460px;
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
         width: 220px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.92);
@@ -382,10 +333,10 @@ function updateFieldStatusPanels() {
       `;
     } else {
       el.style.cssText = `
-        position: absolute;
-        right: 30px;
-        bottom: 10px;
-        width: 360px;
+        position: fixed;
+        right: 20px;
+        top: 140px;
+        width: 220px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.85);
         border: 1px solid #7a6a40;
@@ -395,11 +346,13 @@ function updateFieldStatusPanels() {
         z-index: 5100;
         font-family: 'Outfit', sans-serif;
         pointer-events: auto;
-        opacity: 0.85;
-        transform: scale(2);
-        transform-origin: right bottom;
+        opacity: 0.9;
       `;
     }
+    const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
+    const attackerCount = countZoneCards(owner, "attacker");
+    const skillCount = countZoneCards(owner, "skill");
+    const graveCount = countZoneCards(owner, "grave");
 
     el.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -437,7 +390,10 @@ function updateFieldStatusPanels() {
             text-align: center;
           ">${handCount}/${handLimit}</span>
         </div>
-        ${renderTargetStatus(owner)}
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>アタッカー場</span><span>${attackerCount}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>スキル場</span><span>${skillCount}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>
       </div>
     `;
   });

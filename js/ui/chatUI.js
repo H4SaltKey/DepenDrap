@@ -83,7 +83,7 @@ window.handleChatSend = function() {
   if (!val) return;
   const color = localStorage.getItem("chatColor") || "#ffffff";
   if (typeof addGameLog === "function") {
-    addGameLog(`[CHAT:${color}] \${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole}: \${val}`);
+    addGameLog(`[CHAT:${color}] ${window.myUsername || state[window.myRole || "player1"]?.username || window.myRole}: ${val}`);
   }
   input.value = "";
 };
@@ -149,7 +149,7 @@ window.setupChatEvents = function() {
         const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
-          firebaseClient.db.ref(`rooms/\${gameRoom}/typing/\${myKey}`).set(true);
+          firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(true);
         }
       }
       if (typingTimeout) clearTimeout(typingTimeout);
@@ -157,7 +157,7 @@ window.setupChatEvents = function() {
         const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
-          firebaseClient.db.ref(`rooms/\${gameRoom}/typing/\${myKey}`).set(null);
+          firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
         }
         lastTypingSent = 0;
       }, 3000);
@@ -171,7 +171,7 @@ window.setupChatEvents = function() {
         const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
         const gameRoom = localStorage.getItem("gameRoom");
         if (gameRoom && firebaseClient?.db) {
-          firebaseClient.db.ref(`rooms/\${gameRoom}/typing/\${myKey}`).set(null);
+          firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
         }
       }
     });
@@ -184,7 +184,7 @@ window.setupChatEvents = function() {
       const myKey = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && firebaseClient?.db) {
-        firebaseClient.db.ref(`rooms/\${gameRoom}/typing/\${myKey}`).set(null);
+        firebaseClient.db.ref(`rooms/${gameRoom}/typing/${myKey}`).set(null);
       }
     });
   }

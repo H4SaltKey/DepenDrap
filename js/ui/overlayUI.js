@@ -41,7 +41,7 @@ function getEvolutionPathHTML(owner) {
 
   if (s.evolutionPath === '忍耐の道') {
     const x = param;
-    desc = `手札の枚数上限が<span style="color:${colorAction}">2枚増加</span>し、最大レベル時(Lv6)は2ではなく<span style="color:${colorAction}">3枚</span>になる。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
+    desc = `手札の枚数上限が<span style="color:${colorAction}">1+x枚増加</span>する。<br>また、ラウンド開始時、手札を <span style="color:${colorLevel}; font-size:16px; font-weight:bold;">${x}</span> <span style="color:${colorAction}">枚増やす</span>。<br>さらに、自身のターン終了時、枚数上限によって手札を捨てると、捨てた枚数ごとに<span style="color:${colorAction}">経験値を最大2まで獲得</span>する。`;
     tableHTML = `x = [0, 1, 3, 4]`;
   } else if (s.evolutionPath === '継続の道') {
     const y = param;
@@ -151,4 +151,3 @@ function showHandOverflowDiscardModal(owner, needCount) {
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
 }
-

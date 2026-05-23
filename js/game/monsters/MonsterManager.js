@@ -152,14 +152,14 @@ window.MonsterManager = (function() {
    * モンスターの攻撃処理（ターン終了時に呼ぶ）
    * @param slotIndex 攻撃するモンスターのスロット
    * @param targetPlayer "player1" | "player2"
-   * @returns { dmg: number, actionLabel: string }
+   * @returns { dmg: number, actionLabel: string, actionType: string }
    */
   function monsterAttack(slotIndex, targetPlayer) {
     const slot = _slots[slotIndex];
-    if (!slot) return { dmg: 0, actionLabel: "" };
+    if (!slot) return { dmg: 0, actionLabel: "", actionType: "" };
 
     const def = _getDef(slot.monsterId);
-    if (!def) return { dmg: 0, actionLabel: "" };
+    if (!def) return { dmg: 0, actionLabel: "", actionType: "" };
 
     // 行動パターンから重み付きランダム選択
     const actions = def.actions || [{ type: "attack", label: "攻撃", weight: 1 }];
@@ -178,7 +178,7 @@ window.MonsterManager = (function() {
       window.addGameLog(`[MONSTER] ${def.name} の「${chosen.label}」→ ${targetPlayer} に ${dmg} ダメージ`);
     }
 
-    return { dmg, actionLabel: chosen.label };
+    return { dmg, actionLabel: chosen.label, actionType: chosen.type || "attack" };
   }
 
   /**

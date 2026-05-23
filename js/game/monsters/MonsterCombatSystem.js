@@ -39,19 +39,20 @@ window.MonsterCombatSystem = (function() {
     const result = window.MonsterManager.monsterAttack(slotIndex, targetKey);
     if (result.dmg <= 0) return;
 
-    // addVal() 経由でダメージを適用（syncDerivedStats・checkGameResult・Firebase同期が走る）
-    if (typeof window.addVal === "function") {
-      window.addVal(targetKey, "hp", -result.dmg);
-    } else {
-      // フォールバック（addVal未定義時のみ）
-      const targetState = window.state?.[targetKey];
-      if (targetState) targetState.hp = Math.max(0, (targetState.hp || 0) - result.dmg);
-      if (typeof window.update === "function") window.update(true);
-    }
+    const isAttackAll = result.actionType === "attack_all";
+    const targets = isAttackAll ? ["player1", "player2"] : [targetKey];
 
-    if (typeof window.addGameLog === "function") {
-      window.addGameLog(`[MONSTER] ${targetKey} が ${result.dmg} ダメージを受けた`);
-    }
+    targets.forEach(key => {
+      // addVal() 経由でダメージを適用（syncDerivedStats・checkGameResult・Firebase同期が走る）
+      if (typeof window.addVal === "function") {
+        window.addVal(key, "hp", -result.dmg);
+      } else {
+        // フォールバック（addVal未定義時のみ）
+        const targetState = window.state?.[key];
+        if (targetState) targetState.hp = Math.max(0, (targetState.hp || 0) - result.dmg);
+        if (typeof window.update === "function") window.update(true);
+      }
+    });
   }
 
   /**

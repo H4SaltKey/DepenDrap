@@ -323,7 +323,7 @@ window.MonsterUI = (function() {
       panel = document.createElement("div");
       panel.id = "monsterBattlefieldPanel";
       panel.style.cssText = `
-        position:absolute; left:2500px; top:180px; width:460px; min-height:520px; z-index:3000;
+        position:absolute; left:5200px; top:600px; width:1200px; min-height:720px; z-index:3000;
         border:1px solid rgba(199,179,119,0.4); border-radius:12px; overflow:hidden;
         background:rgba(8,8,14,0.9); box-shadow:0 10px 28px rgba(0,0,0,0.45);
         font-family:'Outfit',sans-serif; color:#efe4bc;
@@ -351,7 +351,7 @@ window.MonsterUI = (function() {
     }).join("");
     panel.innerHTML = `
       <div style="position:relative;">
-        <img src="/asset/monsterBG.png" alt="monster-bg" style="width:100%;height:140px;object-fit:cover;display:block;opacity:0.7;">
+        <img src="/asset/monsterBG.png" alt="monster-bg" style="width:100%;height:260px;object-fit:cover;display:block;opacity:0.8;">
         <div style="position:absolute;left:10px;bottom:8px;font-size:14px;font-weight:700;">モンスター戦闘フィールド</div>
       </div>
       <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">

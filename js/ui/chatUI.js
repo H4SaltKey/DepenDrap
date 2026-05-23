@@ -44,8 +44,8 @@ window.updateGameLogs = function(logs) {
       }
       chatLogs.appendChild(div);
     });
-    chatLogs.scrollTop = chatLogs.scrollHeight;
   }
+  chatLogs.scrollTop = chatLogs.scrollHeight;
 };
 
 window.checkAndLogStateChanges = function(oldState, newState) {

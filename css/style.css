@@ -2302,8 +2302,10 @@ button{
 
 /* チャットエリア */
 #chatArea {
-  margin-left: 16px;
-  margin-bottom: 4px;
+  position: fixed;
+  right: 16px;
+  bottom: 128px;
+  margin: 0;
   width: 320px;
   background: rgba(10, 8, 20, 0.7);
   border: 1px solid rgba(200, 155, 60, 0.3);
@@ -2312,6 +2314,7 @@ button{
   flex-direction: column;
   pointer-events: all;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 9000;
 }
 #chatArea #chatLogs {
   display: none;

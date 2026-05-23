@@ -685,6 +685,12 @@ function update(skipLogCheck = false) {
   invokeGuarded("update.applyInteractionLockState", () => applyInteractionLockState());
   invokeGuarded("update.phaseProgression", () => runPhaseProgression());
   invokeGuarded("update.handleMatchStateTransitions", () => handleMatchStateTransitions());
+  // インタラクト系UIを毎回最上層へ（再表示時に埋もれるのを防ぐ）
+  const topOverlayIds = ["chatArea", "turnStartTargetPanel", "opponentTargetWaitingOverlay", "targetSelectPanel", "zoneStackInspectPanel", "deckViewerOverlay", "gameResultOverlay"];
+  topOverlayIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement === document.body) document.body.appendChild(el);
+  });
   const currentStateStr = invokeGuarded("update.stringifyState", () => JSON.stringify(state), "");
   
   // 状態が変わっていないならDOMの再構築をスキップ
@@ -2299,4 +2305,3 @@ function updateZoneCountsInState() {
     }).length;
   });
 }
-

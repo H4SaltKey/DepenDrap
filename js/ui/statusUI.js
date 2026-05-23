@@ -279,7 +279,6 @@ function countZoneCards(owner, zoneType) {
 }
 
 function updateFieldStatusPanels() {
-  // 手札/PP UIを盤面（#fieldContent）へ移動。ズーム・パンに連動させる。
   const container = document.getElementById("field") || document.body;
 
   ["player1", "player2"].forEach(owner => {
@@ -316,11 +315,12 @@ function updateFieldStatusPanels() {
 
     // #fieldContent は 3000x2000 盤面なので、その座標系での絶対位置を指定する
     if (isMine) {
+      // 自分のデッキ/手札/墓地は画面追従 HUD
       el.style.cssText = `
         position: fixed;
-        left: 20px;
-        bottom: 20px;
-        width: 220px;
+        left: 24px;
+        bottom: 24px;
+        width: 230px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.92);
         border: 2px solid #c7b377;
@@ -332,11 +332,12 @@ function updateFieldStatusPanels() {
         pointer-events: auto;
       `;
     } else {
+      // 相手ステータスはフィールド固定
       el.style.cssText = `
-        position: fixed;
-        right: 20px;
-        top: 140px;
-        width: 220px;
+        position: absolute;
+        left: 1220px;
+        top: 120px;
+        width: 360px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.85);
         border: 1px solid #7a6a40;
@@ -346,7 +347,7 @@ function updateFieldStatusPanels() {
         z-index: 5100;
         font-family: 'Outfit', sans-serif;
         pointer-events: auto;
-        opacity: 0.9;
+        opacity: 0.95;
       `;
     }
     const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
@@ -356,6 +357,11 @@ function updateFieldStatusPanels() {
 
     el.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 10px;">
+        ${isMine ? `
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>
+        ` : ""}
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
           <span style="color: #aaa; font-size: 13px; font-weight: 200; letter-spacing: 2px; white-space: nowrap;">PP</span>
           <div style="display: flex; align-items: center; gap: 6px;">
@@ -380,20 +386,10 @@ function updateFieldStatusPanels() {
               : ""}
           </div>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <span style="color: #aaa; font-size: 13px; font-weight: 200; letter-spacing: 2px; white-space: nowrap;">手札</span>
-          <span style="
-            color: ${handCount > handLimit ? '#ff6666' : '#f0d080'};
-            font-size: 22px;
-            font-weight: bold;
-            min-width: 52px;
-            text-align: center;
-          ">${handCount}/${handLimit}</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>
+        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>` : ""}
         <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>アタッカー場</span><span>${attackerCount}</span></div>
         <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>スキル場</span><span>${skillCount}</span></div>
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>
+        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>` : ""}
       </div>
     `;
   });

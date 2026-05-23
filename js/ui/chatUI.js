@@ -144,6 +144,14 @@ window.setupChatEvents = function() {
         logs.scrollTop = logs.scrollHeight;
       });
     }
+    document.addEventListener("click", (e) => {
+      const inInput = !!e.target.closest("#chatInputRow");
+      const inLogs = !!e.target.closest("#chatLogs");
+      if (!inInput && !inLogs) {
+        chat.classList.remove("chat-expanded");
+        chat.classList.remove("chat-zoomed");
+      }
+    });
   }
 
   const chatInput = document.getElementById("chatInput");

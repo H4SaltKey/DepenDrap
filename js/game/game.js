@@ -841,7 +841,12 @@ function handleMatchStateTransitions() {
       const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
       if (opOverlay) opOverlay.remove();
 
-      const slots = window.MonsterManager?.getAllSlots() || [];
+      let slots = window.MonsterManager?.getAllSlots() || [];
+      // R1T1 のターゲット選択スキップ防止: 先攻側で未生成なら先にモンスターを初期化
+      if (m.round === 1 && m.turn === 1 && slots.every(s => s == null) && meRole === (m.firstPlayer || "player1")) {
+        window.MonsterCombatSystem?.onRoundStart(1);
+        slots = window.MonsterManager?.getAllSlots() || [];
+      }
       const hasMonster = slots.some(s => s !== null);
       if (!hasMonster) {
         // モンスターがいない場合は自動で相手プレイヤーをターゲットにする
@@ -1329,7 +1334,7 @@ function checkGameResult() {
   if (!state.matchData) return;
 
   // リザルト表示中は判定しない（2重表示防止）
-  if (window._resultShowing) return;
+  if (window._resultShowing || document.getElementById("gameResultOverlay")) return;
 
   // 閉じるボタンが押された後は判定しない
   if (window._resultDismissed) return;
@@ -1830,14 +1835,7 @@ function bindConnectionUiEvents() {
 }
 
 function setupGameUiEnhancements() {
-  const chat = document.getElementById("chatArea");
-  if (!chat || chat.dataset.expandToggle === "1") return;
-  chat.dataset.expandToggle = "1";
-  chat.addEventListener("click", (e) => {
-    if (e.target.closest("#chatInputRow")) return;
-    if (e.target.closest("#chatInput") || e.target.closest("#chatSendBtn")) return;
-    chat.classList.toggle("chat-expanded");
-  });
+  // chatUI.js 側で展開/縮小制御を一元管理
 }
 
 async function handleFreshStart(currentRoom, myKey) {

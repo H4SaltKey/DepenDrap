@@ -168,6 +168,11 @@ document.addEventListener("keydown", (e) => {
 
 // ===== カード右クリック =====
 function openCardMenu(card, x, y){
+  const me = (typeof window.getMyRole === "function")
+    ? window.getMyRole()
+    : (window.myRole || "player1");
+  const isOpponent = (card.dataset.owner && card.dataset.owner !== me);
+  const canZoomOpponent = !isOpponent || card.dataset.visibility === "both";
   const firstDrawOnly =
     typeof state !== "undefined" &&
     state?.matchData?.status === "setup_first_draw";
@@ -175,6 +180,7 @@ function openCardMenu(card, x, y){
     buildMenu([
       {
         label: "拡大表示",
+        disabled: !canZoomOpponent,
         action: () => showCardZoom(card)
       }
     ], x, y, card);
@@ -185,6 +191,7 @@ function openCardMenu(card, x, y){
   const items = [
     {
       label: "拡大表示",
+      disabled: !canZoomOpponent,
       action: () => showCardZoom(card)
     },
     { sep: true },

@@ -58,6 +58,7 @@ let fieldSyncTimer = null;
 
 // 現在ドラッグ中のカード情報
 let draggingCard = null; // { el, offsetX, offsetY }
+let cardHoverPreviewEl = null;
 let lastLocalFieldSaveAt = 0;
 let zoneOrderCounter = 0;
 let prevZoneLogState = null;
@@ -89,6 +90,30 @@ function restoreCardDragZIndex(cardEl) {
   if (!cardEl || cardEl.dataset._dragSavedZIndex === undefined) return;
   cardEl.style.zIndex = cardEl.dataset._dragSavedZIndex;
   delete cardEl.dataset._dragSavedZIndex;
+}
+
+function showCardHoverPreview(cardEl, clientX, clientY) {
+  const img = cardEl?.querySelector?.("img");
+  if (!img) return;
+  if (!cardHoverPreviewEl) {
+    cardHoverPreviewEl = document.createElement("div");
+    cardHoverPreviewEl.id = "cardHoverPreview";
+    cardHoverPreviewEl.style.cssText = `
+      position: fixed; z-index: 100220; pointer-events: none;
+      width: 220px; height: 312px; border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(8,8,16,0.85);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+    `;
+    document.body.appendChild(cardHoverPreviewEl);
+  }
+  cardHoverPreviewEl.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">`;
+  cardHoverPreviewEl.style.left = `${Math.min(window.innerWidth - 240, clientX + 16)}px`;
+  cardHoverPreviewEl.style.top = `${Math.min(window.innerHeight - 332, Math.max(12, clientY - 24))}px`;
+  cardHoverPreviewEl.style.display = "block";
+  setTimeout(() => {
+    if (cardHoverPreviewEl) cardHoverPreviewEl.style.display = "none";
+  }, 1200);
 }
 const HAND_ZONE_Y_MIN = 1460;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
@@ -1173,6 +1198,8 @@ function enablePointerDrag(el){
         
         saveFieldCards();
 
+      } else {
+        showCardHoverPreview(el, e.clientX, e.clientY);
       }
     } finally {
       restoreCardDragZIndex(el);

@@ -20,7 +20,7 @@ async function loadCardData(){
 
 function normalizeCardImagePath(path) {
   let p = String(path || "").trim();
-  if (!p) return "assets/404.png";
+  if (!p) return "assets/System/404.png";
   p = p.normalize ? p.normalize("NFC") : p;
   if (p.startsWith("asset/")) {
     p = p.replace(/^asset\//, "assets/");

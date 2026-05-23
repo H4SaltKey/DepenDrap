@@ -212,11 +212,11 @@ window.openDeckViewer = function() {
     
     if (id) {
       const cardData = (typeof getCardData === "function") ? getCardData(id) : null;
-      const imgSrc = cardData?.image ? encodeURI(cardData.image) : "assets/404.png";
+      const imgSrc = cardData?.image ? encodeURI(cardData.image) : "assets/System/404.png";
       card.className = "dvCard";
       card.title = cardData?.name || id;
       card.innerHTML = `
-        <img src="${imgSrc}" alt="" onerror="this.src='assets/404.png'">
+        <img src="${imgSrc}" alt="" onerror="this.src='assets/System/404.png'">
       `;
     } else {
       card.className = "dvCard dvCardEmpty";

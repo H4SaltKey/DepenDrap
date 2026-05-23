@@ -182,7 +182,7 @@ function buildThumbStack(ids) {
   const cards = ids.map(id => getCardData(id)).filter(Boolean);
   const stackItems = cards.map((card, i) => {
     const offset = i * 4;
-    const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
+    const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
     return `<div class="deckThumbCard" style="top:${offset}px;left:${offset}px;width:calc(100% - ${offset}px);height:calc(100% - ${offset}px);">
       <img src="${imageSrc}" alt="">
     </div>`;
@@ -260,7 +260,7 @@ function renderDetailCards(cards) {
 
     const el = document.createElement("div");
     el.className = "deckDetailCardItem";
-    const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
+    const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
     el.innerHTML = `
       <img src="${imageSrc}" alt="${escapeHtml(card.name)}">
       ${countMap[id] > 1 ? `<div class="deckDetailCardCount">×${countMap[id]}</div>` : ""}

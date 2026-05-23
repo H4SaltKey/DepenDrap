@@ -88,13 +88,13 @@ function renderCurrentDeck() {
   const nameEl = document.getElementById("msDeckName");
   const countEl = document.getElementById("msDeckCount");
   if (!deck) {
-    thumb.src = "assets/favicon.png";
+    thumb.src = "assets/System/favicon.png";
     nameEl.textContent = "デッキ未選択";
     countEl.textContent = "-- 枚";
     return;
   }
-  thumb.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
-  thumb.onerror = () => { thumb.src = "assets/favicon.png"; };
+  thumb.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/System/favicon.png";
+  thumb.onerror = () => { thumb.src = "assets/System/favicon.png"; };
   nameEl.textContent = deck.name || "名称未設定";
   countEl.textContent = `${getDeckCardCount(deck)} 枚`;
 }
@@ -136,8 +136,8 @@ function renderDeckSelectList() {
     item.dataset.id = deck.id;
 
     const img = document.createElement("img");
-    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/favicon.png";
-    img.onerror = () => { img.src = "assets/favicon.png"; };
+    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/System/favicon.png";
+    img.onerror = () => { img.src = "assets/System/favicon.png"; };
 
     const info = document.createElement("div");
     info.style.flex = "1";
@@ -205,8 +205,8 @@ async function renderDeckPreview(deckId) {
     div.className = "pvCard";
 
     const img = document.createElement("img");
-    img.src = cardInfo ? cardInfo.image : "assets/404.png";
-    img.onerror = () => { img.src = "assets/404.png"; };
+    img.src = cardInfo ? cardInfo.image : "assets/System/404.png";
+    img.onerror = () => { img.src = "assets/System/404.png"; };
 
     div.appendChild(img);
     if (count > 1) {

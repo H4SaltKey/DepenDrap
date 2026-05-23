@@ -189,7 +189,7 @@ function renderDevCards() {
       const img = document.createElement("img");
       img.src = pending ? imagePath : encodeURI(imagePath);
       img.alt = card.name || card.id;
-      img.onerror = () => { img.src = "assets/404.png"; };
+      img.onerror = () => { img.src = "assets/System/404.png"; };
       el.appendChild(img);
     } else {
       const placeholder = document.createElement("div");
@@ -274,9 +274,9 @@ function showCardZoom(id) {
   if (!modal) return;
   const image = document.getElementById("cardZoomImage");
   const info = document.getElementById("cardZoomInfo");
-  const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/404.png";
+  const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/System/404.png";
   image.src = src;
-  image.onerror = () => { image.src = "assets/404.png"; };
+  image.onerror = () => { image.src = "assets/System/404.png"; };
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
   info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
   modal.classList.remove("hidden");

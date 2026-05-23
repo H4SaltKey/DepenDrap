@@ -97,8 +97,8 @@ export class PatchNotesRenderer {
             entryBox.style.cssText = "background: rgba(0,0,0,0.6); border: 1px solid #333; border-radius: 8px; padding: 15px;";
             
             if (entry.type === "card") {
-              const imgBefore = entry.beforeImage ? `<img src="${entry.beforeImage}" style="width:100px; height:auto; border-radius:4px; border:1px solid #555;" onerror="this.src='assets/404.png'">` : '<div style="width:100px; height:140px; border:1px dashed #555; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">No Image</div>';
-              const imgAfter = entry.afterImage ? `<img src="${entry.afterImage}" style="width:100px; height:auto; border-radius:4px; border:1px solid #555;" onerror="this.src='assets/404.png'">` : '<div style="width:100px; height:140px; border:1px dashed #555; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">No Image</div>';
+              const imgBefore = entry.beforeImage ? `<img src="${entry.beforeImage}" style="width:100px; height:auto; border-radius:4px; border:1px solid #555;" onerror="this.src='assets/System/404.png'">` : '<div style="width:100px; height:140px; border:1px dashed #555; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">No Image</div>';
+              const imgAfter = entry.afterImage ? `<img src="${entry.afterImage}" style="width:100px; height:auto; border-radius:4px; border:1px solid #555;" onerror="this.src='assets/System/404.png'">` : '<div style="width:100px; height:140px; border:1px dashed #555; display:flex; align-items:center; justify-content:center; color:#555; font-size:12px;">No Image</div>';
 
               entryBox.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">

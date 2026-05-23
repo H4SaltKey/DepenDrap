@@ -328,7 +328,7 @@ window.MonsterUI = (function() {
       const hpPct = Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100));
       return `
         <div style="display:flex;gap:8px;align-items:center;padding:8px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;">
-          <img src="/asset/enemy_${i + 1}.png" alt="enemy_${i + 1}" style="width:48px;height:48px;object-fit:contain;background:rgba(0,0,0,0.35);border-radius:6px;">
+          <img src="assets/System/enemy_${i + 1}.png" alt="enemy_${i + 1}" style="width:48px;height:48px;object-fit:contain;background:rgba(0,0,0,0.35);border-radius:6px;">
           <div style="flex:1;">
             <div style="font-size:12px;">モンスター ${i + 1}</div>
             <div style="height:5px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;"><div style="width:${hpPct}%;height:100%;background:#ef6a6a;"></div></div>
@@ -340,7 +340,7 @@ window.MonsterUI = (function() {
     }).join("");
     panel.innerHTML = `
       <div style="position:relative;">
-        <img src="/asset/monsterBG.png" alt="monster-bg" style="width:100%;height:260px;object-fit:cover;display:block;opacity:0.8;">
+        <img src="assets/System/monsterBG.png" alt="monster-bg" style="width:100%;height:260px;object-fit:cover;display:block;opacity:0.8;">
         <div style="position:absolute;left:10px;bottom:8px;font-size:14px;font-weight:700;">モンスター戦闘フィールド</div>
       </div>
       <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">

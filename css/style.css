@@ -202,7 +202,7 @@ body.deckPage{
 #fieldBgBlur{
   position:absolute;
   inset:0;
-  background: url("../assets/title_bg.png") center center / cover no-repeat;
+  background: url("../assets/System/title_bg.png") center center / cover no-repeat;
   filter: blur(8px) brightness(0.4);
   transform: scale(1.05);
   z-index:-1;
@@ -223,7 +223,7 @@ body.deckPage{
   left:0;
   width:3000px;
   height:2000px;
-  background: url('../assets/bg.png') center center / cover no-repeat;
+  background: url('../assets/System/bg.png') center center / cover no-repeat;
   opacity: 1;
   z-index:0;
   pointer-events:none;
@@ -359,7 +359,7 @@ body.deckPage{
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: url('../assets/title_bg.png') center/cover no-repeat;
+  background: url('../assets/System/title_bg.png') center/cover no-repeat;
   z-index: -2;
 }
 .title-overlay {

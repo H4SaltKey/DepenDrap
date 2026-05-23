@@ -320,7 +320,7 @@ function createCardElement(id, count, source) {
   el.dataset.id = id;
   el.dataset.source = source;
 
-  const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
+  const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
   el.innerHTML = `
     <img src="${imageSrc}" alt="">
     ${card.name ? `<div class="deckCardName">${card.name}</div>` : ""}
@@ -556,8 +556,8 @@ function showCardZoom(id) {
   if (!modal) return;
   const image = document.getElementById("cardZoomImage");
   const info = document.getElementById("cardZoomInfo");
-  image.src = card.image ? encodeURI(card.image) : "assets/404.png";
-  image.onerror = () => { image.src = "assets/404.png"; };
+  image.src = card.image ? encodeURI(card.image) : "assets/System/404.png";
+  image.onerror = () => { image.src = "assets/System/404.png"; };
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
   info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
   modal.classList.remove("hidden");
@@ -573,12 +573,12 @@ function updateDeckCardPreview(id) {
   const previewDiv = document.getElementById("deckCardPreview");
   if (!card || !previewDiv) return;
 
-  const imageSrc = card.image ? encodeURI(card.image) : "assets/404.png";
+  const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
 
   previewDiv.innerHTML = `
     <div class="deckCardPreviewContainer">
-      <img src="${imageSrc}" alt="" class="deckCardPreviewImg" onerror="this.src='assets/404.png'">
+      <img src="${imageSrc}" alt="" class="deckCardPreviewImg" onerror="this.src='assets/System/404.png'">
       <div class="deckCardPreviewDetails">
         <div class="deckCardPreviewName">${card.name || ""}</div>
         <div class="deckCardPreviewMeta">ID: ${card.id}</div>

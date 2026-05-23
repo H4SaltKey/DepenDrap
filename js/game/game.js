@@ -245,7 +245,7 @@ function createDeckObject(forceResetPos = false) {
     wrapper.dataset.owner = owner;
 
     // 相手のデッキ画像も表示（backImageが設定されていない場合は404.pngをフォールバック）
-    const backImage = state[owner]?.backImage || "assets/404.png";
+    const backImage = state[owner]?.backImage || "assets/System/404.png";
     const img = document.createElement("img");
     img.draggable = false;
     setSafeSrc(img, backImage);
@@ -350,7 +350,7 @@ function updateDeckObject() {
     const img = obj.querySelector("img");
     if (img) {
       // backImageが設定されている場合は使用、なければデフォルト画像
-      const backImage = s.backImage || "assets/favicon.png";
+      const backImage = s.backImage || "assets/System/favicon.png";
       setSafeSrc(img, backImage);
       img.style.display = "block";
     }

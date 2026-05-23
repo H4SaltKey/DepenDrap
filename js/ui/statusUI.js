@@ -315,42 +315,36 @@ function updateFieldStatusPanels() {
     const maxPp = s.ppMax || 2;
 
     // #fieldContent は 3000x2000 盤面なので、その座標系での絶対位置を指定する
-    if (isMine) {
-      // 自分のデッキ/手札/墓地は画面追従 HUD
-      el.style.cssText = `
-        position: fixed;
-        left: 24px;
-        bottom: 210px;
-        width: 230px;
-        padding: 12px 16px;
-        background: rgba(15, 12, 28, 0.92);
-        border: 2px solid #c7b377;
-        border-radius: 14px;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        z-index: 5100;
-        font-family: 'Outfit', sans-serif;
-        pointer-events: auto;
-      `;
-    } else {
-      // 相手ステータスはフィールド固定
-      el.style.cssText = `
-        position: absolute;
-        left: 1600px;
-        top: 120px;
-        width: 240px;
-        padding: 12px 16px;
-        background: rgba(15, 12, 28, 0.85);
-        border: 1px solid #7a6a40;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        z-index: 5100;
-        font-family: 'Outfit', sans-serif;
-        pointer-events: auto;
-        opacity: 0.95;
-      `;
-    }
+    // デッキ/手札/墓地 + PP は、両者とも画面追従型UIとして固定表示する
+    el.style.cssText = isMine ? `
+      position: fixed;
+      left: 24px;
+      bottom: 210px;
+      width: 230px;
+      padding: 12px 16px;
+      background: rgba(15, 12, 28, 0.92);
+      border: 2px solid #c7b377;
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 5100;
+      font-family: 'Outfit', sans-serif;
+      pointer-events: auto;
+    ` : `
+      position: fixed;
+      right: 24px;
+      top: 92px;
+      width: 230px;
+      padding: 12px 16px;
+      background: rgba(15, 12, 28, 0.92);
+      border: 2px solid #c7b377;
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 5100;
+      font-family: 'Outfit', sans-serif;
+      pointer-events: auto;
+    `;
     const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
     const graveCount = countZoneCards(owner, "grave");
 

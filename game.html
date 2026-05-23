@@ -36,7 +36,6 @@
   @keyframes spinSync { to { transform: rotate(360deg); } }
 </style>
 
-<div id="gameUiEnemy"></div>
 <div id="gameUiPlayer">
   <div id="chatArea" class="chatArea">
     <div id="chatLogs"></div>
@@ -45,8 +44,14 @@
       <button type="button" id="chatSendBtn">送信</button>
     </div>
   </div>
+  <div id="playerHandUiContainer">
+    <div id="uiDeckArea"></div>
+    <div id="uiHandArea"></div>
+    <div id="uiGraveArea"></div>
+  </div>
   <div id="gameUiPlayerInner"></div>
 </div>
+
 
 <div id="zoomControls">
   <div id="cameraActionRow">
@@ -111,6 +116,12 @@
   <div id="fieldBgBlur"></div>
   <div id="fieldContent">
     <div id="fieldBg"></div>
+    <div id="gameUiEnemy"></div>
+    <div id="monsterBattleField">
+      <div id="monsterBattleFieldBg"></div>
+      <div id="monstersContainer"></div>
+      <div id="monsterFieldPlayerZones"></div>
+    </div>
   </div>
 </div>
 

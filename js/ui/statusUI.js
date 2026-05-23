@@ -319,7 +319,7 @@ function updateFieldStatusPanels() {
       el.style.cssText = `
         position: fixed;
         left: 24px;
-        bottom: 24px;
+        bottom: 210px;
         width: 230px;
         padding: 12px 16px;
         background: rgba(15, 12, 28, 0.92);
@@ -387,8 +387,6 @@ function updateFieldStatusPanels() {
           </div>
         </div>
         ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>` : ""}
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>アタッカー場</span><span>${attackerCount}</span></div>
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>スキル場</span><span>${skillCount}</span></div>
         ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>` : ""}
       </div>
     `;

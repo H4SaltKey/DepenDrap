@@ -615,7 +615,7 @@ function renderUI() {
     if (playerEl) playerEl.innerHTML = renderOwnerUI(myOwner);
   });
   invokeGuarded("renderUI.renderOwnerUI.enemy", () => {
-    if (enemyEl) enemyEl.innerHTML = renderOwnerUI(enemyOwner);
+    if (enemyEl) enemyEl.innerHTML = "";
   });
 
   // マッチ進行UIの更新

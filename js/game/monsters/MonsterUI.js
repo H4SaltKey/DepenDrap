@@ -13,17 +13,7 @@ window.MonsterUI = (function() {
     s.id = "monsterUIStyle";
     s.textContent = `
       /* ── モンスターパネル（画面下部中央） ── */
-      #monsterPanel {
-        position: fixed;
-        bottom: 12px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 4000;
-        display: flex;
-        gap: 8px;
-        pointer-events: auto;
-        font-family: 'Outfit', sans-serif;
-      }
+      #monsterPanel { display: none !important; }
 
       .monsterSlot {
         width: 90px;
@@ -249,7 +239,6 @@ window.MonsterUI = (function() {
       panel.id = "monsterPanel";
       document.body.appendChild(panel);
     }
-    // monsterPanel はターゲットボタン押下時のみ表示（デフォルト非表示）
     panel.innerHTML = "";
 
     const me = window.myRole || "player1";
@@ -323,7 +312,7 @@ window.MonsterUI = (function() {
       panel = document.createElement("div");
       panel.id = "monsterBattlefieldPanel";
       panel.style.cssText = `
-        position:absolute; left:5200px; top:600px; width:1200px; min-height:720px; z-index:3000;
+        position:absolute; left:6200px; top:900px; width:1400px; min-height:800px; z-index:3000;
         border:1px solid rgba(199,179,119,0.4); border-radius:12px; overflow:hidden;
         background:rgba(8,8,14,0.9); box-shadow:0 10px 28px rgba(0,0,0,0.45);
         font-family:'Outfit',sans-serif; color:#efe4bc;
@@ -435,6 +424,7 @@ window.MonsterUI = (function() {
         } else {
           const slotIndex = parseInt(opt.dataset.slot, 10);
           window.BattleTargetSystem?.setTarget(me, { slotIndex });
+          if (typeof window.centerField === "function") window.centerField();
         }
         panel.remove();
         // monsterPanel を非表示に戻す
@@ -490,9 +480,6 @@ window.MonsterUI = (function() {
     `;
     btn.textContent = "🎯 攻撃対象を変更";
     btn.addEventListener("click", () => {
-      // monsterPanel を表示してからターゲット選択パネルを開く
-      const mp = document.getElementById("monsterPanel");
-      if (mp) mp.style.display = "flex";
       _showTargetSelectPanel();
       btn.remove();
     });
@@ -522,10 +509,10 @@ window.MonsterUI = (function() {
       badge.id = "currentTargetBadge";
       badge.style.cssText = `
         position: fixed;
-        bottom: 108px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 4050;
+        top: 6px;
+        left: calc(50% + 180px);
+        transform: translateX(0);
+        z-index: 5050;
         font-size: 11px;
         color: #a09070;
         pointer-events: none;

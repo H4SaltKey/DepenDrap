@@ -1245,10 +1245,20 @@ function centerField(){
   if(!field) return;
   const vw = field.clientWidth || window.innerWidth;
   const vh = field.clientHeight || window.innerHeight;
-  
-  // 中央に配置
-  fieldPanX = (vw / 2) - (FIELD_W / 2) * fieldZoom;
-  fieldPanY = (vh / 2) - (FIELD_H / 2) * fieldZoom;
+
+  let centerX = FIELD_W / 2;
+  let centerY = FIELD_H / 2;
+
+  const myKey = window.getMyRole ? window.getMyRole() : (window.myRole || "player1");
+  const target = window.BattleTargetSystem?.getTarget?.(myKey);
+  if (target && target !== "player") {
+    // モンスターフィールド中心へ
+    centerX = 6900;
+    centerY = 1200;
+  }
+
+  fieldPanX = (vw / 2) - centerX * fieldZoom;
+  fieldPanY = (vh / 2) - centerY * fieldZoom;
   
   applyFieldView();
 }

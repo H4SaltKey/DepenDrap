@@ -541,14 +541,7 @@ body.isDraggingCard #field .deckObject{
 }
 
 #gameUiEnemy{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  z-index:100;
-  pointer-events:none;
-  transform: scale(0.8);
-  transform-origin: top center;
+  display:none !important;
 }
 
 #gameUiEnemy .lorPanel{

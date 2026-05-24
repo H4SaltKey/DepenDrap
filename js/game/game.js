@@ -196,6 +196,8 @@ function resetAllGameVariables() {
   
   const gameUiEnemy = document.getElementById("gameUiEnemy");
   if (gameUiEnemy) gameUiEnemy.innerHTML = "";
+  _lastMyOwnerUiHtml = "";
+  _lastEnemyOwnerUiHtml = "";
   
   // フィールドをクリア
   const fieldContent = getFieldContent();
@@ -603,6 +605,8 @@ function checkLevelUp(owner) {
 /** Lucide（game.html で lucide.min.js を読み込み、update 末尾で createIcons） */
 
 /** 瞬間防御力: shield-alert のみ */
+let _lastMyOwnerUiHtml = "";
+let _lastEnemyOwnerUiHtml = "";
 
 function renderUI() {
   traceGame("renderUI", "start");
@@ -612,10 +616,20 @@ function renderUI() {
   const enemyOwner = myOwner === "player1" ? "player2" : "player1";
 
   invokeGuarded("renderUI.renderOwnerUI.my", () => {
-    if (playerEl) playerEl.innerHTML = renderOwnerUI(myOwner);
+    if (!playerEl) return;
+    const nextHtml = renderOwnerUI(myOwner);
+    if (nextHtml !== _lastMyOwnerUiHtml) {
+      playerEl.innerHTML = nextHtml;
+      _lastMyOwnerUiHtml = nextHtml;
+    }
   });
   invokeGuarded("renderUI.renderOwnerUI.enemy", () => {
-    if (enemyEl) enemyEl.innerHTML = renderOwnerUI(enemyOwner);
+    if (!enemyEl) return;
+    const nextHtml = renderOwnerUI(enemyOwner);
+    if (nextHtml !== _lastEnemyOwnerUiHtml) {
+      enemyEl.innerHTML = nextHtml;
+      _lastEnemyOwnerUiHtml = nextHtml;
+    }
   });
 
   // マッチ進行UIの更新

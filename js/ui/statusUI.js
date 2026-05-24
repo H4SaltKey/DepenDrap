@@ -280,7 +280,8 @@ function countZoneCards(owner, zoneType) {
 }
 
 function updateFieldStatusPanels() {
-  const container = document.getElementById("field") || document.body;
+  // 画面追従UIとして安定表示するため、常に body 直下に配置する
+  const container = document.body;
 
   ["player1", "player2"].forEach(owner => {
     const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));

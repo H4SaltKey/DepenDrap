@@ -1319,8 +1319,9 @@ function centerField(){
   const hasMonster = (window.MonsterManager?.getAllSlots?.() || []).some(Boolean);
   if ((target && target !== "player") || (selectingTarget && hasMonster)) {
     // モンスターフィールド中心へ
-    centerX = 1500;
-    centerY = 1200;
+    // MonsterUI は x=9000, y=0 に 3000x2000 で配置しているため、その中心へ移動
+    centerX = 10500;
+    centerY = 1000;
   }
 
   fieldPanX = (vw / 2) - centerX * fieldZoom;

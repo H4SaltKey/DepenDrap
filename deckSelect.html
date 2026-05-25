@@ -34,9 +34,12 @@
   /* ===== メインエリア（左: グリッド / 右: 詳細） ===== */
   .selectMain {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 40%;
     gap: 14px;
     min-height: 0;
+  }
+  .selectMain.noSelection {
+    grid-template-columns: 1fr 260px;
   }
 
   /* ===== デッキグリッド ===== */
@@ -69,14 +72,14 @@
 
   .deckGrid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     padding: 4px 2px;
   }
 
   /* ===== デッキサムネイル ===== */
   .deckThumb {
-    aspect-ratio: 210 / 297;
+    aspect-ratio: 252 / 356;
     border: 2px solid #5a4b27;
     background: rgba(0, 0, 0, 0.6);
     border-radius: 4px;
@@ -266,14 +269,19 @@
 
   /* 詳細下部: ボタン */
   .deckDetailActions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
   .deckDetailActions button {
-    padding: 8px 20px;
-    font-size: 14px;
+    width: 100%;
+    padding: 8px 6px;
+    font-size: 12px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     cursor: pointer;
   }
 

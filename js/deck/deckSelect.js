@@ -156,6 +156,7 @@ function renderGrid() {
     openCreateDeckModal();
   });
   grid.appendChild(addEl);
+  updateSelectionLayout();
 }
 
 function createDeckThumb(deck) {
@@ -260,6 +261,7 @@ function selectDeck(id) {
 
   // カード一覧
   renderDetailCards(cards);
+  updateSelectionLayout();
 }
 
 function renderDetailCards(cards) {
@@ -321,7 +323,14 @@ document.getElementById("btnDelete").addEventListener("click", () => {
   content.style.display = "none";
 
   renderGrid();
+  updateSelectionLayout();
 });
+
+function updateSelectionLayout() {
+  const main = document.querySelector(".selectMain");
+  if (!main) return;
+  main.classList.toggle("noSelection", !selectedDeckId);
+}
 
 // ===== ユーティリティ =====
 function escapeHtml(str) {
@@ -449,12 +458,14 @@ async function openPublicDeckModal() {
     }
     listEl.innerHTML = "";
     rows.forEach((r) => {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "btnEdit";
-      row.style.cssText = "text-align:left;padding:10px 12px;white-space:normal;";
-      row.textContent = `[${r.deckName}] デッキコード:[${r.code}] 作成者:[${r.author}]`;
-      row.addEventListener("click", () => {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:rgba(0,0,0,0.28);border:1px solid #5a4b27;border-radius:6px;";
+      const info = document.createElement("button");
+      info.type = "button";
+      info.className = "btnEdit";
+      info.style.cssText = "text-align:left;white-space:normal;flex:1;";
+      info.textContent = `[${r.deckName}] 作成者:[${r.author}]`;
+      info.addEventListener("click", () => {
         try { decodeDeck(r.code); } catch { alert("公開デッキコードが無効です。"); return; }
         const list = loadDeckList();
         const id = "deck_" + Date.now();
@@ -464,6 +475,23 @@ async function openPublicDeckModal() {
         selectDeck(id);
         modal.classList.add("hidden");
       });
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "btnEdit";
+      copyBtn.style.cssText = "padding:8px 10px;white-space:nowrap;font-size:12px;";
+      copyBtn.textContent = "コードをコピー";
+      copyBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(r.code);
+          copyBtn.textContent = "コピー済み";
+          setTimeout(() => { copyBtn.textContent = "コードをコピー"; }, 1200);
+        } catch {
+          alert("コピーに失敗しました。");
+        }
+      });
+      row.appendChild(info);
+      row.appendChild(copyBtn);
       listEl.appendChild(row);
     });
   } catch {
@@ -532,4 +560,5 @@ window.addEventListener('resize', updateGridColumns);
 window.addEventListener('load', () => {
   setTimeout(updateGridColumns, 100); // DOMが完全にレンダリングされた後に実行
   setupBackImageUI();
+  updateSelectionLayout();
 });

@@ -1827,6 +1827,52 @@ document.body.addEventListener("click", (e) => {
   addVal(t.dataset.owner, t.dataset.key, Number(t.dataset.delta));
 });
 
+let _evoHoverPortal = null;
+let _evoHoverHideTimer = null;
+function ensureEvoHoverPortal() {
+  if (_evoHoverPortal && document.body.contains(_evoHoverPortal)) return _evoHoverPortal;
+  _evoHoverPortal = document.createElement("div");
+  _evoHoverPortal.id = "evoHoverPortal";
+  _evoHoverPortal.style.cssText = "position:fixed;left:0;top:0;z-index:2147483600;pointer-events:none;display:none;";
+  document.body.appendChild(_evoHoverPortal);
+  return _evoHoverPortal;
+}
+function hideEvoHoverPortal() {
+  if (_evoHoverHideTimer) clearTimeout(_evoHoverHideTimer);
+  _evoHoverHideTimer = setTimeout(() => {
+    const portal = ensureEvoHoverPortal();
+    portal.style.display = "none";
+    portal.innerHTML = "";
+  }, 40);
+}
+document.body.addEventListener("pointerover", (e) => {
+  const wrapper = e.target.closest(".evoPanelWrapper[data-owner]");
+  if (!wrapper) return;
+  if (_evoHoverHideTimer) clearTimeout(_evoHoverHideTimer);
+  const owner = wrapper.dataset.owner;
+  if (!owner || typeof getEvolutionPathHTML !== "function") return;
+  const portal = ensureEvoHoverPortal();
+  const rect = wrapper.getBoundingClientRect();
+  const isMine = owner === (window.myRole || localStorage.getItem("gamePlayerKey") || "player1");
+  const top = isMine ? (rect.top - 12) : (rect.bottom + 12);
+  portal.style.left = `${Math.round(rect.left + rect.width / 2)}px`;
+  portal.style.top = `${Math.round(top)}px`;
+  portal.style.transform = isMine ? "translate(-50%, -100%)" : "translate(-50%, 0)";
+  portal.innerHTML = `
+    <div style="width:420px;background:rgba(10,8,20,0.96);border:1px solid #c89b3c;border-radius:6px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.8);pointer-events:none;">
+      ${getEvolutionPathHTML(owner)}
+    </div>
+  `;
+  portal.style.display = "block";
+});
+document.body.addEventListener("pointerout", (e) => {
+  const from = e.target.closest(".evoPanelWrapper[data-owner]");
+  if (!from) return;
+  const to = e.relatedTarget;
+  if (to && to.closest && to.closest(".evoPanelWrapper[data-owner]")) return;
+  hideEvoHoverPortal();
+});
+
 // ===== 初期化 =====
 let cardsReadyFired = false;
 let lastStateJson = "";

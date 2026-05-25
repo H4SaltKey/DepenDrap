@@ -2316,16 +2316,8 @@ button{
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 9000;
 }
-#chatArea #chatLogs {
-  display: none;
-}
-#chatArea.chat-expanded #chatLogs,
-#chatArea:focus-within #chatLogs {
-  display: flex;
-}
-
 #chatLogs {
-  height: 120px;
+  height: 80px;
   overflow-y: auto;
   padding: 8px;
   font-size: 13px;
@@ -2535,6 +2527,9 @@ button{
   opacity: 1 !important;
   visibility: visible !important;
 }
+
+/* 進化の道ホバーは専用オーバーレイルートへポータル表示する */
+.evoPopup { display: none !important; }
 
 .evoDetailOverlay{
   position: fixed;

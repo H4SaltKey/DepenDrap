@@ -260,7 +260,11 @@ function createDeckObject(forceResetPos = false) {
     wrapper.appendChild(countLabel);
 
     const isMe = (owner === currentRole);
-    const savedPos = forceResetPos ? null : window._savedDeckPos;
+    const savedPos = forceResetPos
+      ? null
+      : (window._savedDeckPos || (() => {
+          try { return JSON.parse(localStorage.getItem("savedDeckPos") || "null"); } catch { return null; }
+        })());
 
     // 相手のデッキには一切イベントを付けず、座標も固定
     if (isMe) {

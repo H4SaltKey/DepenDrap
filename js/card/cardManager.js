@@ -63,7 +63,8 @@ let cardHoverPreviewCardId = "";
 let lastLocalFieldSaveAt = 0;
 let zoneOrderCounter = 0;
 let prevZoneLogState = null;
-let scrollZoomEnabled = localStorage.getItem("scrollZoomEnabled") !== "0";
+let scrollZoomEnabled = true;
+let scrollZoomDynamicEnabled = localStorage.getItem("scrollZoomDynamicEnabled") !== "0";
 
 const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];
 const ZONE_RECT = { w: CARD_W, h: CARD_H };
@@ -1173,6 +1174,10 @@ function enablePointerDrag(el){
         el.style.top  = placeY + "px";
         el.dataset.x  = placeX;
         el.dataset.y  = placeY;
+        if (el.classList.contains("deckObject")) {
+          window._savedDeckPos = { x: Number(placeX), y: Number(placeY) };
+          localStorage.setItem("savedDeckPos", JSON.stringify(window._savedDeckPos));
+        }
         
         if (el.dataset.owner === myRole2 && treatAsHand) {
           const content = getFieldContent();
@@ -1386,8 +1391,10 @@ async function initCards(){
     
     const zoomRange = Math.max(0.0001, FIELD_ZOOM_MAX - FIELD_ZOOM_MIN);
     const ratio = Math.min(1, Math.max(0, (fieldZoom - FIELD_ZOOM_MIN) / zoomRange));
-    const dynamicStep = FIELD_SCROLL_ZOOM_STEP * (0.35 + ratio * 0.65);
-    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * dynamicStep, pivotX, pivotY);
+    const wheelStep = scrollZoomDynamicEnabled
+      ? (FIELD_SCROLL_ZOOM_STEP * (0.35 + ratio * 0.65))
+      : FIELD_SCROLL_ZOOM_STEP;
+    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * wheelStep, pivotX, pivotY);
   }, { passive:false });
   document.addEventListener("pointerdown", (e) => {
     if (!cardHoverPreviewEl || cardHoverPreviewEl.style.display === "none") return;
@@ -1417,6 +1424,13 @@ window.setScrollZoomEnabled = function(enabled) {
 };
 window.isScrollZoomEnabled = function() {
   return !!scrollZoomEnabled;
+};
+window.setScrollZoomDynamicEnabled = function(enabled) {
+  scrollZoomDynamicEnabled = !!enabled;
+  localStorage.setItem("scrollZoomDynamicEnabled", scrollZoomDynamicEnabled ? "1" : "0");
+};
+window.isScrollZoomDynamicEnabled = function() {
+  return !!scrollZoomDynamicEnabled;
 };
 
 // ===== フィールド状態の保存・復元 =====

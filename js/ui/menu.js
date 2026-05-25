@@ -27,8 +27,8 @@
         <label>SE音量</label>
         <input type="range" id="seVolume" min="0" max="1" step="0.01">
         <label style="display:flex; align-items:center; gap:8px; margin-top:14px;">
-          <input type="checkbox" id="scrollZoomEnabled">
-          スクロールでスケール変更を有効化
+          <input type="checkbox" id="scrollZoomDynamicEnabled">
+          スクロール倍率を可変にする
         </label>
 
         <div class="optionFooter">
@@ -263,8 +263,8 @@
     optionsModal.classList.remove("hidden");
     document.getElementById("bgmVolume").value = settings.bgm;
     document.getElementById("seVolume").value = settings.se;
-    const cb = document.getElementById("scrollZoomEnabled");
-    if (cb) cb.checked = (typeof window.isScrollZoomEnabled === "function") ? window.isScrollZoomEnabled() : true;
+    const cb = document.getElementById("scrollZoomDynamicEnabled");
+    if (cb) cb.checked = (typeof window.isScrollZoomDynamicEnabled === "function") ? window.isScrollZoomDynamicEnabled() : true;
   };
 
   document.getElementById("closeOpt").onclick = ()=>{
@@ -302,8 +302,8 @@
     localStorage.setItem("settings", JSON.stringify(settings));
   });
   document.addEventListener("change", (e)=>{
-    if (e.target.id === "scrollZoomEnabled" && typeof window.setScrollZoomEnabled === "function") {
-      window.setScrollZoomEnabled(!!e.target.checked);
+    if (e.target.id === "scrollZoomDynamicEnabled" && typeof window.setScrollZoomDynamicEnabled === "function") {
+      window.setScrollZoomDynamicEnabled(!!e.target.checked);
     }
   });
 

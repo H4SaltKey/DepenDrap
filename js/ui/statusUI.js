@@ -191,9 +191,9 @@ function renderOwnerUI(owner) {
     <div class="evoPopup" style="
       ${owner === myRole
         ? 'position: absolute; bottom: 100%; margin-bottom: 0; padding-bottom: 8px; left: 50%; transform: translateX(-50%);'
-        : 'position: fixed; top: 0px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
+        : 'position: absolute; top: 100%; margin-top: 0; padding-top: 8px; left: 50%; transform: translateX(-50%);'}
       width: 420px;
-      z-index: 2147483647; pointer-events: none;
+      z-index: 1000002; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
       <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">

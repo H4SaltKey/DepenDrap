@@ -154,33 +154,31 @@ function injectDeckViewerStyle() {
 window.openDeckViewer = function() {
   injectDeckViewerStyle();
 
-  // 既に開いていれば閉じる
+  // 既に開いている場合は何もしない（再クリックによる点滅防止）
   if (document.getElementById("deckViewerOverlay")) {
-    closeDeckViewer();
     return;
   }
 
-  // デッキデータ取得
-  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-  const myState = (typeof state !== "undefined") ? state[me] : null;
-  const deck = myState?.deck || [];
-  const deckCode = localStorage.getItem("deckCode") || "";
+  // デッキデータ取得（ゲーム中状態ではなく開始前の初期デッキを使用）
+  let deckCode = "";
+  try {
+    const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
+    if (setup?.deckCode && setup.deckCode !== "empty") deckCode = setup.deckCode;
+  } catch {}
+  if (!deckCode) deckCode = localStorage.getItem("deckCode") || "";
 
-  // カードIDリストを構築
+  // カードIDリストを構築（初期デッキ）
   let cardIds = [];
-  if (deck.length > 0) {
-    cardIds = deck.map(id => {
-      if (typeof id === "string") return id.replace(/^(TEMP:|HIDDEN)/, "");
-      return id;
-    });
-  } else if (deckCode && typeof decodeDeck === "function") {
+  if (deckCode && typeof decodeDeck === "function") {
     try { cardIds = decodeDeck(deckCode); } catch {}
   }
 
   // 枚数カウント（表示用）
   const counts = {};
   cardIds.forEach(id => { if(id) counts[id] = (counts[id] || 0) + 1; });
-  const uniqueIds = Object.keys(counts);
+  const uniqueIds = Object.keys(counts).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+  );
 
   // オーバーレイ構築
   const overlay = document.createElement("div");
@@ -197,7 +195,7 @@ window.openDeckViewer = function() {
   header.id = "deckViewerHeader";
   header.innerHTML = `
     <h3>デッキ確認</h3>
-    <span id="deckViewerMeta">${cardIds.length} 枚</span>
+    <span id="deckViewerMeta">${cardIds.length} 枚 / ${uniqueIds.length} 種</span>
     <button id="deckViewerClose">閉じる</button>
   `;
 
@@ -205,23 +203,24 @@ window.openDeckViewer = function() {
   const grid = document.createElement("div");
   grid.id = "deckViewerGrid";
 
-  const totalSlots = Math.max(cardIds.length, 40);
-  for (let i = 0; i < totalSlots; i++) {
-    const id = cardIds[i];
+  if (uniqueIds.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "dvEmpty";
+    empty.textContent = "デッキ情報がありません";
+    grid.appendChild(empty);
+  } else {
+    uniqueIds.forEach((id) => {
     const card = document.createElement("div");
-    
-    if (id) {
-      const cardData = (typeof getCardData === "function") ? getCardData(id) : null;
-      const imgSrc = cardData?.image ? encodeURI(cardData.image) : "assets/System/404.png";
-      card.className = "dvCard";
-      card.title = cardData?.name || id;
-      card.innerHTML = `
-        <img src="${imgSrc}" alt="" onerror="this.src='assets/System/404.png'">
-      `;
-    } else {
-      card.className = "dvCard dvCardEmpty";
-    }
+    const cardData = (typeof getCardData === "function") ? getCardData(id) : null;
+    const imgSrc = cardData?.image ? encodeURI(cardData.image) : "assets/System/404.png";
+    card.className = "dvCard";
+    card.title = `${cardData?.name || id} x${counts[id]}`;
+    card.innerHTML = `
+      <img src="${imgSrc}" alt="" onerror="this.src='assets/System/404.png'">
+      <span class="dvCardCount">x${counts[id]}</span>
+    `;
     grid.appendChild(card);
+    });
   }
 
   box.appendChild(header);

@@ -72,7 +72,7 @@ function renderOwnerUI(owner) {
   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
 
   return `
-  <div style="display:flex; align-items:flex-end; gap:12px; ${isMine ? '' : 'flex-direction:row-reverse;'}">
+  <div style="display:flex; align-items:flex-end; gap:${isMine ? "12px" : "4px"}; ${isMine ? '' : 'flex-direction:row-reverse;'}">
   <div class="lorPanel" data-owner="${owner}">
 
     <!-- 左: レベル・経験値 -->
@@ -175,25 +175,25 @@ function renderOwnerUI(owner) {
 
   </div>
   
-  <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-end;">
+  <div style="display:flex; flex-direction:column; gap:${isMine ? "8px" : "4px"}; justify-content:flex-end;">
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-34px"};">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-8px"};">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      width: ${owner === myRole ? "120px" : "96px"}; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     ">
-      <div style="font-size:12px; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
-      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:18px; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.4px;" title="クリックで拡大表示">${s.evolutionPath}</div>
-      ${s.evolutionPath === '継続の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
-      ${s.evolutionPath === '背水の道' ? `<div style="font-size:12px; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
+      <div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
+      <div class="evoPanelTitle" data-owner="${owner}" style="font-size:${owner === myRole ? "18px" : "14px"}; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.3px;" title="クリックで拡大表示">${s.evolutionPath}</div>
+      ${s.evolutionPath === '継続の道' ? `<div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+      ${s.evolutionPath === '背水の道' ? `<div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="
       ${owner === myRole
         ? 'position: absolute; bottom: 100%; margin-bottom: 0; padding-bottom: 8px; left: 50%; transform: translateX(-50%);'
         : 'position: fixed; top: 0px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
       width: 420px;
-      z-index: 20050; pointer-events: none;
+      z-index: 2147483000; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
       <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">

@@ -1,22 +1,92 @@
 // ===== デッキリスト管理 =====
 // localStorage "deckList" に [{id, name, code}] を保存
+// 画像は IndexedDB に保存（localStorage の容量節約）
+
+// IndexedDB の初期化
+let deckImageDB = null;
+const DECK_IMAGE_DB_NAME = "DependrapDeckImages";
+const DECK_IMAGE_STORE_NAME = "backImages";
+
+async function initDeckImageDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DECK_IMAGE_DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DECK_IMAGE_STORE_NAME)) {
+        db.createObjectStore(DECK_IMAGE_STORE_NAME, { keyPath: "deckId" });
+      }
+    };
+    req.onsuccess = () => {
+      deckImageDB = req.result;
+      resolve(deckImageDB);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getBackImageFromDB(deckId) {
+  if (!deckImageDB) await initDeckImageDB();
+  return new Promise((resolve) => {
+    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readonly");
+    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+    const req = store.get(deckId);
+    req.onsuccess = () => resolve(req.result?.dataUrl || "");
+    req.onerror = () => resolve("");
+  });
+}
+
+async function saveBackImageToDB(deckId, dataUrl) {
+  if (!deckImageDB) await initDeckImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
+    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+    const req = store.put({ deckId, dataUrl });
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteBackImageFromDB(deckId) {
+  if (!deckImageDB) await initDeckImageDB();
+  return new Promise((resolve) => {
+    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
+    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+    const req = store.delete(deckId);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+  });
+}
 
 function loadDeckList() {
   try {
-    return JSON.parse(localStorage.getItem("deckList")) || [];
+    const list = JSON.parse(localStorage.getItem("deckList")) || [];
+    // 古いデータから backImage フィールドを削除
+    list.forEach(deck => {
+      if (deck.backImage) {
+        saveBackImageToDB(deck.id, deck.backImage).catch(() => {});
+        delete deck.backImage;
+      }
+    });
+    return list;
   } catch {
     return [];
   }
 }
 
 function saveDeckList(list) {
-  localStorage.setItem("deckList", JSON.stringify(list));
+  // backImage フィールドは保存しない（IndexedDB に保存される）
+  const cleanList = list.map(d => ({
+    id: d.id,
+    name: d.name,
+    code: d.code
+  }));
+  localStorage.setItem("deckList", JSON.stringify(cleanList));
 }
 
 function createNewDeck(name) {
   const list = loadDeckList();
   const id = "deck_" + Date.now();
-  const entry = { id, name: name || "新しいデッキ", code: "empty", backImage: "" };
+  const entry = { id, name: name || "新しいデッキ", code: "empty" };
   list.push(entry);
   saveDeckList(list);
   return entry;
@@ -79,6 +149,8 @@ document.getElementById("createDeckNameInput").addEventListener("keydown", (e) =
 function deleteDeck(id) {
   const list = loadDeckList().filter(d => d.id !== id);
   saveDeckList(list);
+  // IndexedDB からも削除
+  deleteBackImageFromDB(id).catch(() => {});
 }
 
 function updateDeckName(id, name) {
@@ -127,6 +199,7 @@ loadCardData()
     console.warn("カードデータの読み込みに失敗しました。サーバー経由で開いてください。");
   })
   .finally(() => {
+    initDeckImageDB().catch(() => {});
     btnImport.disabled = false;
     if (btnImportPublic) btnImportPublic.disabled = false;
     migrateDeckListToV3();
@@ -157,6 +230,9 @@ function renderGrid() {
   list.forEach(deck => {
     const el = createDeckThumb(deck);
     grid.appendChild(el);
+    
+    // 画像を非同期に読み込んで更新
+    loadAndUpdateDeckThumbnail(deck.id);
   });
 
   // 「新規作成」スロット
@@ -170,29 +246,33 @@ function renderGrid() {
   grid.appendChild(addEl);
 }
 
+async function loadAndUpdateDeckThumbnail(deckId) {
+  const el = document.querySelector(`[data-id="${deckId}"]`);
+  if (!el) return;
+  
+  const backImage = await getBackImageFromDB(deckId);
+  if (backImage) {
+    const thumbCardsEl = el.querySelector(".deckThumbCards");
+    if (thumbCardsEl) {
+      thumbCardsEl.innerHTML = `<div class="deckThumbCard" style="border:none; background:transparent;">
+        <img src="${backImage}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:2px;">
+      </div>`;
+    }
+  }
+}
+
 function createDeckThumb(deck) {
   const el = document.createElement("div");
   el.className = "deckThumb" + (deck.id === selectedDeckId ? " selected" : "");
   el.dataset.id = deck.id;
 
-  // デッキの裏面画像がある場合は優先
-  let thumbHtml = "";
-  if (deck.backImage && deck.backImage.length > 0) {
-    thumbHtml = `
-      <div class="deckThumbCards">
-        <div class="deckThumbCard" style="border:none; background:transparent;">
-          <img src="${deck.backImage}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:2px;">
-        </div>
-      </div>`;
-  } else {
-    // ない場合は従来通りのカードスタック表示
-    let cards = [];
-    try {
-      cards = decodeDeck(deck.code);
-    } catch {}
-    const uniqueIds = [...new Set(cards)].slice(0, 3);
-    thumbHtml = buildThumbStack(uniqueIds);
-  }
+  // デッキのカードスタック表示（画像は後で非同期に読み込まれる）
+  let cards = [];
+  try {
+    cards = decodeDeck(deck.code);
+  } catch {}
+  const uniqueIds = [...new Set(cards)].slice(0, 3);
+  const thumbHtml = buildThumbStack(uniqueIds);
 
   el.innerHTML = `
     ${thumbHtml}
@@ -257,21 +337,23 @@ function selectDeck(id) {
     cards = [];
   }
 
-  // カバー画像（裏面画像を優先、ない場合はデッキ先頭のカード）
+  // カバー画像（IndexedDB から読み込み）
   const coverImg = document.getElementById("detailCoverImg");
-  if (deck.backImage) {
-    coverImg.src = deck.backImage;
-    coverImg.style.display = "";
-  } else {
-    const firstCard = cards.length > 0 ? getCardData(cards[0]) : null;
-    if (firstCard) {
-      coverImg.src = encodeURI(firstCard.image);
+  getBackImageFromDB(deck.id).then(backImage => {
+    if (backImage) {
+      coverImg.src = backImage;
       coverImg.style.display = "";
     } else {
-      coverImg.src = "";
-      coverImg.style.display = "none";
+      const firstCard = cards.length > 0 ? getCardData(cards[0]) : null;
+      if (firstCard) {
+        coverImg.src = encodeURI(firstCard.image);
+        coverImg.style.display = "";
+      } else {
+        coverImg.src = "";
+        coverImg.style.display = "none";
+      }
     }
-  }
+  });
 
   // カード一覧
   renderDetailCards(cards);
@@ -537,17 +619,22 @@ function updateGridColumns() {
 
 function saveBackImage(dataUrl) {
   if (!selectedDeckId) return;
-  const list = loadDeckList();
-  const deck = list.find(d => d.id === selectedDeckId);
-  if (deck) {
-    deck.backImage = dataUrl || "";
-    saveDeckList(list);
-    selectDeck(selectedDeckId);
-    // ホバー詳細パネルも更新
-    if (activeDeckId === selectedDeckId) {
-      showDeckHoverDetail(deck);
+  // IndexedDB に保存
+  saveBackImageToDB(selectedDeckId, dataUrl).then(() => {
+    const list = loadDeckList();
+    const deck = list.find(d => d.id === selectedDeckId);
+    if (deck) {
+      selectDeck(selectedDeckId);
+      // ホバー詳細パネルも更新
+      if (activeDeckId === selectedDeckId) {
+        showDeckHoverDetail(deck);
+      }
+      // グリッドのサムネイルも更新
+      loadAndUpdateDeckThumbnail(selectedDeckId);
     }
-  }
+  }).catch(err => {
+    console.error("Failed to save back image:", err);
+  });
 }
 
 function setupBackImageUI() {
@@ -595,7 +682,7 @@ function showDeckHoverDetail(deck) {
   panel.innerHTML = `
     <div style="display:grid;grid-template-columns:84px 1fr;gap:10px;align-items:start;margin-bottom:10px;">
       <div style="width:84px;aspect-ratio:210/297;border:1px solid #5a4b27;background:#000;border-radius:4px;overflow:hidden;">
-        <img src="${deck.backImage || (cards[0] && getCardData(cards[0]) ? encodeURI(getCardData(cards[0]).image) : "")}" style="width:100%;height:100%;object-fit:contain;">
+        <img id="hoverCoverImg" src="" style="width:100%;height:100%;object-fit:contain;">
       </div>
       <div style="flex:1;">
         <input type="text" id="hoverDeckName" value="${escapeHtml(deck.name)}" style="font-size:14px;font-weight:bold;width:100%;border:1px solid #5a4b27;background:#000;color:#e0d0a0;-webkit-text-fill-color:#e0d0a0;-webkit-box-shadow:0 0 0 1000px #000 inset;padding:4px 6px;border-radius:4px;box-sizing:border-box;">
@@ -654,6 +741,21 @@ function showDeckHoverDetail(deck) {
         const list = loadDeckList();
         const currentDeck = list.find(d => d.id === activeDeckId);
         if (currentDeck) nameInput.value = currentDeck.name;
+      }
+    });
+  }
+
+  // IndexedDB から画像を読み込んで設定
+  const coverImg = panel.querySelector("#hoverCoverImg");
+  if (coverImg) {
+    getBackImageFromDB(deck.id).then(backImage => {
+      if (backImage) {
+        coverImg.src = backImage;
+      } else {
+        const firstCard = cards.length > 0 ? getCardData(cards[0]) : null;
+        if (firstCard) {
+          coverImg.src = encodeURI(firstCard.image);
+        }
       }
     });
   }

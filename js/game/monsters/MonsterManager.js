@@ -44,6 +44,8 @@ window.MonsterManager = (function() {
           monsterId: id,
           currentHp: def?.hp || 5,
           maxHp: def?.hp || 5,
+          shield: Number(def?.shield || 0),
+          def: Number(def?.def || 0),
           hitCountThisTurn: 0,
           retreatCountdown: 0
         };
@@ -61,6 +63,8 @@ window.MonsterManager = (function() {
           monsterId: id,
           currentHp: def?.hp || 5,
           maxHp: def?.hp || 5,
+          shield: Number(def?.shield || 0),
+          def: Number(def?.def || 0),
           hitCountThisTurn: 0,
           retreatCountdown: 0
         };
@@ -106,17 +110,26 @@ window.MonsterManager = (function() {
     }
     dmg = Math.max(0, dmg);
 
-    slot.currentHp = Math.max(0, slot.currentHp - dmg);
+    let remain = dmg;
+    const defVal = Math.max(0, Number(slot.def || 0));
+    if (defVal > 0) remain = Math.max(0, remain - defVal);
+    const shieldVal = Math.max(0, Number(slot.shield || 0));
+    if (shieldVal > 0 && remain > 0) {
+      const absorb = Math.min(shieldVal, remain);
+      slot.shield = shieldVal - absorb;
+      remain -= absorb;
+    }
+    slot.currentHp = Math.max(0, slot.currentHp - remain);
 
     if (typeof window.addGameLog === "function") {
-      window.addGameLog(`[MONSTER] ${def?.name || slot.monsterId} に ${dmg} ダメージ（残HP: ${slot.currentHp}/${slot.maxHp}）`);
+      window.addGameLog(`[MONSTER] ${def?.name || slot.monsterId} に ${dmg} ダメージ（残HP: ${slot.currentHp}/${slot.maxHp} / シールド:${slot.shield || 0}）`);
     }
 
     if (slot.currentHp <= 0) {
       return _defeatMonster(slotIndex, attacker);
     }
 
-    return { defeated: false, actualDmg: dmg };
+    return { defeated: false, actualDmg: remain };
   }
 
   /**

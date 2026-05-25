@@ -324,15 +324,18 @@ window.MonsterUI = (function() {
     const target = window.BattleTargetSystem?.getTarget?.(myKey) || "player";
     const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
     const hpPct = targetSlot ? Math.max(0, Math.min(100, (targetSlot.currentHp / targetSlot.maxHp) * 100)) : 0;
+    const targetDef = (targetSlot && target !== "player")
+      ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
+      : null;
     const targetUi = (targetSlot && target !== "player") ? `
       <div style="position:absolute; left:50%; top:340px; transform:translateX(-50%); width:420px; z-index:2;">
-        <div style="font-size:13px; text-align:center; margin-bottom:6px;">現在ターゲット: モンスター ${target.slotIndex + 1}</div>
+        <div style="font-size:13px; text-align:center; margin-bottom:6px;">現在ターゲット: ${targetDef?.name || "モンスター"}</div>
         <div style="height:12px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.22);border-radius:999px;overflow:hidden;">
           <div style="width:${hpPct}%;height:100%;background:linear-gradient(90deg,#ef6a6a,#ff9b6b);"></div>
         </div>
-        <div style="font-size:12px;color:#ddd;text-align:center;margin-top:4px;">HP ${targetSlot.currentHp}/${targetSlot.maxHp}</div>
+        <div style="font-size:12px;color:#ddd;text-align:center;margin-top:4px;">HP ${targetSlot.currentHp}/${targetSlot.maxHp} / SH ${targetSlot.shield || 0} / DEF ${targetSlot.def || 0}</div>
       </div>
-      <img src="assets/System/enemy_${target.slotIndex + 1}.png" alt="enemy_${target.slotIndex + 1}" style="position:absolute;left:50%;top:430px;transform:translateX(-50%);width:540px;height:780px;object-fit:contain;z-index:1;">
+      <img id="currentTargetMonsterObj" data-slot-index="${target.slotIndex}" src="assets/System/enemy_${target.slotIndex + 1}.png" alt="enemy_${target.slotIndex + 1}" style="position:absolute;left:50%;top:430px;transform:translateX(-50%);width:540px;height:780px;object-fit:contain;z-index:1;cursor:crosshair;">
     ` : "";
     panel.innerHTML = `
       <div style="position:relative;width:100%;height:100%;">
@@ -341,6 +344,20 @@ window.MonsterUI = (function() {
         ${targetUi}
       </div>
     `;
+    const monObj = panel.querySelector("#currentTargetMonsterObj");
+    if (monObj) {
+      monObj.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        const slotIndex = Number(monObj.dataset.slotIndex || -1);
+        if (slotIndex < 0) return;
+        const dmgStr = prompt("モンスターに与えるダメージ量", "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        window.MonsterCombatSystem?.playerAttackMonster(window.myRole || "player1", slotIndex, dmg);
+        window.MonsterUI?.render();
+      });
+    }
   }
 
   // ===== PvE中危険表示 =====

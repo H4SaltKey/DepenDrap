@@ -1827,6 +1827,28 @@ document.body.addEventListener("click", (e) => {
   addVal(t.dataset.owner, t.dataset.key, Number(t.dataset.delta));
 });
 
+let _enemyPanelLongPressTimer = null;
+document.body.addEventListener("pointerdown", (e) => {
+  const panel = e.target.closest(".lorPanel[data-owner]");
+  if (!panel) return;
+  const owner = panel.dataset.owner;
+  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (owner === me) return;
+  _enemyPanelLongPressTimer = setTimeout(() => {
+    if (typeof window.openStatusMenu === "function") {
+      window.openStatusMenu(owner, e.clientX, e.clientY);
+    }
+  }, 520);
+});
+document.body.addEventListener("pointerup", () => {
+  if (_enemyPanelLongPressTimer) clearTimeout(_enemyPanelLongPressTimer);
+  _enemyPanelLongPressTimer = null;
+});
+document.body.addEventListener("pointercancel", () => {
+  if (_enemyPanelLongPressTimer) clearTimeout(_enemyPanelLongPressTimer);
+  _enemyPanelLongPressTimer = null;
+});
+
 let _evoHoverPortal = null;
 let _evoHoverHideTimer = null;
 function ensureEvoHoverPortal() {

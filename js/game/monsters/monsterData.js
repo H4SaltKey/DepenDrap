@@ -10,6 +10,8 @@ window.MONSTER_DEFINITIONS = [
     name: "ゴブリン",
     emoji: "👺",
     hp: 6,
+    shield: 0,
+    def: 0,
     atk: 1,
     initiative: "後攻",  // "先攻" | "後攻"
     traits: [],
@@ -24,6 +26,8 @@ window.MONSTER_DEFINITIONS = [
     name: "装甲ゴーレム",
     emoji: "🗿",
     hp: 10,
+    shield: 0,
+    def: 0,
     atk: 2,
     initiative: "先攻",
     traits: [
@@ -45,6 +49,8 @@ window.MONSTER_DEFINITIONS = [
     name: "シャドウウルフ",
     emoji: "🐺",
     hp: 8,
+    shield: 0,
+    def: 0,
     atk: 2,
     initiative: "後攻",
     traits: [
@@ -71,6 +77,8 @@ window.MONSTER_DEFINITIONS = [
     name: "成長スライム",
     emoji: "🟢",
     hp: 5,
+    shield: 0,
+    def: 0,
     atk: 1,
     initiative: "後攻",
     traits: [
@@ -95,6 +103,8 @@ window.MONSTER_DEFINITIONS = [
     name: "多段蜘蛛",
     emoji: "🕷️",
     hp: 7,
+    shield: 0,
+    def: 0,
     atk: 1,
     initiative: "先攻",
     traits: [
@@ -120,6 +130,8 @@ window.MONSTER_DEFINITIONS = [
     name: "古代竜",
     emoji: "🐉",
     hp: 18,
+    shield: 0,
+    def: 0,
     atk: 3,
     initiative: "先攻",
     traits: [],

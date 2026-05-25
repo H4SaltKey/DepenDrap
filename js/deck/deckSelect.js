@@ -37,6 +37,17 @@ function closeCreateDeckModal() {
 }
 
 document.getElementById("createDeckCancel").addEventListener("click", closeCreateDeckModal);
+document.getElementById("createFromCodeBtn")?.addEventListener("click", () => {
+  closeCreateDeckModal();
+  document.getElementById("importCodeInput").value = "";
+  document.getElementById("importError").textContent = "";
+  document.getElementById("importModal").classList.remove("hidden");
+  document.getElementById("importCodeInput").focus();
+});
+document.getElementById("createFromPublicBtn")?.addEventListener("click", async () => {
+  closeCreateDeckModal();
+  await openPublicDeckModal();
+});
 
 // モーダル背景クリックでキャンセル
 document.getElementById("createDeckModal").addEventListener("click", (e) => {

@@ -239,7 +239,6 @@
     panel.innerHTML = `
       <h3 style="margin:0 0 8px; font-size:18px; color:#f0d080; text-align:center; letter-spacing:1px; font-weight:bold;">ターン開始 — 攻撃対象を選択</h3>
       <p style="font-size:12px; color:#aaa; text-align:center; margin:0 0 20px; letter-spacing:0.5px;">このターンの攻撃対象を選んでください</p>
-      <p style="font-size:12px; color:#b9ad83; text-align:center; margin:0 0 12px;">直前のターゲット: ${prevLabel}</p>
       <div style="display:flex; flex-direction:column; gap:4px;">
         ${optionsHtml}
       </div>
@@ -271,6 +270,15 @@
     };
 
     panel.querySelectorAll(".targetOption").forEach(opt => {
+      const isPrevPlayer = prev === "player" && opt.dataset.target === "player";
+      const isPrevMonster = prev !== "player" && opt.dataset.target === "monster" && String(Number(prev?.slotIndex)) === String(opt.dataset.slot || "");
+      if ((isPrevPlayer || isPrevMonster) && !opt.querySelector(".prevTargetTag")) {
+        const tag = document.createElement("div");
+        tag.className = "prevTargetTag";
+        tag.textContent = "直前のターゲット";
+        tag.style.cssText = "margin-left:auto; font-size:10px; color:#ff6b6b; font-weight:700; letter-spacing:0.2px; white-space:nowrap;";
+        opt.appendChild(tag);
+      }
       opt.addEventListener("click", () => {
         if (opt.dataset.target === "player") {
           close("player");

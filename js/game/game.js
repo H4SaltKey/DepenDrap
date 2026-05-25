@@ -708,7 +708,9 @@ function update(skipLogCheck = false) {
   invokeGuarded("update.phaseProgression", () => runPhaseProgression());
   invokeGuarded("update.handleMatchStateTransitions", () => handleMatchStateTransitions());
   // インタラクト系UIを毎回最上層へ（再表示時に埋もれるのを防ぐ）
-  const topOverlayIds = ["chatArea", "turnStartTargetPanel", "opponentTargetWaitingOverlay", "targetSelectPanel", "zoneStackInspectPanel", "deckViewerOverlay", "gameResultOverlay"];
+  // アニメーション付きオーバーレイ（target waiting / deck viewer / sync loading）は
+  // 再appendで見た目がリセットされることがあるため対象外にする
+  const topOverlayIds = ["chatArea", "turnStartTargetPanel", "targetSelectPanel", "zoneStackInspectPanel", "gameResultOverlay"];
   topOverlayIds.forEach((id) => {
     const el = document.getElementById(id);
     if (el && el.parentElement === document.body) document.body.appendChild(el);

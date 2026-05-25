@@ -1316,7 +1316,8 @@ function centerField(){
     !!document.getElementById("turnStartTargetPanel") ||
     !!document.getElementById("targetSelectPanel") ||
     !!state?.matchData?.targetSelectionPending;
-  if ((target && target !== "player") || selectingTarget) {
+  const hasMonster = (window.MonsterManager?.getAllSlots?.() || []).some(Boolean);
+  if ((target && target !== "player") || (selectingTarget && hasMonster)) {
     // モンスターフィールド中心へ
     centerX = 1500;
     centerY = 1200;

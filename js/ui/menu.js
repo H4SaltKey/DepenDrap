@@ -9,7 +9,7 @@
     <div id="menuButton">☰</div>
 
     <div id="menuPanel" class="hidden">
-      <div class="menuItem" id="closeMenuBtn">戻る</div>
+      <div class="menuItem" id="closeMenuBtn">閉じる</div>
       <div class="menuItem" id="backBtn">タイトルへ戻る</div>
       <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
       <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>

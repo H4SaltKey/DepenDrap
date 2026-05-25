@@ -121,7 +121,7 @@
   /* サムネイル内のミニカード積み重ね表示 */
   .deckThumbCards {
     position: relative;
-    width: 60%;
+    width: 78%;
     aspect-ratio: 210 / 297;
     flex-shrink: 0;
   }
@@ -292,6 +292,18 @@
     border-radius: 4px;
     transition: all 0.2s;
   }
+  .btnSubCreate {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    color: #e4c46f !important;
+    border: 1px solid rgba(199, 179, 119, 0.45) !important;
+    background: rgba(120, 95, 35, 0.18) !important;
+    letter-spacing: 0.2px !important;
+  }
+  .btnSubCreate:hover {
+    background: rgba(150, 120, 45, 0.28) !important;
+    border-color: rgba(224, 200, 120, 0.65) !important;
+  }
 
   .btnEdit:hover {
     background: rgba(0, 170, 0, 0.2);
@@ -412,8 +424,8 @@
       style="font-size:15px;padding:8px 10px;background:rgba(0,0,0,0.5);border:1px solid #5a4b27;color:white;border-radius:4px;">
     <div id="createDeckError" style="font-size:12px;color:#ff6b6b;min-height:16px;"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;">
-      <button id="createFromCodeBtn" class="btnEdit" style="padding:8px 10px;font-size:12px;flex:1;">デッキコードから作成</button>
-      <button id="createFromPublicBtn" class="btnEdit" style="padding:8px 10px;font-size:12px;flex:1;">公開デッキから作成</button>
+      <button id="createFromCodeBtn" class="btnEdit btnSubCreate" style="flex:1;">デッキコードから作成</button>
+      <button id="createFromPublicBtn" class="btnEdit btnSubCreate" style="flex:1;">公開デッキから作成</button>
     </div>
     <div style="display:flex;gap:12px;justify-content:flex-end;">
       <button id="createDeckCancel" class="btnDelete" style="padding:8px 20px;">キャンセル</button>

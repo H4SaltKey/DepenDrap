@@ -525,12 +525,6 @@ function updateGridColumns() {
   
   if (!deckGrid || !cardList) return;
   
-  // デッキグリッドの列数調整（最小2列、最大8列）
-  const deckGridWidth = deckGrid.offsetWidth;
-  const minDeckCardWidth = 120; // デッキカードの最小幅
-  const deckCols = Math.max(2, Math.min(8, Math.floor(deckGridWidth / minDeckCardWidth)));
-  deckGrid.style.gridTemplateColumns = `repeat(${deckCols}, 1fr)`;
-  
   // カード一覧の列数調整（最小3列、最大10列）
   const cardListWidth = cardList.offsetWidth;
   const minCardWidth = 60; // カード一覧の最小幅

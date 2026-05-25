@@ -133,13 +133,15 @@ window.setupChatEvents = function() {
     chat.addEventListener("click", (e) => {
       if (e.target.closest("#chatInputRow")) return;
       if (e.target.closest("#chatInput") || e.target.closest("#chatSendBtn")) return;
+      if (e.target.closest("#chatLogs")) return;
       chat.classList.toggle("chat-expanded");
       const logs = document.getElementById("chatLogs");
       if (logs) logs.scrollTop = logs.scrollHeight;
     });
     const logs = document.getElementById("chatLogs");
     if (logs) {
-      logs.addEventListener("click", () => {
+      logs.addEventListener("click", (e) => {
+        e.stopPropagation();
         chat.classList.add("chat-expanded");
         chat.classList.toggle("chat-zoomed");
         logs.scrollTop = logs.scrollHeight;

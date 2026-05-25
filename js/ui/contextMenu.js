@@ -171,8 +171,9 @@ function openCardMenu(card, x, y){
   const me = (typeof window.getMyRole === "function")
     ? window.getMyRole()
     : (window.myRole || "player1");
-  const isOpponent = (card.dataset.owner && card.dataset.owner !== me);
-  const canZoomOpponent = !isOpponent || card.dataset.visibility === "both";
+  const visMode = card.dataset.visibility || "both";
+  const canZoomByVisibility = visMode === "both" || visMode === "self";
+  const canZoomOpponent = !card.classList.contains("deckObject") && canZoomByVisibility;
   const firstDrawOnly =
     typeof state !== "undefined" &&
     state?.matchData?.status === "setup_first_draw";

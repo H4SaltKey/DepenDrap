@@ -312,7 +312,7 @@ window.MonsterUI = (function() {
       panel = document.createElement("div");
       panel.id = "monsterBattlefieldPanel";
       panel.style.cssText = `
-        position:absolute; left:6200px; top:900px; width:3000px; min-height:2000px; z-index:3000;
+        position:absolute; left:9000px; top:0px; width:3000px; height:2000px; z-index:3000;
         border:1px solid rgba(199,179,119,0.4); border-radius:12px; overflow:hidden;
         background:rgba(8,8,14,0.9); box-shadow:0 10px 28px rgba(0,0,0,0.45);
         font-family:'Outfit',sans-serif; color:#efe4bc;
@@ -322,37 +322,23 @@ window.MonsterUI = (function() {
     const myKey = window.myRole || "player1";
     const opKey = myKey === "player1" ? "player2" : "player1";
     const target = window.BattleTargetSystem?.getTarget?.(myKey) || "player";
-    const slotsHtml = slots.map((slot, i) => {
-      if (!slot || target === "player" || target.slotIndex !== i) return "";
-      const hpPct = Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100));
-      return `
-        <div style="display:flex;gap:12px;align-items:center;padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
-          <img src="assets/System/enemy_${i + 1}.png" alt="enemy_${i + 1}" style="width:140px;height:140px;object-fit:contain;background:rgba(0,0,0,0.35);border-radius:8px;">
-          <div style="flex:1;">
-            <div style="font-size:18px;">現在ターゲット: モンスター ${i + 1}</div>
-            <div style="height:10px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;"><div style="width:${hpPct}%;height:100%;background:#ef6a6a;"></div></div>
-            <div style="font-size:14px;color:#c6c6c6;">HP ${slot.currentHp}/${slot.maxHp}</div>
-          </div>
-          <div style="font-size:13px;color:#9cc6ff;">次: 通常攻撃</div>
+    const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
+    const hpPct = targetSlot ? Math.max(0, Math.min(100, (targetSlot.currentHp / targetSlot.maxHp) * 100)) : 0;
+    const targetUi = (targetSlot && target !== "player") ? `
+      <div style="position:absolute; left:50%; top:340px; transform:translateX(-50%); width:420px; z-index:2;">
+        <div style="font-size:13px; text-align:center; margin-bottom:6px;">現在ターゲット: モンスター ${target.slotIndex + 1}</div>
+        <div style="height:12px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.22);border-radius:999px;overflow:hidden;">
+          <div style="width:${hpPct}%;height:100%;background:linear-gradient(90deg,#ef6a6a,#ff9b6b);"></div>
         </div>
-      `;
-    }).join("");
-    const playerTargetHtml = target === "player" ? `
-      <div style="padding:14px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
-        <div style="font-size:18px;margin-bottom:8px;">現在ターゲット: 相手プレイヤー</div>
-        <div style="font-size:14px;color:#c6c6c6;">HP ${window.state?.[opKey]?.hp || 0}/${window.state?.[opKey]?.hpMax || 0}</div>
-        <div style="font-size:14px;color:#c6c6c6;">シールド ${window.state?.[opKey]?.shield || 0}/${window.state?.[opKey]?.shieldMax || 0}</div>
-        <div style="font-size:14px;color:#c6c6c6;">防御 ${window.state?.[opKey]?.defstack || 0}/${window.state?.[opKey]?.def || 0}</div>
+        <div style="font-size:12px;color:#ddd;text-align:center;margin-top:4px;">HP ${targetSlot.currentHp}/${targetSlot.maxHp}</div>
       </div>
+      <img src="assets/System/enemy_${target.slotIndex + 1}.png" alt="enemy_${target.slotIndex + 1}" style="position:absolute;left:50%;top:430px;transform:translateX(-50%);width:540px;height:780px;object-fit:contain;z-index:1;">
     ` : "";
     panel.innerHTML = `
-      <div style="position:relative;">
-        <img src="assets/System/monsterBG.png" alt="monster-bg" style="width:100%;height:520px;object-fit:cover;display:block;opacity:0.8;">
-        <div style="position:absolute;left:10px;bottom:8px;font-size:14px;font-weight:700;">モンスター戦闘フィールド</div>
-      </div>
-      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
-        ${playerTargetHtml}
-        ${slotsHtml}
+      <div style="position:relative;width:100%;height:100%;">
+        <img src="assets/System/monsterBG.png" alt="monster-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0.82;">
+        <div style="position:absolute;left:10px;top:8px;font-size:14px;font-weight:700;z-index:2;">モンスター戦闘フィールド</div>
+        ${targetUi}
       </div>
     `;
   }
@@ -387,6 +373,10 @@ window.MonsterUI = (function() {
     const panel = document.createElement("div");
     panel.id = "targetSelectPanel";
 
+    const prev = window.BattleTargetSystem?.getTarget(me) || "player";
+    const prevLabel = prev === "player"
+      ? "相手プレイヤー"
+      : `モンスター ${Number(prev?.slotIndex) + 1}`;
     let optionsHtml = `
       <div class="targetOption pvp" data-target="player">
         <div class="targetOptionEmoji">⚔️</div>
@@ -415,6 +405,7 @@ window.MonsterUI = (function() {
     panel.innerHTML = `
       <h3>攻撃対象を選択</h3>
       <p style="font-size:12px;color:#888;text-align:center;margin:0 0 12px;">ターン開始時のみ変更できます</p>
+      <p style="font-size:12px;color:#b9ad83;text-align:center;margin:0 0 12px;">直前のターゲット: ${prevLabel}</p>
       ${optionsHtml}
       <button id="targetSelectCancel">キャンセル</button>
     `;
@@ -430,7 +421,6 @@ window.MonsterUI = (function() {
         } else {
           const slotIndex = parseInt(opt.dataset.slot, 10);
           window.BattleTargetSystem?.setTarget(me, { slotIndex });
-          if (typeof window.centerField === "function") window.centerField();
         }
         panel.remove();
         // monsterPanel を非表示に戻す
@@ -458,11 +448,14 @@ window.MonsterUI = (function() {
   }
 
   // ===== ターゲット変更ボタン（ターン開始時に表示） =====
-  function showTargetChangeButton() {
+  function showTargetChangeButton(forceByDefeat = false) {
     if (document.getElementById("targetChangeBtn")) return;
 
     const me = window.myRole || "player1";
-    if (!window.BattleTargetSystem?.canChangeTarget(me)) return;
+    const canByTurn = !!window.BattleTargetSystem?.canChangeTarget(me);
+    const canByDefeat = !!window.BattleTargetSystem?.canImmediateRetarget?.(me);
+    if (!forceByDefeat && !canByDefeat) return;
+    if (!canByTurn && !canByDefeat) return;
 
     const btn = document.createElement("button");
     btn.id = "targetChangeBtn";

@@ -59,6 +59,7 @@ let fieldSyncTimer = null;
 // 現在ドラッグ中のカード情報
 let draggingCard = null; // { el, offsetX, offsetY }
 let cardHoverPreviewEl = null;
+let cardHoverPreviewCardId = "";
 let lastLocalFieldSaveAt = 0;
 let zoneOrderCounter = 0;
 let prevZoneLogState = null;
@@ -101,6 +102,18 @@ function canShowSingleTapPreview(cardEl) {
   return (cardEl.dataset.visibility || "both") === "both";
 }
 
+function isCardInHandArea(cardEl) {
+  if (!cardEl || cardEl.classList.contains("deckObject")) return false;
+  if (cardEl.dataset.zoneType) return false;
+  const y = Number(cardEl.dataset.y || 0);
+  if (!Number.isFinite(y)) return false;
+  const owner = cardEl.dataset.owner || "";
+  const handMaxTop = FIELD_H - HAND_ZONE_Y_MIN;
+  if (owner === "player1") return y >= HAND_ZONE_Y_MIN;
+  if (owner === "player2") return y <= handMaxTop;
+  return false;
+}
+
 function showCardHoverPreview(cardEl, clientX, clientY) {
   if (!canShowSingleTapPreview(cardEl)) return;
   const img = cardEl?.querySelector?.("img");
@@ -110,7 +123,7 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
     cardHoverPreviewEl.id = "cardHoverPreview";
     cardHoverPreviewEl.style.cssText = `
       position: fixed; z-index: 100220; pointer-events: none;
-      width: 220px; height: 312px; border-radius: 8px; overflow: hidden;
+      width: 260px; height: 368px; border-radius: 8px; overflow: hidden;
       border: 1px solid rgba(255,255,255,0.28);
       background: rgba(8,8,16,0.85);
       box-shadow: 0 12px 30px rgba(0,0,0,0.55);
@@ -118,12 +131,16 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
     document.body.appendChild(cardHoverPreviewEl);
   }
   cardHoverPreviewEl.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">`;
+  cardHoverPreviewCardId = cardEl.dataset.instanceId || "";
   cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 236)}px`;
   cardHoverPreviewEl.style.top = `12px`;
   cardHoverPreviewEl.style.display = "block";
-  setTimeout(() => {
-    if (cardHoverPreviewEl) cardHoverPreviewEl.style.display = "none";
-  }, 1200);
+}
+
+function hideCardHoverPreview() {
+  if (!cardHoverPreviewEl) return;
+  cardHoverPreviewEl.style.display = "none";
+  cardHoverPreviewCardId = "";
 }
 const HAND_ZONE_Y_MIN = 1460;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
@@ -1251,6 +1268,7 @@ function enablePointerDrag(el){
   // ダブルクリックでvisibility切り替え（デッキオブジェクトは除外）
   el.addEventListener("dblclick", ()=>{
     if(el.classList.contains("deckObject")) return;
+    if (isCardInHandArea(el)) return;
     cycleVisibility(el);
   });
 }
@@ -1360,8 +1378,22 @@ async function initCards(){
     const pivotX = e.clientX - rect.left;
     const pivotY = e.clientY - rect.top;
     
-    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * FIELD_SCROLL_ZOOM_STEP, pivotX, pivotY);
+    const zoomRange = Math.max(0.0001, FIELD_ZOOM_MAX - FIELD_ZOOM_MIN);
+    const ratio = Math.min(1, Math.max(0, (fieldZoom - FIELD_ZOOM_MIN) / zoomRange));
+    const dynamicStep = FIELD_SCROLL_ZOOM_STEP * (0.35 + ratio * 0.65);
+    setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * dynamicStep, pivotX, pivotY);
   }, { passive:false });
+  document.addEventListener("pointerdown", (e) => {
+    if (!cardHoverPreviewEl || cardHoverPreviewEl.style.display === "none") return;
+    const clickedCard = e.target.closest(".card");
+    const clickedCardId = clickedCard?.dataset?.instanceId || "";
+    if (clickedCardId && clickedCardId === cardHoverPreviewCardId) return;
+    if (clickedCard) {
+      showCardHoverPreview(clickedCard, e.clientX, e.clientY);
+      return;
+    }
+    hideCardHoverPreview();
+  });
 
   restoreFieldCards();
   if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();

@@ -177,7 +177,7 @@ function renderOwnerUI(owner) {
   
   <div style="display:flex; flex-direction:column; gap:8px; justify-content:flex-end;">
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:-20px;">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-34px"};">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -191,9 +191,9 @@ function renderOwnerUI(owner) {
     <div class="evoPopup" style="
       ${owner === myRole
         ? 'position: absolute; bottom: 100%; margin-bottom: 0; padding-bottom: 8px; left: 50%; transform: translateX(-50%);'
-        : 'position: fixed; top: 10px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
+        : 'position: fixed; top: 0px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0;'}
       width: 420px;
-      z-index: 99999; pointer-events: none;
+      z-index: 20050; pointer-events: none;
       opacity: 0; transition: opacity 0.2s; visibility: hidden;
     ">
       <div style="background: rgba(10,8,20,0.95); border: 1px solid #c89b3c; border-radius: 6px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.8);">
@@ -285,6 +285,9 @@ function updateFieldStatusPanels() {
 
   ["player1", "player2"].forEach(owner => {
     const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+    const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+    const myTarget = window.BattleTargetSystem?.getTarget?.(myRole) || "player";
+    const showOpponentUi = myTarget === "player";
     const id = `fieldStatusPanel_${owner}`;
 
     let el = document.getElementById(id);
@@ -334,9 +337,9 @@ function updateFieldStatusPanels() {
     ` : `
       position: fixed;
       right: 24px;
-      top: 92px;
-      width: 230px;
-      padding: 12px 16px;
+      top: 124px;
+      width: 207px;
+      padding: 10px 14px;
       background: rgba(15, 12, 28, 0.92);
       border: 2px solid #c7b377;
       border-radius: 14px;
@@ -346,6 +349,11 @@ function updateFieldStatusPanels() {
       font-family: 'Outfit', sans-serif;
       pointer-events: auto;
     `;
+    if (!isMine && !showOpponentUi) {
+      el.style.display = "none";
+      return;
+    }
+    el.style.display = "";
     const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
     const graveCount = countZoneCards(owner, "grave");
 

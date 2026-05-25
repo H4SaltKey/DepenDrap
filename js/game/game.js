@@ -614,6 +614,8 @@ function renderUI() {
   const enemyEl = document.getElementById("gameUiEnemy");
   const myOwner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const enemyOwner = myOwner === "player1" ? "player2" : "player1";
+  const myTarget = window.BattleTargetSystem?.getTarget?.(myOwner) || "player";
+  const showEnemyStatus = myTarget === "player";
 
   invokeGuarded("renderUI.renderOwnerUI.my", () => {
     if (!playerEl) return;
@@ -625,6 +627,8 @@ function renderUI() {
   });
   invokeGuarded("renderUI.renderOwnerUI.enemy", () => {
     if (!enemyEl) return;
+    enemyEl.style.display = showEnemyStatus ? "" : "none";
+    if (!showEnemyStatus) return;
     const nextHtml = renderOwnerUI(enemyOwner);
     if (nextHtml !== _lastEnemyOwnerUiHtml) {
       enemyEl.innerHTML = nextHtml;

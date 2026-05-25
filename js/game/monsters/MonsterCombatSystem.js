@@ -83,6 +83,9 @@ window.MonsterCombatSystem = (function() {
     if (window.BattleTargetSystem) {
       window.BattleTargetSystem.onMonsterDefeated(killer);
     }
+    if (window.MonsterUI?.showTargetChangeButton) {
+      window.MonsterUI.showTargetChangeButton(true);
+    }
 
     // 成長スライム特性の処理（グローバルフラグ）
     if (window._slimeGrowthRoundsLeft > 0 && window._slimeGrowthKiller === killer) {

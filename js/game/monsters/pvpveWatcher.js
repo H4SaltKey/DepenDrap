@@ -87,7 +87,7 @@
       if (me === (m.firstPlayer || "player1")) {
         window.MonsterCombatSystem?.onRoundStart(round);
       }
-      window.MonsterUI?.showTargetChangeButton();
+      window.MonsterUI?.hideTargetChangeButton();
     }
 
     _renderMonsterUI();
@@ -130,7 +130,7 @@
     if (nextPlayer === me) {
       // 先攻モンスターの攻撃を実行
       window.MonsterCombatSystem?.processTurnStartMonsterActions();
-      window.MonsterUI?.showTargetChangeButton();
+      window.MonsterUI?.hideTargetChangeButton();
     } else {
       // 相手のターン: 先攻モンスターの攻撃のみ実行
       window.MonsterCombatSystem?.processTurnStartMonsterActions();
@@ -182,6 +182,8 @@
 
     const slots = window.MonsterManager?.getAllSlots() || [];
     const me = window.myRole || "player1";
+    const prev = window.BattleTargetSystem?.getTarget(me) || "player";
+    const prevLabel = prev === "player" ? "相手プレイヤー" : `モンスター ${Number(prev?.slotIndex) + 1}`;
 
     // ターゲット変更権限を確実にONにする
     window.BattleTargetSystem?.onTurnStart(me);
@@ -237,6 +239,7 @@
     panel.innerHTML = `
       <h3 style="margin:0 0 8px; font-size:18px; color:#f0d080; text-align:center; letter-spacing:1px; font-weight:bold;">ターン開始 — 攻撃対象を選択</h3>
       <p style="font-size:12px; color:#aaa; text-align:center; margin:0 0 20px; letter-spacing:0.5px;">このターンの攻撃対象を選んでください</p>
+      <p style="font-size:12px; color:#b9ad83; text-align:center; margin:0 0 12px;">直前のターゲット: ${prevLabel}</p>
       <div style="display:flex; flex-direction:column; gap:4px;">
         ${optionsHtml}
       </div>
@@ -253,6 +256,7 @@
       } else if (typeof target === "number") {
         window.BattleTargetSystem?.setTarget(me, { slotIndex: target });
       }
+      if (typeof window.centerField === "function") window.centerField();
       
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && window.firebaseClient?.db) {

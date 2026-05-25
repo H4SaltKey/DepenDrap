@@ -104,6 +104,10 @@ window.BattleTargetSystem = (function() {
     return !!_canChange[playerKey];
   }
 
+  function canImmediateRetarget(playerKey) {
+    return !!_justDefeated[playerKey];
+  }
+
   // ===== Firebase同期 =====
   function serialize() {
     return {
@@ -141,6 +145,7 @@ window.BattleTargetSystem = (function() {
     isPvE,
     isPvP,
     canChangeTarget,
+    canImmediateRetarget,
     serialize,
     deserialize,
     reset

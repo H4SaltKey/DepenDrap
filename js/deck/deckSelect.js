@@ -543,6 +543,10 @@ function saveBackImage(dataUrl) {
     deck.backImage = dataUrl || "";
     saveDeckList(list);
     selectDeck(selectedDeckId);
+    // ホバー詳細パネルも更新
+    if (activeDeckId === selectedDeckId) {
+      showDeckHoverDetail(deck);
+    }
   }
 }
 
@@ -593,9 +597,9 @@ function showDeckHoverDetail(deck) {
       <div style="width:84px;aspect-ratio:210/297;border:1px solid #5a4b27;background:#000;border-radius:4px;overflow:hidden;">
         <img src="${deck.backImage || (cards[0] && getCardData(cards[0]) ? encodeURI(getCardData(cards[0]).image) : "")}" style="width:100%;height:100%;object-fit:contain;">
       </div>
-      <div>
-        <div style="font-size:14px;font-weight:bold;word-break:break-all;">${escapeHtml(deck.name)}</div>
-        <div style="font-size:11px;color:#888;word-break:break-all;">コード: ${deck.code}</div>
+      <div style="flex:1;">
+        <input type="text" id="hoverDeckName" value="${escapeHtml(deck.name)}" style="font-size:14px;font-weight:bold;width:100%;border:1px solid #5a4b27;background:#000;color:#e0d0a0;-webkit-text-fill-color:#e0d0a0;-webkit-box-shadow:0 0 0 1000px #000 inset;padding:4px 6px;border-radius:4px;box-sizing:border-box;">
+        <div style="font-size:11px;color:#888;word-break:break-all;margin-top:6px;">コード: ${deck.code}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:52vh;overflow:auto;">${listHtml || '<div style="color:#aaa;font-size:12px;grid-column:1/-1;">カードなし</div>'}</div>
@@ -627,6 +631,33 @@ function showDeckHoverDetail(deck) {
     selectedDeckId = activeDeckId;
     document.getElementById("btnEdit")?.click();
   });
+
+  // デッキ名の編集処理
+  const nameInput = panel.querySelector("#hoverDeckName");
+  if (nameInput) {
+    nameInput.addEventListener("change", () => {
+      const newName = nameInput.value.trim();
+      if (newName && activeDeckId) {
+        updateDeckName(activeDeckId, newName);
+        renderGrid();
+        const list = loadDeckList();
+        const updatedDeck = list.find(d => d.id === activeDeckId);
+        if (updatedDeck) {
+          showDeckHoverDetail(updatedDeck);
+        }
+      }
+    });
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        nameInput.blur();
+      } else if (e.key === "Escape") {
+        const list = loadDeckList();
+        const currentDeck = list.find(d => d.id === activeDeckId);
+        if (currentDeck) nameInput.value = currentDeck.name;
+      }
+    });
+  }
+
   panel.classList.add("visible");
 }
 

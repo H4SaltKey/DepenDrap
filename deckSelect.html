@@ -171,7 +171,7 @@
     max-height: calc(100vh - 130px);
     overflow: hidden;
     z-index: 11000;
-    pointer-events: auto;
+    pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s ease;
     background: rgba(10, 8, 20, 0.94);
@@ -181,7 +181,10 @@
     padding: 12px;
     color: #e0d0a0;
   }
-  #deckHoverDetail.visible { opacity: 1; }
+  #deckHoverDetail.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
 
   .deckDetailEmpty {
     display: flex;

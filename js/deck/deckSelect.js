@@ -114,6 +114,7 @@ function migrateDeckListToV3() {
 
 // ===== 状態 =====
 let selectedDeckId = null;
+let activeDeckId = null;
 
 // ===== 初期化 =====
 const btnImport = document.getElementById("btnImportDeck");
@@ -198,9 +199,11 @@ function createDeckThumb(deck) {
     <div class="deckThumbName">${escapeHtml(deck.name)}</div>
   `;
 
-  el.addEventListener("click", () => {
+  el.addEventListener("click", (ev) => {
     selectedDeckId = deck.id;
+    activeDeckId = deck.id;
     document.querySelectorAll(".deckThumb").forEach(n => n.classList.toggle("selected", n.dataset.id === deck.id));
+    showDeckActionPopover(deck.id, ev.clientX, ev.clientY);
   });
   el.addEventListener("mouseenter", () => showDeckHoverDetail(deck));
   el.addEventListener("mouseleave", () => hideDeckHoverDetail());
@@ -335,6 +338,52 @@ document.getElementById("btnDelete").addEventListener("click", () => {
   content.style.display = "none";
 
   renderGrid();
+});
+
+function ensureDeckActionPopover() {
+  let pop = document.getElementById("deckActionPopover");
+  if (pop) return pop;
+  pop = document.createElement("div");
+  pop.id = "deckActionPopover";
+  pop.innerHTML = `
+    <button class="actBtn" data-act="publish">このデッキを公開</button>
+    <button class="actBtn" data-act="sleeve">スリーブを選択</button>
+    <button class="actBtn" data-act="delete">削除</button>
+    <button class="actBtn" data-act="edit">このデッキを編集</button>
+  `;
+  document.body.appendChild(pop);
+  pop.addEventListener("click", (e) => {
+    const btn = e.target.closest(".actBtn");
+    if (!btn || !activeDeckId) return;
+    const act = btn.dataset.act;
+    if (act === "publish") document.getElementById("btnPublishDeck")?.click();
+    if (act === "sleeve") document.getElementById("btnSetBackImage")?.click();
+    if (act === "delete") document.getElementById("btnDelete")?.click();
+    if (act === "edit") document.getElementById("btnEdit")?.click();
+    hideDeckActionPopover();
+  });
+  return pop;
+}
+
+function showDeckActionPopover(deckId, x, y) {
+  activeDeckId = deckId;
+  const pop = ensureDeckActionPopover();
+  pop.style.display = "block";
+  pop.style.left = `${Math.max(8, Math.min(window.innerWidth - 200, x + 8))}px`;
+  pop.style.top = `${Math.max(8, Math.min(window.innerHeight - 180, y + 8))}px`;
+}
+
+function hideDeckActionPopover() {
+  const pop = document.getElementById("deckActionPopover");
+  if (pop) pop.style.display = "none";
+}
+
+document.addEventListener("click", (e) => {
+  const pop = document.getElementById("deckActionPopover");
+  if (!pop) return;
+  if (pop.contains(e.target)) return;
+  if (e.target.closest(".deckThumb")) return;
+  hideDeckActionPopover();
 });
 
 // ===== ユーティリティ =====

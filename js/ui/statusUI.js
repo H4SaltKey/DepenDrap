@@ -72,7 +72,7 @@ function renderOwnerUI(owner) {
   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
 
   return `
-  <div style="display:flex; align-items:flex-end; gap:${isMine ? "12px" : "4px"}; ${isMine ? '' : 'flex-direction:row-reverse;'}">
+  <div style="display:flex; align-items:${isMine ? "flex-end" : "flex-start"}; gap:${isMine ? "12px" : "4px"}; ${isMine ? '' : 'flex-direction:row-reverse;'}">
   <div class="lorPanel" data-owner="${owner}">
 
     <!-- 左: レベル・経験値 -->
@@ -177,7 +177,7 @@ function renderOwnerUI(owner) {
   
   <div style="display:flex; flex-direction:column; gap:${isMine ? "8px" : "4px"}; justify-content:flex-end;">
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-8px"};">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-14px"};">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -331,7 +331,7 @@ function updateFieldStatusPanels() {
       border-radius: 14px;
       backdrop-filter: blur(12px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      z-index: 5100;
+      z-index: 4200;
       font-family: 'Outfit', sans-serif;
       pointer-events: auto;
     ` : `
@@ -345,7 +345,7 @@ function updateFieldStatusPanels() {
       border-radius: 14px;
       backdrop-filter: blur(12px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      z-index: 5100;
+      z-index: 4200;
       font-family: 'Outfit', sans-serif;
       pointer-events: auto;
     `;

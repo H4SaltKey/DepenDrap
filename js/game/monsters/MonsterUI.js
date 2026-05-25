@@ -508,9 +508,9 @@ window.MonsterUI = (function() {
       badge.id = "currentTargetBadge";
       badge.style.cssText = `
         position: fixed;
-        top: 6px;
-        left: calc(50% + 180px);
-        transform: translateX(0);
+        top: 58px;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: 5050;
         font-size: 11px;
         color: #a09070;

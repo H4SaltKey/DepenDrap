@@ -713,6 +713,13 @@ function createCard(id){
 
 function getBackImageSrc(){
   try{
+    // matchSetup から backImage を優先的に取得
+    const matchSetupData = JSON.parse(localStorage.getItem("matchSetup")) || {};
+    if (matchSetupData.backImage && matchSetupData.backImage.length > 5) {
+      return matchSetupData.backImage;
+    }
+    
+    // フォールバック：deckList から backImage を取得（IndexedDB への移行後は使用されない）
     const deckCode = localStorage.getItem("deckCode");
     const list = JSON.parse(localStorage.getItem("deckList")) || [];
     const entry = list.find(d => d.code === deckCode) || list[list.length - 1];

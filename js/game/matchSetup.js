@@ -69,6 +69,52 @@ async function initMatchSetup() {
   firebaseClient.on("disconnected", () => { updateFirebaseStatus("切断", false); addLog("system", "接続が切断されました。"); });
 }
 
+// ===== IndexedDB からデッキ画像を読み込む =====
+const DECK_IMAGE_DB_NAME = "DependrapDeckImages";
+const DECK_IMAGE_STORE_NAME = "backImages";
+let deckImageDB = null;
+
+async function initDeckImageDB() {
+  if (deckImageDB) return deckImageDB;
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DECK_IMAGE_DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DECK_IMAGE_STORE_NAME)) {
+        db.createObjectStore(DECK_IMAGE_STORE_NAME, { keyPath: "deckId" });
+      }
+    };
+    req.onsuccess = () => {
+      deckImageDB = req.result;
+      resolve(deckImageDB);
+    };
+    req.onerror = () => {
+      console.warn("Failed to initialize deck image DB:", req.error);
+      resolve(null);
+    };
+  });
+}
+
+async function getBackImageFromDB(deckId) {
+  try {
+    if (!deckImageDB) await initDeckImageDB();
+    if (!deckImageDB) return "";
+    return new Promise((resolve) => {
+      const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readonly");
+      const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+      const req = store.get(deckId);
+      req.onsuccess = () => resolve(req.result?.dataUrl || "");
+      req.onerror = () => {
+        console.warn("Failed to get back image:", req.error);
+        resolve("");
+      };
+    });
+  } catch (err) {
+    console.warn("Exception getting back image:", err);
+    return "";
+  }
+}
+
 // ===== デッキ =====
 
 function getDeckList() {
@@ -93,7 +139,18 @@ function renderCurrentDeck() {
     countEl.textContent = "-- 枚";
     return;
   }
-  thumb.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/System/favicon.png";
+  
+  // IndexedDB から backImage を非同期に読み込む
+  getBackImageFromDB(deck.id).then(backImage => {
+    if (backImage && backImage.length > 5) {
+      thumb.src = backImage;
+    } else {
+      thumb.src = "assets/System/favicon.png";
+    }
+  }).catch(() => {
+    thumb.src = "assets/System/favicon.png";
+  });
+  
   thumb.onerror = () => { thumb.src = "assets/System/favicon.png"; };
   nameEl.textContent = deck.name || "名称未設定";
   countEl.textContent = `${getDeckCardCount(deck)} 枚`;
@@ -136,8 +193,15 @@ function renderDeckSelectList() {
     item.dataset.id = deck.id;
 
     const img = document.createElement("img");
-    img.src = (deck.backImage && deck.backImage.length > 5) ? deck.backImage : "assets/System/favicon.png";
+    img.src = "assets/System/favicon.png"; // デフォルト画像
     img.onerror = () => { img.src = "assets/System/favicon.png"; };
+    
+    // IndexedDB から backImage を非同期に読み込む
+    getBackImageFromDB(deck.id).then(backImage => {
+      if (backImage && backImage.length > 5) {
+        img.src = backImage;
+      }
+    }).catch(() => {});
 
     const info = document.createElement("div");
     info.style.flex = "1";
@@ -725,16 +789,24 @@ function watchTyping(roomName) {
 
 // ===== ゲーム開始 =====
 
-function startGame() {
+async function startGame() {
   isStartingGame = true;
   const deck = selectedDeck();
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);
   localStorage.setItem("gameStarted",   "true");
   if (deck) localStorage.setItem("deckCode", deck.code || "empty");
+  
+  // IndexedDB から backImage を読み込む
+  let backImage = "";
+  if (deck?.id) {
+    backImage = await getBackImageFromDB(deck.id).catch(() => "");
+  }
+  
   localStorage.setItem("matchSetup", JSON.stringify({
     role: currentPlayerKey, self: currentUser, username: currentUser,
-    deckCode: deck?.code || "empty", deckId: deck?.id || ""
+    deckCode: deck?.code || "empty", deckId: deck?.id || "",
+    backImage: backImage
   }));
   setTimeout(() => { location.href = "game.html"; }, 1000);
 }

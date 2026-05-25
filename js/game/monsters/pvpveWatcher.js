@@ -255,7 +255,10 @@
       } else if (typeof target === "number") {
         window.BattleTargetSystem?.setTarget(me, { slotIndex: target });
       }
-      if (typeof window.centerField === "function") window.centerField();
+      if (typeof window.centerField === "function") {
+        window.centerField();
+        setTimeout(() => window.centerField(), 80);
+      }
       
       const gameRoom = localStorage.getItem("gameRoom");
       if (gameRoom && window.firebaseClient?.db) {

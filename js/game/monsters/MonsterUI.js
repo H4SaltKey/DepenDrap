@@ -429,6 +429,10 @@ window.MonsterUI = (function() {
           const slotIndex = parseInt(opt.dataset.slot, 10);
           window.BattleTargetSystem?.setTarget(me, { slotIndex });
         }
+        if (typeof window.centerField === "function") {
+          window.centerField();
+          setTimeout(() => window.centerField(), 80);
+        }
         panel.remove();
         // monsterPanel を非表示に戻す
         const mp = document.getElementById("monsterPanel");

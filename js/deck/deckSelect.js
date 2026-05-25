@@ -199,14 +199,12 @@ function createDeckThumb(deck) {
     <div class="deckThumbName">${escapeHtml(deck.name)}</div>
   `;
 
-  el.addEventListener("click", (ev) => {
+  el.addEventListener("click", () => {
     selectedDeckId = deck.id;
     activeDeckId = deck.id;
     document.querySelectorAll(".deckThumb").forEach(n => n.classList.toggle("selected", n.dataset.id === deck.id));
-    showDeckActionPopover(deck.id, ev.clientX, ev.clientY);
+    showDeckHoverDetail(deck);
   });
-  el.addEventListener("mouseenter", () => showDeckHoverDetail(deck));
-  el.addEventListener("mouseleave", () => hideDeckHoverDetail());
   return el;
 }
 
@@ -340,50 +338,12 @@ document.getElementById("btnDelete").addEventListener("click", () => {
   renderGrid();
 });
 
-function ensureDeckActionPopover() {
-  let pop = document.getElementById("deckActionPopover");
-  if (pop) return pop;
-  pop = document.createElement("div");
-  pop.id = "deckActionPopover";
-  pop.innerHTML = `
-    <button class="actBtn" data-act="publish">このデッキを公開</button>
-    <button class="actBtn" data-act="sleeve">スリーブを選択</button>
-    <button class="actBtn" data-act="delete">削除</button>
-    <button class="actBtn" data-act="edit">このデッキを編集</button>
-  `;
-  document.body.appendChild(pop);
-  pop.addEventListener("click", (e) => {
-    const btn = e.target.closest(".actBtn");
-    if (!btn || !activeDeckId) return;
-    const act = btn.dataset.act;
-    if (act === "publish") document.getElementById("btnPublishDeck")?.click();
-    if (act === "sleeve") document.getElementById("btnSetBackImage")?.click();
-    if (act === "delete") document.getElementById("btnDelete")?.click();
-    if (act === "edit") document.getElementById("btnEdit")?.click();
-    hideDeckActionPopover();
-  });
-  return pop;
-}
-
-function showDeckActionPopover(deckId, x, y) {
-  activeDeckId = deckId;
-  const pop = ensureDeckActionPopover();
-  pop.style.display = "block";
-  pop.style.left = `${Math.max(8, Math.min(window.innerWidth - 200, x + 8))}px`;
-  pop.style.top = `${Math.max(8, Math.min(window.innerHeight - 180, y + 8))}px`;
-}
-
-function hideDeckActionPopover() {
-  const pop = document.getElementById("deckActionPopover");
-  if (pop) pop.style.display = "none";
-}
-
 document.addEventListener("click", (e) => {
-  const pop = document.getElementById("deckActionPopover");
-  if (!pop) return;
-  if (pop.contains(e.target)) return;
+  const panel = document.getElementById("deckHoverDetail");
+  if (!panel) return;
+  if (panel.contains(e.target)) return;
   if (e.target.closest(".deckThumb")) return;
-  hideDeckActionPopover();
+  hideDeckHoverDetail();
 });
 
 // ===== ユーティリティ =====
@@ -613,6 +573,7 @@ window.addEventListener('load', () => {
 function showDeckHoverDetail(deck) {
   const panel = document.getElementById("deckHoverDetail");
   if (!panel || !deck) return;
+  activeDeckId = deck.id;
   let cards = [];
   try { cards = decodeDeck(deck.code); } catch {}
   const countMap = {};
@@ -638,7 +599,34 @@ function showDeckHoverDetail(deck) {
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:52vh;overflow:auto;">${listHtml || '<div style="color:#aaa;font-size:12px;grid-column:1/-1;">カードなし</div>'}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+      <button type="button" id="hoverDeleteBtn" class="btnDelete" style="padding:8px 8px;font-size:12px;">削除</button>
+      <button type="button" id="hoverPublishBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">公開</button>
+      <button type="button" id="hoverSleeveBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">スリーブ変更</button>
+      <button type="button" id="hoverEditBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">編集</button>
+    </div>
   `;
+  panel.querySelector("#hoverDeleteBtn")?.addEventListener("click", () => {
+    if (!activeDeckId) return;
+    selectedDeckId = activeDeckId;
+    document.getElementById("btnDelete")?.click();
+    hideDeckHoverDetail();
+  });
+  panel.querySelector("#hoverPublishBtn")?.addEventListener("click", () => {
+    if (!activeDeckId) return;
+    selectedDeckId = activeDeckId;
+    document.getElementById("btnPublishDeck")?.click();
+  });
+  panel.querySelector("#hoverSleeveBtn")?.addEventListener("click", () => {
+    if (!activeDeckId) return;
+    selectedDeckId = activeDeckId;
+    document.getElementById("btnSetBackImage")?.click();
+  });
+  panel.querySelector("#hoverEditBtn")?.addEventListener("click", () => {
+    if (!activeDeckId) return;
+    selectedDeckId = activeDeckId;
+    document.getElementById("btnEdit")?.click();
+  });
   panel.classList.add("visible");
 }
 

@@ -106,7 +106,9 @@ let selectedDeckId = null;
 
 // ===== 初期化 =====
 const btnImport = document.getElementById("btnImportDeck");
+const btnImportPublic = document.getElementById("btnImportPublicDeck");
 btnImport.disabled = true;
+if (btnImportPublic) btnImportPublic.disabled = true;
 
 loadCardData()
   .catch(() => {
@@ -114,9 +116,24 @@ loadCardData()
   })
   .finally(() => {
     btnImport.disabled = false;
+    if (btnImportPublic) btnImportPublic.disabled = false;
     migrateDeckListToV3();
     renderGrid();
   });
+
+// Firebase 初期化（公開デッキ機能用）
+window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
+  apiKey: "AIzaSyDNe58gGvJ3-09brUHkoorkQalrS8jkPAw",
+  authDomain: "dependrap-c30b4.firebaseapp.com",
+  databaseURL: "https://dependrap-c30b4-default-rtdb.firebaseio.com",
+  projectId: "dependrap-c30b4",
+  storageBucket: "dependrap-c30b4.firebasestorage.app",
+  messagingSenderId: "536531285865",
+  appId: "1:536531285865:web:0d53a2c4fd8fae7ff32ff8"
+};
+if (window.firebaseClient && !window.firebaseClient.db) {
+  window.firebaseClient.initialize(window.FIREBASE_CONFIG).catch(() => {});
+}
 
 // ===== グリッド描画 =====
 function renderGrid() {
@@ -378,6 +395,88 @@ document.getElementById("importConfirm").addEventListener("click", () => {
 document.getElementById("importCodeInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("importConfirm").click();
   if (e.key === "Escape") document.getElementById("importModal").classList.add("hidden");
+});
+
+// ===== 公開デッキ =====
+document.getElementById("btnPublishDeck")?.addEventListener("click", async () => {
+  if (!selectedDeckId) return;
+  const username = localStorage.getItem("username");
+  if (!username || !window.firebaseClient?.db) {
+    alert("公開機能を利用するにはオンライン接続が必要です。");
+    return;
+  }
+  const deck = loadDeckList().find(d => d.id === selectedDeckId);
+  if (!deck || !deck.code || deck.code === "empty") {
+    alert("公開するデッキが選択されていないか、デッキが空です。");
+    return;
+  }
+  const payload = {
+    name: deck.name || "公開デッキ",
+    code: deck.code,
+    author: username,
+    updatedAt: Date.now()
+  };
+  try {
+    await firebaseClient.db.ref(`accounts/${username}/publicDeck`).set(payload);
+    alert("公開デッキを更新しました。");
+  } catch (e) {
+    alert("公開デッキの更新に失敗しました。");
+  }
+});
+
+async function openPublicDeckModal() {
+  const modal = document.getElementById("publicDeckModal");
+  const listEl = document.getElementById("publicDeckList");
+  if (!modal || !listEl) return;
+  modal.classList.remove("hidden");
+  listEl.innerHTML = `<div style="color:#aaa;font-size:13px;padding:8px;">読み込み中...</div>`;
+  if (!window.firebaseClient?.db) {
+    listEl.innerHTML = `<div style="color:#ff6b6b;font-size:13px;padding:8px;">オンライン接続が必要です。</div>`;
+    return;
+  }
+  try {
+    const snap = await firebaseClient.db.ref("accounts").once("value");
+    const accounts = snap.val() || {};
+    const rows = [];
+    Object.keys(accounts).forEach((key) => {
+      const d = accounts[key]?.publicDeck;
+      if (!d?.code) return;
+      rows.push({ deckName: d.name || "公開デッキ", code: d.code, author: d.author || key });
+    });
+    if (rows.length === 0) {
+      listEl.innerHTML = `<div style="color:#aaa;font-size:13px;padding:8px;">公開デッキがありません。</div>`;
+      return;
+    }
+    listEl.innerHTML = "";
+    rows.forEach((r) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "btnEdit";
+      row.style.cssText = "text-align:left;padding:10px 12px;white-space:normal;";
+      row.textContent = `[${r.deckName}] デッキコード:[${r.code}] 作成者:[${r.author}]`;
+      row.addEventListener("click", () => {
+        try { decodeDeck(r.code); } catch { alert("公開デッキコードが無効です。"); return; }
+        const list = loadDeckList();
+        const id = "deck_" + Date.now();
+        list.push({ id, name: `${r.deckName} (公開)`, code: r.code, backImage: "" });
+        saveDeckList(list);
+        renderGrid();
+        selectDeck(id);
+        modal.classList.add("hidden");
+      });
+      listEl.appendChild(row);
+    });
+  } catch {
+    listEl.innerHTML = `<div style="color:#ff6b6b;font-size:13px;padding:8px;">公開デッキの取得に失敗しました。</div>`;
+  }
+}
+
+document.getElementById("btnImportPublicDeck")?.addEventListener("click", openPublicDeckModal);
+document.getElementById("publicDeckClose")?.addEventListener("click", () => {
+  document.getElementById("publicDeckModal")?.classList.add("hidden");
+});
+document.getElementById("publicDeckModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "publicDeckModal") e.target.classList.add("hidden");
 });
 
 // ===== 画面サイズ変更時のグリッド調整 =====

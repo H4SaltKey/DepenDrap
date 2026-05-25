@@ -328,7 +328,10 @@
     <div class="deckGridWrap">
       <header>
         <h3 style="letter-spacing:1px;">デッキ一覧</h3>
-        <button id="btnImportDeck" class="btnEdit" style="font-size:12px;padding:6px 12px;cursor:pointer;">コードから作成</button>
+        <div style="display:flex;gap:8px;">
+          <button id="btnImportDeck" class="btnEdit" style="font-size:12px;padding:6px 12px;cursor:pointer;">コードから作成</button>
+          <button id="btnImportPublicDeck" class="btnEdit" style="font-size:12px;padding:6px 12px;cursor:pointer;">公開デッキから作成</button>
+        </div>
       </header>
       <div class="deckGridScroll">
         <div class="deckGrid" id="deckGrid"></div>
@@ -355,6 +358,7 @@
         </div>
 
         <div class="deckDetailActions">
+          <button id="btnPublishDeck" type="button">このデッキを公開</button>
           <button id="btnSetBackImage" type="button">スリーブを選択</button>
           <button class="btnDelete" id="btnDelete">削除</button>
           <button class="btnEdit" id="btnEdit">このデッキを編集</button>
@@ -377,7 +381,7 @@
   <div style="background:rgba(20, 18, 32, 0.95);padding:24px;border:1px solid #c7b377;border-radius:8px;width:360px;display:flex;flex-direction:column;gap:12px;color:#e0d0a0;box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);">
     <h3 style="margin:0;letter-spacing:1px;border-bottom:1px solid rgba(199, 179, 119, 0.3);padding-bottom:10px;">デッキコードから作成</h3>
     <p style="margin:0;font-size:13px;color:#b0a070;">デッキコードを入力してください。</p>
-    <input type="text" id="importCodeInput" placeholder="例: 2-30" style="font-size:15px;padding:8px 10px;background:rgba(0,0,0,0.5);border:1px solid #5a4b27;color:white;border-radius:4px;">
+    <input type="text" id="importCodeInput" placeholder="例: v3|cd0000*1,cd0001*2" style="font-size:15px;padding:8px 10px;background:rgba(0,0,0,0.5);border:1px solid #5a4b27;color:white;border-radius:4px;">
     <div id="importError" style="font-size:12px;color:#ff6b6b;min-height:16px;"></div>
     <div style="display:flex;gap:12px;justify-content:flex-end;">
       <button id="importCancel" class="btnDelete" style="padding:8px 20px;">キャンセル</button>
@@ -404,6 +408,24 @@
   </div>
 </div>
 
+<!-- 公開デッキ一覧モーダル -->
+<div id="publicDeckModal" class="hidden" style="
+  position:fixed;inset:0;background:rgba(0,0,0,0.8);
+  display:flex;align-items:center;justify-content:center;z-index:10000;
+  backdrop-filter: blur(4px);">
+  <div style="background:rgba(20, 18, 32, 0.95);padding:24px;border:1px solid #c7b377;border-radius:8px;width:min(760px,92vw);max-height:80vh;display:flex;flex-direction:column;gap:12px;color:#e0d0a0;box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);">
+    <h3 style="margin:0;letter-spacing:1px;border-bottom:1px solid rgba(199, 179, 119, 0.3);padding-bottom:10px;">公開デッキから作成</h3>
+    <div id="publicDeckList" style="overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:120px;"></div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button id="publicDeckClose" class="btnDelete" style="padding:8px 20px;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+<script src="js/network/firebase-client.js?v=10"></script>
 <script src="js/deck/deckSelect.js"></script>
 <script src="js/ui/menu.js?v=5"></script>
 

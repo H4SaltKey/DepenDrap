@@ -2564,6 +2564,23 @@ button{
   font-size: 24px !important;
 }
 
+/* インタラクション中のUIは常に最前面へ */
+.status-block:hover,
+.status-block:focus-within,
+.evoPanelWrapper:hover,
+.evoPanelWrapper:focus-within,
+.fieldStatusPanel:hover,
+.fieldStatusPanel:focus-within,
+#currentTargetBadge:hover,
+#pveDangerBadge:hover,
+#targetSelectPanel:hover,
+#turnStartTargetPanel:hover,
+#ctxMenu:hover,
+.ctxSub:hover,
+[data-tooltip]:hover::after {
+  z-index: 2147483647 !important;
+}
+
 .evoDetailModal > div:nth-child(3){
   font-size: 18px !important;
   line-height: 1.95 !important;

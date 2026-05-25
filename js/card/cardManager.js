@@ -1307,7 +1307,11 @@ function centerField(){
 
   const myKey = window.getMyRole ? window.getMyRole() : (window.myRole || "player1");
   const target = window.BattleTargetSystem?.getTarget?.(myKey);
-  if (target && target !== "player") {
+  const selectingTarget =
+    !!document.getElementById("turnStartTargetPanel") ||
+    !!document.getElementById("targetSelectPanel") ||
+    !!state?.matchData?.targetSelectionPending;
+  if ((target && target !== "player") || selectingTarget) {
     // モンスターフィールド中心へ
     centerX = 1500;
     centerY = 1200;

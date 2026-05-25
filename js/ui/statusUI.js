@@ -177,7 +177,7 @@ function renderOwnerUI(owner) {
   
   <div style="display:flex; flex-direction:column; gap:${isMine ? "8px" : "4px"}; justify-content:flex-end;">
   ${s.evolutionPath ? `
-  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-14px"};">
+  <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-9px"};">
     <div class="evoPanel" style="
       background: rgba(10,8,20,0.85); border: 1px solid #5a4b27; border-radius: 8px;
       padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -337,9 +337,11 @@ function updateFieldStatusPanels() {
     ` : `
       position: fixed;
       right: 24px;
-      top: 124px;
+      top: 170px;
       width: 207px;
       padding: 10px 14px;
+      transform: scale(0.85);
+      transform-origin: top right;
       background: rgba(15, 12, 28, 0.92);
       border: 2px solid #c7b377;
       border-radius: 14px;

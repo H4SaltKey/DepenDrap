@@ -345,18 +345,25 @@ window.MonsterUI = (function() {
 
   // ===== PvE中危険表示 =====
   function _updateDangerBadge(me) {
-    const existing = document.getElementById("pveDangerBadge");
+    let existing = document.getElementById("pveDangerBadge");
     const op = me === "player1" ? "player2" : "player1";
     const opIsPvP = window.BattleTargetSystem?.isPvP(op);
     const meIsPvE = window.BattleTargetSystem?.isPvE(me);
 
     if (meIsPvE && opIsPvP) {
       if (!existing) {
-        const badge = document.createElement("div");
-        badge.id = "pveDangerBadge";
-        badge.className = "pveDangerBadge";
-        badge.textContent = "⚠ PvE中 — 相手から攻撃される可能性があります";
-        document.body.appendChild(badge);
+        existing = document.createElement("div");
+        existing.id = "pveDangerBadge";
+        existing.className = "pveDangerBadge";
+        existing.textContent = "⚠ PvE中 — 相手から攻撃される可能性があります";
+        document.body.appendChild(existing);
+      }
+      const targetBadge = document.getElementById("currentTargetBadge");
+      if (targetBadge) {
+        const r = targetBadge.getBoundingClientRect();
+        existing.style.left = "50%";
+        existing.style.transform = "translateX(-50%)";
+        existing.style.top = `${Math.round(r.bottom + 6)}px`;
       }
     } else {
       if (existing) existing.remove();

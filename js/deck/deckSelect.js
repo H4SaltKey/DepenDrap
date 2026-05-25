@@ -8,6 +8,7 @@ const DECK_IMAGE_DB_NAME = "DependrapDeckImages";
 const DECK_IMAGE_STORE_NAME = "backImages";
 
 async function initDeckImageDB() {
+  if (deckImageDB) return deckImageDB;
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DECK_IMAGE_DB_NAME, 1);
     req.onupgradeneeded = (e) => {
@@ -20,41 +21,73 @@ async function initDeckImageDB() {
       deckImageDB = req.result;
       resolve(deckImageDB);
     };
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      console.error("Failed to initialize IndexedDB:", req.error);
+      reject(req.error);
+    };
   });
 }
 
 async function getBackImageFromDB(deckId) {
-  if (!deckImageDB) await initDeckImageDB();
-  return new Promise((resolve) => {
-    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readonly");
-    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
-    const req = store.get(deckId);
-    req.onsuccess = () => resolve(req.result?.dataUrl || "");
-    req.onerror = () => resolve("");
-  });
+  try {
+    if (!deckImageDB) await initDeckImageDB();
+    return new Promise((resolve) => {
+      const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readonly");
+      const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+      const req = store.get(deckId);
+      req.onsuccess = () => resolve(req.result?.dataUrl || "");
+      req.onerror = () => {
+        console.warn("Failed to get back image from DB:", req.error);
+        resolve("");
+      };
+    });
+  } catch (err) {
+    console.warn("Exception getting back image:", err);
+    return "";
+  }
 }
 
 async function saveBackImageToDB(deckId, dataUrl) {
-  if (!deckImageDB) await initDeckImageDB();
-  return new Promise((resolve, reject) => {
-    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
-    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
-    const req = store.put({ deckId, dataUrl });
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  try {
+    if (!deckImageDB) await initDeckImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
+      const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+      const req = store.put({ deckId, dataUrl });
+      req.onsuccess = () => {
+        console.log("Back image saved for deck:", deckId);
+        resolve();
+      };
+      req.onerror = () => {
+        console.error("Failed to save back image:", req.error);
+        reject(req.error);
+      };
+    });
+  } catch (err) {
+    console.error("Exception saving back image:", err);
+    throw err;
+  }
 }
 
 async function deleteBackImageFromDB(deckId) {
-  if (!deckImageDB) await initDeckImageDB();
-  return new Promise((resolve) => {
-    const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
-    const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
-    const req = store.delete(deckId);
-    req.onsuccess = () => resolve();
-    req.onerror = () => resolve();
-  });
+  try {
+    if (!deckImageDB) await initDeckImageDB();
+    return new Promise((resolve) => {
+      const tx = deckImageDB.transaction([DECK_IMAGE_STORE_NAME], "readwrite");
+      const store = tx.objectStore(DECK_IMAGE_STORE_NAME);
+      const req = store.delete(deckId);
+      req.onsuccess = () => {
+        console.log("Back image deleted for deck:", deckId);
+        resolve();
+      };
+      req.onerror = () => {
+        console.warn("Failed to delete back image:", req.error);
+        resolve();
+      };
+    });
+  } catch (err) {
+    console.warn("Exception deleting back image:", err);
+  }
 }
 
 function loadDeckList() {
@@ -250,14 +283,18 @@ async function loadAndUpdateDeckThumbnail(deckId) {
   const el = document.querySelector(`[data-id="${deckId}"]`);
   if (!el) return;
   
-  const backImage = await getBackImageFromDB(deckId);
-  if (backImage) {
-    const thumbCardsEl = el.querySelector(".deckThumbCards");
-    if (thumbCardsEl) {
-      thumbCardsEl.innerHTML = `<div class="deckThumbCard" style="border:none; background:transparent;">
-        <img src="${backImage}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:2px;">
-      </div>`;
+  try {
+    const backImage = await getBackImageFromDB(deckId);
+    if (backImage) {
+      const thumbCardsEl = el.querySelector(".deckThumbCards");
+      if (thumbCardsEl) {
+        thumbCardsEl.innerHTML = `<div class="deckThumbCard" style="border:none; background:transparent;">
+          <img src="${backImage}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:2px;">
+        </div>`;
+      }
     }
+  } catch (err) {
+    console.warn("Failed to update deck thumbnail:", err);
   }
 }
 
@@ -352,6 +389,12 @@ function selectDeck(id) {
         coverImg.src = "";
         coverImg.style.display = "none";
       }
+    }
+  }).catch(err => {
+    console.warn("Failed to load back image:", err);
+    const firstCard = cards.length > 0 ? getCardData(cards[0]) : null;
+    if (firstCard) {
+      coverImg.src = encodeURI(firstCard.image);
     }
   });
 
@@ -679,6 +722,10 @@ function showDeckHoverDetail(deck) {
       ${countMap[id] > 1 ? `<div style="position:absolute;right:2px;top:2px;background:#111;color:#fff;font-size:10px;font-weight:bold;padding:1px 3px;">×${countMap[id]}</div>` : ""}
     </div>`;
   }).join("");
+  
+  // パネル内容をクリア（古いリスナーを削除）
+  panel.innerHTML = "";
+  
   panel.innerHTML = `
     <div style="display:grid;grid-template-columns:84px 1fr;gap:10px;align-items:start;margin-bottom:10px;">
       <div style="width:84px;aspect-ratio:210/297;border:1px solid #5a4b27;background:#000;border-radius:4px;overflow:hidden;">
@@ -697,6 +744,8 @@ function showDeckHoverDetail(deck) {
       <button type="button" id="hoverEditBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">編集</button>
     </div>
   `;
+  
+  // イベントリスナーを登録
   panel.querySelector("#hoverDeleteBtn")?.addEventListener("click", () => {
     if (!activeDeckId) return;
     selectedDeckId = activeDeckId;
@@ -756,6 +805,12 @@ function showDeckHoverDetail(deck) {
         if (firstCard) {
           coverImg.src = encodeURI(firstCard.image);
         }
+      }
+    }).catch(err => {
+      console.warn("Failed to load back image from DB:", err);
+      const firstCard = cards.length > 0 ? getCardData(cards[0]) : null;
+      if (firstCard) {
+        coverImg.src = encodeURI(firstCard.image);
       }
     });
   }

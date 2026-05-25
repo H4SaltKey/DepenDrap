@@ -35,6 +35,9 @@ window.organizeHands = function() {
   const fieldW = 3000; // FIELD_W
   const cardW = 320;  // CARD_W
   const cardH = 453;  // CARD_H
+  const myOffsetX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
+    ? window.getMonsterFieldLayoutOffsetX(myRole)
+    : 0;
 
   // 1. 自分の手札を整列
   if (myHandCards.length > 0) {
@@ -61,7 +64,7 @@ window.organizeHands = function() {
     if (startX < 50) startX = 50;
 
     myHandCards.forEach((c, idx) => {
-      const targetX = startX + idx * actualSpacing;
+      const targetX = startX + idx * actualSpacing + myOffsetX;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
       c.dataset.x = String(targetX);

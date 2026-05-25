@@ -274,22 +274,26 @@ function createDeckObject(forceResetPos = false) {
       });
       enablePointerDrag(wrapper);
 
+      const myLayoutOffsetX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
+        ? window.getMonsterFieldLayoutOffsetX(owner)
+        : 0;
       // 自分から見て左下に配置する
       if (forceResetPos) {
-        const lx = -320;
+        const lx = -320 + myLayoutOffsetX;
         const ly = 1547;
         wrapper.style.left = lx + "px";
         wrapper.style.top = ly + "px";
         wrapper.dataset.x = lx;
         wrapper.dataset.y = ly;
       } else if (savedPos) {
-        wrapper.style.left = savedPos.x + "px";
+        const sx = Number(savedPos.x) + myLayoutOffsetX;
+        wrapper.style.left = sx + "px";
         wrapper.style.top = savedPos.y + "px";
-        wrapper.dataset.x = savedPos.x;
+        wrapper.dataset.x = sx;
         wrapper.dataset.y = savedPos.y;
       } else {
         // 再接続時など保存位置がない場合のフォールバック（手札横）
-        const lx = -320;
+        const lx = -320 + myLayoutOffsetX;
         const ly = 1547;
         wrapper.style.left = lx + "px";
         wrapper.style.top = ly + "px";
@@ -310,6 +314,27 @@ function createDeckObject(forceResetPos = false) {
   });
   saveFieldCards();
 }
+
+window.refreshMyDeckLayoutForMonsterTarget = function() {
+  const me = window.getMyRole?.() || window.myRole || "player1";
+  const deck = document.querySelector(`.deckObject[data-owner="${me}"]`);
+  if (!deck) return;
+  const baseSaved = (() => {
+    try {
+      const p = window._savedDeckPos || JSON.parse(localStorage.getItem("savedDeckPos") || "null");
+      return p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) ? { x: Number(p.x), y: Number(p.y) } : { x: -320, y: 1547 };
+    } catch {
+      return { x: -320, y: 1547 };
+    }
+  })();
+  const offX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
+    ? window.getMonsterFieldLayoutOffsetX(me)
+    : 0;
+  deck.style.left = (baseSaved.x + offX) + "px";
+  deck.style.top = baseSaved.y + "px";
+  deck.dataset.x = String(baseSaved.x + offX);
+  deck.dataset.y = String(baseSaved.y);
+};
 
 let lastResetAt = 0;
 

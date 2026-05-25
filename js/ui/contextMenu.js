@@ -1023,7 +1023,51 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
   };
 }
 
-function openStatusMenu(targetOwner, x, y) {
+function _openMonsterDamagePopup(slotIndex, x, y) {
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100050;display:flex;align-items:center;justify-content:center;";
+  modal.innerHTML = `
+    <div style="width:320px;background:#12131d;border:1px solid #4a4f73;border-radius:12px;padding:14px;color:#eaf0ff;font-family:'Orbitron',sans-serif;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">モンスターへのダメージ判定</div>
+      <input id="monsterDmgInput" type="number" min="0" value="1" style="width:100%;box-sizing:border-box;background:#0d0f17;border:1px solid #616894;border-radius:8px;color:#fff;padding:8px 10px;font-size:18px;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <button id="monsterDmgCancel" style="padding:6px 12px;border:1px solid #58618d;background:#20263f;color:#d8e0ff;border-radius:8px;cursor:pointer;">キャンセル</button>
+        <button id="monsterDmgOk" style="padding:6px 12px;border:1px solid #6f7ecc;background:#2a356d;color:#fff;border-radius:8px;cursor:pointer;">適用</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const input = modal.querySelector("#monsterDmgInput");
+  const close = () => modal.remove();
+  modal.querySelector("#monsterDmgCancel").onclick = close;
+  modal.querySelector("#monsterDmgOk").onclick = () => {
+    const dmg = Math.max(0, parseInt(input.value, 10) || 0);
+    const me = window.myRole || window.getMyRole?.() || "player1";
+    if (window.MonsterCombatSystem?.playerAttackMonster) {
+      window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg);
+      if (typeof window.update === "function") window.update(true);
+    }
+    close();
+  };
+  input?.focus();
+  input?.select();
+}
+
+function openStatusMenu(targetOwner, x, y, opts = {}) {
+  const mode = opts.mode || "player";
+  if (mode === "monster") {
+    const slotIndex = Number(opts.slotIndex);
+    const slot = window.MonsterManager?.getSlot(slotIndex);
+    if (!slot) return;
+    const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
+    const items = [
+      { label: `${def?.name || "モンスター"} にダメージ判定`, disabled: true },
+      { sep: true },
+      { label: "ダメージを与える", action: () => _openMonsterDamagePopup(slotIndex, x, y) }
+    ];
+    buildMenu(items, x, y);
+    return;
+  }
   const makeSubTypeBranch = (typeKey) => {
     return [
       { label: "通常ダメージ", action: () => showDamagePopup(targetOwner, typeKey, "normal") },
@@ -1307,6 +1351,15 @@ document.addEventListener("contextmenu", (e) => {
   if(hit){
     console.log("[ctx-debug:contextmenu]", e.button, e.target);
     e.preventDefault();
+    if (hit.type === "lorPanel") {
+      const me = window.myRole || window.getMyRole?.() || "player1";
+      const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
+      const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
+      if (isMonsterTarget) {
+        openStatusMenu(hit.el.dataset.owner, e.clientX, e.clientY, { mode: "monster", slotIndex: currentTarget.slotIndex });
+        return;
+      }
+    }
     openGameContextMenu(hit, e.clientX, e.clientY);
   }
 });
@@ -1325,6 +1378,9 @@ document.addEventListener("contextmenu", (e) => {
     const lor = t && t.closest && t.closest(".lorPanel");
     const me = window.myRole || window.getMyRole?.() || "player1";
     if (lor && lor.dataset.owner && lor.dataset.owner !== me) {
+      const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
+      const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
+      hint.textContent = isMonsterTarget ? "右クリックでダメージ判定" : "右クリックでダメージメニュー";
       hint.classList.add("is-visible");
       hint.style.left = (e.clientX + 14) + "px";
       hint.style.top = (e.clientY + 16) + "px";

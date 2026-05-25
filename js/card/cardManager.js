@@ -146,6 +146,13 @@ function hideCardHoverPreview() {
 }
 const HAND_ZONE_Y_MIN = 1460;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
+window.getMonsterFieldLayoutOffsetX = function(owner) {
+  const me = (window.getMyRole ? window.getMyRole() : (window.myRole || "player1"));
+  if (owner !== me) return 0;
+  const target = window.BattleTargetSystem?.getTarget?.(me);
+  const isMonsterTarget = !!(target && target !== "player" && typeof target === "object");
+  return isMonsterTarget ? 9000 : 0;
+};
 
 function nextZoneOrder() {
   zoneOrderCounter += 1;
@@ -157,10 +164,13 @@ function nextZoneOrder() {
 function getZoneAnchor(owner, type) {
   const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const isMine = owner === myRole;
+  const ownerOffsetX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
+    ? window.getMonsterFieldLayoutOffsetX(owner)
+    : 0;
   const midX = (FIELD_W / 2) - (CARD_W / 2);
   const midY = (FIELD_H / 2) - (CARD_H / 2);
   const attackerY = isMine ? (FIELD_H - CARD_H - 520) : 320;
-  const attackerX = midX;
+  const attackerX = midX + ownerOffsetX;
   if (type === "attacker") return { x: attackerX, y: attackerY };
   if (type === "skill") {
     return {
@@ -170,9 +180,9 @@ function getZoneAnchor(owner, type) {
   }
   if (type === "grave") {
     if (isMine) {
-      return { x: FIELD_W - CARD_W - 20, y: FIELD_H - CARD_H - 400 };
+      return { x: FIELD_W - CARD_W - 20 + ownerOffsetX, y: FIELD_H - CARD_H - 400 };
     }
-    return { x: 20, y: 180 };
+    return { x: 20 + ownerOffsetX, y: 180 };
   }
   return { x: attackerX, y: attackerY };
 }
@@ -1328,6 +1338,11 @@ function centerField(){
   fieldPanY = (vh / 2) - centerY * fieldZoom;
   
   applyFieldView();
+  if (typeof window.organizeHands === "function") window.organizeHands();
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  if (typeof window.refreshMyDeckLayoutForMonsterTarget === "function") {
+    window.refreshMyDeckLayoutForMonsterTarget();
+  }
 }
 
 // ===== 初期化 =====

@@ -75,6 +75,17 @@
   }
   .title-menu { display: flex; flex-direction: column; gap: 20px; width: 280px; margin-top: -30px; position: relative; z-index: 10; }
   .title-btn { padding: 15px 20px; font-size: 18px; font-weight: bold; letter-spacing: 2px; position: relative; z-index: 10; }
+  .dev-mini-btn {
+    position: fixed;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 8px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    opacity: 0.78;
+    z-index: 10000;
+  }
   .lorBtn {
     background: linear-gradient(to bottom, rgba(199,179,119,0.15), rgba(199,179,119,0.05));
     border: 1px solid rgba(199,179,119,0.5); color: #e0d0a0; border-radius: 4px;
@@ -108,9 +119,10 @@
   <div class="title-menu">
     <button class="lorBtn title-btn" onclick="goGame()">対戦開始</button>
     <button class="lorBtn title-btn" onclick="goDeck()">デッキ構築</button>
-    <button class="lorBtn title-btn" onclick="enterDev()">開発者モード</button>
+    <button class="lorBtn title-btn" onclick="openTitleOptions()">オプション</button>
   </div>
 </div>
+<button class="lorBtn dev-mini-btn" onclick="enterDev()">開発者モード</button>
 
 <div id="toast" class="toast hidden"></div>
 
@@ -120,6 +132,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 <script src="js/network/firebase-client.js?v=10"></script>
 <script src="js/network/messaging.js?v=1"></script>
+<script src="js/ui/menu.js?v=11"></script>
 
 <script>
   // 未ログインなら login へ
@@ -179,6 +192,20 @@
 
   function goGame() { location.href = "matchSetup.html"; }
   function goDeck()  { location.href = "deckSelect.html"; }
+  function openTitleOptions() {
+    const modal = document.getElementById("optionsModal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      const bgm = document.getElementById("bgmVolume");
+      const se = document.getElementById("seVolume");
+      const settings = JSON.parse(localStorage.getItem("settings") || "{}");
+      if (bgm && settings.bgm != null) bgm.value = settings.bgm;
+      if (se && settings.se != null) se.value = settings.se;
+      return;
+    }
+    const optBtn = document.getElementById("optBtn");
+    if (optBtn) optBtn.click();
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     const confirmBtn = document.getElementById("devPassConfirm");

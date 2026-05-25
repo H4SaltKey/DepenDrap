@@ -172,7 +172,8 @@ function openCardMenu(card, x, y){
     ? window.getMyRole()
     : (window.myRole || "player1");
   const visMode = card.dataset.visibility || "both";
-  const canZoomByVisibility = visMode === "both" || visMode === "self";
+  const isOwnCard = (card.dataset.owner || "") === me;
+  const canZoomByVisibility = isOwnCard ? (visMode === "both" || visMode === "self") : (visMode === "both");
   const canZoomOpponent = !card.classList.contains("deckObject") && canZoomByVisibility;
   const firstDrawOnly =
     typeof state !== "undefined" &&

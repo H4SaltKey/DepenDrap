@@ -26,6 +26,10 @@
 
         <label>SE音量</label>
         <input type="range" id="seVolume" min="0" max="1" step="0.01">
+        <label style="display:flex; align-items:center; gap:8px; margin-top:14px;">
+          <input type="checkbox" id="scrollZoomEnabled">
+          スクロールでスケール変更を有効化
+        </label>
 
         <div class="optionFooter">
           <button id="deleteAccountBtn" class="dangerBtn" type="button">アカウントを削除する</button>
@@ -259,6 +263,8 @@
     optionsModal.classList.remove("hidden");
     document.getElementById("bgmVolume").value = settings.bgm;
     document.getElementById("seVolume").value = settings.se;
+    const cb = document.getElementById("scrollZoomEnabled");
+    if (cb) cb.checked = (typeof window.isScrollZoomEnabled === "function") ? window.isScrollZoomEnabled() : true;
   };
 
   document.getElementById("closeOpt").onclick = ()=>{
@@ -294,6 +300,11 @@
     if(e.target.id === "bgmVolume") settings.bgm = e.target.value;
     if(e.target.id === "seVolume") settings.se = e.target.value;
     localStorage.setItem("settings", JSON.stringify(settings));
+  });
+  document.addEventListener("change", (e)=>{
+    if (e.target.id === "scrollZoomEnabled" && typeof window.setScrollZoomEnabled === "function") {
+      window.setScrollZoomEnabled(!!e.target.checked);
+    }
   });
 
   document.addEventListener("click", (e)=>{

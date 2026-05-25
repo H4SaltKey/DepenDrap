@@ -63,6 +63,7 @@ let cardHoverPreviewCardId = "";
 let lastLocalFieldSaveAt = 0;
 let zoneOrderCounter = 0;
 let prevZoneLogState = null;
+let scrollZoomEnabled = localStorage.getItem("scrollZoomEnabled") !== "0";
 
 const BATTLE_ZONE_TYPES = ["attacker", "skill", "grave"];
 const ZONE_RECT = { w: CARD_W, h: CARD_H };
@@ -1308,7 +1309,7 @@ function centerField(){
   const target = window.BattleTargetSystem?.getTarget?.(myKey);
   if (target && target !== "player") {
     // モンスターフィールド中心へ
-    centerX = 6900;
+    centerX = 1500;
     centerY = 1200;
   }
 
@@ -1371,6 +1372,7 @@ async function initCards(){
     // チャットや各種UI上ではブラウザデフォルトのスクロールを許可する
     if(e.target.closest("#gameUiPlayer, #gameUiEnemy, #chatArea, #chatLogs, #menuButton, #menuPanel, #optionsModal, #confirmModal, #zoomControls, .modal, .modal-content, #devModal, .scrollable")) return;
     
+    if (!scrollZoomEnabled) return;
     e.preventDefault();
     const field = document.getElementById("field");
     const rect = field ? field.getBoundingClientRect() : { left:0, top:0 };
@@ -1387,7 +1389,12 @@ async function initCards(){
     if (!cardHoverPreviewEl || cardHoverPreviewEl.style.display === "none") return;
     const clickedCard = e.target.closest(".card");
     const clickedCardId = clickedCard?.dataset?.instanceId || "";
-    if (clickedCardId && clickedCardId === cardHoverPreviewCardId) return;
+    if (clickedCardId && clickedCardId === cardHoverPreviewCardId) {
+      if (typeof window.showCardZoomById === "function" && clickedCard?.dataset?.id) {
+        window.showCardZoomById(clickedCard.dataset.id);
+      }
+      return;
+    }
     if (clickedCard) {
       showCardHoverPreview(clickedCard, e.clientX, e.clientY);
       return;
@@ -1399,6 +1406,14 @@ async function initCards(){
   if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
   window.dispatchEvent(new Event("cardsReady"));
 }
+
+window.setScrollZoomEnabled = function(enabled) {
+  scrollZoomEnabled = !!enabled;
+  localStorage.setItem("scrollZoomEnabled", scrollZoomEnabled ? "1" : "0");
+};
+window.isScrollZoomEnabled = function() {
+  return !!scrollZoomEnabled;
+};
 
 // ===== フィールド状態の保存・復元 =====
 window.getFieldData = function() {

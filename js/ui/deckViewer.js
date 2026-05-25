@@ -152,6 +152,9 @@ function injectDeckViewerStyle() {
 
 // ===== デッキ確認オーバーレイを開く =====
 window.openDeckViewer = function() {
+  const now = Date.now();
+  if (window._deckViewerOpeningAt && now - window._deckViewerOpeningAt < 180) return;
+  window._deckViewerOpeningAt = now;
   injectDeckViewerStyle();
 
   // 既に開いている場合は何もしない（再クリックによる点滅防止）

@@ -98,4 +98,11 @@ window.organizeHands = function() {
       c.dataset.y = String(handY);
     });
   }
+
+  // 常に相手手札側も昇順で再採番し、同期タイミング差で順序が反転し続けるのを防ぐ
+  if (opHandCards.length > 0) {
+    opHandCards.forEach((c, idx) => {
+      c.dataset.handOrder = String((idx + 1) * 1000);
+    });
+  }
 };

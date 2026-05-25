@@ -167,7 +167,6 @@ function renderGrid() {
     openCreateDeckModal();
   });
   grid.appendChild(addEl);
-  updateSelectionLayout();
 }
 
 function createDeckThumb(deck) {
@@ -199,7 +198,12 @@ function createDeckThumb(deck) {
     <div class="deckThumbName">${escapeHtml(deck.name)}</div>
   `;
 
-  el.addEventListener("click", () => selectDeck(deck.id));
+  el.addEventListener("click", () => {
+    selectedDeckId = deck.id;
+    document.querySelectorAll(".deckThumb").forEach(n => n.classList.toggle("selected", n.dataset.id === deck.id));
+  });
+  el.addEventListener("mouseenter", () => showDeckHoverDetail(deck));
+  el.addEventListener("mouseleave", () => hideDeckHoverDetail());
   return el;
 }
 
@@ -234,10 +238,8 @@ function selectDeck(id) {
   if (!deck) return;
 
   // 詳細パネルを表示
-  document.getElementById("deckDetailEmpty").classList.add("hidden");
   const content = document.getElementById("deckDetailContent");
-  content.classList.remove("hidden");
-  content.style.display = "contents";
+  if (content) { content.classList.add("hidden"); content.style.display = "none"; }
 
   // デッキ名
   const nameInput = document.getElementById("detailName");
@@ -272,7 +274,6 @@ function selectDeck(id) {
 
   // カード一覧
   renderDetailCards(cards);
-  updateSelectionLayout();
 }
 
 function renderDetailCards(cards) {
@@ -334,14 +335,7 @@ document.getElementById("btnDelete").addEventListener("click", () => {
   content.style.display = "none";
 
   renderGrid();
-  updateSelectionLayout();
 });
-
-function updateSelectionLayout() {
-  const main = document.querySelector(".selectMain");
-  if (!main) return;
-  main.classList.toggle("noSelection", !selectedDeckId);
-}
 
 // ===== ユーティリティ =====
 function escapeHtml(str) {
@@ -565,5 +559,42 @@ window.addEventListener('resize', updateGridColumns);
 window.addEventListener('load', () => {
   setTimeout(updateGridColumns, 100); // DOMが完全にレンダリングされた後に実行
   setupBackImageUI();
-  updateSelectionLayout();
 });
+
+function showDeckHoverDetail(deck) {
+  const panel = document.getElementById("deckHoverDetail");
+  if (!panel || !deck) return;
+  let cards = [];
+  try { cards = decodeDeck(deck.code); } catch {}
+  const countMap = {};
+  cards.forEach(id => { countMap[id] = (countMap[id] || 0) + 1; });
+  const uniqueIds = [...new Set(cards)];
+  const listHtml = uniqueIds.slice(0, 30).map((id) => {
+    const card = getCardData(id);
+    if (!card) return "";
+    const src = card.image ? encodeURI(card.image) : "assets/System/404.png";
+    return `<div style="position:relative;aspect-ratio:210/297;border:1px solid #5a4b27;background:#000;border-radius:2px;overflow:hidden;">
+      <img src="${src}" style="width:100%;height:100%;object-fit:contain;">
+      ${countMap[id] > 1 ? `<div style="position:absolute;right:2px;top:2px;background:#111;color:#fff;font-size:10px;font-weight:bold;padding:1px 3px;">×${countMap[id]}</div>` : ""}
+    </div>`;
+  }).join("");
+  panel.innerHTML = `
+    <div style="display:grid;grid-template-columns:84px 1fr;gap:10px;align-items:start;margin-bottom:10px;">
+      <div style="width:84px;aspect-ratio:210/297;border:1px solid #5a4b27;background:#000;border-radius:4px;overflow:hidden;">
+        <img src="${deck.backImage || (cards[0] && getCardData(cards[0]) ? encodeURI(getCardData(cards[0]).image) : "")}" style="width:100%;height:100%;object-fit:contain;">
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:bold;word-break:break-all;">${escapeHtml(deck.name)}</div>
+        <div style="font-size:11px;color:#888;word-break:break-all;">コード: ${deck.code}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:52vh;overflow:auto;">${listHtml || '<div style="color:#aaa;font-size:12px;grid-column:1/-1;">カードなし</div>'}</div>
+  `;
+  panel.classList.add("visible");
+}
+
+function hideDeckHoverDetail() {
+  const panel = document.getElementById("deckHoverDetail");
+  if (!panel) return;
+  panel.classList.remove("visible");
+}

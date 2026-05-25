@@ -518,7 +518,7 @@ window.MonsterUI = (function() {
         top: 58px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 5050;
+        z-index: 5040;
         font-size: 11px;
         color: #a09070;
         pointer-events: none;

@@ -976,7 +976,7 @@ function updateMatchUI() {
     info.id = "matchInfoDisplay";
     info.style.cssText = `
       position: fixed; top: 0; left: 50%; transform: translateX(-50%);
-      z-index: 5000; pointer-events: none;
+      z-index: 5300; pointer-events: none;
       display: flex; flex-direction: column; align-items: center;
       font-family: 'Outfit', sans-serif;
     `;

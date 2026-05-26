@@ -315,17 +315,14 @@ window.setupHandCardHoverBehavior = function() {
   const maxSpacing = 22.5;  // 最大間隔 (gap * +50%)
   const offsets = [0.4, 0.2]; // 隣接カードのオフセット比率 [1番目: 40%, 2番目: 20%]
 
-  // 既存のイベントリスナーを削除（重複登録を防ぐ）
-  const allCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
-  allCards.forEach(card => {
-    const clone = card.cloneNode(true);
-    card.parentNode.replaceChild(clone, card);
-  });
-
   // 再度DOM取得してイベントリスナーを追加
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
   
   cards.forEach((card) => {
+    // 既に登録済みなら スキップ
+    if (card.dataset._hoverBehaviorAttached === "true") return;
+    card.dataset._hoverBehaviorAttached = "true";
+
     // ホバー開始時
     card.addEventListener("mouseenter", function() {
       // ホバーカードを最前面に

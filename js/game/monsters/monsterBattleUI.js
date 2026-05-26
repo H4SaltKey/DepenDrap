@@ -1,13 +1,14 @@
 /**
  * モンスター戦闘UI管理
+ * - メインフィールド内に疑似フィールドを表示
  * - 敵キャラクター表示
  * - HP バー表示
  * - 戦闘情報パネル
  */
 
 window.setupMonsterBattleUI = function() {
-  const overlay = document.getElementById("monsterBattleOverlay");
-  if (!overlay) return;
+  const layer = document.getElementById("monsterBattleLayer");
+  if (!layer) return;
 
   // 敵モンスター情報を取得して表示
   window.updateMonsterBattleDisplay = function() {
@@ -54,10 +55,9 @@ window.setupMonsterBattleUI = function() {
     if (!myData) return;
 
     playerStatus.innerHTML = `
-      <div><strong>HP:</strong> ${myData.hp || 0} / ${myData.hp_max || 0}</div>
-      <div><strong>防御:</strong> ${myData.shield || 0}</div>
-      <div><strong>防御スタック:</strong> ${myData.defstack || 0}</div>
-      <div><strong>進化の道:</strong> ${myData.evolutionPath || "なし"}</div>
+      <div>🛡️ <strong>HP:</strong> ${myData.hp || 0} / ${myData.hp_max || 0}</div>
+      <div>🔰 <strong>防御:</strong> ${myData.shield || 0}</div>
+      <div>📦 <strong>D-Stack:</strong> ${myData.defstack || 0}</div>
     `;
   }
 
@@ -70,46 +70,10 @@ window.setupMonsterBattleUI = function() {
     if (!enemyData) return;
 
     enemyStatus.innerHTML = `
-      <div><strong>HP:</strong> ${enemyData.hp || 0} / ${enemyData.hp_max || 0}</div>
-      <div><strong>防御:</strong> ${enemyData.shield || 0}</div>
-      <div><strong>防御スタック:</strong> ${enemyData.defstack || 0}</div>
-      <div><strong>進化の道:</strong> ${enemyData.evolutionPath || "なし"}</div>
+      <div>⚡ <strong>相手HP:</strong> ${enemyData.hp || 0} / ${enemyData.hp_max || 0}</div>
+      <div>🔱 <strong>相手防御:</strong> ${enemyData.shield || 0}</div>
+      <div>📦 <strong>相手D-Stack:</strong> ${enemyData.defstack || 0}</div>
     `;
-  }
-
-  // アクションボタンのセットアップ
-  const attackBtn = document.getElementById("attackMonsterBtn");
-  const defendBtn = document.getElementById("defendMonsterBtn");
-  const skillBtn = document.getElementById("skillMonsterBtn");
-
-  if (attackBtn) {
-    attackBtn.addEventListener("click", () => {
-      console.log("[MonsterBattleUI] 攻撃ボタンをクリック");
-      // ここで攻撃ロジックを呼び出す
-      if (typeof window.executeMonsterAttack === "function") {
-        window.executeMonsterAttack();
-      }
-    });
-  }
-
-  if (defendBtn) {
-    defendBtn.addEventListener("click", () => {
-      console.log("[MonsterBattleUI] 防御ボタンをクリック");
-      // ここで防御ロジックを呼び出す
-      if (typeof window.executeMonsterDefend === "function") {
-        window.executeMonsterDefend();
-      }
-    });
-  }
-
-  if (skillBtn) {
-    skillBtn.addEventListener("click", () => {
-      console.log("[MonsterBattleUI] スキルボタンをクリック");
-      // ここでスキルロジックを呼び出す
-      if (typeof window.executeMonsterSkill === "function") {
-        window.executeMonsterSkill();
-      }
-    });
   }
 
   console.log("[setupMonsterBattleUI] COMPLETE");

@@ -227,6 +227,26 @@ body.deckPage{
   opacity: 1;
   z-index:0;
   pointer-events:none;
+  transition: background 0.3s ease;
+}
+
+/* モンスター戦闘背景：自身がモンスターと戦う場合 */
+#field.inMonsterBattle #fieldBg {
+  background: linear-gradient(135deg, rgba(40, 20, 10, 0.95), rgba(20, 10, 5, 0.95)), 
+              url('../assets/System/bg.png') center center / cover no-repeat;
+  filter: brightness(0.7) saturate(1.2);
+}
+
+/* 相手がモンスターと戦う場合：相手のステータス情報を非表示 */
+#field.opponentInMonsterBattle .lorPanel[data-owner="player2"],
+#field.opponentInMonsterBattle .lorPanel[data-owner="player1"].opponent-hidden {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* 相手のモンスター戦況表示を非表示 */
+#field.opponentInMonsterBattle .monsterBattleInfo {
+  display: none !important;
 }
 
 .handZoneBg{

@@ -13,7 +13,7 @@
       <div class="menuItem" id="backBtn">タイトルへ戻る</div>
       <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
       <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
-      <div class="menuItem" id="deckViewerBtn" style="color: #a0d8ef; display:none;">デッキを確認</div>
+      <!-- deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更 -->
       <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
       <div class="menuItem" id="optBtn">オプション</div>
     </div>
@@ -203,7 +203,7 @@
     const resetBtn = document.getElementById("resetFieldBtn");
     const surrenderBtn = document.getElementById("surrenderBtn");
     const soloStartBtn = document.getElementById("soloStartBtn");
-    const deckViewerBtn = document.getElementById("deckViewerBtn");
+    // deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更
     const isLocked = typeof window.isGameInteractionLocked === "function" ? window.isGameInteractionLocked() : false;
     if (resetBtn) resetBtn.style.display = (isGamePage && !isLocked) ? "block" : "none";
     if (surrenderBtn) {
@@ -213,11 +213,6 @@
     }
     // 両プレイヤーが接続している場合は「1人で開始」を非表示にする
     if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked && !window._bothPlayersConnected) ? "block" : "none";
-    // ゲーム画面（playing フェーズ）でデッキ確認を表示
-    if (deckViewerBtn) {
-      const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing";
-      deckViewerBtn.style.display = (isGamePage && isPlaying) ? "block" : "none";
-    }
   };
 
   document.getElementById("backBtn").onclick = ()=>{
@@ -259,10 +254,7 @@
     panel.classList.add("hidden");
   };
 
-  document.getElementById("deckViewerBtn").onclick = ()=>{
-    panel.classList.add("hidden");
-    if (typeof window.openDeckViewer === "function") window.openDeckViewer();
-  };
+  // deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更
 
   document.getElementById("optBtn").onclick = ()=>{
     optionsModal.classList.remove("hidden");

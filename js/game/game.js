@@ -738,8 +738,26 @@ function renderUI() {
     }
   }
 
+  // モンスター戦闘背景切り替え
+  const fieldEl = document.getElementById("field");
+  if (fieldEl) {
+    const myOwner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+    const enemyOwner = myOwner === "player1" ? "player2" : "player1";
+    const myTarget = window.BattleTargetSystem?.getTarget?.(myOwner) || "player";
+    const enemyTarget = window.BattleTargetSystem?.getTarget?.(enemyOwner) || "player";
+    
+    // 自身がモンスターと戦う場合：背景を変更
+    const myInMonsterBattle = myTarget !== "player" && typeof myTarget === "object";
+    fieldEl.classList.toggle("inMonsterBattle", myInMonsterBattle);
+    
+    // 相手がモンスターと戦う場合：相手のステータス情報を隠蔽
+    const opponentInMonsterBattle = enemyTarget !== "player" && typeof enemyTarget === "object";
+    fieldEl.classList.toggle("opponentInMonsterBattle", opponentInMonsterBattle);
+  }
+
   traceGame("renderUI", "end");
 }
+
 
 function update(skipLogCheck = false) {
   traceGame("update", "start", { skipLogCheck, status: state?.matchData?.status, bothConnected: !!window._bothPlayersConnected });
@@ -1135,17 +1153,9 @@ function updateMatchUI() {
     traceGame("updateMatchUI.updateFirstDrawPhaseUI", "missing");
   }
 
-  // 7. フェーズオーバーレイ中の「デッキを確認」ボタン制御
-  // ダイス/進化/ファーストドローフェーズ中は左上にボタンを表示
-  if (typeof window.injectPhaseOverlayDeckBtn === "function") {
-    const phaseOverlayActive = ["setup_dice", "setup_evolution", "setup_first_draw"].includes(m.status);
-    if (phaseOverlayActive) {
-      window.injectPhaseOverlayDeckBtn();
-    } else {
-      window.removePhaseOverlayDeckBtn?.();
-    }
-  }
+  // deckViewerBtn 制御：廃止（オーバーレイから削除）
 }
+
 
 // アニメーション・結果画面・ダイスフェーズのスタイルを初回のみ注入
 (function injectGameStyles() {

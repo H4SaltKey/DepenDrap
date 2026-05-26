@@ -146,12 +146,15 @@ function hideCardHoverPreview() {
 }
 const HAND_ZONE_Y_MIN = 1460;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
+
+/**
+ * モンスター戦闘時は視点移動を行わず、背景変更で対応
+ * 常に 0 を返す（レガシーコンパチのためにこの関数は残す）
+ */
 window.getMonsterFieldLayoutOffsetX = function(owner) {
-  const me = (window.getMyRole ? window.getMyRole() : (window.myRole || "player1"));
-  if (owner !== me) return 0;
-  const target = window.BattleTargetSystem?.getTarget?.(me);
-  const isMonsterTarget = !!(target && target !== "player" && typeof target === "object");
-  return isMonsterTarget ? 9000 : 0;
+  // 視点移動を廃止：常に 0 を返す
+  // モンスター戦闘時は背景変更とUI変更で視覚的にモンスターフィールドを表現
+  return 0;
 };
 
 function nextZoneOrder() {

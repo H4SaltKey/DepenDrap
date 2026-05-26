@@ -166,6 +166,134 @@ document.addEventListener("keydown", (e) => {
   if(e.key === "Escape") closeMenu();
 });
 
+// ===== モンスター右クリック =====
+function openMonsterMenu(slot, slotIndex, x, y) {
+  if (!slot) return;
+  
+  const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
+  const me = (typeof window.getMyRole === "function")
+    ? window.getMyRole()
+    : (window.myRole || "player1");
+
+  const damageTypeOptions = [
+    {
+      label: "🔨 通常ダメージ",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} への通常ダメージ量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "damage");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    },
+    {
+      label: "⚡ 貫通ダメージ",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} への貫通ダメージ量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "pierce");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    },
+    {
+      label: "💫 脆弱ダメージ",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} への脆弱ダメージ量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "fragile");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    },
+    {
+      label: "✨ アルカナダメージ",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} へのアルカナダメージ量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "arcana");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    },
+    { sep: true },
+    {
+      label: "❤️ HP減少",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} のHP減少量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "hp_reduce");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    },
+    {
+      label: "⚔️ 直接攻撃",
+      action: () => {
+        const dmgStr = prompt(`${def?.name || "モンスター"} への直接攻撃ダメージ量:`, "1");
+        if (dmgStr == null) return;
+        const dmg = Number(dmgStr);
+        if (!Number.isFinite(dmg) || dmg <= 0) return;
+        if (typeof window.MonsterCombatSystem?.playerAttackMonster === "function") {
+          window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg, "direct_attack");
+        }
+        if (typeof window.MonsterUI?.render === "function") {
+          window.MonsterUI.render();
+        }
+      }
+    }
+  ];
+
+  const items = [
+    {
+      label: `${def?.emoji || "👾"} ${def?.name || "モンスター"}`,
+      disabled: true
+    },
+    { sep: true },
+    {
+      label: "ダメージを与える",
+      sub: damageTypeOptions
+    },
+    { sep: true },
+    {
+      label: "💬 情報",
+      action: () => {
+        const defStr = def
+          ? `HP: ${def.hp || "?"} | 攻撃: ${def.atk || "?"} | 特性: ${(def.traits || []).map(t => t.label).join(", ") || "なし"}`
+          : "情報が利用できません";
+        alert(`${def?.name || "モンスター"}\n${defStr}`);
+      }
+    }
+  ];
+
+  buildMenu(items, x, y);
+}
+
 // ===== カード右クリック =====
 function openCardMenu(card, x, y){
   const me = (typeof window.getMyRole === "function")

@@ -12,11 +12,12 @@ window.MonsterCombatSystem = (function() {
    * @param attackerKey "player1" | "player2"
    * @param slotIndex 攻撃対象スロット
    * @param rawDmg 攻撃力
+   * @param dmgType "damage" | "pierce" | "fragile" | "arcana" | "hp_reduce" | "direct_attack"（デフォルト: "damage"）
    */
-  function playerAttackMonster(attackerKey, slotIndex, rawDmg) {
+  function playerAttackMonster(attackerKey, slotIndex, rawDmg, dmgType = "damage") {
     if (!window.MonsterManager) return;
 
-    const result = window.MonsterManager.dealDamage(slotIndex, rawDmg, attackerKey);
+    const result = window.MonsterManager.dealDamage(slotIndex, rawDmg, attackerKey, dmgType);
 
     if (result.defeated) {
       _handleDefeat(slotIndex, attackerKey, result);

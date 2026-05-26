@@ -2204,6 +2204,13 @@ async function initGame() {
       traceGame("initGame.update", "missing");
     }
 
+    // ── 4.5 手札背景パネル初期化 ──
+    if (typeof setupHandPanels === "function") {
+      invokeGuarded("initGame.setupHandPanels", () => setupHandPanels());
+    } else {
+      traceGame("initGame.setupHandPanels", "missing");
+    }
+
     // ── 5. デッキオブジェクト配置 ──
     if (cardsReadyFired) {
       if (typeof createDeckObject === "function") createDeckObject(!isReload);

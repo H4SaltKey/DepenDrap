@@ -1329,12 +1329,10 @@ function centerField(){
 
   const myKey = window.getMyRole ? window.getMyRole() : (window.myRole || "player1");
   const target = window.BattleTargetSystem?.getTarget?.(myKey);
-  const selectingTarget =
-    !!document.getElementById("turnStartTargetPanel") ||
-    !!document.getElementById("targetSelectPanel") ||
-    !!state?.matchData?.targetSelectionPending;
-  const hasMonster = (window.MonsterManager?.getAllSlots?.() || []).some(Boolean);
-  if ((target && target !== "player") || (selectingTarget && hasMonster)) {
+  
+  // モンスターをターゲットに選んだ場合のみ、モンスターフィールドに移動
+  // playerをターゲットに選んだ場合は、中央のプレイヤーフィールドに留まる
+  if (target && target !== "player" && typeof target === "object" && typeof target.slotIndex === "number") {
     // モンスターフィールド中心へ
     // MonsterUI は x=9000, y=0 に 3000x2000 で配置しているため、その中心へ移動
     centerX = 10500;

@@ -114,6 +114,11 @@ function saveDeckList(list) {
     code: d.code
   }));
   localStorage.setItem("deckList", JSON.stringify(cleanList));
+  
+  // Firebase に保存（async、エラーは無視）
+  if (window.firebaseClient && window.firebaseClient.db) {
+    window.firebaseClient.saveDeckListToFirebase(cleanList).catch(() => {});
+  }
 }
 
 function createNewDeck(name) {
@@ -184,6 +189,11 @@ function deleteDeck(id) {
   saveDeckList(list);
   // IndexedDB からも削除
   deleteBackImageFromDB(id).catch(() => {});
+  
+  // Firebase からも削除
+  if (window.firebaseClient && window.firebaseClient.db) {
+    window.firebaseClient.deleteDeckFromFirebase(id).catch(() => {});
+  }
 }
 
 function updateDeckName(id, name) {
@@ -192,6 +202,11 @@ function updateDeckName(id, name) {
   if (deck) {
     deck.name = name;
     saveDeckList(list);
+    
+    // Firebase に更新
+    if (window.firebaseClient && window.firebaseClient.db) {
+      window.firebaseClient.updateDeckOnFirebase(id, { name, code: deck.code }).catch(() => {});
+    }
   }
 }
 
@@ -253,12 +268,42 @@ if (window.firebaseClient && !window.firebaseClient.db) {
   window.firebaseClient.initialize(window.FIREBASE_CONFIG).catch(() => {});
 }
 
+/**
+ * Firebase からデッキリストを読み込む（ロード時）
+ * Firebase が利用可能で、Firebaseにデータがあれば使用
+ * そうでなければ localStorage を使用
+ */
+async function loadDeckListFromFirebaseOrLocal() {
+  // Firebase が利用可能か確認
+  if (window.firebaseClient && window.firebaseClient.db && window.firebaseClient.username) {
+    try {
+      const firebaseList = await window.firebaseClient.loadDeckListFromFirebase();
+      if (firebaseList && firebaseList.length > 0) {
+        // Firebase にデータがある場合は、そちらを使用してlocalStorageも更新
+        const cleanList = firebaseList.map(d => ({
+          id: d.id,
+          name: d.name,
+          code: d.code
+        }));
+        localStorage.setItem("deckList", JSON.stringify(cleanList));
+        console.log("[DeckSelect] Firebase からデッキリストを読み込みました:", firebaseList.length, "件");
+        return firebaseList;
+      }
+    } catch (err) {
+      console.warn("[DeckSelect] Firebase からの読み込みに失敗、localStorage を使用:", err.message);
+    }
+  }
+  
+  // Firebase が利用不可またはデータがない場合は localStorage を使用
+  return loadDeckList();
+}
+
 // ===== グリッド描画 =====
-function renderGrid() {
+async function renderGridAsync() {
   const grid = document.getElementById("deckGrid");
   grid.innerHTML = "";
 
-  const list = loadDeckList();
+  const list = await loadDeckListFromFirebaseOrLocal();
 
   list.forEach(deck => {
     const el = createDeckThumb(deck);
@@ -277,6 +322,27 @@ function renderGrid() {
     openCreateDeckModal();
   });
   grid.appendChild(addEl);
+}
+
+// renderGrid() は保持（互換性のため）、実際には renderGridAsync() を使用
+function renderGrid() {
+  renderGridAsync().catch(err => {
+    console.error("renderGrid エラー:", err);
+    // エラー時は localStorage のみで表示
+    const grid = document.getElementById("deckGrid");
+    grid.innerHTML = "";
+    const list = loadDeckList();
+    list.forEach(deck => {
+      const el = createDeckThumb(deck);
+      grid.appendChild(el);
+      loadAndUpdateDeckThumbnail(deck.id);
+    });
+    const addEl = document.createElement("div");
+    addEl.className = "deckThumb addNew";
+    addEl.textContent = "+";
+    addEl.addEventListener("click", openCreateDeckModal);
+    grid.appendChild(addEl);
+  });
 }
 
 async function loadAndUpdateDeckThumbnail(deckId) {

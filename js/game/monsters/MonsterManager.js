@@ -91,7 +91,7 @@ window.MonsterManager = (function() {
    * モンスターへのダメージ処理
    * @returns { defeated: bool, actualDmg: number }
    */
-  function dealDamage(slotIndex, rawDmg, attacker) {
+  function dealDamage(slotIndex, rawDmg, attacker, dmgType = "damage") {
     const slot = _slots[slotIndex];
     if (!slot) return { defeated: false, actualDmg: 0 };
 
@@ -110,19 +110,55 @@ window.MonsterManager = (function() {
     }
     dmg = Math.max(0, dmg);
 
+    // ダメージ種別に応じた適用処理（damageCalc.js の applyDamageByRule と同様）
     let remain = dmg;
-    const defVal = Math.max(0, Number(slot.def || 0));
-    if (defVal > 0) remain = Math.max(0, remain - defVal);
-    const shieldVal = Math.max(0, Number(slot.shield || 0));
-    if (shieldVal > 0 && remain > 0) {
-      const absorb = Math.min(shieldVal, remain);
-      slot.shield = shieldVal - absorb;
-      remain -= absorb;
+    switch (dmgType) {
+      case "hp_reduce":
+        // HP を直接減らす（防御無視）
+        slot.currentHp = Math.max(0, slot.currentHp - dmg);
+        remain = dmg;
+        break;
+      case "fragile":
+        // 脆弱ダメージ: 防御力を削る
+        slot.def = Math.max(0, (slot.def || 0) - dmg);
+        remain = 0;
+        break;
+      case "pierce":
+        // 貫通ダメージ: シールド → HP
+        const shieldAbsorb = Math.min(slot.shield || 0, dmg);
+        slot.shield = Math.max(0, (slot.shield || 0) - shieldAbsorb);
+        remain = dmg - shieldAbsorb;
+        slot.currentHp = Math.max(0, slot.currentHp - remain);
+        break;
+      case "arcana":
+        // アルカナダメージ: 防御 → シールド → HP
+        const defAbsorb = Math.min(slot.def || 0, dmg);
+        slot.def = Math.max(0, (slot.def || 0) - defAbsorb);
+        remain = dmg - defAbsorb;
+        const shieldAbsorb2 = Math.min(slot.shield || 0, remain);
+        slot.shield = Math.max(0, (slot.shield || 0) - shieldAbsorb2);
+        remain -= shieldAbsorb2;
+        slot.currentHp = Math.max(0, slot.currentHp - remain);
+        break;
+      case "direct_attack":
+      case "damage":
+      default:
+        // 通常ダメージ/直接攻撃: 防御力 → シールド → HP
+        const defVal = Math.max(0, Number(slot.def || 0));
+        if (defVal > 0) remain = Math.max(0, remain - defVal);
+        const shieldVal = Math.max(0, Number(slot.shield || 0));
+        if (shieldVal > 0 && remain > 0) {
+          const absorb = Math.min(shieldVal, remain);
+          slot.shield = shieldVal - absorb;
+          remain -= absorb;
+        }
+        slot.currentHp = Math.max(0, slot.currentHp - remain);
+        break;
     }
-    slot.currentHp = Math.max(0, slot.currentHp - remain);
 
     if (typeof window.addGameLog === "function") {
-      window.addGameLog(`[MONSTER] ${def?.name || slot.monsterId} に ${dmg} ダメージ（残HP: ${slot.currentHp}/${slot.maxHp} / シールド:${slot.shield || 0}）`);
+      const dmgTypeStr = dmgType === "damage" ? "" : `[${dmgType}] `;
+      window.addGameLog(`[MONSTER] ${def?.name || slot.monsterId} に ${dmgTypeStr}${dmg} ダメージ（残HP: ${slot.currentHp}/${slot.maxHp} / シールド:${slot.shield || 0} / 防御:${slot.def || 0}）`);
     }
 
     if (slot.currentHp <= 0) {

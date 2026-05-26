@@ -7,6 +7,20 @@ let cardFilters = {
 const DECK_MIN_SIZE = 30;
 const DECK_MAX_SIZE = 40;
 
+// Firebase 初期化
+window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
+  apiKey: "AIzaSyDNe58gGvJ3-09brUHkoorkQalrS8jkPAw",
+  authDomain: "dependrap-c30b4.firebaseapp.com",
+  databaseURL: "https://dependrap-c30b4-default-rtdb.firebaseio.com",
+  projectId: "dependrap-c30b4",
+  storageBucket: "dependrap-c30b4.firebasestorage.app",
+  messagingSenderId: "536531285865",
+  appId: "1:536531285865:web:0d53a2c4fd8fae7ff32ff8"
+};
+if (window.firebaseClient && !window.firebaseClient.db) {
+  window.firebaseClient.initialize(window.FIREBASE_CONFIG).catch(() => {});
+}
+
 function getDeckEditorSettingsKey() {
   const username = window.myUsername || localStorage.getItem("username") || "guest";
   const safeUser = String(username || "guest").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -50,6 +64,11 @@ function loadDeckList() {
 
 function saveDeckList(list) {
   localStorage.setItem("deckList", JSON.stringify(list));
+  
+  // Firebase に保存（async、エラーは無視）
+  if (window.firebaseClient && window.firebaseClient.db) {
+    window.firebaseClient.saveDeckListToFirebase(list).catch(() => {});
+  }
 }
 
 function getCurrentDeckEntry() {
@@ -64,6 +83,11 @@ function saveCurrentDeckCode(code) {
   if (entry) {
     entry.code = code;
     saveDeckList(list);
+    
+    // Firebase に更新（async、エラーは無視）
+    if (window.firebaseClient && window.firebaseClient.db) {
+      window.firebaseClient.updateDeckOnFirebase(DECK_ID, { name: entry.name, code }).catch(() => {});
+    }
   }
   // 後方互換: game.htmlが参照するdeckCodeも更新
   localStorage.setItem("deckCode", code);

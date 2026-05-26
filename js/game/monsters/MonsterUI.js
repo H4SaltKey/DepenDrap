@@ -296,6 +296,15 @@ window.MonsterUI = (function() {
         }
       });
 
+      // 右クリックでダメージ選択メニュー
+      el.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof window.openMonsterMenu === "function") {
+          window.openMonsterMenu(slot, i, e.clientX, e.clientY);
+        }
+      });
+
       panel.appendChild(el);
     });
 
@@ -348,14 +357,14 @@ window.MonsterUI = (function() {
     if (monObj) {
       monObj.addEventListener("contextmenu", (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const slotIndex = Number(monObj.dataset.slotIndex || -1);
         if (slotIndex < 0) return;
-        const dmgStr = prompt("モンスターに与えるダメージ量", "1");
-        if (dmgStr == null) return;
-        const dmg = Number(dmgStr);
-        if (!Number.isFinite(dmg) || dmg <= 0) return;
-        window.MonsterCombatSystem?.playerAttackMonster(window.myRole || "player1", slotIndex, dmg);
-        window.MonsterUI?.render();
+        const slot = slots[slotIndex];
+        if (!slot) return;
+        if (typeof window.openMonsterMenu === "function") {
+          window.openMonsterMenu(slot, slotIndex, e.clientX, e.clientY);
+        }
       });
     }
   }

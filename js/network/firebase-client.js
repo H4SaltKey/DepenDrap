@@ -782,6 +782,155 @@ class FirebaseClient {
   }
 
   /**
+   * ユーザーのデッキリストを Firebaseに保存
+   */
+  async saveDeckListToFirebase(deckList) {
+    if (!this.db || !this.username) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      const decksRef = this.db.ref(`accounts/${this.username}/decks`);
+      const decksData = {};
+      deckList.forEach(deck => {
+        decksData[deck.id] = {
+          name: deck.name,
+          code: deck.code,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        };
+      });
+      await decksRef.set(decksData);
+      console.log("[FirebaseClient] ✅ デッキリストを Firebase に保存:", deckList.length, "件");
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] デッキリスト保存エラー:", error.message);
+      return false;
+    }
+  }
+
+  /**
+   * ユーザーのデッキリストを Firebase から読み込む
+   */
+  async loadDeckListFromFirebase() {
+    if (!this.db || !this.username) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return null;
+    }
+
+    try {
+      const decksRef = this.db.ref(`accounts/${this.username}/decks`);
+      const snapshot = await decksRef.once('value');
+      
+      if (!snapshot.exists()) {
+        console.log("[FirebaseClient] Firebase にデッキリストが存在しません");
+        return [];
+      }
+
+      const decksData = snapshot.val();
+      const deckList = [];
+      Object.entries(decksData).forEach(([deckId, data]) => {
+        deckList.push({
+          id: deckId,
+          name: data.name || "無名デッキ",
+          code: data.code || "empty"
+        });
+      });
+
+      console.log("[FirebaseClient] ✅ Firebase からデッキリストを読み込み:", deckList.length, "件");
+      return deckList;
+    } catch (error) {
+      console.error("[FirebaseClient] デッキリスト読み込みエラー:", error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Firebase からデッキリストを監視（リアルタイム更新）
+   */
+  watchDeckList(callback) {
+    if (!this.db || !this.username) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return null;
+    }
+
+    console.log("[FirebaseClient] デッキリスト監視開始:", this.username);
+
+    const decksRef = this.db.ref(`accounts/${this.username}/decks`);
+    const listener = decksRef.on('value', (snapshot) => {
+      if (!snapshot.exists()) {
+        callback([]);
+        return;
+      }
+
+      const decksData = snapshot.val();
+      const deckList = [];
+      Object.entries(decksData).forEach(([deckId, data]) => {
+        deckList.push({
+          id: deckId,
+          name: data.name || "無名デッキ",
+          code: data.code || "empty"
+        });
+      });
+      callback(deckList);
+    }, (error) => {
+      console.warn("[FirebaseClient] デッキリスト監視エラー:", error.message);
+    });
+
+    this.listeners.set(`deckList:${this.username}`, { ref: decksRef, listener });
+
+    return () => {
+      decksRef.off('value', listener);
+      this.listeners.delete(`deckList:${this.username}`);
+    };
+  }
+
+  /**
+   * Firebase の特定デッキを削除
+   */
+  async deleteDeckFromFirebase(deckId) {
+    if (!this.db || !this.username) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      const deckRef = this.db.ref(`accounts/${this.username}/decks/${deckId}`);
+      await deckRef.remove();
+      console.log("[FirebaseClient] ✅ デッキを Firebase から削除:", deckId);
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] デッキ削除エラー:", error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Firebase の特定デッキを更新
+   */
+  async updateDeckOnFirebase(deckId, deckData) {
+    if (!this.db || !this.username) {
+      console.error("[FirebaseClient] Firebase が初期化されていません");
+      return false;
+    }
+
+    try {
+      const deckRef = this.db.ref(`accounts/${this.username}/decks/${deckId}`);
+      const updateData = {
+        name: deckData.name,
+        code: deckData.code,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      };
+      await deckRef.update(updateData);
+      console.log("[FirebaseClient] ✅ デッキを Firebase で更新:", deckId);
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] デッキ更新エラー:", error.message);
+      return false;
+    }
+  }
+
+  /**
    * すべてのリスナーを削除
    */
   removeAllListeners() {

@@ -755,6 +755,11 @@ function renderUI() {
     fieldEl.classList.toggle("opponentInMonsterBattle", opponentInMonsterBattle);
   }
 
+  // モンスター戦闘UI更新
+  if (typeof window.updateMonsterBattleUITick === "function") {
+    window.updateMonsterBattleUITick();
+  }
+
   traceGame("renderUI", "end");
 }
 
@@ -2252,6 +2257,13 @@ async function initGame() {
         if (typeof createDeckObject === "function") createDeckObject(!isReload);
         else traceGame("initGame.createDeckObject.cardsReady", "missing");
       }, { once: true });
+    }
+
+    // ── 5.5 モンスター戦闘UI初期化 ──
+    if (typeof window.setupMonsterBattleUI === "function") {
+      invokeGuarded("initGame.setupMonsterBattleUI", () => window.setupMonsterBattleUI());
+    } else {
+      traceGame("initGame.setupMonsterBattleUI", "missing");
     }
 
     // ── 6. Firebase Watcher 開始（ルーム状態監視） ──

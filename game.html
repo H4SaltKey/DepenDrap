@@ -107,11 +107,41 @@
 <script src="js/game/monsters/MonsterCombatSystem.js"></script>
 <script src="js/game/monsters/MonsterUI.js"></script>
 <script src="js/game/monsters/pvpveWatcher.js"></script>
+<script src="js/game/monsters/monsterBattleUI.js"></script>
 
 <div id="field">
   <div id="fieldBgBlur"></div>
   <div id="fieldContent">
     <div id="fieldBg"></div>
+    <!-- モンスター戦闘UI層 -->
+    <div id="monsterBattleOverlay" class="monsterBattleOverlay">
+      <div id="monsterBattleContainer" class="monsterBattleContainer">
+        <!-- モンスター敵表示 -->
+        <div id="monsterDisplayArea" class="monsterDisplayArea">
+          <div id="monsterSprite" class="monsterSprite"></div>
+          <div id="monsterNamePlate" class="monsterNamePlate">
+            <span id="monsterName" class="monsterName"></span>
+            <div id="monsterHpBar" class="monsterHpBar">
+              <div id="monsterHpFill" class="monsterHpFill"></div>
+            </div>
+          </div>
+        </div>
+        <!-- プレイヤー側情報パネル -->
+        <div id="playerBattleInfo" class="playerBattleInfo">
+          <div id="playerBattleStatus" class="playerBattleStatus"></div>
+        </div>
+        <!-- 敵側情報パネル -->
+        <div id="enemyBattleInfo" class="enemyBattleInfo">
+          <div id="enemyBattleStatus" class="enemyBattleStatus"></div>
+        </div>
+        <!-- 戦闘アクションボタン -->
+        <div id="monsterBattleActions" class="monsterBattleActions">
+          <button id="attackMonsterBtn" class="monsterActionBtn">攻撃</button>
+          <button id="defendMonsterBtn" class="monsterActionBtn">防御</button>
+          <button id="skillMonsterBtn" class="monsterActionBtn">スキル</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

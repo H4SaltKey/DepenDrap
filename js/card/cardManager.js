@@ -37,8 +37,8 @@ function toLocalY(serverY){
 
 const CARD_GRID_SIZE = 20;
 const CARD_STACK_OFFSET = 14;
-const FIELD_ZOOM_STEP = 0.05;
-const FIELD_SCROLL_ZOOM_STEP = 0.02; // 40% of button step
+const FIELD_ZOOM_STEP = 0.1;  // ズーム速度を2倍に増加
+const FIELD_SCROLL_ZOOM_STEP = 0.04; // スクロールズーム速度を2倍に増加
 let FIELD_ZOOM_MAX = 1.5; // 150% max zoom
 const FIELD_W = 3000;
 const FIELD_H = 2000;
@@ -1082,6 +1082,8 @@ function enablePointerDrag(el){
       el.style.opacity = "0.85";
       el.style.zIndex = DRAG_Z_TOP;
       document.body.classList.add("isDraggingCard");
+      // ドラッグ中フラグを設定（整列の干渉を防ぐ）
+      window._isDraggingCard = true;
     }
 
     // スクリーン座標 → フィールド座標に変換して配置
@@ -1257,6 +1259,8 @@ function enablePointerDrag(el){
           }
         }
         
+        // ドラッグ終了後、整列を行う
+        window._isDraggingCard = false;
         if (typeof window.organizeHands === "function") window.organizeHands();
         if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
         

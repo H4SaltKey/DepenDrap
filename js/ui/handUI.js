@@ -195,6 +195,11 @@ window.organizeHands = function() {
       c.dataset.handOrder = String((idx + 1) * 1000);
     });
   }
+
+  // ホバー動作を設定
+  if (typeof window.setupHandCardHoverBehavior === "function") {
+    window.setupHandCardHoverBehavior();
+  }
 };
 
 // 手札パネルの展開/折りたたみを切り替え
@@ -293,3 +298,92 @@ window.setupHandPanels = function() {
   
   console.log("[setupHandPanels] COMPLETE");
 };
+
+/**
+ * 手札カードのホバー動作を設定
+ * ホバーされたカードが最前面に移動し、左右のカードが離れる方向に動く
+ */
+window.setupHandCardHoverBehavior = function() {
+  const content = document.getElementById("field");
+  if (!content) return;
+
+  const cardW = 320;  // CARD_W
+  const offsets = [0.5, 0.2]; // 隣接カードのオフセット比率 [1番目: 50%, 2番目: 20%]
+
+  // 既存のイベントリスナーを削除（重複登録を防ぐ）
+  const allCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+  allCards.forEach(card => {
+    const clone = card.cloneNode(true);
+    card.parentNode.replaceChild(clone, card);
+  });
+
+  // 再度DOM取得してイベントリスナーを追加
+  const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+  
+  cards.forEach((card) => {
+    // ホバー開始時
+    card.addEventListener("mouseenter", function() {
+      // ホバーカードを最前面に
+      const originalZIndex = this.style.zIndex;
+      this.style.zIndex = "10000";
+      this.dataset.originalZIndex = originalZIndex || "auto";
+      
+      // 手札内で同じオーナーのカードを手Order でソート
+      const owner = this.dataset.owner;
+      const handCards = Array.from(content.querySelectorAll(
+        `.card:not(.deckObject)[data-owner="${owner}"][data-zone-type=""]`
+      )).filter(c => c.dataset.zoneType === undefined || c.dataset.zoneType === "");
+      
+      if (handCards.length <= 1) return;
+
+      // handOrder でソート
+      handCards.sort((a, b) => {
+        const oa = Number(a.dataset.handOrder || 0);
+        const ob = Number(b.dataset.handOrder || 0);
+        return oa - ob;
+      });
+
+      // このカードのインデックスを取得
+      const currentIndex = handCards.indexOf(this);
+      
+      // 左側のカード（最大2枚）にオフセットを適用
+      for (let i = 1; i <= Math.min(2, currentIndex); i++) {
+        const leftCard = handCards[currentIndex - i];
+        if (!leftCard) break;
+        const offsetRatio = offsets[i - 1] || offsets[offsets.length - 1];
+        const offsetX = -(cardW * offsetRatio);
+        leftCard.style.transform = `translateX(${offsetX}px)`;
+        leftCard.style.zIndex = String(10000 - i);
+      }
+
+      // 右側のカード（最大2枚）にオフセットを適用
+      for (let i = 1; i <= Math.min(2, handCards.length - currentIndex - 1); i++) {
+        const rightCard = handCards[currentIndex + i];
+        if (!rightCard) break;
+        const offsetRatio = offsets[i - 1] || offsets[offsets.length - 1];
+        const offsetX = cardW * offsetRatio;
+        rightCard.style.transform = `translateX(${offsetX}px)`;
+        rightCard.style.zIndex = String(10000 - i);
+      }
+    });
+
+    // ホバー終了時
+    card.addEventListener("mouseleave", function() {
+      // ホバーカードを元のz-indexに戻す
+      this.style.zIndex = this.dataset.originalZIndex || "auto";
+      delete this.dataset.originalZIndex;
+
+      // 手札内で同じオーナーのカードをリセット
+      const owner = this.dataset.owner;
+      const handCards = Array.from(content.querySelectorAll(
+        `.card:not(.deckObject)[data-owner="${owner}"][data-zone-type=""]`
+      )).filter(c => c.dataset.zoneType === undefined || c.dataset.zoneType === "");
+
+      handCards.forEach(card => {
+        card.style.transform = "";
+        card.style.zIndex = "auto";
+      });
+    });
+  });
+};
+

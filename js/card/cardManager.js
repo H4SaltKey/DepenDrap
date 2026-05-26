@@ -1034,6 +1034,17 @@ function enablePointerDrag(el){
     if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
     e.stopPropagation();
 
+    // ホバー状態をリセット（すべての手札カードの展開を解除）
+    const field = document.getElementById("field");
+    if (field) {
+      const allHandCards = Array.from(field.querySelectorAll(".card:not(.deckObject)"));
+      allHandCards.forEach(card => {
+        card.style.transform = "";
+        card.style.zIndex = card.dataset.originalZIndex || "auto";
+        delete card.dataset.originalZIndex;
+      });
+    }
+
     // 触った順に z-index を上げる（ドラッグ終了時に元へ戻す）
     if (!el.classList.contains("deckObject")) {
       el.dataset._dragSavedZIndex = el.style.zIndex || "";

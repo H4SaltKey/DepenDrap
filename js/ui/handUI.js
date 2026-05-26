@@ -308,7 +308,7 @@ window.setupHandCardHoverBehavior = function() {
   if (!content) return;
 
   const cardW = 320;  // CARD_W
-  const offsets = [0.5, 0.2]; // 隣接カードのオフセット比率 [1番目: 50%, 2番目: 20%]
+  const offsets = [0.4, 0.2]; // 隣接カードのオフセット比率 [1番目: 40%, 2番目: 20%]
 
   // 既存のイベントリスナーを削除（重複登録を防ぐ）
   const allCards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));

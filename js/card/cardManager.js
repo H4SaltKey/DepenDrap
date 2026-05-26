@@ -125,16 +125,16 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
     cardHoverPreviewEl.id = "cardHoverPreview";
     cardHoverPreviewEl.style.cssText = `
       position: fixed; z-index: 100220; pointer-events: none;
-      width: 260px; height: 368px; border-radius: 8px; overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.28);
-      background: rgba(8,8,16,0.85);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+      width: 520px; height: 736px; border-radius: 8px; overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(8,8,16,0.9);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.7);
     `;
     document.body.appendChild(cardHoverPreviewEl);
   }
   cardHoverPreviewEl.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">`;
   cardHoverPreviewCardId = cardEl.dataset.instanceId || "";
-  cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 236)}px`;
+  cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 540)}px`;
   cardHoverPreviewEl.style.top = `12px`;
   cardHoverPreviewEl.style.display = "block";
 }

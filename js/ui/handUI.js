@@ -69,12 +69,46 @@ window.organizeHands = function() {
     // 展開時：カード下部配置、折りたたみ時：非表示
     const handY = myExpanded ? (2000 - cardH - 20) : 2000;
     
-    // 中央寄せの計算
-    const spacing = cardW + 15;
+    // 均等配置：カード間隔を動的に調整（-70% ～ +50%）
+    const baseGapWidth = 15; // デフォルト隙間（px）
+    const minGapRatio = 0.3;  // 最小: -70% = 0.3倍
+    const maxGapRatio = 1.5;  // 最大: +50% = 1.5倍
+    const minGapWidth = baseGapWidth * minGapRatio;
+    const maxGapWidth = baseGapWidth * maxGapRatio;
+    
     const maxHandWidth = fieldW - 100;
-    let actualSpacing = spacing;
-    if (myHandCards.length * spacing > maxHandWidth) {
-      actualSpacing = maxHandWidth / myHandCards.length;
+    const numCards = myHandCards.length;
+    
+    // スペーシングを計算：カード数に応じて間隔を動的に調整
+    let actualSpacing;
+    if (numCards === 1) {
+      // 1枚の場合は固定
+      actualSpacing = cardW;
+    } else {
+      const availableWidth = maxHandWidth - cardW;
+      const baseSpacing = cardW + baseGapWidth;
+      const minSpacing = cardW + minGapWidth;
+      const maxSpacing = cardW + maxGapWidth;
+      
+      // 必要な総幅を計算
+      const minTotalWidth = (numCards - 1) * minSpacing + cardW;
+      
+      if (minTotalWidth > maxHandWidth) {
+        // 最小でも超える場合：最小隙間を使用
+        actualSpacing = (availableWidth / (numCards - 1));
+      } else {
+        // 最大限度内で調整：カード数に応じて隙間を増やす
+        const maxTotalWidth = (numCards - 1) * maxSpacing + cardW;
+        if (maxTotalWidth <= maxHandWidth) {
+          // 最大隙間でも収納可能：最大隙間を使用
+          actualSpacing = maxSpacing;
+        } else {
+          // その中間：利用可能な幅に合わせて調整
+          actualSpacing = (availableWidth / (numCards - 1));
+          // 最小値と最大値の範囲内に制限
+          actualSpacing = Math.max(minSpacing, Math.min(maxSpacing, actualSpacing));
+        }
+      }
     }
     
     const totalW = (myHandCards.length - 1) * actualSpacing + cardW;
@@ -100,11 +134,46 @@ window.organizeHands = function() {
 
     const handY = opExpanded ? 20 : 0;
     
-    const spacing = cardW + 15;
+    // 均等配置：カード間隔を動的に調整（-70% ～ +50%）
+    const baseGapWidth = 15; // デフォルト隙間（px）
+    const minGapRatio = 0.3;  // 最小: -70% = 0.3倍
+    const maxGapRatio = 1.5;  // 最大: +50% = 1.5倍
+    const minGapWidth = baseGapWidth * minGapRatio;
+    const maxGapWidth = baseGapWidth * maxGapRatio;
+    
     const maxHandWidth = fieldW - 100;
-    let actualSpacing = spacing;
-    if (opHandCards.length * spacing > maxHandWidth) {
-      actualSpacing = maxHandWidth / opHandCards.length;
+    const numCards = opHandCards.length;
+    
+    // スペーシングを計算：カード数に応じて間隔を動的に調整
+    let actualSpacing;
+    if (numCards === 1) {
+      // 1枚の場合は固定
+      actualSpacing = cardW;
+    } else {
+      const availableWidth = maxHandWidth - cardW;
+      const baseSpacing = cardW + baseGapWidth;
+      const minSpacing = cardW + minGapWidth;
+      const maxSpacing = cardW + maxGapWidth;
+      
+      // 必要な総幅を計算
+      const minTotalWidth = (numCards - 1) * minSpacing + cardW;
+      
+      if (minTotalWidth > maxHandWidth) {
+        // 最小でも超える場合：最小隙間を使用
+        actualSpacing = (availableWidth / (numCards - 1));
+      } else {
+        // 最大限度内で調整：カード数に応じて隙間を増やす
+        const maxTotalWidth = (numCards - 1) * maxSpacing + cardW;
+        if (maxTotalWidth <= maxHandWidth) {
+          // 最大隙間でも収納可能：最大隙間を使用
+          actualSpacing = maxSpacing;
+        } else {
+          // その中間：利用可能な幅に合わせて調整
+          actualSpacing = (availableWidth / (numCards - 1));
+          // 最小値と最大値の範囲内に制限
+          actualSpacing = Math.max(minSpacing, Math.min(maxSpacing, actualSpacing));
+        }
+      }
     }
     
     const totalW = (opHandCards.length - 1) * actualSpacing + cardW;

@@ -797,16 +797,10 @@ async function startGame() {
   localStorage.setItem("gameStarted",   "true");
   if (deck) localStorage.setItem("deckCode", deck.code || "empty");
   
-  // IndexedDB から backImage を読み込む
-  let backImage = "";
-  if (deck?.id) {
-    backImage = await getBackImageFromDB(deck.id).catch(() => "");
-  }
-  
+  // matchSetup には deckId のみ保存（backImage は IndexedDB から読み込む）
   localStorage.setItem("matchSetup", JSON.stringify({
     role: currentPlayerKey, self: currentUser, username: currentUser,
-    deckCode: deck?.code || "empty", deckId: deck?.id || "",
-    backImage: backImage
+    deckCode: deck?.code || "empty", deckId: deck?.id || ""
   }));
   setTimeout(() => { location.href = "game.html"; }, 1000);
 }

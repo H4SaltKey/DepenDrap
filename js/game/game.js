@@ -221,13 +221,20 @@ function shuffleDeck() {
 // ===== デッキオブジェクト =====
 function getBackImage() {
   try {
-    // matchSetup から backImage を優先的に取得
+    // matchSetup から deckId を取得し、IndexedDB から backImage を非同期で読み込む
+    // 注: この関数は同期で呼ばれているため、フォールバックを使用
     const matchSetupData = JSON.parse(localStorage.getItem("matchSetup")) || {};
-    if (matchSetupData.backImage && matchSetupData.backImage.length > 5) {
-      return matchSetupData.backImage;
+    const deckId = matchSetupData.deckId;
+    
+    // IndexedDB は非同期なので、ここでは sessionStorage キャッシュをチェック
+    if (deckId && typeof window.getBackImageFromDB === "function") {
+      // キャッシュをチェック
+      const cacheKey = `backImage_${deckId}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) return cached;
     }
     
-    // フォールバック：deckList から backImage を取得（IndexedDB への移行後は使用されない）
+    // フォールバック：deckList から backImage を取得（古いデータ用）
     const deckCode = localStorage.getItem("deckCode");
     const list = JSON.parse(localStorage.getItem("deckList")) || [];
     const entry = list.find(d => d.code === deckCode) || list[list.length - 1];
@@ -2130,6 +2137,21 @@ async function initGame() {
     } catch (e) {
       traceGame("initGame", "failure", e?.message || e);
       console.warn("[initGame] asset load warning:", e);
+    }
+
+    // backImage を IndexedDB から読み込み、sessionStorage にキャッシュ
+    try {
+      const matchSetupData = JSON.parse(localStorage.getItem("matchSetup")) || {};
+      const deckId = matchSetupData.deckId;
+      if (deckId && typeof window.getBackImageFromDB === "function") {
+        const backImage = await window.getBackImageFromDB(deckId);
+        if (backImage) {
+          sessionStorage.setItem(`backImage_${deckId}`, backImage);
+          console.log(`[initGame] backImage cached: deckId=${deckId}`);
+        }
+      }
+    } catch (e) {
+      console.warn("[initGame] backImage cache warning:", e);
     }
 
     const currentRoom = localStorage.getItem("gameRoom");

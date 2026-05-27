@@ -264,8 +264,7 @@ window.MonsterUI = (function() {
       if (!slot) {
         // 討伐済み
         el.classList.add("defeated");
-          el.title = "討伐済みです。次のターゲットを選択してください。";
-        `;
+        el.title = "討伐済みです。次のターゲットを選択してください。";
         panel.appendChild(el);
         return;
       }

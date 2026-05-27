@@ -318,6 +318,22 @@ function openCardMenu(card, x, y){
   }
 
   const vis = card.dataset.visibility || "both";
+  if (!isOwnCard) {
+    buildMenu([
+      {
+        label: "拡大表示",
+        disabled: !canZoomOpponent,
+        action: () => showCardZoom(card)
+      },
+      { sep: true },
+      {
+        label: "全体公開",
+        disabled: vis !== "both"
+      }
+    ], x, y, card);
+    return;
+  }
+
   const items = [
     {
       label: "拡大表示",

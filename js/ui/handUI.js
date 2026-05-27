@@ -315,10 +315,14 @@ window.setupHandCardHoverBehavior = function() {
   const maxSpacing = 22.5;  // 最大間隔 (gap * +50%)
   const offsets = [0.4, 0.2]; // 隣接カードのオフセット比率 [1番目: 40%, 2番目: 20%]
 
-  // 再度DOM取得してイベントリスナーを追加
-  const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
+  const myRole = (typeof window.getMyRole === "function" ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
+  // 再度DOM取得してイベントリスナーを追加。相手の手札には展開アニメーションを適用しない。
+  const cards = Array.from(content.querySelectorAll(`.card:not(.deckObject)[data-owner="${myRole}"]`));
   
   cards.forEach((card) => {
+    if (!card.dataset.owner || card.dataset.owner !== myRole) return;
+    if (card.dataset.zoneType) return;
+    if (typeof isCardInHandArea === "function" && !isCardInHandArea(card)) return;
     // 既に登録済みなら スキップ
     if (card.dataset._hoverBehaviorAttached === "true") return;
     card.dataset._hoverBehaviorAttached = "true";

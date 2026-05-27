@@ -26,6 +26,7 @@ window.setupMonsterBattleUI = function() {
       return;
     }
 
+    const slots = window.MonsterManager?.getAllSlots?.() || [];
     const definition = slot ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId) : null;
     const slotIndex = targetSlotIndex;
     

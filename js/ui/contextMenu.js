@@ -1479,15 +1479,6 @@ document.addEventListener("contextmenu", (e) => {
   if(hit){
     console.log("[ctx-debug:contextmenu]", e.button, e.target);
     e.preventDefault();
-    if (hit.type === "lorPanel") {
-      const me = window.myRole || window.getMyRole?.() || "player1";
-      const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
-      const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
-      if (isMonsterTarget) {
-        openStatusMenu(hit.el.dataset.owner, e.clientX, e.clientY, { mode: "monster", slotIndex: currentTarget.slotIndex });
-        return;
-      }
-    }
     openGameContextMenu(hit, e.clientX, e.clientY);
   }
 });

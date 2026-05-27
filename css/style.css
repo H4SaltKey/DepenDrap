@@ -232,9 +232,8 @@ body.deckPage{
 
 /* モンスター戦闘背景：自身がモンスターと戦う場合 */
 #field.inMonsterBattle #fieldBg {
-  background: linear-gradient(135deg, rgba(40, 20, 10, 0.95), rgba(20, 10, 5, 0.95)), 
-              url('../assets/System/bg.png') center center / cover no-repeat;
-  filter: brightness(0.7) saturate(1.2);
+  background: url('../assets/System/monsterBG.png') center center / cover no-repeat;
+  filter: brightness(0.85) saturate(1.05);
 }
 
 /* 相手がモンスターと戦う場合：相手のステータス情報を非表示 */
@@ -259,7 +258,7 @@ body.deckPage{
   display: none;
   z-index: 1;
   pointer-events: none;
-  background: url('../assets/System/monsterBG.png') top center / cover no-repeat;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 #field.inMonsterBattle .monsterBattleLayer {

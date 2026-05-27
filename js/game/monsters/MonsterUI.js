@@ -49,6 +49,15 @@ window.MonsterUI = (function() {
         cursor: default;
         pointer-events: none;
       }
+      .monsterSlot.defeated:hover {
+        transform: translateY(-1px);
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+      }
+
+      .currentTargetBadge.clickable {
+        cursor: pointer;
+        opacity: 0.95;
+      }
 
       .monsterSlotEmoji {
         font-size: 28px;
@@ -254,9 +263,7 @@ window.MonsterUI = (function() {
       if (!slot) {
         // 討伐済み
         el.classList.add("defeated");
-        el.innerHTML = `
-          <div class="monsterSlotEmoji">💀</div>
-          <div class="monsterSlotName">討伐済み</div>
+          el.title = "討伐済みです。次のターゲットを選択してください。";
         `;
         panel.appendChild(el);
         return;
@@ -321,12 +328,19 @@ window.MonsterUI = (function() {
     const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
     
     // monsterBattleUI.js の updateMonsterBattleDisplay に情報を提供
-    if (targetSlot && target !== "player") {
-      window._currentMonsterTarget = {
-        slot: targetSlot,
-        slotIndex: target.slotIndex,
-        definition: (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
-      };
+    if (target && target !== "player") {
+      if (targetSlot) {
+        window._currentMonsterTarget = {
+          slot: targetSlot,
+          slotIndex: target.slotIndex,
+          definition: (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
+        };
+      } else {
+        window._currentMonsterTarget = {
+          slot: null,
+          slotIndex: target.slotIndex
+        };
+      }
     } else {
       window._currentMonsterTarget = null;
     }
@@ -441,6 +455,11 @@ window.MonsterUI = (function() {
       // monsterPanel を非表示に戻す
       const mp = document.getElementById("monsterPanel");
       if (mp) mp.style.display = "none";
+
+      const currentTarget = window.BattleTargetSystem?.getTarget(me);
+      if (currentTarget !== "player" && currentTarget && !window.MonsterManager?.getSlot(currentTarget.slotIndex)) {
+        window.MonsterUI.showTargetChangeButton(true);
+      }
     });
   }
 
@@ -530,12 +549,28 @@ window.MonsterUI = (function() {
       document.body.appendChild(badge);
     }
 
-    if (!target || target === "player") {
+    const deadTarget = target && target !== "player" && !window.MonsterManager?.getSlot(target.slotIndex);
+    if (deadTarget) {
+      badge.textContent = "🎯 対象: 討伐済みモンスター (再選択可)";
+      badge.classList.add("clickable");
+      badge.style.pointerEvents = "auto";
+      badge.onclick = () => {
+        if (!document.getElementById("targetSelectPanel")) {
+          _showTargetSelectPanel();
+        }
+      };
+    } else if (!target || target === "player") {
       badge.textContent = "🎯 対象: 相手プレイヤー";
+      badge.classList.remove("clickable");
+      badge.style.pointerEvents = "none";
+      badge.onclick = null;
     } else {
       const slot = window.MonsterManager?.getSlot(target.slotIndex);
       const def = slot ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId) : null;
       badge.textContent = `🎯 対象: ${def?.emoji || "👾"} ${def?.name || "モンスター"}`;
+      badge.classList.remove("clickable");
+      badge.style.pointerEvents = "none";
+      badge.onclick = null;
     }
   }
 

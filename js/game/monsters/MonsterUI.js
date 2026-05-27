@@ -314,58 +314,26 @@ window.MonsterUI = (function() {
   }
 
   function _renderMonsterBattlefield(slots) {
-    const fieldContent = document.getElementById("fieldContent");
-    if (!fieldContent) return;
-    let panel = document.getElementById("monsterBattlefieldPanel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "monsterBattlefieldPanel";
-      panel.style.cssText = `
-        position:absolute; left:9000px; top:0px; width:3000px; height:2000px; z-index:3000;
-        border:1px solid rgba(199,179,119,0.4); border-radius:12px; overflow:hidden;
-        background:rgba(8,8,14,0.9); box-shadow:0 10px 28px rgba(0,0,0,0.45);
-        font-family:'Outfit',sans-serif; color:#efe4bc;
-      `;
-      fieldContent.appendChild(panel);
-    }
+    // メインフィールド内のモンスター戦闘レイヤーに情報を送信
+    // 右側の独立フィールドは削除
     const myKey = window.myRole || "player1";
-    const opKey = myKey === "player1" ? "player2" : "player1";
     const target = window.BattleTargetSystem?.getTarget?.(myKey) || "player";
     const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
-    const hpPct = targetSlot ? Math.max(0, Math.min(100, (targetSlot.currentHp / targetSlot.maxHp) * 100)) : 0;
-    const targetDef = (targetSlot && target !== "player")
-      ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
-      : null;
-    const targetUi = (targetSlot && target !== "player") ? `
-      <div style="position:absolute; left:50%; top:340px; transform:translateX(-50%); width:420px; z-index:2;">
-        <div style="font-size:13px; text-align:center; margin-bottom:6px;">現在ターゲット: ${targetDef?.name || "モンスター"}</div>
-        <div style="height:12px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.22);border-radius:999px;overflow:hidden;">
-          <div style="width:${hpPct}%;height:100%;background:linear-gradient(90deg,#ef6a6a,#ff9b6b);"></div>
-        </div>
-        <div style="font-size:12px;color:#ddd;text-align:center;margin-top:4px;">HP ${targetSlot.currentHp}/${targetSlot.maxHp} / SH ${targetSlot.shield || 0} / DEF ${targetSlot.def || 0}</div>
-      </div>
-      <img id="currentTargetMonsterObj" data-slot-index="${target.slotIndex}" src="assets/System/enemy_${target.slotIndex + 1}.png" alt="enemy_${target.slotIndex + 1}" style="position:absolute;left:50%;top:430px;transform:translateX(-50%);width:540px;height:780px;object-fit:contain;z-index:1;cursor:crosshair;">
-    ` : "";
-    panel.innerHTML = `
-      <div style="position:relative;width:100%;height:100%;">
-        <img src="assets/System/monsterBG.png" alt="monster-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0.82;">
-        <div style="position:absolute;left:10px;top:8px;font-size:14px;font-weight:700;z-index:2;">モンスター戦闘フィールド</div>
-        ${targetUi}
-      </div>
-    `;
-    const monObj = panel.querySelector("#currentTargetMonsterObj");
-    if (monObj) {
-      monObj.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const slotIndex = Number(monObj.dataset.slotIndex || -1);
-        if (slotIndex < 0) return;
-        const slot = slots[slotIndex];
-        if (!slot) return;
-        if (typeof window.openMonsterMenu === "function") {
-          window.openMonsterMenu(slot, slotIndex, e.clientX, e.clientY);
-        }
-      });
+    
+    // monsterBattleUI.js の updateMonsterBattleDisplay に情報を提供
+    if (targetSlot && target !== "player") {
+      window._currentMonsterTarget = {
+        slot: targetSlot,
+        slotIndex: target.slotIndex,
+        definition: (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
+      };
+    } else {
+      window._currentMonsterTarget = null;
+    }
+    
+    // UI更新をトリガー
+    if (typeof window.updateMonsterBattleDisplay === "function") {
+      window.updateMonsterBattleDisplay();
     }
   }
 

@@ -13,31 +13,44 @@ window.setupMonsterBattleUI = function() {
   // 敵モンスター情報を取得して表示
   window.updateMonsterBattleDisplay = function() {
     const myRole = window.getMyRole ? window.getMyRole() : "player1";
-    const target = window.BattleTargetSystem?.getTarget?.(myRole);
     
-    if (!target || target === "player" || typeof target !== "object") {
+    // MonsterUI.js から提供されたモンスター情報を使用
+    const monsterTarget = window._currentMonsterTarget;
+    
+    if (!monsterTarget || !monsterTarget.slot) {
       // モンスター戦闘ではない
       return;
     }
 
     // モンスター情報を表示
-    const monsterData = target;
+    const slot = monsterTarget.slot;
+    const definition = monsterTarget.definition;
+    const slotIndex = monsterTarget.slotIndex;
+    
     const monsterSprite = document.getElementById("monsterSprite");
     const monsterName = document.getElementById("monsterName");
     const monsterHpFill = document.getElementById("monsterHpFill");
 
-    if (monsterSprite && monsterData?.imageUrl) {
-      monsterSprite.style.backgroundImage = `url('${monsterData.imageUrl}')`;
+    if (monsterSprite && slotIndex !== undefined) {
+      const spriteUrl = `assets/System/enemy_${slotIndex + 1}.png`;
+      monsterSprite.style.backgroundImage = `url('${spriteUrl}')`;
     }
 
-    if (monsterName && monsterData?.name) {
-      monsterName.textContent = monsterData.name || "Monster";
+    if (monsterName && definition?.name) {
+      monsterName.textContent = definition.name || "モンスター";
     }
 
     // HP バー更新
-    if (monsterHpFill && monsterData?.hp !== undefined && monsterData?.maxHp !== undefined) {
-      const hpRatio = Math.max(0, monsterData.hp / monsterData.maxHp);
+    if (monsterHpFill && slot?.currentHp !== undefined && slot?.maxHp !== undefined) {
+      const hpRatio = Math.max(0, slot.currentHp / slot.maxHp);
       monsterHpFill.style.width = `${hpRatio * 100}%`;
+      
+      // HP テキスト更新
+      const hpText = document.getElementById("monsterNamePlate");
+      if (hpText) {
+        hpText.querySelector(".monsterName").textContent = 
+          `${definition?.name || "モンスター"} ${Math.round(hpRatio * 100)}%`;
+      }
     }
 
     // プレイヤー戦闘情報

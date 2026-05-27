@@ -1516,12 +1516,20 @@ function getContextMenuTarget(target){
       slotIndex: Number(monsterSlot.dataset.slotIndex)
     };
   }
-  const monsterDisplay = target.closest(".monsterDisplayArea, .monsterSprite");
+  const monsterDisplay = target.closest(".monsterDisplayArea, .monsterSprite, .monsterNamePlate, #monsterBattleMeta, #monsterHpBar, #monsterNextAttack, #monsterBattleLayer");
   if(monsterDisplay){
+    const slotIndex = Number(monsterDisplay.dataset.monsterSlotIndex || window._currentMonsterTarget?.slotIndex);
+    if (!Number.isFinite(slotIndex) && window._currentMonsterTarget?.slotIndex !== undefined) {
+      return {
+        type: "monster",
+        el: monsterDisplay,
+        slotIndex: window._currentMonsterTarget.slotIndex
+      };
+    }
     return {
       type: "monster",
       el: monsterDisplay,
-      slotIndex: Number(monsterDisplay.dataset.monsterSlotIndex || window._currentMonsterTarget?.slotIndex)
+      slotIndex: slotIndex
     };
   }
   const battleZone = target.closest(".battleZone");

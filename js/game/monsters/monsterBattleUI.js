@@ -35,18 +35,15 @@ window.setupMonsterBattleUI = function() {
       const spriteUrl = `assets/System/enemy_${slotIndex + 1}.png`;
       monsterSprite.style.backgroundImage = `url('${spriteUrl}')`;
       monsterSprite.style.cursor = "context-menu";
-      monsterSprite.oncontextmenu = (e) => {
+      monsterSprite.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const me = (typeof window.getMyRole === "function")
-          ? window.getMyRole()
-          : (window.myRole || "player1");
         if (typeof window.openStatusMenu === "function") {
-          window.openStatusMenu(me, e.clientX, e.clientY, { mode: "monster", slotIndex });
+          window.openStatusMenu(window.myRole || window.getMyRole?.() || "player1", e.clientX, e.clientY, { mode: "monster", slotIndex });
         } else if (typeof window.openMonsterMenu === "function") {
           window.openMonsterMenu(window._currentMonsterTarget?.slot, slotIndex, e.clientX, e.clientY);
         }
-      };
+      });
     }
 
     if (monsterName && definition?.name) {

@@ -256,8 +256,8 @@ body.deckPage{
   right: 0;
   height: 42%;
   display: none;
-  z-index: 1;
-  pointer-events: none;
+  z-index: 2;
+  pointer-events: auto;
   background: rgba(0, 0, 0, 0.1);
 }
 

@@ -1695,4 +1695,8 @@ window.showCardZoomById = function(id) {
   showCardZoom(dummy);
 };
 
+window.openMonsterMenu = openMonsterMenu;
+window.openStatusMenu = openStatusMenu;
+window.openGameContextMenu = openGameContextMenu;
+
 })();

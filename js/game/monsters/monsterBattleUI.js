@@ -103,11 +103,50 @@ window.setupMonsterBattleUI = function() {
     const metaArea = document.getElementById("monsterBattleMeta");
     if (metaArea) {
       if (defeated) {
+        const aliveMonsters = slots.filter((s, idx) => s && idx !== targetSlotIndex);
         metaArea.innerHTML = `
           <div style="grid-column: 1 / -1; color: #f7c3a1; font-weight: 700; text-align: center;">
             現在の対象は討伐済みです。次のターゲットを選択してください。
           </div>`;
+        if (aliveMonsters.length > 0) {
+          const existingBtn = document.getElementById("monsterTargetSelectBtn");
+          if (!existingBtn && monsterDisplayArea) {
+            const button = document.createElement("button");
+            button.id = "monsterTargetSelectBtn";
+            button.textContent = "次の対象を選択";
+            button.style.cssText = `
+              width: 100%;
+              margin-top: 10px;
+              padding: 10px 14px;
+              border-radius: 10px;
+              border: 1px solid rgba(240, 208, 128, 0.45);
+              background: rgba(15, 12, 22, 0.95);
+              color: #f0d080;
+              font-size: 13px;
+              font-weight: 700;
+              cursor: pointer;
+              transition: background 0.2s, transform 0.2s;
+            `;
+            button.addEventListener("mouseenter", () => {
+              button.style.background = "rgba(240, 208, 128, 0.08)";
+            });
+            button.addEventListener("mouseleave", () => {
+              button.style.background = "rgba(15, 12, 22, 0.95)";
+            });
+            button.addEventListener("click", () => {
+              if (typeof window.MonsterUI?._showTargetSelectPanel === "function") {
+                window.MonsterUI._showTargetSelectPanel();
+              }
+            });
+            monsterDisplayArea.appendChild(button);
+          }
+        } else {
+          const existingBtn = document.getElementById("monsterTargetSelectBtn");
+          if (existingBtn) existingBtn.remove();
+        }
       } else {
+        const existingBtn = document.getElementById("monsterTargetSelectBtn");
+        if (existingBtn) existingBtn.remove();
         const traits = (definition?.traits || []).map(t => t.label).join(" / ") || "なし";
         metaArea.innerHTML = `
           <div><strong>HP</strong><br>${slot.currentHp}/${slot.maxHp}</div>

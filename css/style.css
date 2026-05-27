@@ -252,17 +252,21 @@ body.deckPage{
 /* ===== モンスター戦闘疑似フィールド ===== */
 .monsterBattleLayer {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
   display: none;
   z-index: 1;
   pointer-events: none;
-  background: url('../assets/System/monsterBG.png') center center / cover no-repeat;
+  background: url('../assets/System/monsterBG.png') top center / cover no-repeat;
 }
 
 #field.inMonsterBattle .monsterBattleLayer {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 18px;
 }
 
 #field.inMonsterBattle.monsterBattleLocalPlayer1 .card[data-owner="player2"],
@@ -277,21 +281,22 @@ body.deckPage{
 
 .monsterBattleContent {
   position: relative;
-  width: 90%;
-  height: 90%;
-  max-width: 1400px;
-  max-height: 900px;
+  width: 84%;
+  max-width: 1200px;
+  height: auto;
+  max-height: calc(100% - 28px);
   background: rgba(8, 6, 12, 0.82);
   border: 3px solid rgba(200, 150, 50, 0.6);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 40px;
+  justify-content: flex-start;
+  gap: 20px;
+  padding: 24px 32px 20px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .monsterDisplayArea {
@@ -299,18 +304,19 @@ body.deckPage{
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  flex: 1;
+  gap: 16px;
   width: 100%;
 }
 
 .monsterSprite {
-  width: 300px;
-  height: 300px;
+  width: 280px;
+  height: 280px;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   filter: drop-shadow(0 0 30px rgba(255, 100, 50, 0.8));
+  cursor: context-menu;
+  pointer-events: auto;
 }
 
 .monsterNamePlate {

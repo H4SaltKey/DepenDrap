@@ -1468,6 +1468,13 @@ function openGraveZoneMenu(owner, x, y){
     { label: "墓地操作", disabled: true },
     { sep: true },
     {
+      label: "内容確認 (この場)",
+      action: () => {
+        if (typeof window.showZoneInspectorModal === "function") window.showZoneInspectorModal(owner, "grave");
+      }
+    },
+    { sep: true },
+    {
       label: "場のアタッカーカードを墓地へ送る",
       disabled: !isMine,
       action: () => {
@@ -1487,7 +1494,14 @@ function openGraveZoneMenu(owner, x, y){
 
 function openSkillZoneMenu(owner, x, y){
   const items = [
-    { label: "スキル場操作", disabled: true }
+    { label: "スキル場操作", disabled: true },
+    { sep: true },
+    {
+      label: "内容確認 (この場)",
+      action: () => {
+        if (typeof window.showZoneInspectorModal === "function") window.showZoneInspectorModal(owner, "skill");
+      }
+    }
   ];
   buildMenu(items, x, y);
 }

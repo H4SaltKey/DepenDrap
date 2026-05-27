@@ -1,6 +1,6 @@
 let gameReady = false;
 window._soloStartMode = false;
-let lastTurnDrawKey = "";
+let lastTurnDrawKey = sessionStorage.getItem("lastTurnDrawKey") || "";
 let handOverflowDiscardOpen = false;
 window._lastRound = 0; // 初期化
 window._syncGate = window._syncGate || {
@@ -987,9 +987,10 @@ function handleMatchStateTransitions() {
     
     if (!shouldSkipNormalDrawInR1T1 && lastTurnDrawKey !== drawKey) {
       lastTurnDrawKey = drawKey;
+      sessionStorage.setItem("lastTurnDrawKey", lastTurnDrawKey);
       // ターン開始通知の後にドローするように遅延を調整
       // ラウンド開始時は通知が遅れるため、さらに待機
-      const drawDelay = roundChanged ? 4500 : 1500;
+      const drawDelay = roundChanged ? 900 : 300;
       setTimeout(() => startTurnDraw(), drawDelay);
     }
   }
@@ -2027,6 +2028,8 @@ async function handleFreshStart(currentRoom, myKey) {
   // デッキ初期化
   const deckCodeCheck = localStorage.getItem("deckCode");
   console.log(`[handleFreshStart] deckCode="${deckCodeCheck}", matchSetup.deckCode="${matchSetupData.deckCode}"`);
+  lastTurnDrawKey = "";
+  sessionStorage.removeItem("lastTurnDrawKey");
   initDeckFromCode();
   state[myKey].backImage = getBackImage() || null;
   shuffleDeck();
@@ -2069,7 +2072,8 @@ async function handleReload(currentRoom, myKey, opKey) {
         Object.assign(state[myKey], rest);
         // デッキの中身はローカルから維持（Firebase には HIDDEN しか入っていない）
         initDeckFromCode();
-        console.log("[initGame] 自分の状態を復元:", myKey);
+        shuffleDeck();
+        console.log("[initGame] 自分の状態を復元 (リロード時にシャッフル):", myKey);
       }
 
       // ダイス値を復元

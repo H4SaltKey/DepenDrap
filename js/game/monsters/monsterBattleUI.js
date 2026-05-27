@@ -13,21 +13,21 @@ window.setupMonsterBattleUI = function() {
   // 敵モンスター情報を取得して表示
   window.updateMonsterBattleDisplay = function() {
     const myRole = window.getMyRole ? window.getMyRole() : "player1";
-    
-    // MonsterUI.js から提供されたモンスター情報を使用
-    const monsterTarget = window._currentMonsterTarget;
     const currentTarget = window.BattleTargetSystem?.getTarget?.(myRole);
-    const currentTargetDead = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && !window.MonsterManager?.getSlot(currentTarget.slotIndex);
-    if ((!monsterTarget || monsterTarget.slot === undefined) && !currentTargetDead) {
-      // モンスター戦闘ではない
+    const targetSlotIndex = currentTarget && currentTarget !== "player" && typeof currentTarget === "object"
+      ? currentTarget.slotIndex
+      : undefined;
+    const slot = typeof targetSlotIndex === "number" ? window.MonsterManager?.getSlot(targetSlotIndex) : null;
+    const defeated = typeof targetSlotIndex === "number" && !slot;
+
+    if (currentTarget !== "player" && typeof currentTarget === "object") {
+      // continue if target is a monster slot or a defeated target
+    } else {
       return;
     }
 
-    // モンスター情報を表示
-    const slot = monsterTarget?.slot || null;
-    const definition = monsterTarget?.definition || null;
-    const slotIndex = monsterTarget?.slotIndex ?? (currentTargetDead ? currentTarget.slotIndex : undefined);
-    const defeated = !slot && currentTargetDead;
+    const definition = slot ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId) : null;
+    const slotIndex = targetSlotIndex;
     
     const monsterSprite = document.getElementById("monsterSprite");
     const monsterDisplayArea = document.getElementById("monsterDisplayArea");

@@ -55,10 +55,12 @@ window.setupMonsterBattleUI = function() {
         monsterSprite.style.backgroundImage = "";
         monsterSprite.style.filter = "grayscale(0.8) saturate(0.6)";
         monsterSprite.style.cursor = "default";
+        monsterSprite.title = "現在のターゲットは討伐済みです。ここをクリックして次の対象を選択してください。";
       } else {
         const spriteUrl = `assets/System/enemy_${slotIndex + 1}.png`;
         monsterSprite.style.backgroundImage = `url('${spriteUrl}')`;
         monsterSprite.style.filter = "";
+        monsterSprite.title = "右クリックでダメージ判定";
         bindMonsterContextMenu(monsterSprite);
       }
     }
@@ -72,7 +74,7 @@ window.setupMonsterBattleUI = function() {
           }
         };
       } else {
-        monsterDisplayArea.title = "右クリックでダメージメニューを開きます。";
+        monsterDisplayArea.title = "右クリックでダメージ判定";
         monsterDisplayArea.style.cursor = "context-menu";
         monsterDisplayArea.onclick = null;
         bindMonsterContextMenu(monsterDisplayArea);

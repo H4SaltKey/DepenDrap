@@ -1635,11 +1635,13 @@ document.addEventListener("contextmenu", (e) => {
       document.body.appendChild(hint);
     }
     const t = e.target;
-    const lor = t && t.closest && t.closest(".lorPanel");
     const me = window.myRole || window.getMyRole?.() || "player1";
-    if (lor && lor.dataset.owner && lor.dataset.owner !== me) {
-      const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
-      const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
+    const lor = t && t.closest && t.closest(".lorPanel");
+    const monsterHover = t && t.closest && t.closest(".monsterDisplayArea, .monsterSprite, .monsterSlot");
+    const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
+    const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
+
+    if ((lor && lor.dataset.owner && lor.dataset.owner !== me) || monsterHover) {
       hint.textContent = isMonsterTarget ? "右クリックでダメージ判定" : "右クリックでダメージメニュー";
       hint.classList.add("is-visible");
       hint.style.left = (e.clientX + 14) + "px";

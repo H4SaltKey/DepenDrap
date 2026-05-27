@@ -1342,20 +1342,8 @@ function centerField(){
   const vw = field.clientWidth || window.innerWidth;
   const vh = field.clientHeight || window.innerHeight;
 
-  let centerX = FIELD_W / 2;
-  let centerY = FIELD_H / 2;
-
-  const myKey = window.getMyRole ? window.getMyRole() : (window.myRole || "player1");
-  const target = window.BattleTargetSystem?.getTarget?.(myKey);
-  
-  // モンスターをターゲットに選んだ場合のみ、モンスターフィールドに移動
-  // playerをターゲットに選んだ場合は、中央のプレイヤーフィールドに留まる
-  if (target && target !== "player" && typeof target === "object" && typeof target.slotIndex === "number") {
-    // モンスターフィールド中心へ
-    // MonsterUI は x=9000, y=0 に 3000x2000 で配置しているため、その中心へ移動
-    centerX = 10500;
-    centerY = 1000;
-  }
+  const centerX = FIELD_W / 2;
+  const centerY = FIELD_H / 2;
 
   fieldPanX = (vw / 2) - centerX * fieldZoom;
   fieldPanY = (vh / 2) - centerY * fieldZoom;

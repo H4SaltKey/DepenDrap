@@ -254,9 +254,9 @@ body.deckPage{
   position: absolute;
   inset: 0;
   display: none;
-  z-index: 400;
-  pointer-events: auto;
-  background: rgba(0, 0, 0, 0.5);
+  z-index: 1;
+  pointer-events: none;
+  background: url('../assets/System/monsterBG.png') center center / cover no-repeat;
 }
 
 #field.inMonsterBattle .monsterBattleLayer {
@@ -265,20 +265,30 @@ body.deckPage{
   justify-content: center;
 }
 
+#field.inMonsterBattle.monsterBattleLocalPlayer1 .card[data-owner="player2"],
+#field.inMonsterBattle.monsterBattleLocalPlayer1 .deckObject[data-owner="player2"],
+#field.inMonsterBattle.monsterBattleLocalPlayer1 .battleZone.enemy,
+#field.inMonsterBattle.monsterBattleLocalPlayer2 .card[data-owner="player1"],
+#field.inMonsterBattle.monsterBattleLocalPlayer2 .deckObject[data-owner="player1"],
+#field.inMonsterBattle.monsterBattleLocalPlayer2 .battleZone.enemy {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .monsterBattleContent {
   position: relative;
   width: 90%;
   height: 90%;
   max-width: 1400px;
   max-height: 900px;
-  background: linear-gradient(135deg, rgba(40, 30, 20, 0.95), rgba(20, 15, 10, 0.95));
+  background: rgba(8, 6, 12, 0.82);
   border: 3px solid rgba(200, 150, 50, 0.6);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
+  gap: 24px;
   padding: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   overflow: hidden;
@@ -307,19 +317,70 @@ body.deckPage{
   background: rgba(30, 20, 10, 0.95);
   border: 2px solid #e74c3c;
   border-radius: 12px;
-  padding: 16px 32px;
-  min-width: 280px;
+  padding: 20px 30px;
+  min-width: 340px;
   text-align: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
 }
 
+.monsterNameHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .monsterName {
   display: block;
-  font-size: 22px;
-  font-weight: bold;
-  color: #e74c3c;
-  margin-bottom: 12px;
+  font-size: 28px;
+  font-weight: 900;
+  color: #f0d080;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.monsterHpPercent {
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255,255,255,0.08);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.monsterBattleMeta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  width: 100%;
+  color: #e2d8b8;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.monsterBattleMeta > div {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.monsterNextAttack {
+  width: 100%;
+  max-width: 780px;
+  padding: 18px 22px;
+  background: rgba(10, 8, 16, 0.96);
+  border: 1px solid rgba(240, 208, 128, 0.35);
+  border-radius: 16px;
+  color: #faf6df;
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 
 .monsterHpBar {
@@ -338,28 +399,6 @@ body.deckPage{
   transition: width 0.3s ease;
   width: 100%;
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
-}
-
-.playerBattleInfo,
-.enemyBattleInfo {
-  background: rgba(30, 20, 10, 0.9);
-  border: 2px solid rgba(200, 150, 50, 0.5);
-  border-radius: 10px;
-  padding: 20px;
-  font-size: 15px;
-  color: #e0d0a0;
-  min-width: 200px;
-  flex: 0.5;
-  overflow-y: auto;
-  max-height: 120px;
-}
-
-.playerBattleStatus,
-.enemyBattleStatus {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-family: monospace;
 }
 
 .handZoneBg{

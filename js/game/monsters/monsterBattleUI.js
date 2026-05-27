@@ -40,53 +40,68 @@ window.setupMonsterBattleUI = function() {
       monsterName.textContent = definition.name || "モンスター";
     }
 
-    // HP バー更新
+    const hpPercent = Math.round(Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100)));
+    const monsterHpPercent = document.getElementById("monsterHpPercent");
+    if (monsterHpPercent) {
+      monsterHpPercent.textContent = `${hpPercent}%`;
+    }
+
     if (monsterHpFill && slot?.currentHp !== undefined && slot?.maxHp !== undefined) {
       const hpRatio = Math.max(0, slot.currentHp / slot.maxHp);
       monsterHpFill.style.width = `${hpRatio * 100}%`;
-      
-      // HP テキスト更新
-      const hpText = document.getElementById("monsterNamePlate");
-      if (hpText) {
-        hpText.querySelector(".monsterName").textContent = 
-          `${definition?.name || "モンスター"} ${Math.round(hpRatio * 100)}%`;
-      }
     }
 
-    // プレイヤー戦闘情報
-    updatePlayerBattleInfo(myRole);
+    const metaArea = document.getElementById("monsterBattleMeta");
+    if (metaArea) {
+      const traits = (definition?.traits || []).map(t => t.label).join(" / ") || "なし";
+      metaArea.innerHTML = `
+        <div><strong>HP</strong><br>${slot.currentHp}/${slot.maxHp}</div>
+        <div><strong>防御力</strong><br>${slot.def || 0}</div>
+        <div><strong>シールド</strong><br>${slot.shield || 0}</div>
+        <div><strong>特性</strong><br>${traits}</div>
+      `;
+    }
 
-    // 敵情報（プレイヤー自身が見る敵情報）
-    updateEnemyBattleInfo(myRole);
+    const nextAttackEl = document.getElementById("monsterNextAttack");
+    if (nextAttackEl) {
+      const nextAttackText = buildMonsterNextAttackText(definition, slot);
+      nextAttackEl.textContent = `次の攻撃 → ${nextAttackText}`;
+    }
   };
 
-  function updatePlayerBattleInfo(myRole) {
-    const playerStatus = document.getElementById("playerBattleStatus");
-    if (!playerStatus || !window.state) return;
+  function buildMonsterNextAttackText(definition, slot) {
+    if (!definition || !definition.actions || !definition.actions.length) {
+      return "未知の攻撃を行う。";
+    }
 
-    const myData = window.state[myRole];
-    if (!myData) return;
+    const actions = definition.actions;
+    const chosen = actions.reduce((best, action) => {
+      const weight = Number(action.weight || 1);
+      return weight > (best.weight || 0) ? action : best;
+    }, actions[0]);
 
-    playerStatus.innerHTML = `
-      <div>🛡️ <strong>HP:</strong> ${myData.hp || 0} / ${myData.hp_max || 0}</div>
-      <div>🔰 <strong>防御:</strong> ${myData.shield || 0}</div>
-      <div>📦 <strong>D-Stack:</strong> ${myData.defstack || 0}</div>
-    `;
-  }
+    const atkValue = definition.atk || 1;
+    let damage = atkValue;
+    let damageType = "通常";
+    let postfix = "を与える。";
 
-  function updateEnemyBattleInfo(myRole) {
-    const enemyStatus = document.getElementById("enemyBattleStatus");
-    if (!enemyStatus || !window.state) return;
+    switch (chosen.type) {
+      case "attack_double":
+        damage = Math.max(1, Math.floor(atkValue * 1.5));
+        damageType = "貫通";
+        postfix = "を与える。";
+        break;
+      case "attack_all":
+        damage = atkValue;
+        damageType = "貫通";
+        postfix = "を全体に与える。";
+        break;
+      default:
+        damageType = "通常";
+        break;
+    }
 
-    const enemyRole = myRole === "player1" ? "player2" : "player1";
-    const enemyData = window.state[enemyRole];
-    if (!enemyData) return;
-
-    enemyStatus.innerHTML = `
-      <div>⚡ <strong>相手HP:</strong> ${enemyData.hp || 0} / ${enemyData.hp_max || 0}</div>
-      <div>🔱 <strong>相手防御:</strong> ${enemyData.shield || 0}</div>
-      <div>📦 <strong>相手D-Stack:</strong> ${enemyData.defstack || 0}</div>
-    `;
+    return `${chosen.label}:${damage}の${damageType}ダメージ${postfix}`;
   }
 
   console.log("[setupMonsterBattleUI] COMPLETE");

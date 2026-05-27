@@ -753,6 +753,8 @@ function renderUI() {
     // 相手がモンスターと戦う場合：相手のステータス情報を隠蔽
     const opponentInMonsterBattle = enemyTarget !== "player" && typeof enemyTarget === "object";
     fieldEl.classList.toggle("opponentInMonsterBattle", opponentInMonsterBattle);
+    fieldEl.classList.toggle("monsterBattleLocalPlayer1", myOwner === "player1");
+    fieldEl.classList.toggle("monsterBattleLocalPlayer2", myOwner === "player2");
   }
 
   // モンスター戦闘UI更新

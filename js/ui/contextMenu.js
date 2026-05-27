@@ -1151,34 +1151,146 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
   };
 }
 
-function _openMonsterDamagePopup(slotIndex, x, y) {
+function showMonsterDamagePopup(slotIndex, type, subType, options = {}) {
+  const slot = window.MonsterManager?.getSlot(slotIndex);
+  if (!slot) return;
+  const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
+  const monsterName = def?.name || "モンスター";
+  const fullLabel = (typeof window.getDamageTypeLabel === "function" ? window.getDamageTypeLabel(type) : type)
+    + (subType !== "none" ? `(${subType === "additional" ? "追加" : subType})` : "");
+  const desc = (typeof window.getDamageTypeDescription === "function")
+    ? window.getDamageTypeDescription(type, subType)
+    : "";
+
   const modal = document.createElement("div");
-  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100050;display:flex;align-items:center;justify-content:center;";
-  modal.innerHTML = `
-    <div style="width:320px;background:#12131d;border:1px solid #4a4f73;border-radius:12px;padding:14px;color:#eaf0ff;font-family:'Orbitron',sans-serif;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:10px;">モンスターへのダメージ判定</div>
-      <input id="monsterDmgInput" type="number" min="0" value="1" style="width:100%;box-sizing:border-box;background:#0d0f17;border:1px solid #616894;border-radius:8px;color:#fff;padding:8px 10px;font-size:18px;">
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
-        <button id="monsterDmgCancel" style="padding:6px 12px;border:1px solid #58618d;background:#20263f;color:#d8e0ff;border-radius:8px;cursor:pointer;">キャンセル</button>
-        <button id="monsterDmgOk" style="padding:6px 12px;border:1px solid #6f7ecc;background:#2a356d;color:#fff;border-radius:8px;cursor:pointer;">適用</button>
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000000;
+    backdrop-filter: blur(4px);
+  `;
+
+  const box = document.createElement("div");
+  box.style.cssText = `
+    background: #1a172c; border: 1px solid #c7b377; border-radius: 8px; padding: 20px;
+    width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); color: #e0d0a0; font-family: sans-serif;
+  `;
+  box.innerHTML = `
+    <div style="font-size:11px; color:#c7b377; margin-bottom:6px; text-align:center; opacity:0.8;">${monsterName}への攻撃</div>
+    <div style="font-size:20px; font-weight:bold; margin-bottom:4px; text-align:center; color:#fff;">${fullLabel}</div>
+    <div style="font-size:12px; color:#aaa; margin-bottom:20px; text-align:center; font-style:italic;">${desc}</div>
+    <div style="margin-bottom:20px; display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <button id="dmgPopDec5" style="width:36px; height:24px; background:#444; border:1px solid #555; color:#ccc; border-radius:3px; font-size:10px; cursor:pointer;">-5</button>
+        <button id="dmgPopDec1" style="width:36px; height:24px; background:#444; border:1px solid #555; color:#ccc; border-radius:3px; font-size:12px; cursor:pointer;">-1</button>
+      </div>
+      <input type="number" id="popupDmgVal" value="1" min="0" style="
+        flex: 1; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid #5a4b27;
+        color: #fff; font-size: 24px; text-align: center; border-radius: 4px; box-sizing: border-box; width: 0;
+      ">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <button id="dmgPopInc5" style="width:36px; height:24px; background:#444; border:1px solid #555; color:#ccc; border-radius:3px; font-size:10px; cursor:pointer;">+5</button>
+        <button id="dmgPopInc1" style="width:36px; height:24px; background:#444; border:1px solid #555; color:#ccc; border-radius:3px; font-size:12px; cursor:pointer;">+1</button>
       </div>
     </div>
+    <div id="damagePreview" style="text-align:center; font-size:13px; color:#aaa; margin-bottom:20px; background:rgba(0,0,0,0.2); padding:8px; border-radius:4px; border:1px dashed #5a4b27;">
+      HPに与えるダメージ: <span style="font-size:16px; color:#ff4d4d; font-weight:bold;">0</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button id="popupCancel" style="
+        flex: 1; padding: 10px; background: #333; border: 1px solid #555; color: #ccc; cursor: pointer; border-radius: 4px;
+      ">キャンセル</button>
+      <button id="popupConfirm" style="
+        flex: 1; padding: 10px; background: linear-gradient(to bottom, #c7b377, #a88e4a); border: none; color: #1a172c;
+        font-weight: bold; cursor: pointer; border-radius: 4px;
+      ">確定</button>
+    </div>
   `;
+
+  modal.appendChild(box);
   document.body.appendChild(modal);
-  const input = modal.querySelector("#monsterDmgInput");
+
+  const input = box.querySelector("#popupDmgVal");
+  const preview = box.querySelector("#damagePreview span");
+
+  const updatePreview = () => {
+    const amount = Math.max(0, parseInt(input.value, 10) || 0);
+    if (preview) preview.textContent = amount;
+  };
+
+  input.addEventListener("input", updatePreview);
+  updatePreview();
+  input.focus();
+  input.select();
+
   const close = () => modal.remove();
-  modal.querySelector("#monsterDmgCancel").onclick = close;
-  modal.querySelector("#monsterDmgOk").onclick = () => {
-    const dmg = Math.max(0, parseInt(input.value, 10) || 0);
+  box.querySelector("#popupCancel").onclick = close;
+  box.querySelector("#popupConfirm").onclick = () => {
+    const val = Math.max(0, parseInt(input.value, 10) || 0);
     const me = window.myRole || window.getMyRole?.() || "player1";
-    if (window.MonsterCombatSystem?.playerAttackMonster) {
-      window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, dmg);
+    if (val >= 0 && window.MonsterCombatSystem?.playerAttackMonster) {
+      window.MonsterCombatSystem.playerAttackMonster(me, slotIndex, val, type);
+      if (typeof window.MonsterUI?.render === "function") window.MonsterUI.render();
       if (typeof window.update === "function") window.update(true);
     }
     close();
   };
-  input?.focus();
-  input?.select();
+  box.querySelector("#dmgPopDec5").onclick = () => { input.value = Math.max(0, (parseInt(input.value, 10) || 0) - 5); updatePreview(); };
+  box.querySelector("#dmgPopDec1").onclick = () => { input.value = Math.max(0, (parseInt(input.value, 10) || 0) - 1); updatePreview(); };
+  box.querySelector("#dmgPopInc1").onclick = () => { input.value = Math.max(0, (parseInt(input.value, 10) || 0) + 1); updatePreview(); };
+  box.querySelector("#dmgPopInc5").onclick = () => { input.value = Math.max(0, (parseInt(input.value, 10) || 0) + 5); updatePreview(); };
+  input.onkeypress = (e) => {
+    if (e.key === "Enter") box.querySelector("#popupConfirm").click();
+  };
+}
+
+function openMonsterMenu(slot, slotIndex, x, y) {
+  if (!slot) return;
+  const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
+  const items = [
+    { label: `${def?.emoji || "👾"} ${def?.name || "モンスター"}`, disabled: true },
+    { sep: true },
+    {
+      label: "ダメージ",
+      sub: [
+        { label: "通常", action: () => showMonsterDamagePopup(slotIndex, "damage", "normal") },
+        { label: "追加", action: () => showMonsterDamagePopup(slotIndex, "damage", "additional") }
+      ]
+    },
+    { label: "直接攻撃", action: () => showMonsterDamagePopup(slotIndex, "direct_attack", "none") },
+    {
+      label: "貫通",
+      sub: [
+        { label: "通常", action: () => showMonsterDamagePopup(slotIndex, "pierce", "normal") },
+        { label: "追加", action: () => showMonsterDamagePopup(slotIndex, "pierce", "additional") }
+      ]
+    },
+    {
+      label: "脆弱",
+      sub: [
+        { label: "通常", action: () => showMonsterDamagePopup(slotIndex, "fragile", "normal") },
+        { label: "追加", action: () => showMonsterDamagePopup(slotIndex, "fragile", "additional") }
+      ]
+    },
+    {
+      label: "アルカナ",
+      sub: [
+        { label: "通常", action: () => showMonsterDamagePopup(slotIndex, "arcana", "normal") },
+        { label: "追加", action: () => showMonsterDamagePopup(slotIndex, "arcana", "additional") }
+      ]
+    },
+    { label: "HPを減らす", action: () => showMonsterDamagePopup(slotIndex, "hp_reduce", "none") },
+    { sep: true },
+    {
+      label: "💬 情報",
+      action: () => {
+        const info = def
+          ? `HP: ${def.hp || "?"} | 攻撃: ${def.atk || "?"} | 特性: ${(def.traits || []).map(t => t.label).join(", ") || "なし"}`
+          : "情報が利用できません";
+        alert(`${def?.name || "モンスター"}\n${info}`);
+      }
+    }
+  ];
+  buildMenu(items, x, y);
 }
 
 function openStatusMenu(targetOwner, x, y, opts = {}) {
@@ -1187,13 +1299,7 @@ function openStatusMenu(targetOwner, x, y, opts = {}) {
     const slotIndex = Number(opts.slotIndex);
     const slot = window.MonsterManager?.getSlot(slotIndex);
     if (!slot) return;
-    const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
-    const items = [
-      { label: `${def?.name || "モンスター"} にダメージ判定`, disabled: true },
-      { sep: true },
-      { label: "ダメージを与える", action: () => _openMonsterDamagePopup(slotIndex, x, y) }
-    ];
-    buildMenu(items, x, y);
+    openMonsterMenu(slot, slotIndex, x, y);
     return;
   }
   const makeSubTypeBranch = (typeKey) => {

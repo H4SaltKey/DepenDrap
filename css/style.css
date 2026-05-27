@@ -582,10 +582,35 @@ body.deckPage{
 .opponent-card, .opponent-deck {
   transform: rotate(180deg);
 }
-.opponent-card, .opponent-deck {
+.opponent-deck {
   pointer-events: none !important;
 }
 
+#field .deckTakeOutArea {
+  position: absolute;
+  width: 360px;
+  height: 170px;
+  border: 2px dashed rgba(255,255,255,0.5);
+  border-radius: 14px;
+  background: rgba(0,0,0,0.18);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: none;
+  z-index: 2;
+}
+
+#field .deckTakeOutArea .deckTakeOutAreaLabel {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 0 3px rgba(0,0,0,0.65);
+}
+
+#field .card.img,
 #field .card img{
   width:100%;
   aspect-ratio:210 / 297;

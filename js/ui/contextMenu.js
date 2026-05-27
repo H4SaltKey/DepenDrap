@@ -907,10 +907,12 @@ function takeOut(count, opts){
 
     if(typeof placeCard === "function"){
       if(typeof cardZCounter !== "undefined") card.style.zIndex = ++cardZCounter;
-      // デッキ位置から盤面へ配置（手札へは移動しない）
-      card.style.left = deckX + "px";
-      card.style.top = deckY + "px";
-      placeCard(document.getElementById("field"), card, { x: deckX + 100 + i * 50, y: deckY - 100 });
+      // デッキ位置から取り出しエリアへ配置
+      card.dataset.deckTakeOut = "true";
+      card.classList.add("deckTakeOutCard");
+      const takeOutX = deckX + 20 + i * 38;
+      const takeOutY = deckY - 140;
+      placeCard(document.getElementById("field"), card, { x: takeOutX, y: takeOutY });
     }
   }
 
@@ -1644,12 +1646,11 @@ document.addEventListener("contextmenu", (e) => {
     }
     const t = e.target;
     const me = window.myRole || window.getMyRole?.() || "player1";
-    const lor = t && t.closest && t.closest(".lorPanel");
-    const monsterHover = t && t.closest && t.closest(".monsterDisplayArea, .monsterSprite, .monsterSlot");
+    const monsterHover = t && t.closest && t.closest(".monsterSprite, .monsterSlot");
     const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
     const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
 
-    if ((lor && lor.dataset.owner && lor.dataset.owner !== me) || monsterHover) {
+    if (monsterHover) {
       hint.textContent = isMonsterTarget ? "右クリックでダメージ判定" : "右クリックでダメージメニュー";
       hint.classList.add("is-visible");
       hint.style.left = (e.clientX + 14) + "px";

@@ -125,7 +125,7 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
     cardHoverPreviewEl.id = "cardHoverPreview";
     cardHoverPreviewEl.style.cssText = `
       position: fixed; z-index: 100220; pointer-events: none;
-      width: 520px; height: 736px; border-radius: 8px; overflow: hidden;
+      width: 364px; height: 515px; border-radius: 8px; overflow: hidden;
       border: 2px solid rgba(255,255,255,0.4);
       background: rgba(8,8,16,0.9);
       box-shadow: 0 16px 40px rgba(0,0,0,0.7);
@@ -832,7 +832,80 @@ function placeCard(zone, card, position){
     content.appendChild(card);
   }
 
+  if (typeof clearDeckTakeOutMarkerIfNeeded === "function") {
+    clearDeckTakeOutMarkerIfNeeded(card);
+  }
+  if (typeof updateDeckTakeOutZones === "function") {
+    updateDeckTakeOutZones();
+  }
+
   saveFieldCards();
+}
+
+function getDeckTakeOutZone(owner) {
+  const content = getFieldContent();
+  if (!content) return null;
+  const selector = `.deckTakeOutArea[data-owner="${owner}"]`;
+  let zone = content.querySelector(selector);
+  if (!zone) {
+    zone = document.createElement("div");
+    zone.className = "deckTakeOutArea";
+    zone.dataset.owner = owner;
+    zone.innerHTML = '<div class="deckTakeOutAreaLabel">取り出し中</div>';
+    content.appendChild(zone);
+  }
+  return zone;
+}
+
+function updateDeckTakeOutZones() {
+  ["player1", "player2"].forEach((owner) => updateDeckTakeOutZone(owner));
+}
+
+function updateDeckTakeOutZone(owner) {
+  const zone = getDeckTakeOutZone(owner);
+  const content = getFieldContent();
+  if (!zone || !content) return;
+
+  const deckObj = content.querySelector(`.deckObject[data-owner="${owner}"]`);
+  if (!deckObj) {
+    zone.style.display = "none";
+    return;
+  }
+
+  const deckX = Number(deckObj.dataset.x || 0);
+  const deckY = Number(deckObj.dataset.y || 0);
+  const zoneX = deckX + 20;
+  const zoneY = deckY - 170;
+  zone.style.left = `${zoneX}px`;
+  zone.style.top = `${zoneY}px`;
+
+  const takeOutCards = Array.from(content.querySelectorAll(`.card[data-owner="${owner}"][data-deck-takeout="true"]`));
+  zone.style.display = takeOutCards.length > 0 ? "" : "none";
+}
+
+function isCardInDeckTakeOutArea(card) {
+  if (!card || card.classList.contains("deckObject")) return false;
+  const owner = card.dataset.owner || "";
+  const content = getFieldContent();
+  if (!content) return false;
+  const deckObj = content.querySelector(`.deckObject[data-owner="${owner}"]`);
+  if (!deckObj) return false;
+
+  const x = Number(card.dataset.x || 0);
+  const y = Number(card.dataset.y || 0);
+  const zoneX = Number(deckObj.dataset.x || 0) + 20;
+  const zoneY = Number(deckObj.dataset.y || 0) - 170;
+
+  return x >= zoneX && x <= zoneX + 360 && y >= zoneY && y <= zoneY + 170;
+}
+
+function clearDeckTakeOutMarkerIfNeeded(card) {
+  if (card.dataset.deckTakeout !== "true" && card.dataset.deckTakeOut !== "true") return;
+  const normalizedKey = card.dataset.decktakeout || card.dataset.deckTakeOut || card.dataset.deckTakeout;
+  if (normalizedKey && isCardInDeckTakeOutArea(card)) return;
+  delete card.dataset.deckTakeOut;
+  delete card.dataset.deckTakeout;
+  card.classList.remove("deckTakeOutCard");
 }
 
 function getNextFieldPosition(){

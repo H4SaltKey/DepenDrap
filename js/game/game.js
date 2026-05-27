@@ -348,6 +348,9 @@ window.refreshMyDeckLayoutForMonsterTarget = function() {
   deck.style.top = baseSaved.y + "px";
   deck.dataset.x = String(baseSaved.x + offX);
   deck.dataset.y = String(baseSaved.y);
+  if (typeof window.updateDeckTakeOutZones === "function") {
+    window.updateDeckTakeOutZones();
+  }
 };
 
 let lastResetAt = 0;
@@ -400,6 +403,9 @@ function updateDeckObject() {
       img.style.display = "block";
     }
   });
+    if (typeof window.updateDeckTakeOutZones === "function") {
+      window.updateDeckTakeOutZones();
+    }
 }
 
 // ===== デッキに戻す =====

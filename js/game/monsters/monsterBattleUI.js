@@ -37,13 +37,15 @@ window.setupMonsterBattleUI = function() {
     const bindMonsterContextMenu = (el) => {
       if (!el || el.dataset.monsterContextBound) return;
       el.dataset.monsterContextBound = "1";
+      el.dataset.monsterSlotIndex = String(slotIndex);
       el.style.cursor = "context-menu";
       el.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const slotIndexValue = Number(slotIndex);
+        const slotValue = window._currentMonsterTarget?.slot || window.MonsterManager?.getSlot(slotIndexValue);
         if (typeof window.openMonsterMenu === "function" && !defeated) {
-          window.openMonsterMenu(window._currentMonsterTarget?.slot, slotIndexValue, e.clientX, e.clientY);
+          window.openMonsterMenu(slotValue, slotIndexValue, e.clientX, e.clientY);
         }
       });
     };

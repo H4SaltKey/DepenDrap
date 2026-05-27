@@ -1494,6 +1494,22 @@ function openSkillZoneMenu(owner, x, y){
 
 function getContextMenuTarget(target){
   if(!target || typeof target.closest !== "function") return null;
+  const monsterSlot = target.closest(".monsterSlot");
+  if(monsterSlot){
+    return {
+      type: "monster",
+      el: monsterSlot,
+      slotIndex: Number(monsterSlot.dataset.slotIndex)
+    };
+  }
+  const monsterDisplay = target.closest(".monsterDisplayArea, .monsterSprite");
+  if(monsterDisplay){
+    return {
+      type: "monster",
+      el: monsterDisplay,
+      slotIndex: Number(monsterDisplay.dataset.monsterSlotIndex || window._currentMonsterTarget?.slotIndex)
+    };
+  }
   const battleZone = target.closest(".battleZone");
   if (battleZone && battleZone.dataset.zoneType === "grave") {
     return { type: "graveZone", el: battleZone };
@@ -1528,6 +1544,11 @@ function openGameContextMenu(hit, x, y){
   if(!hit) return;
   if(hit.type === "card") openCardMenu(hit.el, x, y);
   else if(hit.type === "deck") openDeckMenu(hit.el, x, y);
+  else if(hit.type === "monster") {
+    const slotIndex = Number(hit.slotIndex);
+    const slot = window.MonsterManager?.getSlot(slotIndex);
+    if(slot) openMonsterMenu(slot, slotIndex, x, y);
+  }
   else if(hit.type === "lorPanel") openStatusMenu(hit.el.dataset.owner, x, y);
   else if(hit.type === "graveZone") openGraveZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);
   else if(hit.type === "skillZone") openSkillZoneMenu(hit.el?.dataset?.owner || hit.owner || "player1", x, y);

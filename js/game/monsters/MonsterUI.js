@@ -259,6 +259,7 @@ window.MonsterUI = (function() {
     slots.forEach((slot, i) => {
       const el = document.createElement("div");
       el.className = "monsterSlot";
+      el.dataset.slotIndex = String(i);
 
       if (!slot) {
         // 討伐済み

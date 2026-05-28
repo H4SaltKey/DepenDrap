@@ -119,6 +119,7 @@
   <div class="title-menu">
     <button class="lorBtn title-btn" onclick="goGame()">対戦開始</button>
     <button class="lorBtn title-btn" onclick="goDeck()">デッキ構築</button>
+    <button class="lorBtn title-btn" onclick="goPatchNotes()">パッチノート</button>
     <button class="lorBtn title-btn" onclick="openTitleOptions()">オプション</button>
   </div>
 </div>
@@ -192,6 +193,7 @@
 
   function goGame() { location.href = "matchSetup.html"; }
   function goDeck()  { location.href = "deckSelect.html"; }
+  function goPatchNotes() { location.href = "patch-notes.html"; }
   function openTitleOptions() {
     const modal = document.getElementById("optionsModal");
     if (modal) {

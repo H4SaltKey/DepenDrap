@@ -4,12 +4,14 @@
  */
 
 let deckImageDB = null;
+let initPromise = null;
 const DECK_IMAGE_DB_NAME = "DependrapDeckImages";
 const DECK_IMAGE_STORE_NAME = "backImages";
 
 async function initDeckImageDB() {
   if (deckImageDB) return deckImageDB;
-  return new Promise((resolve, reject) => {
+  if (initPromise) return initPromise;
+  initPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DECK_IMAGE_DB_NAME, 1);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
@@ -23,9 +25,11 @@ async function initDeckImageDB() {
     };
     req.onerror = () => {
       console.error("Failed to initialize IndexedDB:", req.error);
+      initPromise = null;
       reject(req.error);
     };
   });
+  return initPromise;
 }
 
 async function getBackImageFromDB(deckId) {

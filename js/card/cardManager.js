@@ -110,10 +110,10 @@ function isCardInHandArea(cardEl) {
   const y = Number(cardEl.dataset.y || 0);
   if (!Number.isFinite(y)) return false;
   const owner = cardEl.dataset.owner || "";
+  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
   const handMaxTop = FIELD_H - HAND_ZONE_Y_MIN;
-  if (owner === "player1") return y >= HAND_ZONE_Y_MIN;
-  if (owner === "player2") return y <= handMaxTop;
-  return false;
+  if (owner === myRole) return y >= HAND_ZONE_Y_MIN;
+  return y <= handMaxTop;
 }
 
 function showCardHoverPreview(cardEl, clientX, clientY) {

@@ -248,13 +248,6 @@ function updateFirstDrawPhaseUI() {
 
     chosen.forEach((card, idx) => {
       card.classList.remove("firstDrawHideVisLabel");
-      card.dataset.visibility = "self";
-      card.classList.remove("visibilityNone");
-      card.classList.add("visibilitySelf");
-      if (typeof updateVisibilityIcon === "function") {
-        updateVisibilityIcon(card, "self");
-      }
-      if (typeof applyCardFace === "function") applyCardFace(card, "self");
       const nextOrder = typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now() + idx;
       card.dataset.handOrder = String(nextOrder);
       card.dataset.y = String(handSlotY);

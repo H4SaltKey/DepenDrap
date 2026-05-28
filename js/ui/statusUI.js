@@ -70,6 +70,50 @@ function renderOwnerUI(owner) {
 
   const handCount = (typeof countOwnerHandCardsOnField === "function") ? countOwnerHandCardsOnField(owner) : 0;
   const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(owner) : 6;
+  const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
+  const graveCount = countZoneCards(owner, "grave");
+
+  const resourcePanel = `
+    <div class="lorResourcePanel" data-owner="${owner}" style="
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-width:${isMine ? "132px" : "122px"};
+      padding:${isMine ? "10px 10px" : "8px 8px"};
+      border:1px solid rgba(199,179,119,0.48);
+      border-radius:10px;
+      background:rgba(10,8,20,0.82);
+      box-shadow:0 4px 14px rgba(0,0,0,0.35);
+    ">
+      <div style="display:flex;justify-content:space-between;font-size:${isMine ? "13px" : "12px"};color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:${isMine ? "13px" : "12px"};color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:${isMine ? "13px" : "12px"};color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid rgba(199,179,119,0.28);padding-top:7px;">
+        <span style="color:#aaa;font-size:${isMine ? "13px" : "12px"};font-weight:200;letter-spacing:2px;">PP</span>
+        <div style="display:flex;align-items:center;gap:5px;">
+          ${isMine
+            ? `<button class="lorSmBtn lorPpBtn"
+                data-owner="${owner}"
+                data-key="pp"
+                data-delta="-1"
+                style="width:24px;height:24px;padding:0;cursor:pointer;font-size:15px;line-height:1;border-radius:6px;">
+                −
+              </button>`
+            : ""}
+          <span style="color:#00ffff;font-size:${isMine ? "19px" : "17px"};font-weight:bold;min-width:${isMine ? "48px" : "42px"};text-align:center;">${currentPp}/${maxPp}</span>
+          ${isMine
+            ? `<button class="lorSmBtn lorPpBtn"
+                data-owner="${owner}"
+                data-key="pp"
+                data-delta="1"
+                style="width:24px;height:24px;padding:0;cursor:pointer;font-size:15px;line-height:1;border-radius:6px;">
+                ＋
+              </button>`
+            : ""}
+        </div>
+      </div>
+    </div>
+  `;
 
   return `
   <div style="display:flex; align-items:${isMine ? "flex-end" : "flex-start"}; gap:${isMine ? "12px" : "4px"}; ${isMine ? '' : 'flex-direction:row-reverse;'}">
@@ -176,6 +220,7 @@ function renderOwnerUI(owner) {
   </div>
   
   <div style="display:flex; flex-direction:column; gap:${isMine ? "8px" : "4px"}; justify-content:flex-end;">
+  ${resourcePanel}
   ${s.evolutionPath ? `
   <div class="evoPanelWrapper" data-owner="${owner}" style="position:relative; top:${owner === myRole ? "-20px" : "-9px"};">
     <div class="evoPanel" style="
@@ -280,121 +325,9 @@ function countZoneCards(owner, zoneType) {
 }
 
 function updateFieldStatusPanels() {
-  // 画面追従UIとして安定表示するため、常に body 直下に配置する
-  const container = document.body;
-
-  ["player1", "player2"].forEach(owner => {
-    const isMine = owner === ((window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
-    const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-    const myTarget = window.BattleTargetSystem?.getTarget?.(myRole) || "player";
-    const showOpponentUi = myTarget === "player";
-    const id = `fieldStatusPanel_${owner}`;
-
-    let el = document.getElementById(id);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.id = id;
-      el.className = "fieldStatusPanel";
-      container.appendChild(el);
-    }
-
-    if (el.parentElement !== container) {
-      container.appendChild(el);
-    }
-
-    const s = state[owner];
-
-    const handCount =
-      (typeof countOwnerHandCardsOnField === "function")
-        ? countOwnerHandCardsOnField(owner)
-        : 0;
-
-    const handLimit =
-      (typeof window.getHandLimit === "function")
-        ? window.getHandLimit(owner)
-        : 6;
-
-    const currentPp = s.pp || 0;
-    const maxPp = s.ppMax || 2;
-
-    // #fieldContent は 3000x2000 盤面なので、その座標系での絶対位置を指定する
-    // デッキ/手札/墓地 + PP は、両者とも画面追従型UIとして固定表示する
-    el.style.cssText = isMine ? `
-      position: fixed;
-      left: 24px;
-      bottom: 210px;
-      width: 230px;
-      padding: 12px 16px;
-      background: rgba(15, 12, 28, 0.92);
-      border: 2px solid #c7b377;
-      border-radius: 14px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      z-index: 4200;
-      font-family: 'Outfit', sans-serif;
-      pointer-events: auto;
-    ` : `
-      position: fixed;
-      right: 24px;
-      top: 170px;
-      width: 207px;
-      padding: 10px 14px;
-      transform: scale(0.85);
-      transform-origin: top right;
-      background: rgba(15, 12, 28, 0.92);
-      border: 2px solid #c7b377;
-      border-radius: 14px;
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      z-index: 4200;
-      font-family: 'Outfit', sans-serif;
-      pointer-events: auto;
-    `;
-    if (!isMine && !showOpponentUi) {
-      el.style.display = "none";
-      return;
-    }
-    el.style.display = "";
-    const deckCount = Array.isArray(s.deck) ? s.deck.length : (Number(s.deckCount) || 0);
-    const graveCount = countZoneCards(owner, "grave");
-
-    el.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        ${isMine ? `
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>
-        <div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>
-        ` : ""}
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <span style="color: #aaa; font-size: 13px; font-weight: 200; letter-spacing: 2px; white-space: nowrap;">PP</span>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            ${isMine
-              ? `<button class="lorSmBtn"
-                  data-owner="${owner}"
-                  data-key="pp"
-                  data-delta="-1"
-                  style="width:28px;height:28px;padding:0;cursor:pointer;font-size:16px;line-height:1;border-radius:6px;">
-                  −
-                </button>`
-              : ""}
-            <span style="color: #00ffff; font-size: 22px; font-weight: bold; min-width: 52px; text-align: center;">${currentPp}/${maxPp}</span>
-            ${isMine
-              ? `<button class="lorSmBtn"
-                  data-owner="${owner}"
-                  data-key="pp"
-                  data-delta="1"
-                  style="width:28px;height:28px;padding:0;cursor:pointer;font-size:16px;line-height:1;border-radius:6px;">
-                  ＋
-                </button>`
-              : ""}
-          </div>
-        </div>
-        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>手札</span><span>${handCount}/${handLimit}</span></div>` : ""}
-        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>デッキ</span><span>${deckCount}</span></div>` : ""}
-        ${!isMine ? `<div style="display:flex; justify-content:space-between; font-size:12px; color:#d6cca2;"><span>墓地</span><span>${graveCount}</span></div>` : ""}
-      </div>
-    `;
+  ["player1", "player2"].forEach((owner) => {
+    const el = document.getElementById(`fieldStatusPanel_${owner}`);
+    if (el) el.remove();
   });
 }
 

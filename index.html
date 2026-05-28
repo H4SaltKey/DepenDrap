@@ -73,7 +73,15 @@
     text-shadow: 0 2px 8px rgba(0,0,0,0.8);
     z-index: 1000;
   }
-  .title-menu { display: flex; flex-direction: column; gap: 20px; width: 280px; margin-top: -30px; position: relative; z-index: 10; }
+  .title-menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: min(560px, calc(100vw - 48px));
+    margin-top: -30px;
+    position: relative;
+    z-index: 10;
+  }
   .title-btn { padding: 15px 20px; font-size: 18px; font-weight: bold; letter-spacing: 2px; position: relative; z-index: 10; }
   .dev-mini-btn {
     position: fixed;
@@ -100,6 +108,12 @@
   }
   .toast.hidden { display: none; }
   .toast.fadeOut { opacity: 0; }
+  @media (max-width: 680px) {
+    .title-menu {
+      grid-template-columns: 1fr;
+      width: min(360px, calc(100vw - 40px));
+    }
+  }
 </style>
 </head>
 <body>

@@ -687,10 +687,25 @@ function createCard(id){
   wrapper.dataset.visibility = "both";
   wrapper.dataset.owner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
+  // 1. 表面画像 (既存のコード互換のため最初の img 要素にする)
   const img = document.createElement("img");
+  img.classList.add("card-front");
   setSafeSrc(img, data.image);
   img.dataset.frontSrc = data.image;
   img.draggable = false;
+
+  // 2. デフォルト裏面画像（ロード失敗時も確実に非公開を保証するためのフォールバック）
+  const backDefaultImg = document.createElement("img");
+  backDefaultImg.classList.add("card-back-default");
+  setSafeSrc(backDefaultImg, "assets/System/favicon.png"); // デフォルトの非公開用裏面
+  backDefaultImg.draggable = false;
+  backDefaultImg.style.cssText = "display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; border-radius:inherit;";
+
+  // 3. カスタム裏面画像（プレイヤーが設定したスリーブ画像）
+  const backCustomImg = document.createElement("img");
+  backCustomImg.classList.add("card-back-custom");
+  backCustomImg.draggable = false;
+  backCustomImg.style.cssText = "display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; border-radius:inherit;";
 
   const label = document.createElement("div");
   label.classList.add("cardVisibilityLabel");
@@ -702,6 +717,8 @@ function createCard(id){
   tempIcon.innerHTML = '<i data-lucide="x-circle"></i>';
 
   wrapper.appendChild(img);
+  wrapper.appendChild(backDefaultImg);
+  wrapper.appendChild(backCustomImg);
   wrapper.appendChild(label);
   wrapper.appendChild(tempIcon);
 
@@ -733,30 +750,50 @@ function getBackImageSrc(){
 }
 
 function applyCardFace(card, visibility){
-  const img = card.querySelector("img");
-  if(!img) return;
-  const owner = card.dataset.owner || "player1";
-  const isMine = owner === window.myRole;
+  const frontImg = card.querySelector(".card-front") || card.querySelector("img");
+  const backDefaultImg = card.querySelector(".card-back-default");
+  const backCustomImg = card.querySelector(".card-back-custom");
+  if(!frontImg) return;
 
-  if(visibility === "none"){
-    const back = state[owner].backImage || getBackImageSrc();
-    setSafeSrc(img, back || img.dataset.frontSrc);
+  const owner = card.dataset.owner || "player1";
+  const isMine = owner === (window.myRole || window.getMyRole?.());
+
+  // 公開・非公開の判定
+  let showFront = false;
+  if(visibility === "both"){
+    showFront = true;
   } else if(visibility === "self"){
-    if(isMine){
-      setSafeSrc(img, img.dataset.frontSrc);
-    } else {
-      const back = state[owner].backImage || getBackImageSrc();
-      setSafeSrc(img, back || img.dataset.frontSrc);
-    }
+    showFront = isMine;
   } else if(visibility === "opponent"){
-    if(!isMine && window.myRole !== null){
-      setSafeSrc(img, img.dataset.frontSrc);
-    } else {
-      const back = state[owner].backImage || getBackImageSrc();
-      setSafeSrc(img, back || img.dataset.frontSrc);
-    }
+    showFront = !isMine && window.myRole !== null;
   } else {
-    setSafeSrc(img, img.dataset.frontSrc);
+    showFront = false; // visibility === "none"
+  }
+
+  if (showFront) {
+    // 表面を表示
+    frontImg.style.display = "block";
+    if (backDefaultImg) backDefaultImg.style.display = "none";
+    if (backCustomImg) backCustomImg.style.display = "none";
+  } else {
+    // 裏面を表示（2重構造）
+    frontImg.style.display = "none"; // 表面を完全に非表示にして、公開情報の漏洩を防ぐ！
+    
+    // 1. まずデフォルトの裏面を必ず表示（フォールバックを保証）
+    if (backDefaultImg) {
+      backDefaultImg.style.display = "block";
+    }
+
+    // 2. カスタム裏面があれば重ねて表示
+    if (backCustomImg) {
+      const backSrc = state[owner]?.backImage || getBackImageSrc();
+      if (backSrc && backSrc.length > 5) {
+        setSafeSrc(backCustomImg, backSrc);
+        backCustomImg.style.display = "block";
+      } else {
+        backCustomImg.style.display = "none";
+      }
+    }
   }
 }
 

@@ -226,12 +226,10 @@ function getBackImage() {
     const matchSetupData = JSON.parse(localStorage.getItem("matchSetup")) || {};
     const deckId = matchSetupData.deckId;
     
-    // IndexedDB は非同期なので、ここでは sessionStorage キャッシュをチェック
+    // IndexedDB は非同期なので、ここではインメモリのキャッシュをチェック
     if (deckId && typeof window.getBackImageFromDB === "function") {
-      // キャッシュをチェック (QuotaExceededError を防ぐため固定キーを使用)
-      const cacheKey = `backImage_current`;
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) return cached;
+      // キャッシュをチェック (QuotaExceededError を防ぐため sessionStorage の代わりに window 変数を使用)
+      if (window._currentBackImageCache) return window._currentBackImageCache;
     }
     
     // フォールバック：deckList から backImage を取得（古いデータ用）
@@ -2183,15 +2181,15 @@ async function initGame() {
       console.warn("[initGame] asset load warning:", e);
     }
 
-    // backImage を IndexedDB から読み込み、sessionStorage にキャッシュ
+    // backImage を IndexedDB から読み込み、インメモリにキャッシュ
     try {
       const matchSetupData = JSON.parse(localStorage.getItem("matchSetup")) || {};
       const deckId = matchSetupData.deckId;
       if (deckId && typeof window.getBackImageFromDB === "function") {
         const backImage = await window.getBackImageFromDB(deckId);
         if (backImage) {
-          sessionStorage.setItem(`backImage_current`, backImage);
-          console.log(`[initGame] backImage cached: deckId=${deckId} (as backImage_current)`);
+          window._currentBackImageCache = backImage;
+          console.log(`[initGame] backImage cached: deckId=${deckId} (as window._currentBackImageCache)`);
         }
       }
     } catch (e) {

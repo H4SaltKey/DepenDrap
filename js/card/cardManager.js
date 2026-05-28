@@ -772,12 +772,12 @@ function applyCardFace(card, visibility){
 
   if (showFront) {
     // 表面を表示
-    frontImg.style.display = "block";
+    frontImg.style.visibility = "visible";
     if (backDefaultImg) backDefaultImg.style.display = "none";
     if (backCustomImg) backCustomImg.style.display = "none";
   } else {
     // 裏面を表示（2重構造）
-    frontImg.style.display = "none"; // 表面を完全に非表示にして、公開情報の漏洩を防ぐ！
+    frontImg.style.visibility = "hidden"; // 表面を見えなくするが、サイズを保つために display は維持する
     
     // 1. まずデフォルトの裏面を必ず表示（フォールバックを保証）
     if (backDefaultImg) {

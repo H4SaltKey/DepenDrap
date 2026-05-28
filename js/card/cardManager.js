@@ -1539,7 +1539,7 @@ window.getFieldData = function() {
   repairDuplicateDomInstanceIds();
   const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey") || "player1";
   const cards = Array.from(getFieldContent().querySelectorAll(".card, .deckObject"));
-  return cards
+  const data = cards
     .filter(card => {
       // fieldCards should only contain the local player's cards and deck objects.
       return card.dataset.owner === myRole;
@@ -1559,6 +1559,22 @@ window.getFieldData = function() {
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
+
+  if (window.debugMode) {
+    const missingHandOrder = data.filter(item => !item.isDeck && !item.handOrder).length;
+    const duplicatedOrder = data
+      .filter(item => !item.isDeck)
+      .map(item => item.handOrder)
+      .filter((value, idx, arr) => value && arr.indexOf(value) !== idx);
+    console.log("[FieldSync] getFieldData", {
+      myRole,
+      cards: data.length,
+      missingHandOrder,
+      duplicatedHandOrders: [...new Set(duplicatedOrder)]
+    });
+  }
+
+  return data;
 };
 
 // 手札枚数上限の計算（windowスコープ）
@@ -1646,6 +1662,18 @@ window.applyFieldCardsFromServer = function(data){
 
   const cardItems = data.filter(d => d && !d.isDeck);
   const ownersPresent = new Set(cardItems.map(d => d.owner).filter(Boolean));
+
+  if (window.debugMode) {
+    const handOrders = cardItems.map(item => ({ id: item.id, owner: item.owner, instanceId: item.instanceId, handOrder: item.handOrder, x: item.x, y: item.y }));
+    const missingHandOrder = handOrders.filter(item => !item.handOrder).length;
+    const duplicateOrders = handOrders
+      .map(item => item.handOrder)
+      .filter((value, idx, arr) => value && arr.indexOf(value) !== idx);
+    console.group("[FieldSync] applyFieldCardsFromServer");
+    console.log("received", handOrders.length, "cards", { owners: [...ownersPresent], missingHandOrder, duplicateOrders: [...new Set(duplicateOrders)] });
+    console.table(handOrders.slice(0, 20));
+    console.groupEnd();
+  }
 
   // 相手の fieldCards のみが届くときは「そのオーナー」のカードだけ孤児掃除する。
   // 従来は serverIds に自分の instanceId が含まれず、ファーストドロー等で自席のカードが全消しされていた。

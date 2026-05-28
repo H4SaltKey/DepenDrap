@@ -76,9 +76,9 @@ window.updateEvolutionPhaseUI = function() {
   // 自分が選択済みの場合は待機画面
   if (myPath) {
     overlay.innerHTML = `
-      <div style="text-align:center;">
-        <h2 style="color:#c7b377; font-size:24px;">相手の選択を待っています...</h2>
-        <div style="margin-top:20px; color:#aaa; font-size:14px;">あなたは「${myPath}」を選択しました</div>
+      <div class="evoPhaseShell" style="text-align:center; transform: scale(var(--window-scale, 1)); transform-origin: center center;">
+        <h2 style="color:#c7b377; font-size:clamp(18px, 2.4vw, 24px);">相手の選択を待っています...</h2>
+        <div style="margin-top:20px; color:#aaa; font-size:clamp(12px, 1.6vw, 14px);">あなたは「${myPath}」を選択しました</div>
       </div>
     `;
     return;
@@ -88,9 +88,9 @@ window.updateEvolutionPhaseUI = function() {
   if (!overlay.dataset.rendered) {
     overlay.dataset.rendered = "true";
     overlay.innerHTML = `
-      <div style="max-width:900px; width:90%; display:flex; flex-direction:column; gap:20px; animation: fadeIn 0.3s ease;">
-        <h2 style="text-align:center; color:#c7b377; font-size:26px; margin-bottom:5px; font-weight:900; letter-spacing:2px;">進化の道を選択</h2>
-        <p style="text-align:center; color:#aaa; font-size:13px; margin-bottom:15px;">レベルが[3/5/6]に達した時に強化される、永続的な能力を選択してください。</p>
+      <div class="evoPhaseShell" style="max-width:min(980px, 96vw); width:94%; display:flex; flex-direction:column; gap:20px; animation: fadeIn 0.3s ease; transform: scale(var(--window-scale, 1)); transform-origin:center center;">
+        <h2 style="text-align:center; color:#c7b377; font-size:clamp(20px, 2.8vw, 30px); margin-bottom:5px; font-weight:900; letter-spacing:2px;">進化の道を選択</h2>
+        <p style="text-align:center; color:#aaa; font-size:clamp(12px, 1.4vw, 15px); margin-bottom:15px;">レベルが[3/5/6]に達した時に強化される、永続的な能力を選択してください。</p>
         
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
           <!-- 忍耐の道 -->
@@ -119,10 +119,10 @@ window.updateEvolutionPhaseUI = function() {
         </div>
       </div>
       <style>
-        .evo-path-btn { background:rgba(20,20,30,0.8); border:1px solid #5a4b27; border-radius:8px; padding:20px; text-align:left; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.5); color:#ffffff; }
+        .evo-path-btn { background:rgba(20,20,30,0.8); border:1px solid #5a4b27; border-radius:8px; padding:clamp(12px, 1.6vw, 20px); text-align:left; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 12px rgba(0,0,0,0.5); color:#ffffff; }
         .evo-path-btn:hover { background:rgba(40,40,50,0.9); border-color:#c7b377; transform:translateY(-2px); box-shadow:0 8px 24px rgba(199,179,119,0.25); }
-        .evo-path-title { font-size:18px; font-weight:900; color:#f0d080; margin-bottom:8px; letter-spacing:1px; }
-        .evo-path-desc { font-size:13px; line-height:1.6; color:#e0e0e0; }
+        .evo-path-title { font-size:clamp(15px, 1.8vw, 20px); font-weight:900; color:#f0d080; margin-bottom:8px; letter-spacing:1px; }
+        .evo-path-desc { font-size:clamp(11px, 1.25vw, 14px); line-height:1.6; color:#e0e0e0; }
         .evo-path-val { display:block; margin-top:8px; font-weight:bold; color:#00ffcc; }
       </style>
     `;

@@ -42,7 +42,6 @@ svg {
 #gameUiPlayer,
 #gameUiEnemy,
 #zoomControls,
-#chatArea,
 #menuButton,
 #menuPanel,
 #userProfile,
@@ -50,8 +49,7 @@ svg {
   scale: var(--hud-scale);
 }
 
-#gameUiPlayer,
-#chatArea {
+#gameUiPlayer {
   transform-origin: left bottom;
 }
 
@@ -62,10 +60,36 @@ svg {
   transform-origin: right top;
 }
 
+#userProfile {
+  transform-origin: left top;
+}
+
+/* 基礎値調整（要求反映） */
+#gameUiPlayerInner,
+#gameUiEnemy {
+  scale: calc(var(--hud-scale) * 1.14);
+}
+
+#menuButton,
+#menuPanel {
+  scale: calc(var(--hud-scale) * 1.14);
+}
+
+#userProfile {
+  scale: calc(var(--hud-scale) * 1.16);
+}
+
 body.deckPage{
   min-height:100vh;
   overflow:hidden;
   background:#0c0b12;
+}
+
+body.deckPage .deckBuilder{
+  transform: scale(var(--deck-scale, 1));
+  transform-origin: top left;
+  width: calc(100% / var(--deck-scale, 1));
+  height: calc(100dvh / var(--deck-scale, 1));
 }
 
 .card{
@@ -2554,8 +2578,8 @@ button{
 /* チャットエリア */
 #chatArea {
   position: fixed;
-  right: 16px;
-  bottom: 128px;
+  right: 10px;
+  bottom: 10px;
   margin: 0;
   width: 320px;
   background: rgba(10, 8, 20, 0.7);
@@ -2566,6 +2590,8 @@ button{
   pointer-events: all;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 9000;
+  transform-origin: right bottom;
+  scale: calc(var(--hud-scale) * 0.98);
 }
 #chatLogs {
   height: 80px;

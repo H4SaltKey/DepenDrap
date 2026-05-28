@@ -44,7 +44,7 @@ function updateFirstDrawPhaseUI() {
 
   if (overlay.dataset.shellBuilt !== "2") {
     overlay.innerHTML = `
-    <div style="width:100%;max-width:min(100%,1100px);background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;box-sizing:border-box;">
+    <div class="firstDrawShell" style="width:100%;max-width:min(100%,1100px);background:rgba(12,12,22,0.98);border:2px solid rgba(199,179,119,0.32);border-radius:16px;padding:22px;box-sizing:border-box;">
       <h2 style="font-size:26px;color:#f0d080;margin-bottom:12px;text-align:center;letter-spacing:1px;">ファーストドローフェーズ</h2>
       <p id="firstDrawPhaseSub" style="color:#ccc;font-size:14px;line-height:1.6;margin-bottom:10px;text-align:center;">
         カードをタップして選択／解除できます（丸にチェックが付きます）。<strong style="color:#f0d080;">ちょうど3枚</strong>のときだけ確定できます。残りは山札へ戻ります。

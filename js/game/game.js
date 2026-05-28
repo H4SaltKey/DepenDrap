@@ -1311,16 +1311,23 @@ function updateMatchUI() {
       opacity: 0; transition: opacity 0.2s;
     }
     #ctxDamageMenuHint.is-visible { opacity: 1; }
+    .firstDrawShell {
+      transform: scale(var(--window-scale, 1));
+      transform-origin: center center;
+      width: min(96vw, calc(1120px * var(--window-scale, 1)));
+      max-height: 92dvh;
+      overflow: auto;
+    }
     /* ファーストドロー選択 UI（フィールド複製の left/top/寸法インラインを無効化して切れを防ぐ） */
-    .firstDrawCardOuter { position:relative; width:90px; height:130px; flex-shrink:0; cursor:pointer; border-radius:10px; box-sizing:border-box; transition: box-shadow .2s ease, transform .2s ease; }
+    .firstDrawCardOuter { position:relative; width:clamp(72px, calc(90px * var(--ui-scale, 1)), 98px); height:clamp(104px, calc(130px * var(--ui-scale, 1)), 142px); flex-shrink:0; cursor:pointer; border-radius:10px; box-sizing:border-box; transition: box-shadow .2s ease, transform .2s ease; }
     .firstDrawCardOuter:hover { transform: translateY(-2px); }
     .firstDrawPickRow .firstDrawCardClone.card {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: 90px !important;
-      height: 130px !important;
-      max-width: 90px !important;
+      width: clamp(72px, calc(90px * var(--ui-scale, 1)), 98px) !important;
+      height: clamp(104px, calc(130px * var(--ui-scale, 1)), 142px) !important;
+      max-width: clamp(72px, calc(90px * var(--ui-scale, 1)), 98px) !important;
       margin: 0 !important;
       padding: 0 !important;
       box-sizing: border-box !important;
@@ -1350,17 +1357,17 @@ function updateMatchUI() {
       box-shadow: 0 0 10px rgba(0,255,204,0.35);
     }
     .firstDrawHideVisLabel .cardVisibilityLabel { display: none !important; }
-    .firstDrawPhaseMainRow { display:flex; align-items:flex-start; gap:20px; width:100%; }
+    .firstDrawPhaseMainRow { display:flex; align-items:flex-start; gap:clamp(12px, calc(20px * var(--ui-scale, 1)), 22px); width:100%; }
     .firstDrawPhaseLeftCol { flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: visible; padding-bottom: 4px; }
     .firstDrawPickRow {
-      display:flex; justify-content:flex-start; align-items:flex-start; gap:12px; flex-wrap:wrap;
-      margin-bottom:12px; min-height:140px; width: max-content; max-width: 100%;
+      display:flex; justify-content:flex-start; align-items:flex-start; gap:clamp(8px, calc(12px * var(--ui-scale, 1)), 14px); flex-wrap:wrap;
+      margin-bottom:12px; min-height:clamp(112px, calc(140px * var(--ui-scale, 1)), 152px); width: max-content; max-width: 100%;
     }
-    .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:16px; }
-    .firstDrawPickPreviewCol { flex:0 0 420px; display:flex; flex-direction:column; align-items:center; padding-top:2px; }
+    .firstDrawPickRow.firstDrawPickRow--finalThree { justify-content:center; gap:clamp(10px, calc(16px * var(--ui-scale, 1)), 18px); }
+    .firstDrawPickPreviewCol { flex:0 0 clamp(260px, calc(420px * var(--window-scale, 1)), 420px); display:flex; flex-direction:column; align-items:center; padding-top:2px; }
     .firstDrawPickPreviewCaption { font-size:11px; color:#889; margin-bottom:8px; text-align:center; letter-spacing:0.02em; }
     .firstDrawLastPickPreview {
-      width:100%; min-height:520px; display:flex; align-items:center; justify-content:center;
+      width:100%; min-height:clamp(360px, calc(520px * var(--window-scale, 1)), 520px); display:flex; align-items:center; justify-content:center;
       border-radius:12px; background:rgba(0,0,0,0.22); border:1px solid rgba(199,179,119,0.12);
       box-sizing: border-box;
       padding: 10px 14px;
@@ -1370,8 +1377,8 @@ function updateMatchUI() {
       position: relative !important;
       left: auto !important;
       top: auto !important;
-      width: 380px !important;
-      height: 538px !important;
+      width: clamp(260px, calc(380px * var(--window-scale, 1)), 380px) !important;
+      height: clamp(368px, calc(538px * var(--window-scale, 1)), 538px) !important;
       flex: none !important;
       max-width: none !important;
       min-width: none !important;

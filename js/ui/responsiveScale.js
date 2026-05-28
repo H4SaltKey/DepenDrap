@@ -32,6 +32,7 @@
     root.style.setProperty("--window-scale", windowScale.toFixed(4));
     root.style.setProperty("--image-scale", imageScale.toFixed(4));
     root.style.setProperty("--title-scale", titleScale.toFixed(4));
+    root.style.setProperty("--deck-scale", clamp(uiScale * (isPortrait ? 0.88 : 0.96), 0.62, 1.0).toFixed(4));
     root.classList.toggle("is-mobile-viewport", isPortrait || vw < 980);
   }
 

@@ -36,7 +36,7 @@
     background: linear-gradient(180deg, rgba(8,6,15,0.4) 0%, rgba(8,6,15,0.85) 100%); z-index: -1;
   }
   #userProfile {
-    position: absolute; top: 20px; left: 20px;
+    position: fixed; top: clamp(8px, 1.2vh, 18px); left: clamp(8px, 1.2vw, 18px);
     color: #e0d0a0; font-size: 15px; z-index: 10000;
     background: rgba(10,8,20,0.7); padding: 10px 15px;
     border: 1px solid #5a4b27; border-radius: 6px; backdrop-filter: blur(4px);
@@ -61,8 +61,8 @@
     box-sizing: border-box;
   }
   .title-logo-img {
-    max-width: min(600px, calc(88vw * var(--image-scale)));
-    max-height: min(42dvh, calc(520px * var(--title-scale)));
+    max-width: min(760px, calc(95vw * var(--image-scale)));
+    max-height: min(52dvh, calc(640px * var(--title-scale)));
     width: auto;
     height: auto;
     margin-bottom: clamp(-12px, -1.5vh, -4px);
@@ -86,7 +86,14 @@
     position: relative;
     z-index: 10;
   }
-  .title-btn { padding: 15px 20px; font-size: 18px; font-weight: bold; letter-spacing: 2px; position: relative; z-index: 10; }
+  .title-btn {
+    padding: clamp(10px, calc(12px * var(--ui-scale)), 13px) clamp(12px, calc(16px * var(--ui-scale)), 18px);
+    font-size: clamp(13px, calc(15px * var(--ui-scale)), 16px);
+    font-weight: bold;
+    letter-spacing: 1.2px;
+    position: relative;
+    z-index: 10;
+  }
   .dev-mini-btn {
     position: fixed;
     left: 8px;

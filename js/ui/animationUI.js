@@ -85,3 +85,31 @@ function showRoundNotification(round) {
   setTimeout(() => div.remove(), 3200);
 }
 
+function showLevelUpNotification(owner, level) {
+  const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey") || "player1";
+  const ownerName = owner === myRole ? "あなた" : (state?.[owner]?.username || owner);
+  const div = document.createElement('div');
+  div.style.cssText = `
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 10005; pointer-events: none; text-align: center;
+    width: min(80vw, 560px); padding: 24px 28px; border-radius: 20px;
+    background: rgba(18, 16, 32, 0.92); border: 1px solid rgba(238, 196, 80, 0.18);
+    box-shadow: 0 0 40px rgba(255, 212, 90, 0.18);
+    color: #fff; font-family: 'Outfit', sans-serif;
+  `;
+  div.innerHTML = `
+    <div style="font-size: 18px; font-weight: 700; color: #f9e59a; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;">
+      Level Up
+    </div>
+    <div style="font-size: 34px; font-weight: 800; color: #fff; letter-spacing: 0.04em; margin-bottom: 12px;">
+      ${ownerName} が レベル ${level} に到達
+    </div>
+    <div style="font-size: 16px; color: #d8d0b2; opacity: 0.95;">
+      次の成長まで経験値をためよう。
+    </div>
+  `;
+  document.body.appendChild(div);
+  setTimeout(() => div.style.opacity = '0', 2200);
+  setTimeout(() => div.remove(), 2600);
+}
+

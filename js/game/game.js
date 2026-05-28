@@ -622,6 +622,9 @@ function checkLevelUp(owner) {
       s.level += 1;
       s.expMax = calcExpMax(s.level);
       applyLevelStats(owner);
+      if (typeof showLevelUpNotification === "function") {
+        showLevelUpNotification(owner, s.level);
+      }
       if ([3, 5, 6].includes(s.level) && s.evolutionPath) {
         addGameLog(`[EVOLUTION] ${s.username || owner} のレベルが ${s.level} に上がり、「${s.evolutionPath}」が強化されました！`);
       }
@@ -1006,6 +1009,12 @@ function handleMatchStateTransitions() {
   if (roundChanged && isFirstTurnOfRound) {
     showRoundNotification(m.round);
     window._lastRound = m.round;
+
+    // ラウンド開始時、両プレイヤーに EXP を付与
+    if (typeof addVal === "function") {
+      addVal("player1", "exp", 1);
+      addVal("player2", "exp", 1);
+    }
     
     // R1T1処理（ラウンド1のみ）
     // ファーストドローフェーズで既に5枚取り出し→手札3枚を済ませた場合は二重ドローしない（firstDrawDone は playing 移行時に true）

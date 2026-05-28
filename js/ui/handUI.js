@@ -43,6 +43,13 @@ window.organizeHands = function() {
   const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= handMin);
   const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= handMaxTop);
 
+  const compareHandOrder = (a, b) => {
+    const oa = Number(a.dataset.handOrder || 0);
+    const ob = Number(b.dataset.handOrder || 0);
+    if (oa !== ob) return oa - ob;
+    return Number(a.dataset.x || 0) - Number(b.dataset.x || 0);
+  };
+
   if (window.debugMode) {
     console.log(`[organizeHands] myExpanded=${myExpanded}, opExpanded=${opExpanded}, myHandCards=${myHandCards.length}, opHandCards=${opHandCards.length}`);
   }
@@ -63,11 +70,7 @@ window.organizeHands = function() {
 
   // 1. 自分の手札を整列
   if (myHandCards.length > 0) {
-    myHandCards.sort((a, b) => {
-      const oa = Number(a.dataset.handOrder || 0);
-      const ob = Number(b.dataset.handOrder || 0);
-      return oa - ob;
-    });
+    myHandCards.sort(compareHandOrder);
 
     // 展開時：カード下部配置、折りたたみ時：非表示
     const handY = myExpanded ? (2000 - cardH - 20) : 2000;
@@ -125,15 +128,15 @@ window.organizeHands = function() {
       c.dataset.x = String(targetX);
       c.dataset.y = String(handY);
     });
+
+    myHandCards.forEach((c, idx) => {
+      c.dataset.handOrder = String((idx + 1) * 1000);
+    });
   }
 
   // 2. 相手の手札も同様に整列
   if (opHandCards.length > 0) {
-    opHandCards.sort((a, b) => {
-      const oa = Number(a.dataset.handOrder || 0);
-      const ob = Number(b.dataset.handOrder || 0);
-      return oa - ob;
-    });
+    opHandCards.sort(compareHandOrder);
 
     const handY = opExpanded ? 20 : 0;
     
@@ -190,10 +193,7 @@ window.organizeHands = function() {
       c.dataset.x = String(targetX);
       c.dataset.y = String(handY);
     });
-  }
 
-  // 常に相手手札側も昇順で再採番し、同期タイミング差で順序が反転し続けるのを防ぐ
-  if (opHandCards.length > 0) {
     opHandCards.forEach((c, idx) => {
       c.dataset.handOrder = String((idx + 1) * 1000);
     });

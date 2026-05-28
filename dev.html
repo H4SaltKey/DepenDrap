@@ -114,6 +114,7 @@
     align-items: flex-start;
     flex-wrap: wrap;
     min-width: 0;
+    flex-shrink: 0;
   }
 
   .devEditPanel.hidden {
@@ -275,7 +276,7 @@ if(localStorage.getItem("dev") !== "true"){
   <h2>開発者モード</h2>
 
   <!-- カード一括作成プロトコル -->
-  <section style="background:white;border:1px solid #aaa;padding:20px;">
+  <section style="background:white;border:1px solid #aaa;padding:20px;flex-shrink:0;">
     <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
     <p style="color:#666;font-size:0.9em;margin-bottom:16px;">assets/cards 内の blockXXX フォルダを選択します。そのフォルダ内の画像枚数分、新しいカードを自動生成します。</p>
     <div style="display:flex;gap:12px;">
@@ -284,7 +285,7 @@ if(localStorage.getItem("dev") !== "true"){
   </section>
 
   <!-- カード一覧 -->
-  <section class="deckSection cardCatalog">
+  <section class="deckSection cardCatalog" style="flex-shrink:0;">
     <div class="cardCatalogMain">
       <header class="cardListHeader">
         <div class="cardListTitleRow">
@@ -347,7 +348,7 @@ if(localStorage.getItem("dev") !== "true"){
   </section>
 
   <!-- レベル別ステータス編集 -->
-  <section style="background:white; border:1px solid #aaa; padding:20px; margin-bottom:100px;">
+  <section style="background:white; border:1px solid #aaa; padding:20px; margin-bottom:100px; flex-shrink:0;">
     <h3 style="margin:0 0 16px; border-bottom:2px solid #2f80ed; display:inline-block; padding-bottom:4px;">レベル別ステータス設定</h3>
     <p style="font-size:12px; color:#666; margin-bottom:12px;">※ 各レベルごとの基礎ステータスを編集できます。保存するとサーバーの levelStats.json が更新されます。</p>
     <table id="levelStatsTable" class="devStatTable">

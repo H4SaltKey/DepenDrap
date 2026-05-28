@@ -6,9 +6,14 @@
 // calcExpMax は gameRules.js (window.calcExpMax) に実装済み
 // 後方互換のためローカル参照を残す
 function calcExpMax(level) {
-  return window.calcExpMax ? window.calcExpMax(level) : Math.max(1, level) * 2;
+  if (window.calcExpMax && window.calcExpMax !== calcExpMax) {
+    return window.calcExpMax(level);
+  }
+  return Math.max(1, level) * 2;
 }
-window.calcExpMax = calcExpMax;
+if (!window.calcExpMax) {
+  window.calcExpMax = calcExpMax;
+}
 
 window.normalizeState = function() {
   ["player1", "player2"].forEach(p => {

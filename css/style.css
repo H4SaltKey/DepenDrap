@@ -567,8 +567,7 @@ body.deckPage{
   margin:0;
   z-index:1;
   width:320px;
-  aspect-ratio:unset;
-  height:auto;
+  aspect-ratio: 210 / 297;
   display:block;
   background:white;
   border:1px solid #333;

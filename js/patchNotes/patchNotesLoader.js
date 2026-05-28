@@ -30,7 +30,7 @@ window.PatchNotesLoader = {
 
   loadVersion: async function(versionId) {
     try {
-      const res = await fetch(`patchnotes/versions/${versionId}.json?t=` + new Date().getTime());
+      const res = await fetch("patchnotes/versions/" + versionId + ".json?t=" + new Date().getTime());
       if(res.ok) {
         return await res.json();
       }

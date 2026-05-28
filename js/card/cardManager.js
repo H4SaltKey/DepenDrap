@@ -1537,13 +1537,12 @@ window.isScrollZoomDynamicEnabled = function() {
 // ===== フィールド状態の保存・復元 =====
 window.getFieldData = function() {
   repairDuplicateDomInstanceIds();
+  const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey") || "player1";
   const cards = Array.from(getFieldContent().querySelectorAll(".card, .deckObject"));
   return cards
     .filter(card => {
-      if (card.classList.contains("deckObject")) {
-        return card.dataset.owner === window.myRole;
-      }
-      return true;
+      // fieldCards should only contain the local player's cards and deck objects.
+      return card.dataset.owner === myRole;
     })
     .map(card => ({
       id: card.dataset.id || null,
@@ -1777,5 +1776,6 @@ window.applyFieldCardsFromServer = function(data){
     }
   });
   if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  if (typeof window.organizeHands === "function") window.organizeHands();
   if(normalized.repaired || domRepaired) saveFieldCards();
 };

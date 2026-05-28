@@ -178,6 +178,7 @@ window.setupRoomWatcher = function() {
     // 相手の fieldCards（相手オーナーのカードのみ）を適用。applyFieldCardsFromServer は部分同期時に自席 DOM を消さない。
     if (typeof window.applyFieldCardsFromServer === "function") {
       window.applyFieldCardsFromServer(opCards);
+      if (typeof window.organizeHands === "function") window.organizeHands();
       if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opCards", "success", "applyFieldCardsFromServer");
     } else if (typeof window.traceFlow === "function") {
       window.traceFlow("roomWatcher.opCards", "failure", "applyFieldCardsFromServer missing");

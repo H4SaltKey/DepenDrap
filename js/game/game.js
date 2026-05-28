@@ -1723,7 +1723,10 @@ async function executeReset(syncShared = true) {
 function _getMyStateForSync() {
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const myState = state[me];
-  const { diceValue: _d, deck, ...rest } = myState;
+  const base = (typeof window.sanitizePlayerStateForSync === "function")
+    ? window.sanitizePlayerStateForSync(myState)
+    : { ...myState };
+  const { diceValue: _d, deck, ...rest } = base;
   
   // デッキの内容は送信せず、枚数だけ送信（ダミーデータで埋める）
   const deckLength = Array.isArray(deck) ? deck.length : 0;
@@ -2081,7 +2084,11 @@ async function handleReload(currentRoom, myKey, opKey) {
       // 相手の playerState を復元
       const opSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${opKey}`).once('value');
       if (opSnap.exists()) {
-        const { diceValue: _d, username: _u, deck: _deck, ...rest } = opSnap.val();
+        const opRaw = opSnap.val();
+        const opSanitized = (typeof window.sanitizePlayerStateForSync === "function")
+          ? window.sanitizePlayerStateForSync(opRaw)
+          : opRaw;
+        const { diceValue: _d, username: _u, deck: _deck, ...rest } = opSanitized;
         Object.assign(state[opKey], rest);
         console.log("[initGame] 相手の状態を復元:", opKey);
       }
@@ -2089,7 +2096,11 @@ async function handleReload(currentRoom, myKey, opKey) {
       // 自分の playerState を復元（ローカルより Firebase を優先）
       const mySnap = await firebaseClient.db.ref(`rooms/${currentRoom}/playerState/${myKey}`).once('value');
       if (mySnap.exists()) {
-        const { diceValue: _d, username: _u, deck: _deck, ...rest } = mySnap.val();
+        const myRaw = mySnap.val();
+        const mySanitized = (typeof window.sanitizePlayerStateForSync === "function")
+          ? window.sanitizePlayerStateForSync(myRaw)
+          : myRaw;
+        const { diceValue: _d, username: _u, deck: _deck, ...rest } = mySanitized;
         Object.assign(state[myKey], rest);
         // デッキの中身はローカルから維持（Firebase には HIDDEN しか入っていない）
         initDeckFromCode();

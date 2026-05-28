@@ -36,6 +36,44 @@ window.state = {
   logs: []
 };
 
+const SYNC_PLAYER_STATE_KEYS = [
+  "level", "levelMax",
+  "exp", "expMax",
+  "hp", "hpMax",
+  "shield", "shieldMax",
+  "defstack", "defstackMax", "defstackOverMax",
+  "atk", "atkMax",
+  "def", "defMax",
+  "instantDef", "instantDefMax",
+  "pp", "ppMax",
+  "deck", "deckCount",
+  "backImage",
+  "statusBlocks",
+  "evolutionPath",
+  "evoContinuousDmgCount",
+  "evoBackwaterExpGained"
+];
+
+const UI_ONLY_STATE_KEYS = [
+  "hover", "selected", "preview", "expanded", "revealed",
+  "visible", "targeting", "dragging", "animation"
+];
+
+window.SYNC_PLAYER_STATE_KEYS = SYNC_PLAYER_STATE_KEYS;
+window.UI_ONLY_STATE_KEYS = UI_ONLY_STATE_KEYS;
+
+window.sanitizePlayerStateForSync = function sanitizePlayerStateForSync(playerState) {
+  const source = (playerState && typeof playerState === "object") ? playerState : {};
+  const sanitized = {};
+  SYNC_PLAYER_STATE_KEYS.forEach((key) => {
+    if (source[key] !== undefined) sanitized[key] = source[key];
+  });
+  UI_ONLY_STATE_KEYS.forEach((key) => {
+    if (sanitized[key] !== undefined) delete sanitized[key];
+  });
+  return sanitized;
+};
+
 // ヘルパー関数もグローバルに公開
 window.makeCharState = makeCharState;
 window.BASE_INITIAL_STATE = BASE_INITIAL_STATE;

@@ -593,19 +593,14 @@ function updateAndSyncBlockOwner(owner) {
   if (owner === myRole) {
     if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
   } else {
-    // 双方向編集のため相手のstateを直接Push
-    // _getMyStateForSync() 経由でデッキ内容を HIDDEN 化してから送信
+    // 相手の state を直接上書きせず、変更要求のみ送信する
     const gameRoom = localStorage.getItem("gameRoom");
     if (gameRoom && typeof firebaseClient !== "undefined" && firebaseClient.db) {
-      // 相手の state からデッキ内容を隠蔽したオブジェクトを生成
-      const s = state[owner];
-      const deckLength = Array.isArray(s?.deck) ? s.deck.length : 0;
-      const safeState = {
-        ...s,
-        deck: Array(deckLength).fill("HIDDEN"),
-        deckCount: deckLength
-      };
-      firebaseClient.writeMyState(gameRoom, owner, safeState).catch(e => console.error(e));
+      const payload = Array.isArray(state[owner]?.statusBlocks)
+        ? state[owner].statusBlocks
+        : [];
+      const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+      firebaseClient.sendChangeRequest(gameRoom, me, owner, "statusBlocks", "set", payload).catch((e) => console.error(e));
     }
   }
   renderStatusBlocks();

@@ -749,6 +749,14 @@ function getBackImageSrc(){
   }
 }
 
+function canViewerSeeCardFront(viewerId, ownerId, visibility) {
+  if (visibility === "both") return true;
+  if (visibility === "none") return false;
+  if (visibility === "self") return viewerId === ownerId;
+  if (visibility === "opponent") return viewerId !== ownerId;
+  return false;
+}
+
 function applyCardFace(card, visibility){
   const frontImg = card.querySelector(".card-front") || card.querySelector("img");
   const backDefaultImg = card.querySelector(".card-back-default");
@@ -756,19 +764,8 @@ function applyCardFace(card, visibility){
   if(!frontImg) return;
 
   const owner = card.dataset.owner || "player1";
-  const isMine = owner === (window.myRole || window.getMyRole?.());
-
-  // 公開・非公開の判定
-  let showFront = false;
-  if(visibility === "both"){
-    showFront = true;
-  } else if(visibility === "self"){
-    showFront = isMine;
-  } else if(visibility === "opponent"){
-    showFront = !isMine && window.myRole !== null;
-  } else {
-    showFront = false; // visibility === "none"
-  }
+  const viewerId = (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
+  const showFront = canViewerSeeCardFront(viewerId, owner, visibility);
 
   if (showFront) {
     // 表面を表示

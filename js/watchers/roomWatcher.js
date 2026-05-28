@@ -90,7 +90,10 @@ window.setupRoomWatcher = function() {
   const opStateListener = opStateRef.on('value', (snap) => {
     if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher.opState", "start");
     if (!snap || !snap.val()) return;
-    const opData = snap.val();
+    const opDataRaw = snap.val();
+    const opData = (typeof window.sanitizePlayerStateForSync === "function")
+      ? window.sanitizePlayerStateForSync(opDataRaw)
+      : opDataRaw;
     // diceValue は playerDice で管理、username は players で管理するため除外
     // deck の内容は同期しないが、枚数（length）は同期する
     const { diceValue: _d, username: _u, deck: opDeck, deckCount: opDeckCount, ...rest } = opData;
@@ -112,13 +115,10 @@ window.setupRoomWatcher = function() {
       const currentLen = state[opKey].deck.length;
       const targetLen = opDeck.length;
       if (currentLen < targetLen) {
-        // 足りない分を追加
-        for (let i = currentLen; i < targetLen; i++) {
-          state[opKey].deck.push("DUMMY");
-        }
+        const padding = Array(targetLen - currentLen).fill("DUMMY");
+        state[opKey].deck = [...state[opKey].deck, ...padding];
       } else if (currentLen > targetLen) {
-        // 多い分を削除
-        state[opKey].deck.splice(targetLen);
+        state[opKey].deck = state[opKey].deck.slice(0, targetLen);
       }
     }
     if (Number.isFinite(Number(opDeckCount))) {

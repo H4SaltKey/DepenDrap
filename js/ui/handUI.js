@@ -70,7 +70,9 @@ window.organizeHands = function() {
 
   // 1. 自分の手札を整列
   if (myHandCards.length > 0) {
-    myHandCards.sort(compareHandOrder);
+    const sortedMyHandCards = (typeof myHandCards.toSorted === "function")
+      ? myHandCards.toSorted(compareHandOrder)
+      : [...myHandCards].sort(compareHandOrder);
 
     // 展開時：カード下部配置、折りたたみ時：非表示
     const handY = myExpanded ? (2000 - cardH - 20) : 2000;
@@ -117,11 +119,11 @@ window.organizeHands = function() {
       }
     }
     
-    const totalW = (myHandCards.length - 1) * actualSpacing + cardW;
+    const totalW = (sortedMyHandCards.length - 1) * actualSpacing + cardW;
     let startX = (fieldW - totalW) / 2;
     if (startX < 50) startX = 50;
 
-    myHandCards.forEach((c, idx) => {
+    sortedMyHandCards.forEach((c, idx) => {
       const targetX = startX + idx * actualSpacing + myOffsetX;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
@@ -129,14 +131,16 @@ window.organizeHands = function() {
       c.dataset.y = String(handY);
     });
 
-    myHandCards.forEach((c, idx) => {
+    sortedMyHandCards.forEach((c, idx) => {
       c.dataset.handOrder = String((idx + 1) * 1000);
     });
   }
 
   // 2. 相手の手札も同様に整列
   if (opHandCards.length > 0) {
-    opHandCards.sort(compareHandOrder);
+    const sortedOpHandCards = (typeof opHandCards.toSorted === "function")
+      ? opHandCards.toSorted(compareHandOrder)
+      : [...opHandCards].sort(compareHandOrder);
 
     const handY = opExpanded ? 20 : 0;
     
@@ -182,11 +186,11 @@ window.organizeHands = function() {
       }
     }
     
-    const totalW = (opHandCards.length - 1) * actualSpacing + cardW;
+    const totalW = (sortedOpHandCards.length - 1) * actualSpacing + cardW;
     let startX = (fieldW - totalW) / 2;
     if (startX < 50) startX = 50;
 
-    opHandCards.forEach((c, idx) => {
+    sortedOpHandCards.forEach((c, idx) => {
       const targetX = startX + idx * actualSpacing;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
@@ -194,12 +198,11 @@ window.organizeHands = function() {
       c.dataset.y = String(handY);
     });
 
-    opHandCards.forEach((c, idx) => {
-      c.dataset.handOrder = String((idx + 1) * 1000);
-    });
+    // 相手手札の順序はリモート共有状態を尊重し、ローカル再採番しない
   }
 
   // ホバー動作を設定
+  if ((typeof window.isMobileClient === "function" && window.isMobileClient())) return;
   if (typeof window.setupHandCardHoverBehavior === "function") {
     window.setupHandCardHoverBehavior();
   }
@@ -425,4 +428,3 @@ window.setupHandCardHoverBehavior = function() {
     });
   });
 };
-

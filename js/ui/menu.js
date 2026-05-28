@@ -33,6 +33,7 @@
         </label>
 
         <div class="optionFooter">
+          <button id="clearCacheBtn" type="button">キャッシュをクリア</button>
           <button id="deleteAccountBtn" class="dangerBtn" type="button">アカウントを削除する</button>
           <button id="closeOpt" type="button">閉じる</button>
         </div>
@@ -134,6 +135,16 @@
     }
 
     .dangerBtn:hover{ background:#7a2020; }
+    #clearCacheBtn{
+      border:1px solid #4a5e96;
+      background:#2a3761;
+      color:#fff;
+      border-radius:4px;
+      padding:8px 10px;
+      cursor:pointer;
+      font-size:12px;
+    }
+    #clearCacheBtn:hover{ background:#33457a; }
 
     .confirmContent{
       max-width:min(360px, calc(100vw - 32px));
@@ -194,6 +205,53 @@
     localStorage.removeItem("deckList");
     localStorage.removeItem("gameState");
     location.href = "login.html";
+  }
+
+  async function clearAppCache(){
+    const keepKeys = new Set([
+      "username",
+      "isOnline",
+      "settings",
+      "deckList",
+      "deckCode",
+      "selectedDeckId",
+      "chatColor",
+      "debugMode",
+      "devMode",
+      "dev"
+    ]);
+
+    const removeKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (keepKeys.has(key)) continue;
+      if (key.startsWith("lastUsedDeckId:")) continue;
+      if (key.startsWith("deckEditorSettings:")) continue;
+      removeKeys.push(key);
+    }
+    removeKeys.forEach((key) => localStorage.removeItem(key));
+
+    try { sessionStorage.clear(); } catch (_) {}
+
+    if (typeof caches !== "undefined" && typeof caches.keys === "function") {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      } catch (e) {
+        console.warn("[CacheClear] Cache API clear failed:", e);
+      }
+    }
+
+    if (typeof indexedDB !== "undefined" && typeof indexedDB.deleteDatabase === "function") {
+      try {
+        indexedDB.deleteDatabase("DependrapDeckImages");
+      } catch (e) {
+        console.warn("[CacheClear] IndexedDB clear failed:", e);
+      }
+    }
+
+    location.reload();
   }
 
   button.onclick = ()=>{
@@ -277,6 +335,16 @@
           showErrorMessage(e.message);
         }
       });
+    });
+  };
+
+  document.getElementById("clearCacheBtn").onclick = ()=>{
+    openConfirm("キャッシュをクリアしますか？（アカウント情報と設定は保持されます）", async ()=>{
+      try {
+        await clearAppCache();
+      } catch (e) {
+        console.error("[CacheClear] Failed:", e);
+      }
     });
   };
 

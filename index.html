@@ -7,6 +7,7 @@
 <title>DepenDrap Online</title>
 <link rel="icon" href="assets/System/favicon.png">
 <link rel="stylesheet" href="css/style.css">
+<script src="js/ui/responsiveScale.js"></script>
 
 <!-- Firebase Configuration -->
 <script>
@@ -55,13 +56,16 @@
   .logout-btn:hover { background: rgba(199,179,119,0.2); }
   .title-content {
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; height: 100vh; text-align: center;
+    justify-content: center; min-height: 100dvh; text-align: center;
+    padding: clamp(12px, 3.2vh, 28px) 14px;
+    box-sizing: border-box;
   }
   .title-logo-img {
-    max-width: 600px;
-    width: 100%;
+    max-width: min(600px, calc(88vw * var(--image-scale)));
+    max-height: min(42dvh, calc(520px * var(--title-scale)));
+    width: auto;
     height: auto;
-    margin-bottom: -15px;
+    margin-bottom: clamp(-12px, -1.5vh, -4px);
     filter: drop-shadow(0 4px 20px rgba(0,0,0,0.8));
   }
   .title-version {
@@ -78,7 +82,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     width: min(560px, calc(100vw - 48px));
-    margin-top: -30px;
+    margin-top: clamp(-24px, calc(-22px * var(--ui-scale)), -6px);
     position: relative;
     z-index: 10;
   }

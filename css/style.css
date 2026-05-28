@@ -4,6 +4,14 @@ body{
   margin:0;
 }
 
+:root{
+  --ui-scale: 1;
+  --hud-scale: 1;
+  --window-scale: 1;
+  --image-scale: 1;
+  --title-scale: 1;
+}
+
 body{
   font-family: sans-serif;
   overflow:hidden;
@@ -14,6 +22,44 @@ body{
 input, textarea, [contenteditable] {
   user-select: text !important;
   -webkit-user-select: text !important;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.modalContent{
+  max-width: min(92vw, calc(680px * var(--window-scale)));
+  max-height: 86dvh;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+#gameUiPlayer,
+#gameUiEnemy,
+#zoomControls,
+#chatArea,
+#menuButton,
+#menuPanel,
+#userProfile,
+.fieldStatusPanel {
+  scale: var(--hud-scale);
+}
+
+#gameUiPlayer,
+#chatArea {
+  transform-origin: left bottom;
+}
+
+#gameUiEnemy,
+#zoomControls,
+#menuButton,
+#menuPanel {
+  transform-origin: right top;
 }
 
 body.deckPage{

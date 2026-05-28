@@ -459,8 +459,16 @@ window._pushFieldCardsDebounced = function(data) {
   _pushFieldCardsTimer = setTimeout(async () => {
     const gameRoom = localStorage.getItem("gameRoom");
     const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+    const payload = data || window.getFieldData();
+    if (window.debugMode) {
+      console.log("[FieldSync] pushFieldCards", { gameRoom, me, payloadCount: Array.isArray(payload) ? payload.length : null });
+      if (Array.isArray(payload)) {
+        const missingHandOrder = payload.filter(item => !item.isDeck && !item.handOrder).length;
+        console.log("[FieldSync] push payload missing handOrder", missingHandOrder);
+      }
+    }
     if (gameRoom && firebaseClient?.db && me) {
-      await firebaseClient.writeFieldCards(gameRoom, me, data || window.getFieldData());
+      await firebaseClient.writeFieldCards(gameRoom, me, payload);
     }
   }, 200);
 };

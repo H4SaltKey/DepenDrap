@@ -1539,6 +1539,24 @@ window.getFieldData = function() {
   repairDuplicateDomInstanceIds();
   const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey") || "player1";
   const cards = Array.from(getFieldContent().querySelectorAll(".card, .deckObject"));
+
+  // Ensure hand cards have stable handOrder values before sending.
+  const handCards = cards
+    .filter(card => !card.classList.contains("deckObject") && card.dataset.owner === myRole && isCardInHandArea(card));
+  if (handCards.length > 0) {
+    handCards.sort((a, b) => Number(a.dataset.x || 0) - Number(b.dataset.x || 0));
+    let nextOrder = 1000;
+    handCards.forEach(card => {
+      const existingOrder = Number(card.dataset.handOrder || 0);
+      if (existingOrder > 0) {
+        nextOrder = Math.max(existingOrder + 1000, nextOrder);
+      } else {
+        card.dataset.handOrder = String(nextOrder);
+        nextOrder += 1000;
+      }
+    });
+  }
+
   const data = cards
     .filter(card => {
       // fieldCards should only contain the local player's cards and deck objects.

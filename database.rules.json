@@ -1,6 +1,20 @@
 {
   "rules": {
     ".read": "auth != null",
-    ".write": "auth != null"
+    "rooms": {
+      "$room_id": {
+        ".write": "auth != null"
+      }
+    },
+    "accounts": {
+      "$username": {
+        ".write": "auth != null"
+      }
+    },
+    "players": {
+      "$username": {
+        ".write": "auth != null"
+      }
+    }
   }
 }

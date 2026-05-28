@@ -228,8 +228,8 @@ function getBackImage() {
     
     // IndexedDB は非同期なので、ここでは sessionStorage キャッシュをチェック
     if (deckId && typeof window.getBackImageFromDB === "function") {
-      // キャッシュをチェック
-      const cacheKey = `backImage_${deckId}`;
+      // キャッシュをチェック (QuotaExceededError を防ぐため固定キーを使用)
+      const cacheKey = `backImage_current`;
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) return cached;
     }
@@ -2190,8 +2190,8 @@ async function initGame() {
       if (deckId && typeof window.getBackImageFromDB === "function") {
         const backImage = await window.getBackImageFromDB(deckId);
         if (backImage) {
-          sessionStorage.setItem(`backImage_${deckId}`, backImage);
-          console.log(`[initGame] backImage cached: deckId=${deckId}`);
+          sessionStorage.setItem(`backImage_current`, backImage);
+          console.log(`[initGame] backImage cached: deckId=${deckId} (as backImage_current)`);
         }
       }
     } catch (e) {

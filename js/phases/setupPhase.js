@@ -76,7 +76,7 @@ window.updateEvolutionPhaseUI = function() {
   // 自分が選択済みの場合は待機画面
   if (myPath) {
     overlay.innerHTML = `
-      <div class="evoPhaseShell" style="text-align:center; transform: scale(var(--window-scale, 1)); transform-origin: center center;">
+      <div class="evoPhaseShell" style="text-align:center; transform: scale(var(--phase-scale, 1)); transform-origin: center center;">
         <h2 style="color:#c7b377; font-size:clamp(18px, 2.4vw, 24px);">相手の選択を待っています...</h2>
         <div style="margin-top:20px; color:#aaa; font-size:clamp(12px, 1.6vw, 14px);">あなたは「${myPath}」を選択しました</div>
       </div>
@@ -88,7 +88,7 @@ window.updateEvolutionPhaseUI = function() {
   if (!overlay.dataset.rendered) {
     overlay.dataset.rendered = "true";
     overlay.innerHTML = `
-      <div class="evoPhaseShell" style="max-width:min(980px, 96vw); width:94%; display:flex; flex-direction:column; gap:20px; animation: fadeIn 0.3s ease; transform: scale(var(--window-scale, 1)); transform-origin:center center;">
+      <div class="evoPhaseShell" style="max-width:min(980px, 96vw); width:94%; display:flex; flex-direction:column; gap:20px; animation: fadeIn 0.3s ease; transform: scale(var(--phase-scale, 1)); transform-origin:center center;">
         <h2 style="text-align:center; color:#c7b377; font-size:clamp(20px, 2.8vw, 30px); margin-bottom:5px; font-weight:900; letter-spacing:2px;">進化の道を選択</h2>
         <p style="text-align:center; color:#aaa; font-size:clamp(12px, 1.4vw, 15px); margin-bottom:15px;">レベルが[3/5/6]に達した時に強化される、永続的な能力を選択してください。</p>
         

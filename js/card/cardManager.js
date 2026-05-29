@@ -1049,6 +1049,7 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
     st.pp -= cost;
     placeCardInZone(cardEl, owner, zoneType);
     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    if (typeof window.organizeHands === "function") window.organizeHands();
     if (typeof saveFieldCards === "function") saveFieldCards();
     if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
     if (typeof update === "function") update();
@@ -1272,6 +1273,7 @@ function enablePointerDrag(el){
             cardEl: el,
             owner: myRole2,
             onDone: () => {
+              if (typeof window.organizeHands === "function") window.organizeHands();
               document.body.classList.remove("isInteractingCard");
             }
           });
@@ -1280,6 +1282,7 @@ function enablePointerDrag(el){
         if (zoneHit) {
           placeCardInZone(el, myRole2, zoneHit);
           if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+          if (typeof window.organizeHands === "function") window.organizeHands();
           saveFieldCards();
           pointerId = null;
           document.body.classList.remove("isInteractingCard");

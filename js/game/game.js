@@ -368,7 +368,7 @@ async function resetField() {
     return;
   }
   try {
-    await executeReset(true);
+    await executeReset();
   } catch (e) {
     console.error("[Reset] 実行失敗:", e);
     showErrorMessage("リセットに失敗しました。通信状態を確認して再試行してください。");
@@ -789,7 +789,7 @@ function update(skipLogCheck = false) {
   // インタラクト系UIを毎回最上層へ（再表示時に埋もれるのを防ぐ）
   // アニメーション付きオーバーレイ（target waiting / deck viewer / sync loading）は
   // 再appendで見た目がリセットされることがあるため対象外にする
-  const topOverlayIds = ["chatArea", "turnStartTargetPanel", "targetSelectPanel", "zoneStackInspectPanel", "gameResultOverlay"];
+  const topOverlayIds = ["chatArea", "turnStartTargetPanel", "targetSelectPanel", "zoneStackInspectPanel"];
   topOverlayIds.forEach((id) => {
     const el = document.getElementById(id);
     if (el && el.parentElement === document.body) document.body.appendChild(el);
@@ -1312,9 +1312,9 @@ function updateMatchUI() {
     }
     #ctxDamageMenuHint.is-visible { opacity: 1; }
     .firstDrawShell {
-      transform: scale(var(--window-scale, 1));
+      transform: scale(var(--phase-scale, 1));
       transform-origin: center center;
-      width: min(96vw, calc(1120px * var(--window-scale, 1)));
+      width: min(96vw, calc(1120px * var(--phase-scale, 1)));
       max-height: 92dvh;
       overflow: auto;
     }

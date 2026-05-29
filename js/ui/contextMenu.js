@@ -366,6 +366,7 @@ function openCardMenu(card, x, y){
       disabled: card.dataset.isTemp === "true",
       action: () => {
         card.remove();
+        if (typeof window.organizeHands === "function") window.organizeHands();
         if(typeof saveFieldCards === "function") saveFieldCards();
         if(typeof returnToDeck === "function") returnToDeck(card.dataset.id);
       }

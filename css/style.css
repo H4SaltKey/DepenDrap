@@ -40,7 +40,6 @@ svg {
   box-sizing: border-box;
 }
 
-#gameUiPlayer,
 #gameUiEnemy,
 #zoomControls,
 #menuButton,
@@ -51,6 +50,7 @@ svg {
 }
 
 #gameUiPlayer {
+  scale: 1 !important;
   transform-origin: left bottom;
 }
 

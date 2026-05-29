@@ -1242,6 +1242,7 @@ function enablePointerDrag(el){
 
           if(overlapRatio >= 0.8 && el.dataset.id){
             el.remove();
+            if (typeof window.organizeHands === "function") window.organizeHands();
             saveFieldCards();
             if(typeof returnToDeck === "function"){
               const isTemp = el.dataset.isTemp === "true";

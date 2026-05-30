@@ -1,0 +1,231 @@
+(function() {
+  const AUTO_ACTION_INTERVAL_MS = 650;
+  const DIRECT_ATTACK_SUBTYPE = "none";
+
+  const runtime = {
+    enabled: false,
+    busy: false,
+    lastActionAt: 0,
+    lastDirectAttackKey: "",
+    lastSkillUseKey: "",
+    logs: []
+  };
+
+  function now() {
+    return Date.now();
+  }
+
+  function getMe() {
+    return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
+  }
+
+  function getOp() {
+    const me = getMe();
+    return me === "player1" ? "player2" : "player1";
+  }
+
+  function getPlayableHandCards(owner) {
+    const content = (typeof getFieldContent === "function") ? getFieldContent() : document.getElementById("fieldContent");
+    if (!content) return [];
+    const handYMin = Number(window.HAND_ZONE_Y_MIN || 1460);
+    return Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+      .filter((el) => {
+        if ((el.dataset.owner || "") !== owner) return false;
+        if (el.dataset.zoneType) return false;
+        return Number(el.dataset.y || 0) >= handYMin;
+      });
+  }
+
+  function getZoneTopCard(owner, zoneType) {
+    if (typeof window.getZoneCards !== "function") return null;
+    const cards = window.getZoneCards(owner, zoneType);
+    if (!Array.isArray(cards) || cards.length === 0) return null;
+    return cards[cards.length - 1] || null;
+  }
+
+  function ensureCardProfile(cardEl) {
+    const id = cardEl?.dataset?.id;
+    if (!id || !window.CardCombatData?.getResolvedCardData) return null;
+    return window.CardCombatData.getResolvedCardData(id);
+  }
+
+  function usePP(owner, amount) {
+    const s = window.state?.[owner];
+    if (!s) return false;
+    const cur = Number(s.pp || 0);
+    if (cur < amount) return false;
+    s.pp = cur - amount;
+    if (typeof window.pushMyStateDebounced === "function" && owner === getMe()) {
+      window.pushMyStateDebounced();
+    }
+    return true;
+  }
+
+  function safeUpdate() {
+    if (typeof window.saveAllImmediate === "function") window.saveAllImmediate();
+    if (typeof window.update === "function") window.update(true);
+  }
+
+  function log(message) {
+    runtime.logs.unshift(`[AUTO] ${message}`);
+    runtime.logs = runtime.logs.slice(0, 20);
+    if (typeof window.addGameLog === "function") {
+      window.addGameLog(`[AUTO] ${message}`);
+    }
+    if (typeof window.renderAutoBattleUI === "function") {
+      window.renderAutoBattleUI();
+    }
+  }
+
+  function applyEffectActions(actions, owner) {
+    const me = owner;
+    const op = me === "player1" ? "player2" : "player1";
+    if (!Array.isArray(actions)) return;
+
+    actions.forEach((action) => {
+      if (action.type === "draw_to_hand") {
+        if (typeof window.drawToHand === "function") window.drawToHand(Number(action.amount || 1));
+      } else if (action.type === "recover_pp") {
+        if (typeof window.addVal === "function") window.addVal(me, "pp", Number(action.amount || 1));
+      } else if (action.type === "heal_hp") {
+        if (typeof window.addVal === "function") window.addVal(me, "hp", Number(action.amount || 1));
+      } else if (action.type === "damage") {
+        if (typeof window.applyCalculatedDamage === "function") {
+          window.applyCalculatedDamage(
+            op,
+            action.damageType || "damage",
+            action.subType || "normal",
+            Number(action.amount || 1),
+            false,
+            { source: "auto" }
+          );
+        }
+      }
+    });
+  }
+
+  function playUnitIfPossible(me) {
+    const attackerOnField = getZoneTopCard(me, "attacker");
+    if (attackerOnField) return false;
+
+    const hand = getPlayableHandCards(me);
+    const candidate = hand
+      .map((el) => ({ el, profile: ensureCardProfile(el) }))
+      .find((row) => row.profile && (row.profile.cardKind === "attacker" || row.profile.cardKind === "support"));
+    if (!candidate) return false;
+
+    const cost = Number(candidate.profile.cost || 0);
+    if (!usePP(me, cost)) return false;
+
+    if (typeof window.placeCardInZone === "function") {
+      window.placeCardInZone(candidate.el, me, "attacker");
+      if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+      applyEffectActions(candidate.profile.effectActions, me);
+      safeUpdate();
+      log(`場に ${candidate.el.dataset.id} を配置（cost:${cost}）`);
+      return true;
+    }
+    return false;
+  }
+
+  function playSkillIfPossible(me) {
+    const attackerOnField = getZoneTopCard(me, "attacker");
+    if (!attackerOnField) return false;
+
+    const m = window.state?.matchData || {};
+    const turnKey = `${m.round || 0}-${m.turn || 0}-${me}`;
+    if (runtime.lastSkillUseKey === turnKey) return false;
+
+    const hand = getPlayableHandCards(me);
+    const skill = hand
+      .map((el) => ({ el, profile: ensureCardProfile(el) }))
+      .find((row) => row.profile && row.profile.cardKind === "skill");
+    if (!skill) return false;
+
+    const cost = Number(skill.profile.cost || 0);
+    if (!usePP(me, cost)) return false;
+
+    if (typeof window.placeCardInZone === "function") {
+      window.placeCardInZone(skill.el, me, "skill");
+      applyEffectActions(skill.profile.effectActions, me);
+      if (typeof window.placeCardInZone === "function") {
+        window.placeCardInZone(skill.el, me, "grave");
+      }
+      if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+      safeUpdate();
+      runtime.lastSkillUseKey = turnKey;
+      log(`スキル ${skill.el.dataset.id} を使用（cost:${cost}）`);
+      return true;
+    }
+
+    return false;
+  }
+
+  function directAttackIfPossible(me) {
+    const attacker = getZoneTopCard(me, "attacker");
+    if (!attacker) return false;
+
+    const m = window.state?.matchData || {};
+    const attackKey = `${m.round || 0}-${m.turn || 0}-${me}`;
+    if (runtime.lastDirectAttackKey === attackKey) return false;
+
+    const profile = ensureCardProfile(attacker);
+    const amount = Math.max(1, Number(profile?.attack || 1));
+    if (typeof window.applyCalculatedDamage !== "function") return false;
+
+    window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, { source: "auto" });
+    runtime.lastDirectAttackKey = attackKey;
+    log(`直接攻撃 ${amount} ダメージ`);
+    return true;
+  }
+
+  async function endTurn(me) {
+    if (typeof window.handleTurnEnd !== "function") return;
+    log("ターン終了");
+    await window.handleTurnEnd(false);
+  }
+
+  async function thinkAndAct() {
+    if (!runtime.enabled || runtime.busy) return;
+    const m = window.state?.matchData;
+    const me = getMe();
+    if (!m || m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
+    if (window.isGameInteractionLocked && window.isGameInteractionLocked()) return;
+
+    if ((now() - runtime.lastActionAt) < AUTO_ACTION_INTERVAL_MS) return;
+
+    runtime.busy = true;
+    try {
+      if (playSkillIfPossible(me)) return;
+      if (playUnitIfPossible(me)) return;
+      if (directAttackIfPossible(me)) return;
+      await endTurn(me);
+    } finally {
+      runtime.lastActionAt = now();
+      runtime.busy = false;
+      if (typeof window.renderAutoBattleUI === "function") window.renderAutoBattleUI();
+    }
+  }
+
+  function installHooks() {
+    if (!Array.isArray(window._afterUpdateHooks)) window._afterUpdateHooks = [];
+    if (!window._afterUpdateHooks.includes(thinkAndAct)) {
+      window._afterUpdateHooks.push(thinkAndAct);
+    }
+  }
+
+  function setEnabled(enabled) {
+    runtime.enabled = !!enabled;
+    log(runtime.enabled ? "自動進行 ON" : "自動進行 OFF");
+    if (typeof window.renderAutoBattleUI === "function") window.renderAutoBattleUI();
+  }
+
+  window.AutoBattleSystem = {
+    runtime,
+    setEnabled,
+    installHooks,
+    thinkAndAct
+  };
+
+  installHooks();
+})();

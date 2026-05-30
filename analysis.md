@@ -4247,3 +4247,53 @@ grep 結果: game.js に window.startSoloGame が定義されている
 | 40 | `showGameplayMessage` と `showNotification` 重複 | 動作に影響なし |
 | 41〜44, 47 | デッドファイル / デッドコード | 削除可能だが実害なし |
 | 46 | `deleteAccount` が Firebase データを削除しない | 別途 Firebase 側の実装が必要 |
+
+---
+
+## Round 6 — 自動進行 + カード効果データ拡張（2026-05-31）
+
+### 実装内容
+
+- `js/card/cardCombatData.js` を新規追加
+  - 既存 `cards.json` のカードに対して、ゲーム進行に必要な情報を動的付与:
+    - `cardKind`（`attacker` / `skill` / `support`）
+    - `cost`
+    - `attack`
+    - `effectTiming`
+    - `effectText`
+    - `effectActions`
+  - 属性（近接/遠隔/魔法）× 役割（アタッカー/スキル/サポート）ごとの効果ライブラリを実装
+  - `loadCardData()` 完了後に自動で全カードへエンリッチ
+
+- `js/game/auto/autoBattleEngine.js` を新規追加
+  - 既存フック `window._afterUpdateHooks` を利用し、重複実装なしで自動行動を挿入
+  - 自動行動優先順位:
+    1. スキル使用（場にアタッカーがいる場合）
+    2. ユニット配置（アタッカー/サポート）
+    3. 直接攻撃
+    4. ターン終了
+  - PP消費、効果適用、ダメージ適用、ログ出力、保存同期を自動で実行
+
+- `js/game/auto/autoBattleUI.js` を新規追加
+  - 画面左下に `AUTO BATTLE` パネルを追加
+  - ON/OFF トグル、現在ステータス、直近ログを表示
+
+- `game.html` を最小編集
+  - 新規ファイルの読み込みを追加:
+    - `js/card/cardCombatData.js`
+    - `js/game/auto/autoBattleEngine.js`
+    - `js/game/auto/autoBattleUI.js`
+
+### 目的適合
+
+- **ゲーム自動進行**: ターン中の主要アクションを自律実行
+- **カード効果の明確化**: 機械可読な効果データを全カードで利用可能に
+- **システム構築/データ管理/UI**: エンジン・データ拡張・操作UIを分離実装
+- **新機能は既存JSと別ファイル**: 主要機能はすべて新規ファイルで実装
+- **同様機能の重複回避**: 既存 `handleTurnEnd` / `_afterUpdateHooks` / `applyCalculatedDamage` を再利用
+
+### 残課題
+
+- [ ] カード個別固有効果（現状は属性×役割ベース）
+- [ ] サポートカードのルール厳密化（場に存在時のスキル化条件など）
+- [ ] AIの判断強化（相手状態を見た最適行動）

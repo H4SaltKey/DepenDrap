@@ -4,7 +4,10 @@
     "image": "block001/スライド1.png",
     "attribute": "魔法",
     "type": "アタッカー",
-    "tags": []
+    "tags": [
+      "neko",
+      "meow"
+    ]
   },
   {
     "id": "cd001-002",
@@ -32,7 +35,10 @@
     "image": "block001/スライド5.png",
     "attribute": "魔法",
     "type": "アタッカー",
-    "tags": []
+    "tags": [
+      "baka",
+      "aho"
+    ]
   },
   {
     "id": "cd001-006",

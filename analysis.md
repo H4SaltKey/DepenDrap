@@ -4412,3 +4412,35 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - まだカード個別の具体効果フローには未接続
 - 本実装は「手動自由選択系効果」の土台UI/APIの提供が目的
+
+---
+
+## Round 10 — PP確認モーダル一時無効化 + オプション化（2026-05-31）
+
+### 対応内容
+
+- **PP確認モーダル**
+  - 初期値を `OFF`（無効）に設定
+  - `OFF`時は、カードを `attacker/skill` ゾーンに置いた際に確認モーダルを出さず、そのまま配置
+  - PP消費は既存の `PlayerActionResolver` 側コスト処理に委譲
+
+- **オプション追加**
+  - `js/ui/menu.js` の設定に以下を追加（初期値はいずれも `false`）
+    - `ppCostModalEnabled`
+    - `autoPlayEnabled`
+  - オプションモーダルにチェックボックスを追加
+    - 「カード配置時のPP確認モーダル」
+    - 「オートプレイ」
+
+### 実装上の整合
+
+- PP確認モーダルを `ON` にした場合、モーダル側で先にPPを減らす
+- その後の `PlayerActionResolver` で二重消費しないように、
+  - `cardEl.dataset.ppCostHandled = "1"` を付与
+  - resolver側で検出時にコスト再消費をスキップ
+
+### 変更ファイル
+
+- `js/ui/menu.js`
+- `js/card/cardManager.js`
+- `js/game/auto/playerActionResolver.js`

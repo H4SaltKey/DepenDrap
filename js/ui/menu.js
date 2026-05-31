@@ -1,8 +1,24 @@
 (function(){
-  const settings = JSON.parse(localStorage.getItem("settings")) || {
+  const DEFAULT_SETTINGS = {
     bgm: 0.5,
     se: 0.5,
-    timeLimitEnabled: true
+    timeLimitEnabled: true,
+    ppCostModalEnabled: false,
+    autoPlayEnabled: false
+  };
+  const settings = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem("settings")) || {});
+  localStorage.setItem("settings", JSON.stringify(settings));
+  window.getGameSettings = function() {
+    try {
+      return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem("settings")) || {});
+    } catch {
+      return Object.assign({}, DEFAULT_SETTINGS);
+    }
+  };
+  window.getGameSetting = function(key, fallback) {
+    const s = window.getGameSettings();
+    if (Object.prototype.hasOwnProperty.call(s, key)) return s[key];
+    return fallback;
   };
 
   const html = `
@@ -30,6 +46,14 @@
         <label style="display:flex; align-items:center; gap:8px; margin-top:14px;">
           <input type="checkbox" id="scrollZoomDynamicEnabled">
           スクロール倍率を可変にする
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+          <input type="checkbox" id="ppCostModalEnabled">
+          カード配置時のPP確認モーダル
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+          <input type="checkbox" id="autoPlayEnabled">
+          オートプレイ
         </label>
 
         <div class="optionFooter">
@@ -320,6 +344,10 @@
     document.getElementById("seVolume").value = settings.se;
     const cb = document.getElementById("scrollZoomDynamicEnabled");
     if (cb) cb.checked = (typeof window.isScrollZoomDynamicEnabled === "function") ? window.isScrollZoomDynamicEnabled() : true;
+    const ppCb = document.getElementById("ppCostModalEnabled");
+    if (ppCb) ppCb.checked = !!settings.ppCostModalEnabled;
+    const autoCb = document.getElementById("autoPlayEnabled");
+    if (autoCb) autoCb.checked = !!settings.autoPlayEnabled;
   };
 
   document.getElementById("closeOpt").onclick = ()=>{
@@ -364,11 +392,16 @@
   document.addEventListener("input", (e)=>{
     if(e.target.id === "bgmVolume") settings.bgm = e.target.value;
     if(e.target.id === "seVolume") settings.se = e.target.value;
+    if(e.target.id === "ppCostModalEnabled") settings.ppCostModalEnabled = !!e.target.checked;
+    if(e.target.id === "autoPlayEnabled") settings.autoPlayEnabled = !!e.target.checked;
     localStorage.setItem("settings", JSON.stringify(settings));
   });
   document.addEventListener("change", (e)=>{
     if (e.target.id === "scrollZoomDynamicEnabled" && typeof window.setScrollZoomDynamicEnabled === "function") {
       window.setScrollZoomDynamicEnabled(!!e.target.checked);
+    }
+    if (e.target.id === "autoPlayEnabled" && window.AutoBattleSystem && typeof window.AutoBattleSystem.setEnabled === "function") {
+      window.AutoBattleSystem.setEnabled(!!e.target.checked);
     }
   });
 

@@ -1047,6 +1047,8 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
       return;
     }
     st.pp -= cost;
+    cardEl.dataset.ppCostHandled = "1";
+    cardEl.dataset.ppCostValue = String(cost);
     placeCardInZone(cardEl, owner, zoneType);
     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
     if (typeof window.organizeHands === "function") window.organizeHands();
@@ -1055,6 +1057,18 @@ function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
     if (typeof update === "function") update();
     close();
   };
+}
+
+function isPpCostModalEnabled() {
+  if (typeof window.getGameSetting === "function") {
+    return !!window.getGameSetting("ppCostModalEnabled", false);
+  }
+  try {
+    const s = JSON.parse(localStorage.getItem("settings") || "{}") || {};
+    return !!s.ppCostModalEnabled;
+  } catch {
+    return false;
+  }
 }
 
 function clearHandReorderGuides() {
@@ -1267,6 +1281,18 @@ function enablePointerDrag(el){
         const centerY = fieldY + CARD_H / 2;
         const zoneHit = battleZoneHitTypeAt(centerX, centerY, myRole2);
         if (zoneHit === "attacker" || zoneHit === "skill") {
+          const usePpModal = isPpCostModalEnabled();
+          if (!usePpModal) {
+            placeCardInZone(el, myRole2, zoneHit);
+            if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+            if (typeof window.organizeHands === "function") window.organizeHands();
+            saveFieldCards();
+            if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+            if (typeof update === "function") update();
+            pointerId = null;
+            document.body.classList.remove("isInteractingCard");
+            return;
+          }
           pointerId = null;
           deferInteractionUnlock = true;
           showBattleZonePpCostModal({

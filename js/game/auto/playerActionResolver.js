@@ -43,6 +43,7 @@
   }
 
   function spendCardCost(owner, card) {
+    if (card && card._ppCostHandledByModal) return true;
     const cost = Math.max(0, Number(card?.cost || 0));
     if (cost <= 0) return true;
     const player = window.state?.[owner];
@@ -111,6 +112,11 @@
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
       ? window.CardCombatData.getResolvedCardData(card.id)
       : card;
+    if (cardEl.dataset.ppCostHandled === "1") {
+      profile._ppCostHandledByModal = true;
+      delete cardEl.dataset.ppCostHandled;
+      delete cardEl.dataset.ppCostValue;
+    }
     const cardName = profile.name || profile.id || "カード";
     const flowId = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
 

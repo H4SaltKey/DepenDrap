@@ -90,12 +90,60 @@
   {
     "id": "cd001-002",
     "image": "block001/スライド2.png",
-    "name": "",
+    "name": "黒魔術",
     "attribute": "魔法",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "",
-    "effectDsl": null,
+    "attack": 1,
+    "effectText": "魔法の場合、\n後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る。\n②：自身のHPを1減らす。\n③：手札を1枚増やす。",
+    "effectDsl": {
+      "version": 1,
+      "triggers": [
+        {
+          "on": "manual",
+          "effects": [
+            {
+              "type": "UNKNOWN",
+              "raw": "魔法の場合、"
+            }
+          ]
+        },
+        {
+          "on": "manual",
+          "effects": [
+            {
+              "type": "UNKNOWN",
+              "raw": "後述の効果を上から順に全て発動する"
+            }
+          ]
+        },
+        {
+          "on": "onLeave",
+          "effects": [
+            {
+              "type": "DESTROY"
+            }
+          ]
+        },
+        {
+          "on": "manual",
+          "effects": [
+            {
+              "type": "UNKNOWN",
+              "raw": "②：自身のHPを1減らす"
+            }
+          ]
+        },
+        {
+          "on": "manual",
+          "effects": [
+            {
+              "type": "UNKNOWN",
+              "raw": "③：手札を1枚増やす"
+            }
+          ]
+        }
+      ]
+    },
     "tags": []
   },
   {

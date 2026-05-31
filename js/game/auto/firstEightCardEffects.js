@@ -14,6 +14,16 @@
     return owner === "player1" ? "player2" : "player1";
   }
 
+  function track(owner, cardId, trigger, effectType) {
+    if (!window.GameStatTracker || typeof window.GameStatTracker.recordEffectActivation !== "function") return;
+    window.GameStatTracker.recordEffectActivation({
+      owner: owner || "player1",
+      cardId: cardId || "unknown",
+      trigger: trigger || "manual",
+      effectType: effectType || "SCRIPTED"
+    });
+  }
+
   function getPlayer(owner) {
     return window.state?.[owner] || null;
   }
@@ -74,6 +84,7 @@
 
     // cd001-001 退場時: 直接攻撃していないなら 自身HP-1 / PPを1まで回復 / 手札へ戻る
     if (id === "cd001-001" && !didDirectAttack) {
+      track(owner, id, "onLeave", "SCRIPTED_LEAVE");
       reduceHp(owner, 1);
       setPpAtLeast(owner, 1);
       moveCardToOwnerHand(cardEl, owner);
@@ -85,6 +96,7 @@
 
     // cd001-005 退場時: 直接攻撃していないなら 自身HPを3回復
     if (id === "cd001-005" && !didDirectAttack) {
+      track(owner, id, "onLeave", "SCRIPTED_LEAVE");
       healHp(owner, 3);
       if (typeof window.addGameLog === "function") {
         window.addGameLog("[EFFECT] 創世の賢者 退場時効果を発動");
@@ -126,12 +138,14 @@
     if (!self) return;
 
     if (id === "cd001-003") {
+      track(owner, id, "onAttack", "SCRIPTED_ATTACK");
       healHp(owner, 1);
       addShield(owner, 1);
       return;
     }
 
     if (id === "cd001-005") {
+      track(owner, id, "onAttack", "SCRIPTED_ATTACK");
       self._cd001005_usedHeal2 = !!self._cd001005_usedHeal2;
       if (!self._cd001005_usedHeal2) {
         healHp(owner, 2);
@@ -143,6 +157,7 @@
     }
 
     if (id === "cd001-007") {
+      track(owner, id, "onAttack", "SCRIPTED_ATTACK");
       const hp = Number(self.hp || 0);
       if (hp >= 11) reduceHp(owner, 1);
       const hpNow = Number(self.hp || 0);
@@ -169,11 +184,13 @@
     const op = meToOp(owner);
 
     if (id === "cd001-001" && zoneType === "attacker") {
+      track(owner, id, "onSummon", "SCRIPTED_CARD");
       setPpAtLeast(owner, 1);
       return { handled: true, preventDefaultDsl: true };
     }
 
     if (id === "cd001-002" && zoneType === "skill") {
+      track(owner, id, "onAttack", "SCRIPTED_CARD");
       if (isMagicBattleState(owner)) {
         moveOwnerBattleCardsToGrave(owner);
         reduceHp(owner, 1);
@@ -183,6 +200,7 @@
     }
 
     if (id === "cd001-003" && zoneType === "attacker") {
+      track(owner, id, "onSummon", "SCRIPTED_CARD");
       const hp = Number(self?.hp || 0);
       const shield = Number(self?.shield || 0);
       if (hp >= 15) drawToHand(1);
@@ -191,6 +209,7 @@
     }
 
     if (id === "cd001-004" && zoneType === "skill") {
+      track(owner, id, "onAttack", "SCRIPTED_CARD");
       if (isMagicBattleState(owner)) {
         resolveAttackTriggerForAttacker(owner);
       }
@@ -198,11 +217,13 @@
     }
 
     if (id === "cd001-005" && zoneType === "attacker") {
+      track(owner, id, "onSummon", "SCRIPTED_CARD");
       // 継続効果は簡易実装: 登場時には処理なし
       return { handled: true, preventDefaultDsl: true };
     }
 
     if (id === "cd001-006" && zoneType === "skill") {
+      track(owner, id, "onAttack", "SCRIPTED_CARD");
       if (isMagicBattleState(owner)) {
         moveOwnerBattleCardsToGrave(owner);
         healHp(owner, 1);
@@ -221,12 +242,14 @@
     }
 
     if (id === "cd001-007" && zoneType === "attacker") {
+      track(owner, id, "onSummon", "SCRIPTED_CARD");
       const hp = Number(self?.hp || 0);
       if (hp >= 11) addPp(owner, 1);
       return { handled: true, preventDefaultDsl: true };
     }
 
     if (id === "cd001-008" && zoneType === "skill") {
+      track(owner, id, "onAttack", "SCRIPTED_CARD");
       if (isMagicBattleState(owner)) {
         const atk = Math.max(0, Number(profile.attack || 0));
         healHp(owner, atk);
@@ -250,6 +273,7 @@
     const key = `${owner}:${m.round || 0}:${m.turn || 0}`;
     const pending = window.runtimeState?.effects?.pendingTurnEndHeal?.[key];
     if (!Number.isFinite(Number(pending)) || Number(pending) <= 0) return;
+    track(owner, "cd001-008", "onTurnEnd", "SCRIPTED_TURN_END");
     healHp(owner, Number(pending));
     delete window.runtimeState.effects.pendingTurnEndHeal[key];
     if (typeof window.addGameLog === "function") {

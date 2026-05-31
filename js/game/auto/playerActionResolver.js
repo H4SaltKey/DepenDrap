@@ -27,6 +27,21 @@
     }
   }
 
+  function trackEffectActivation(owner, cardId, trigger, effectType) {
+    if (!window.GameStatTracker || typeof window.GameStatTracker.recordEffectActivation !== "function") return;
+    window.GameStatTracker.recordEffectActivation({
+      owner: owner || "player1",
+      cardId: cardId || "unknown",
+      trigger: trigger || "manual",
+      effectType: effectType || "UNKNOWN"
+    });
+  }
+
+  function bumpFlowCounter(scope, owner, key, amount) {
+    if (!window.GameStatTracker || typeof window.GameStatTracker.bumpCustom !== "function") return;
+    window.GameStatTracker.bumpCustom(scope, owner || "player1", key, Number(amount || 1));
+  }
+
   function getMyRoleSafe() {
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
   }
@@ -133,17 +148,24 @@
       delete cardEl.dataset.ppCostValue;
     }
     const cardName = profile.name || profile.id || "カード";
+    const cardId = profile.id || cardEl.dataset.id || "unknown";
     const flowId = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
+    const triggerName = normalizeTrigger(profile.cardKind === "skill" ? "onAttack" : "onSummon");
 
     logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
+    bumpFlowCounter("turn", owner, "flow.start.count", 1);
+    bumpFlowCounter("game", owner, "flow.start.count", 1);
 
     if (!spendCardCost(owner, profile)) {
       logFlow(`EFFECT_CHECK ${flowId} skipped: PP不足`);
+      trackEffectActivation(owner, cardId, triggerName, "SKIPPED_NO_PP");
       if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(cardEl);
       if (typeof window.organizeHands === "function") window.organizeHands();
       if (typeof window.saveAllImmediate === "function") window.saveAllImmediate();
       if (typeof window.update === "function") window.update(true);
       logFlow(`END ${flowId} result=cancelled`);
+      bumpFlowCounter("turn", owner, "flow.end.cancelled", 1);
+      bumpFlowCounter("game", owner, "flow.end.cancelled", 1);
       return;
     }
 
@@ -169,12 +191,13 @@
       let resolvedEffects = 0;
       let knownEffects = 0;
       if (dsl && Array.isArray(dsl.triggers)) {
-        const triggerName = normalizeTrigger(profile.cardKind === "skill" ? "onAttack" : "onSummon");
         const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
         matched.forEach((t) => {
           (t.effects || []).forEach((effect) => {
             resolvedEffects += 1;
-            if (KNOWN_EFFECT_TYPES.has(String(effect?.type || "UNKNOWN"))) knownEffects += 1;
+            const effectType = String(effect?.type || "UNKNOWN");
+            if (KNOWN_EFFECT_TYPES.has(effectType)) knownEffects += 1;
+            trackEffectActivation(owner, cardId, triggerName, effectType);
             applyKnownEffect(effect, owner);
           });
         });
@@ -182,12 +205,15 @@
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} known=${knownEffects} unknown=${Math.max(0, resolvedEffects - knownEffects)}`);
         } else {
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (定義なし)`);
+          trackEffectActivation(owner, cardId, triggerName, "NONE");
         }
       } else {
         logFlow(`EFFECT_CHECK ${flowId} dsl=none`);
+        trackEffectActivation(owner, cardId, triggerName, "NONE_DSL");
       }
     } else {
       logFlow(`EFFECT_CHECK ${flowId} scripted=first8`);
+      trackEffectActivation(owner, cardId, triggerName, "SCRIPTED_FIRST8");
     }
 
     if (profile.cardKind === "skill" && window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
@@ -199,6 +225,8 @@
     if (typeof window.saveAllImmediate === "function") window.saveAllImmediate();
     if (typeof window.update === "function") window.update(true);
     logFlow(`END ${flowId} result=done`);
+    bumpFlowCounter("turn", owner, "flow.end.done", 1);
+    bumpFlowCounter("game", owner, "flow.end.done", 1);
   }
 
   function installPlaceCardHook() {

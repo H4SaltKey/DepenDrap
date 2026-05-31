@@ -75,10 +75,16 @@
     return dsl.triggers.every((t) => typeof t.on === "string" && Array.isArray(t.effects));
   }
 
+  function readTrackerValue(path, owner) {
+    if (!window.GameStatTracker || typeof window.GameStatTracker.resolvePath !== "function") return null;
+    return window.GameStatTracker.resolvePath(path, owner || (window.getMyRole ? window.getMyRole() : window.myRole));
+  }
+
   window.CardDSL = {
     VERSION,
     DICTIONARY,
     compileText,
-    validateDsl
+    validateDsl,
+    readTrackerValue
   };
 })();

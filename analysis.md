@@ -4584,3 +4584,54 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 補足
 
 - 直接攻撃済み判定は `dataset.didDirectAttack` を参照（将来的に直接攻撃処理側で明示フラグ管理を強化予定）
+
+---
+
+## Round 15 — ゲーム内変数トラッキング基盤の接続（2026-05-31）
+
+### 要件
+
+- ゲーム中およびターン単位で、ステータス増減回数/量・効果発動回数などを記録
+- カード側から追跡値を参照可能にする
+
+### 実装
+
+- `js/game/statTracker.js`
+  - `game` / `turn` スコープで、`player1` / `player2` / `global` の統計を保持
+  - `addVal` / `setVal` / `applyCalculatedDamage` をラップして、
+    - `incCount`, `incAmount`, `decCount`, `decAmount`, `setCount` を記録
+  - 効果発動回数を `recordEffectActivation` でキー集計
+  - ターン履歴スナップショット（直近100件）を保持
+  - `resolvePath("turn.hp.incCount", owner)` 形式で参照可能
+
+- `game.html`
+  - `js/game/statTracker.js` を読み込み追加
+
+- `js/game/auto/playerActionResolver.js`
+  - カード使用フローで以下を記録
+    - フロー開始/終了カウンタ
+    - PP不足スキップ
+    - DSL効果ごとの発動回数
+    - 効果定義なし (`NONE` / `NONE_DSL`) も記録
+    - 先頭8枚のスクリプト実行は `SCRIPTED_FIRST8` で記録
+
+- `js/game/auto/firstEightCardEffects.js`
+  - 先頭8枚のスクリプト効果に対して、
+    - `onSummon` / `onAttack` / `onLeave` / `onTurnEnd` の発動を記録
+
+- `js/card/cardDsl.js`
+  - `CardDSL.readTrackerValue(path, owner)` を追加し、カード側からトラッカー値参照を可能化
+
+### 例
+
+- `CardDSL.readTrackerValue("turn.hp.decAmount", "player1")`
+- `CardDSL.readTrackerValue("game.pp.incCount", "player2")`
+
+### 検証
+
+- `node --check` 実行:
+  - `js/game/statTracker.js`
+  - `js/game/auto/playerActionResolver.js`
+  - `js/game/auto/firstEightCardEffects.js`
+  - `js/card/cardDsl.js`
+  - すべて構文エラーなし

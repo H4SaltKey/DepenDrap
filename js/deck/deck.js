@@ -353,11 +353,16 @@ function createCardElement(id, count, source) {
   el.dataset.source = source;
 
   const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
-  el.innerHTML = `
-    <img src="${imageSrc}" alt="">
-    ${card.name ? `<div class="deckCardName">${card.name}</div>` : ""}
-    ${count ? `<div class="deckCardCount">×${count}</div>` : ""}
-  `;
+  if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
+    el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: count || 0 });
+    el.classList.add("cardVisualApplied");
+  } else {
+    el.innerHTML = `
+      <img src="${imageSrc}" alt="">
+      ${card.name ? `<div class="deckCardName">${card.name}</div>` : ""}
+      ${count ? `<div class="deckCardCount">×${count}</div>` : ""}
+    `;
+  }
 
   el.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", id);

@@ -269,38 +269,18 @@ function renderDevCards() {
       el.appendChild(placeholder);
     }
 
-    const overlay = document.createElement("div");
-    overlay.className = "devCardOverlay";
-
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "deckCardName";
-    nameDiv.textContent = card.name || card.id;
-    overlay.appendChild(nameDiv);
-
-    const metaDiv = document.createElement("div");
-    metaDiv.className = "deckCardMeta";
-    const attr = card.attribute || "近接";
-    const type = card.type || "アタッカー";
-    metaDiv.innerHTML = `
-      <span class="attr attr-${attr}">${attr}</span>
-      <span class="slash">/</span>
-      <span class="type type-${type}">${type}</span>
-    `;
-    overlay.appendChild(metaDiv);
-
-    const attackDiv = document.createElement("div");
-    attackDiv.className = "deckCardTags";
-    attackDiv.textContent = `ATK: ${Number(card.attack || 0)}`;
-    overlay.appendChild(attackDiv);
-
-    if (card.tags) {
-      const tagsDiv = document.createElement("div");
-      tagsDiv.className = "deckCardTags";
-      tagsDiv.textContent = card.tags;
-      overlay.appendChild(tagsDiv);
+    if (window.CardVisualLayout && typeof window.CardVisualLayout.applyToCardElement === "function") {
+      window.CardVisualLayout.applyToCardElement(el, card);
+      el.classList.add("cardVisualApplied");
+    } else {
+      const overlay = document.createElement("div");
+      overlay.className = "devCardOverlay";
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "deckCardName";
+      nameDiv.textContent = card.name || card.id;
+      overlay.appendChild(nameDiv);
+      el.appendChild(overlay);
     }
-
-    el.appendChild(overlay);
 
     el.addEventListener("click", () => selectCard(card.id));
     el.addEventListener("contextmenu", (e) => {

@@ -721,6 +721,9 @@ function createCard(id){
   wrapper.appendChild(backCustomImg);
   wrapper.appendChild(label);
   wrapper.appendChild(tempIcon);
+  if (window.CardVisualLayout && typeof window.CardVisualLayout.applyToCardElement === "function") {
+    window.CardVisualLayout.applyToCardElement(wrapper, data);
+  }
 
   enablePointerDrag(wrapper);
   
@@ -761,6 +764,7 @@ function applyCardFace(card, visibility){
   const frontImg = card.querySelector(".card-front") || card.querySelector("img");
   const backDefaultImg = card.querySelector(".card-back-default");
   const backCustomImg = card.querySelector(".card-back-custom");
+  const frontOverlay = card.querySelector(".card-front-overlay");
   if(!frontImg) return;
 
   const owner = card.dataset.owner || "player1";
@@ -770,11 +774,13 @@ function applyCardFace(card, visibility){
   if (showFront) {
     // 表面を表示
     frontImg.style.visibility = "visible";
+    if (frontOverlay) frontOverlay.style.visibility = "visible";
     if (backDefaultImg) backDefaultImg.style.display = "none";
     if (backCustomImg) backCustomImg.style.display = "none";
   } else {
     // 裏面を表示（2重構造）
     frontImg.style.visibility = "hidden"; // 表面を見えなくするが、サイズを保つために display は維持する
+    if (frontOverlay) frontOverlay.style.visibility = "hidden";
     
     // 1. まずデフォルトの裏面を必ず表示（フォールバックを保証）
     if (backDefaultImg) {

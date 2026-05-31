@@ -4635,3 +4635,49 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `js/game/auto/firstEightCardEffects.js`
   - `js/card/cardDsl.js`
   - すべて構文エラーなし
+
+---
+
+## Round 16 — カード表示レイアウト統一（2026-05-31）
+
+### 要件
+
+- 全カードに `カード名 / 属性アイコン / 攻撃力 / 効果テキスト` を表示
+- 種別ごとの見た目差分
+  - アタッカー: 左上攻撃力、右にカード名、攻撃力下に属性アイコン、下部40%に効果テキスト
+  - スキル: 左上攻撃力を円囲み、右にカード名、下部40%に効果テキスト
+  - サポート: 左上は短い横線（攻撃力無効）、右にカード名、攻撃力下に属性アイコン、下部40%に効果テキスト
+
+### 実装
+
+- 新規: `js/card/cardVisualLayout.js`
+  - カード表示レイアウト生成を共通化
+  - `CardVisualLayout.applyToCardElement(el, card)`
+  - `CardVisualLayout.buildDeckCardInnerHtml(card, options)`
+
+- `js/card/cardManager.js`
+  - ゲーム中カード生成時に共通レイアウトを適用
+  - 裏面表示時に表面オーバーレイも非表示化
+
+- `js/deck/deck.js`
+  - デッキ構築画面カードを共通レイアウトで描画
+
+- `js/dev/dev.js`
+  - 開発者モードのカード一覧を共通レイアウト化
+
+- `game.html` / `deck.html` / `dev.html`
+  - `js/card/cardVisualLayout.js` を読み込み追加
+
+- `css/style.css`
+  - 共通カードレイアウトスタイルを追加
+  - `#field` 上のカード向けに文字・要素サイズを別調整
+  - 効果テキスト領域をカード下部40%で固定
+
+### 検証
+
+- `node --check`:
+  - `js/card/cardVisualLayout.js`
+  - `js/card/cardManager.js`
+  - `js/deck/deck.js`
+  - `js/dev/dev.js`
+  - すべて構文エラーなし

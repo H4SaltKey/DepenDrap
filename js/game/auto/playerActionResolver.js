@@ -17,6 +17,14 @@
     lastResolvedInstanceKey: ""
   };
 
+  function logFlow(message) {
+    if (typeof window.addGameLog === "function") {
+      window.addGameLog(`[FLOW] ${message}`);
+    } else {
+      console.log(`[FLOW] ${message}`);
+    }
+  }
+
   function getMyRoleSafe() {
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
   }
@@ -103,27 +111,44 @@
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
       ? window.CardCombatData.getResolvedCardData(card.id)
       : card;
+    const cardName = profile.name || profile.id || "カード";
+    const flowId = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
+
+    logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
 
     if (!spendCardCost(owner, profile)) {
+      logFlow(`EFFECT_CHECK ${flowId} skipped: PP不足`);
       if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(cardEl);
       if (typeof window.organizeHands === "function") window.organizeHands();
       if (typeof window.saveAllImmediate === "function") window.saveAllImmediate();
       if (typeof window.update === "function") window.update(true);
+      logFlow(`END ${flowId} result=cancelled`);
       return;
     }
 
     const dsl = profile.effectDsl;
+    let resolvedEffects = 0;
+    let knownEffects = 0;
     if (dsl && Array.isArray(dsl.triggers)) {
       const triggerName = normalizeTrigger(profile.cardKind === "skill" ? "onAttack" : "onSummon");
-      dsl.triggers
-        .filter((t) => normalizeTrigger(t.on) === triggerName)
-        .forEach((t) => {
-          (t.effects || []).forEach((effect) => applyKnownEffect(effect, owner));
+      const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
+      matched.forEach((t) => {
+        (t.effects || []).forEach((effect) => {
+          resolvedEffects += 1;
+          if (KNOWN_EFFECT_TYPES.has(String(effect?.type || "UNKNOWN"))) knownEffects += 1;
+          applyKnownEffect(effect, owner);
         });
+      });
+      if (resolvedEffects > 0) {
+        logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} known=${knownEffects} unknown=${Math.max(0, resolvedEffects - knownEffects)}`);
+      } else {
+        logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (定義なし)`);
+      }
+    } else {
+      logFlow(`EFFECT_CHECK ${flowId} dsl=none`);
     }
 
     if (typeof window.addGameLog === "function") {
-      const cardName = profile.name || profile.id || "カード";
       window.addGameLog(`[ACTION] ${cardName} を使用 (PP:${profile.cost || 0})`);
     }
 
@@ -131,6 +156,7 @@
 
     if (typeof window.saveAllImmediate === "function") window.saveAllImmediate();
     if (typeof window.update === "function") window.update(true);
+    logFlow(`END ${flowId} result=done`);
   }
 
   function installPlaceCardHook() {

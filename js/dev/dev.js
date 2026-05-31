@@ -2,6 +2,8 @@
 let devCards = [];
 let pendingImages = {};
 let selectedId = null;
+let cardSearchQuery = "";
+let cardSortMode = "idAsc";
 
 // ===== 初期化 =====
 async function initDev() {
@@ -14,6 +16,9 @@ async function initDev() {
         ? c.image.replace("assets/cards/", "")
         : "",
       name: c.name || "",
+      attack: Number.isFinite(Number(c.attack)) ? Number(c.attack) : 0,
+      effectText: String(c.effectText || ""),
+      effectDsl: c.effectDsl || null,
       attribute: c.attribute || "近接",
       type: c.type || "アタッカー",
       tags: Array.isArray(c.tags) ? c.tags.join(", ") : (typeof c.tags === "string" ? c.tags : "")
@@ -37,6 +42,9 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
     id,
     image: "",
     name: "",
+    attack: 0,
+    effectText: "",
+    effectDsl: null,
     attribute: "近接",
     type: "アタッカー",
     tags: ""
@@ -81,7 +89,10 @@ function selectCard(id) {
 
   document.getElementById("editPanel").classList.remove("hidden");
   document.getElementById("editId").value = card.id;
+  document.getElementById("editName").value = card.name || "";
+  document.getElementById("editAttack").value = Number(card.attack || 0);
   document.getElementById("editTags").value = card.tags || "";
+  document.getElementById("editEffectText").value = card.effectText || "";
   const attrInput = document.getElementById(`editAttribute_${card.attribute || "近接"}`);
   if (attrInput) attrInput.checked = true;
   const typeInput = document.getElementById(`editCardType_${card.type || "アタッカー"}`);
@@ -146,6 +157,65 @@ if (editTagsInput) {
     updateSelectedField('tags', editTagsInput.value);
   });
 }
+const editNameInput = document.getElementById("editName");
+if (editNameInput) {
+  editNameInput.addEventListener("input", () => {
+    updateSelectedField("name", editNameInput.value);
+  });
+}
+const editAttackInput = document.getElementById("editAttack");
+if (editAttackInput) {
+  editAttackInput.addEventListener("input", () => {
+    const attack = Math.max(0, Math.floor(Number(editAttackInput.value) || 0));
+    updateSelectedField("attack", attack);
+  });
+}
+const editEffectTextInput = document.getElementById("editEffectText");
+if (editEffectTextInput) {
+  editEffectTextInput.addEventListener("input", () => {
+    updateSelectedField("effectText", editEffectTextInput.value);
+  });
+}
+
+function cardMatchesSearch(card, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  const target = [
+    card.id,
+    card.name,
+    card.tags,
+    card.effectText
+  ].map(v => String(v || "").toLowerCase()).join(" ");
+  return target.includes(q);
+}
+
+function compareCardId(a, b) {
+  return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: "base" });
+}
+
+function getFilteredSortedCards() {
+  const filtered = devCards.filter((card) => cardMatchesSearch(card, cardSearchQuery));
+  const rows = [...filtered];
+  if (cardSortMode === "nameAsc") {
+    rows.sort((a, b) => {
+      const byName = String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true, sensitivity: "base" });
+      return byName !== 0 ? byName : compareCardId(a, b);
+    });
+  } else if (cardSortMode === "attackDesc") {
+    rows.sort((a, b) => {
+      const diff = Number(b.attack || 0) - Number(a.attack || 0);
+      return diff !== 0 ? diff : compareCardId(a, b);
+    });
+  } else if (cardSortMode === "attackAsc") {
+    rows.sort((a, b) => {
+      const diff = Number(a.attack || 0) - Number(b.attack || 0);
+      return diff !== 0 ? diff : compareCardId(a, b);
+    });
+  } else {
+    rows.sort(compareCardId);
+  }
+  return rows;
+}
 
 // ===== 画像選択 =====
 document.getElementById("selectImageBtn").addEventListener("click", () => {
@@ -177,7 +247,8 @@ function renderDevCards() {
   const container = document.getElementById("cards");
   container.innerHTML = "";
 
-  devCards.forEach(card => {
+  const list = getFilteredSortedCards();
+  list.forEach(card => {
     const el = document.createElement("div");
     el.className = "deckCard" + (card.id === selectedId ? " selected" : "");
     el.dataset.id = card.id;
@@ -217,6 +288,11 @@ function renderDevCards() {
     `;
     overlay.appendChild(metaDiv);
 
+    const attackDiv = document.createElement("div");
+    attackDiv.className = "deckCardTags";
+    attackDiv.textContent = `ATK: ${Number(card.attack || 0)}`;
+    overlay.appendChild(attackDiv);
+
     if (card.tags) {
       const tagsDiv = document.createElement("div");
       tagsDiv.className = "deckCardTags";
@@ -235,6 +311,21 @@ function renderDevCards() {
   });
 
   updateScrollButtons();
+}
+
+const cardSearchInput = document.getElementById("cardSearchInput");
+if (cardSearchInput) {
+  cardSearchInput.addEventListener("input", () => {
+    cardSearchQuery = cardSearchInput.value || "";
+    renderDevCards();
+  });
+}
+const cardSortSelect = document.getElementById("cardSortSelect");
+if (cardSortSelect) {
+  cardSortSelect.addEventListener("change", () => {
+    cardSortMode = cardSortSelect.value || "idAsc";
+    renderDevCards();
+  });
 }
 
 function openDevContextMenu(x, y, id) {
@@ -278,7 +369,7 @@ function showCardZoom(id) {
   image.src = src;
   image.onerror = () => { image.src = "assets/System/404.png"; };
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
-  info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
+  info.textContent = `ID: ${card.id} │ ${card.name || "(名称未設定)"} │ ATK:${Number(card.attack || 0)} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
   modal.classList.remove("hidden");
 }
 
@@ -336,11 +427,19 @@ document.getElementById("doneBtn").addEventListener("click", () => {
   }
 
   const output = devCards.map(c => {
+    const effectText = String(c.effectText || "").trim();
+    const compiledDsl = (window.CardDSL && typeof window.CardDSL.compileText === "function")
+      ? window.CardDSL.compileText(effectText)
+      : null;
     const entry = {
       id: c.id,
       image: c.image || "",
+      name: String(c.name || "").trim(),
       attribute: c.attribute || "近接",
       type: c.type || "アタッカー",
+      attack: Math.max(0, Math.floor(Number(c.attack) || 0)),
+      effectText,
+      effectDsl: compiledDsl,
       tags: normalizeTags(c.tags)
     };
     return entry;

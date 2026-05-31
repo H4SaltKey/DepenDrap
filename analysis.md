@@ -4297,3 +4297,53 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - [ ] カード個別固有効果（現状は属性×役割ベース）
 - [ ] サポートカードのルール厳密化（場に存在時のスキル化条件など）
 - [ ] AIの判断強化（相手状態を見た最適行動）
+
+---
+
+## Round 7 — カード編集画面拡張 + DSL土台（2026-05-31）
+
+### 要件対応
+
+- 開発者モードでカードの `カード名 / 攻撃力 / 効果テキスト` を編集可能にした
+- カード一覧で以下を追加
+  - 検索（カード名 / タグ / 効果テキスト）
+  - ソート（ID順 / 名前順 / 攻撃力 高→低 / 低→高）
+- `cards.json` 出力時に以下を保存
+  - `name`
+  - `attack`
+  - `effectText`
+  - `effectDsl`（原文から自動コンパイルしたDSL。未解釈は UNKNOWN）
+
+### DSL土台
+
+- `js/card/cardDsl.js` 新規追加
+  - 効果分類辞書（DRAW / DAMAGE / HEAL / DESTROY / DISCARD / SEARCH / SUMMON / BUFF / DEBUFF）
+  - `compileText(effectText)` を実装
+    - 原文を行分割し trigger + effects へ変換
+    - 不明語彙は `UNKNOWN` に統一
+  - `validateDsl(dsl)` を実装（最小検証）
+
+### データ管理の変更
+
+- `js/card/cardData.js`
+  - `attack`, `effectText`, `effectDsl` 正規化を追加
+  - `effectDsl` が未定義時は `CardDSL.compileText(effectText)` で補完
+- `js/dev/devTools.js`
+  - 一括作成時の新規カードに上記フィールドの初期値を付与
+
+### 戦闘値への接続（基礎攻撃力 + カード攻撃力）
+
+- `js/card/cardCombatData.js`
+  - カード攻撃力は `card.attack` を優先利用
+  - `getCardBattleAttack(id, owner)` を追加（`state[owner].atk + card.attack`）
+- `js/game/auto/autoBattleEngine.js`
+  - 自動直接攻撃ダメージを `基礎攻撃力 + カード攻撃力` に変更
+
+### UI接続
+
+- `dev.html`, `game.html` に `js/card/cardDsl.js` を追加読み込み
+
+### 注意（今回の範囲）
+
+- まだ「カード個別の詳細効果フロー実装」は未着手
+- 今回はあくまで、DSL化に進むための標準化土台と編集導線を実装

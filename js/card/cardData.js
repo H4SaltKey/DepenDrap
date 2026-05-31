@@ -12,6 +12,9 @@ async function loadCardData(){
     name: card.name || "",
     attribute: card.attribute || "近接",
     type: card.type || "アタッカー",
+    attack: normalizeCardAttack(card.attack),
+    effectText: String(card.effectText || "").trim(),
+    effectDsl: normalizeCardEffectDsl(card.effectDsl, card.effectText),
     tags: normalizeCardTags(card.tags),
     image: normalizeCardImagePath(card.image || "")
   }));
@@ -39,6 +42,30 @@ function normalizeCardTags(tags) {
     return tags.split(/[,、\s]+/).map(tag => tag.trim()).filter(Boolean);
   }
   return [];
+}
+
+function normalizeCardAttack(attack) {
+  const val = Number(attack);
+  if (!Number.isFinite(val)) return 0;
+  return Math.max(0, Math.floor(val));
+}
+
+function normalizeCardEffectDsl(effectDsl, effectText) {
+  if (effectDsl && typeof effectDsl === "object") return effectDsl;
+  const text = String(effectText || "").trim();
+  if (!text) return null;
+  if (window.CardDSL && typeof window.CardDSL.compileText === "function") {
+    return window.CardDSL.compileText(text);
+  }
+  return {
+    version: 1,
+    triggers: [
+      {
+        on: "manual",
+        effects: [{ type: "UNKNOWN", raw: text }]
+      }
+    ]
+  };
 }
 
 function getCardIds(){

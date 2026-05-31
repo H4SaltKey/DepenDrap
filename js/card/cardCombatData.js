@@ -80,6 +80,10 @@
   }
 
   function getAttack(card, role) {
+    const explicitAttack = Number(card.attack);
+    if (Number.isFinite(explicitAttack) && explicitAttack >= 0) {
+      return Math.floor(explicitAttack);
+    }
     const base = ATTR_BASE_ATTACK[card.attribute] || 1;
     if (role === "アタッカー") return base;
     if (role === "スキル") return Math.max(1, base - 1);
@@ -132,10 +136,18 @@
     return enrichCard(card);
   }
 
+  function getCardBattleAttack(id, owner) {
+    const card = getResolvedCardData(id);
+    const cardAttack = Math.max(0, Number(card?.attack || 0));
+    const baseAttack = Math.max(0, Number(window.state?.[owner]?.atk || 0));
+    return cardAttack + baseAttack;
+  }
+
   window.CardCombatData = {
     enrichAllLoadedCards,
     enrichCard,
     getResolvedCardData,
+    getCardBattleAttack,
     EFFECT_LIBRARY
   };
 

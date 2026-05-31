@@ -293,6 +293,15 @@ if(localStorage.getItem("dev") !== "true"){
           <h3>カード一覧</h3>
           <button id="addCardBtn">＋ カード追加</button>
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+          <input type="text" id="cardSearchInput" placeholder="検索: 名前/タグ/効果テキスト" style="min-width:260px;flex:1 1 280px;padding:8px;border:1px solid #666;border-radius:6px;background:#111;color:#f7f3de;">
+          <select id="cardSortSelect" style="padding:8px;border:1px solid #666;border-radius:6px;background:#111;color:#f7f3de;">
+            <option value="idAsc">ID順</option>
+            <option value="nameAsc">名前順</option>
+            <option value="attackDesc">攻撃力が高い順</option>
+            <option value="attackAsc">攻撃力が低い順</option>
+          </select>
+        </div>
       </header>
       <div class="pagedRow cardListControls">
         <button class="pageButton" id="cardsPrev" type="button">‹</button>
@@ -318,6 +327,14 @@ if(localStorage.getItem("dev") !== "true"){
         <input type="text" id="editId" readonly>
       </div>
       <div>
+        <label>カード名（検索・名前順ソート用）</label><br>
+        <input type="text" id="editName" placeholder="カード名を入力">
+      </div>
+      <div>
+        <label>カード攻撃力（基礎攻撃力に加算）</label><br>
+        <input type="number" id="editAttack" min="0" step="1" placeholder="0">
+      </div>
+      <div>
         <label>画像ファイル名</label><br>
         <input type="text" id="editImageName" readonly placeholder="画像を選択してください">
       </div>
@@ -336,6 +353,10 @@ if(localStorage.getItem("dev") !== "true"){
       <div>
         <label>検索用タグ</label><br>
         <input type="text" id="editTags" placeholder="例: 火力, 範囲, 支援">
+      </div>
+      <div>
+        <label>効果テキスト（DSL生成の元テキスト）</label><br>
+        <textarea id="editEffectText" rows="5" style="width:100%;font-size:14px;padding:6px;border:1px solid #aaa;box-sizing:border-box;resize:vertical;" placeholder="例: 登場時：カードを1枚引く"></textarea>
       </div>
       <button class="selectImageBtn" id="selectImageBtn">📁 画像を選択（PNG）</button>
       <input type="file" id="imageFileInput" accept="image/png" style="display:none;">
@@ -383,6 +404,7 @@ if(localStorage.getItem("dev") !== "true"){
 <!-- フッター（完了ボタン削除済み） -->
 <div class="devFooter" style="display:none;"></div>
 
+<script src="js/card/cardDsl.js?v=1"></script>
 <script src="js/card/cardData.js"></script>
 <script src="js/deck/deckCode.js"></script>
 <script src="js/state/gameState.js"></script>

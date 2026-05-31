@@ -183,7 +183,17 @@ async function uploadCardsToServerFromBlocks(blockFolders) {
         console.log(`[Dev] カード更新: ${cardId} (${imagePath})`);
       } else {
         // 新規追加
-        const newCard = { id: cardId, image: imagePath };
+        const newCard = {
+          id: cardId,
+          image: imagePath,
+          name: "",
+          attribute: "近接",
+          type: "アタッカー",
+          attack: 0,
+          effectText: "",
+          effectDsl: null,
+          tags: []
+        };
         cardData.push(newCard);
         cardMap[imagePath] = newCard;
         addedCount++;
@@ -239,5 +249,4 @@ async function uploadCardsToServerFromBlocks(blockFolders) {
 
   showSuccessMessage(`カードデータを更新しました (追加: ${addedCount}, 更新: ${updatedCount})。cards.json がダウンロードされました。`);
 }
-
 

@@ -170,12 +170,14 @@
     if (runtime.lastDirectAttackKey === attackKey) return false;
 
     const profile = ensureCardProfile(attacker);
-    const amount = Math.max(1, Number(profile?.attack || 1));
+    const myAtkBase = Number(window.state?.[me]?.atk || 0);
+    const cardAtk = Math.max(0, Number(profile?.attack || 0));
+    const amount = Math.max(1, myAtkBase + cardAtk);
     if (typeof window.applyCalculatedDamage !== "function") return false;
 
     window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, { source: "auto" });
     runtime.lastDirectAttackKey = attackKey;
-    log(`直接攻撃 ${amount} ダメージ`);
+    log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtk})`);
     return true;
   }
 

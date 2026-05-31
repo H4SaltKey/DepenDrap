@@ -595,10 +595,20 @@ function showCardZoom(id) {
   if (!card) return;
   const modal = document.getElementById("cardZoomModal");
   if (!modal) return;
-  const image = document.getElementById("cardZoomImage");
+  const cardHost = document.getElementById("cardZoomCard");
   const info = document.getElementById("cardZoomInfo");
-  image.src = card.image ? encodeURI(card.image) : "assets/System/404.png";
-  image.onerror = () => { image.src = "assets/System/404.png"; };
+  if (cardHost) {
+    cardHost.innerHTML = "";
+    const el = document.createElement("div");
+    el.className = "deckCard cardVisualApplied";
+    if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
+      el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: 0 });
+    } else {
+      const src = card.image ? encodeURI(card.image) : "assets/System/404.png";
+      el.innerHTML = `<img src="${src}" alt="">`;
+    }
+    cardHost.appendChild(el);
+  }
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
   info.textContent = `ID: ${card.id} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
   modal.classList.remove("hidden");
@@ -614,14 +624,15 @@ function updateDeckCardPreview(id) {
   const previewDiv = document.getElementById("deckCardPreview");
   if (!card || !previewDiv) return;
 
-  const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
+  const cardHtml = (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function")
+    ? window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: 0 })
+    : `<img src="${card.image ? encodeURI(card.image) : "assets/System/404.png"}" alt="">`;
 
   previewDiv.innerHTML = `
     <div class="deckCardPreviewContainer">
-      <img src="${imageSrc}" alt="" class="deckCardPreviewImg" onerror="this.src='assets/System/404.png'">
+      <div class="deckCard deckCardPreviewCard cardVisualApplied">${cardHtml}</div>
       <div class="deckCardPreviewDetails">
-        <div class="deckCardPreviewName">${card.name || ""}</div>
         <div class="deckCardPreviewMeta">ID: ${card.id}</div>
         <div class="deckCardPreviewMeta">属性: ${card.attribute || "近接"} │ タイプ: ${card.type || "アタッカー"}</div>
         ${tags ? `<div class="deckCardPreviewTags">タグ: ${tags}</div>` : ""}

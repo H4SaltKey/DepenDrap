@@ -116,15 +116,24 @@ function selectCard(id) {
 
 // ===== プレビュー =====
 function showPreview(src) {
+  const box = document.getElementById("previewBox");
+  if (!box) return;
+  const card = selectedId ? (devCards.find(c => c.id === selectedId) || getCardData(selectedId)) : null;
+  if (card && window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
+    const previewCard = Object.assign({}, card, { image: src });
+    box.innerHTML = `<div class="deckCard cardVisualApplied" style="width:100%;height:100%;">${window.CardVisualLayout.buildDeckCardInnerHtml(previewCard, { count: 0 })}</div>`;
+    return;
+  }
   document.getElementById("previewImg").src = src;
   document.getElementById("previewImg").style.display = "";
   document.getElementById("previewPlaceholder").style.display = "none";
 }
 
 function clearPreview() {
-  document.getElementById("previewImg").src = "";
-  document.getElementById("previewImg").style.display = "none";
-  document.getElementById("previewPlaceholder").style.display = "";
+  const box = document.getElementById("previewBox");
+  if (box) {
+    box.innerHTML = '<span id="previewPlaceholder" style="font-size:12px;color:#aaa;">画像なし</span><img id="previewImg" style="display:none;" alt="プレビュー">';
+  }
 }
 
 function normalizeTags(value) {
@@ -343,11 +352,20 @@ function showCardZoom(id) {
   if (!card) return;
   const modal = document.getElementById("cardZoomModal");
   if (!modal) return;
-  const image = document.getElementById("cardZoomImage");
+  const cardHost = document.getElementById("cardZoomCard");
   const info = document.getElementById("cardZoomInfo");
-  const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/System/404.png";
-  image.src = src;
-  image.onerror = () => { image.src = "assets/System/404.png"; };
+  if (cardHost) {
+    cardHost.innerHTML = "";
+    const el = document.createElement("div");
+    el.className = "deckCard cardVisualApplied";
+    if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
+      el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: 0 });
+    } else {
+      const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/System/404.png";
+      el.innerHTML = `<img src="${src}" alt="">`;
+    }
+    cardHost.appendChild(el);
+  }
   const tags = Array.isArray(card.tags) ? card.tags.join(" ") : String(card.tags || "");
   info.textContent = `ID: ${card.id} │ ${card.name || "(名称未設定)"} │ ATK:${Number(card.attack || 0)} │ ${card.attribute || "近接"} / ${card.type || "アタッカー"}${tags ? ` │ ${tags}` : ""}`;
   modal.classList.remove("hidden");

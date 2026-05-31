@@ -425,8 +425,8 @@ function openCardMenu(card, x, y){
 }
 
 function showCardZoom(card){
-  const img = card.querySelector("img");
-  if(!img) return;
+  const cardId = card?.dataset?.id || "";
+  const data = (typeof getCardData === "function" && cardId) ? getCardData(cardId) : null;
 
   const overlay = document.createElement("div");
   overlay.style.cssText = `
@@ -438,18 +438,25 @@ function showCardZoom(card){
     cursor:zoom-in;
   `;
 
-  const zoomImg = document.createElement("img");
-  zoomImg.src = img.src;
-  zoomImg.style.cssText = `
-    max-width:80vw;max-height:80vh;
-    object-fit:contain;
-    border-radius:8px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.6);
+  const zoomCardWrap = document.createElement("div");
+  zoomCardWrap.style.cssText = `
+    width:min(80vw, 520px);
+    aspect-ratio:320/453;
     transition:transform 0.2s;
     user-select:none;
     pointer-events:none;
     flex-shrink:0;
   `;
+  const zoomCard = document.createElement("div");
+  zoomCard.className = "deckCard cardVisualApplied";
+  if (data && window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
+    zoomCard.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(data, { count: 0 });
+  } else {
+    const img = card.querySelector("img");
+    if (!img) return;
+    zoomCard.innerHTML = `<img src="${img.src}" alt="">`;
+  }
+  zoomCardWrap.appendChild(zoomCard);
 
   // 閉じるボタン
   const closeBtn = document.createElement("div");
@@ -472,7 +479,7 @@ function showCardZoom(card){
     overlay.remove();
   });
 
-  overlay.appendChild(zoomImg);
+  overlay.appendChild(zoomCardWrap);
   overlay.appendChild(closeBtn);
   document.body.appendChild(overlay);
 
@@ -487,7 +494,7 @@ function showCardZoom(card){
 
   function applyTransform(){
     const s = zoomed ? 2 : 1;
-    zoomImg.style.transform = `scale(${s}) translate(${panX/s}px, ${panY/s}px)`;
+    zoomCardWrap.style.transform = `scale(${s}) translate(${panX/s}px, ${panY/s}px)`;
   }
 
   overlay.addEventListener("pointerdown", (e) => {

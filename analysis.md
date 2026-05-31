@@ -4681,3 +4681,38 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `js/deck/deck.js`
   - `js/dev/dev.js`
   - すべて構文エラーなし
+
+---
+
+## Round 17 — カード名中央表示 + 拡大表示の共通レイアウト化（2026-05-31）
+
+### 対応
+
+- カード名をカード中央に表示するように変更
+- 拡大表示（deck/dev/gameのコンテキストズーム）を画像単体ではなく共通カードレイアウト描画へ統一
+- デッキ構築の右側プレビューも共通カードレイアウト化
+- 開発者モードの編集プレビューも共通カードレイアウト化
+
+### 変更ファイル
+
+- `css/style.css`
+  - `.cvName` を中央配置（`top: 50%; transform: translateY(-50%)`）へ変更
+  - 拡大表示カード用 `.cardZoomCardWrap` を追加
+- `deck.html`, `dev.html`
+  - 拡大モーダル内を `<img id="cardZoomImage">` から `<div id="cardZoomCard">` へ変更
+- `js/deck/deck.js`
+  - `showCardZoom` を共通カードレイアウト描画に変更
+  - `updateDeckCardPreview` も共通カードレイアウト描画へ変更
+- `js/dev/dev.js`
+  - `showCardZoom` を共通カードレイアウト描画に変更
+  - 編集プレビュー (`showPreview`) も共通カードレイアウト描画へ変更
+- `js/ui/contextMenu.js`
+  - ゲーム中「拡大表示」オーバーレイを共通カードレイアウト描画へ変更
+
+### 検証
+
+- `node --check`:
+  - `js/deck/deck.js`
+  - `js/dev/dev.js`
+  - `js/ui/contextMenu.js`
+  - すべて構文エラーなし

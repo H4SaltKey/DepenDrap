@@ -2,6 +2,8 @@
   const VERSION = 1;
 
   const DICTIONARY = {
+    JOKER: /(ジョーカー)/,
+    ALL_IN: /(オールイン)/,
     DRAW: /(カードを?引く|ドロー|手札を増やす)/,
     DAMAGE: /(ダメージ|攻撃)/,
     HEAL: /(回復|HPを[0-9０-９一二三四五六七八九十百千]+回復)/,

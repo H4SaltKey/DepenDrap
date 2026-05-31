@@ -1071,6 +1071,16 @@ function isPpCostModalEnabled() {
   }
 }
 
+function getCardCostPolicy(cardEl) {
+  const cardId = cardEl?.dataset?.id;
+  if (!cardId) return "normal";
+  if (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function") {
+    const card = window.CardCombatData.getResolvedCardData(cardId);
+    return String(card?.cardCostPolicy || "normal");
+  }
+  return "normal";
+}
+
 function clearHandReorderGuides() {
   const content = getFieldContent();
   if (!content) return;
@@ -1281,8 +1291,10 @@ function enablePointerDrag(el){
         const centerY = fieldY + CARD_H / 2;
         const zoneHit = battleZoneHitTypeAt(centerX, centerY, myRole2);
         if (zoneHit === "attacker" || zoneHit === "skill") {
+          const costPolicy = getCardCostPolicy(el);
           const usePpModal = isPpCostModalEnabled();
-          if (!usePpModal) {
+          const shouldBypassModalByCostRule = costPolicy === "joker" || costPolicy === "all_in";
+          if (!usePpModal || shouldBypassModalByCostRule) {
             placeCardInZone(el, myRole2, zoneHit);
             if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
             if (typeof window.organizeHands === "function") window.organizeHands();

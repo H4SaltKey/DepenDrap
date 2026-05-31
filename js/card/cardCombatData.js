@@ -90,18 +90,27 @@
     return 0;
   }
 
+  function detectCardCostPolicy(card) {
+    const rawText = String(card?.effectText || "").trim();
+    if (rawText.includes("ジョーカー")) return "joker";
+    if (rawText.includes("オールイン")) return "all_in";
+    return "normal";
+  }
+
   function buildProfile(card) {
     const resolvedRole = normalizeCardRole(estimateSupportRole(card));
     const effectKey = `${card.attribute}:${resolvedRole}`;
     const effect = EFFECT_LIBRARY[effectKey] || EFFECT_LIBRARY["近接:アタッカー"];
+    const originalEffectText = String(card.effectText || "").trim();
     return {
       cardKind: roleToKind(resolvedRole),
       resolvedRole,
       cost: getCost(resolvedRole),
+      cardCostPolicy: detectCardCostPolicy(card),
       attack: getAttack(card, resolvedRole),
       effectKey,
       effectTiming: effect.timing,
-      effectText: effect.summary,
+      effectText: originalEffectText || effect.summary,
       effectActions: effect.actions
     };
   }
@@ -112,6 +121,7 @@
     card.cardKind = profile.cardKind;
     card.resolvedRole = profile.resolvedRole;
     card.cost = profile.cost;
+    card.cardCostPolicy = profile.cardCostPolicy;
     card.attack = profile.attack;
     card.effectKey = profile.effectKey;
     card.effectTiming = profile.effectTiming;

@@ -4444,3 +4444,88 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `js/ui/menu.js`
 - `js/card/cardManager.js`
 - `js/game/auto/playerActionResolver.js`
+
+---
+
+## Round 11 — カード効果用語追加（ジョーカー / オールイン）（2026-05-31）
+
+### 追加仕様
+
+- **ジョーカー**
+  - 使用時: PP現在値を無視
+  - PP消費: なし
+- **オールイン**
+  - 使用時: PP現在値を無視
+  - PP消費: 現在PPを全消費（0なら消費なし）
+
+### 実装
+
+- `js/card/cardCombatData.js`
+  - `card.effectText` から `cardCostPolicy` を判定
+    - `ジョーカー` を含む → `joker`
+    - `オールイン` を含む → `all_in`
+    - それ以外 → `normal`
+  - `cardCostPolicy` をカードプロファイルへ付与
+  - `effectText` は cards.json由来を優先（未設定時のみ既定文を使用）
+
+- `js/game/auto/playerActionResolver.js`
+  - `spendCardCost()` に `cardCostPolicy` を反映
+    - `joker`: PP無視・消費なし
+    - `all_in`: PP無視・全消費
+    - `normal`: 従来通り `cost` 消費
+  - `COST_RULE ...` のフローログを追加
+  - `ACTION` ログに `CostRule` を追記
+
+- `js/card/cardManager.js`
+  - PP確認モーダルがONでも、`joker` / `all_in` カードはモーダルをバイパスして直接配置
+  - コスト処理の整合は resolver 側に委譲
+
+- `js/card/cardDsl.js`
+  - 効果辞書に `JOKER`, `ALL_IN` を追加（DSL土台）
+
+### 備考
+
+- カード個別の具体効果フローは未実装のまま
+- 今回は「用語に対応したコストルール」のみ追加
+
+---
+
+## Round 12 — 先頭8枚（cd001-001〜008）の効果発動対応（2026-05-31）
+
+### 対応方針
+
+- `data/cards.json` 先頭8枚（`cd001-001`〜`cd001-008`）を対象に、専用スクリプトを新規追加
+- 汎用DSL処理より優先して8枚専用処理を実行
+- スキル使用時に、場のアタッカーの `攻撃時` 効果も自動発火
+
+### 追加ファイル
+
+- `js/game/auto/firstEightCardEffects.js`
+  - 8枚専用の効果解決ロジック
+  - ターン終了時の遅延回復（`cd001-008`）フック
+
+### 連携変更
+
+- `game.html`
+  - `firstEightCardEffects.js` を `playerActionResolver.js` より前に読み込み
+- `js/game/auto/playerActionResolver.js`
+  - 8枚専用スクリプト連携
+  - 専用処理が有効な場合はDSL既定処理を抑止（`scripted=first8` ログ）
+  - スキル使用時にアタッカーの `攻撃時` 効果を発火
+
+### 実装した主効果（抜粋）
+
+- `cd001-001` 登場時PP下限回復
+- `cd001-002` 条件時: 場カード墓地送り + HP減少 + 手札増加
+- `cd001-003` 登場時条件ドロー/PP回復、攻撃時 回復+シールド
+- `cd001-004` 攻撃時効果の追加発動
+- `cd001-005` 攻撃時回復（場にいる間1回:2回復、以降1回復）
+- `cd001-006` 条件時: 墓地送り + 回復 + HP差ダメージ
+- `cd001-007` 登場時PP回復、攻撃時 条件HP減少 + 攻撃力上昇
+- `cd001-008` 使用時回復 + ターン終了時回復予約
+
+### 未実装/簡略化（今後）
+
+- 退場時分岐、直接攻撃時専用分岐、継続監視の完全再現
+- テキスト中の全条件分岐（厳密裁定）
+

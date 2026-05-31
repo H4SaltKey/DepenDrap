@@ -126,6 +126,7 @@ body.deckPage .deckBuilder{
 .cardVisualApplied {
   position: relative;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .cardVisualApplied > img {
@@ -177,7 +178,7 @@ body.deckPage .deckBuilder{
 
 .cvAttack {
   min-height: 22px;
-  font-size: 13px;
+  font-size: clamp(8px, 11cqw, 26px);
   font-weight: 800;
   line-height: 1;
   display: flex;
@@ -191,21 +192,21 @@ body.deckPage .deckBuilder{
 }
 
 .cvAttackCircle {
-  width: 24px;
-  height: 24px;
-  border: 2px solid rgba(245, 224, 162, 0.95);
+  width: clamp(14px, 20cqw, 42px);
+  height: clamp(14px, 20cqw, 42px);
+  border: clamp(1px, 1.2cqw, 3px) solid rgba(245, 224, 162, 0.95);
   border-radius: 999px;
   background: rgba(16, 12, 20, 0.58);
 }
 
 .cvAttackNone {
-  width: 24px;
-  height: 24px;
+  width: clamp(14px, 20cqw, 42px);
+  height: clamp(14px, 20cqw, 42px);
 }
 
 .cvAttackNone > span {
-  width: 18px;
-  height: 2px;
+  width: clamp(10px, 14cqw, 28px);
+  height: clamp(1px, 1.2cqw, 3px);
   background: rgba(245, 224, 162, 0.95);
   border-radius: 2px;
   display: inline-block;
@@ -218,7 +219,7 @@ body.deckPage .deckBuilder{
   top: 50%;
   transform: translateY(-50%);
   text-align: center;
-  font-size: 11px;
+  font-size: clamp(7px, 8.8cqw, 24px);
   font-weight: 800;
   line-height: 1.2;
   overflow: hidden;
@@ -233,14 +234,14 @@ body.deckPage .deckBuilder{
 }
 
 .cvAttribute {
-  width: 20px;
-  height: 20px;
+  width: clamp(12px, 16cqw, 32px);
+  height: clamp(12px, 16cqw, 32px);
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.74);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: clamp(7px, 6.8cqw, 13px);
   font-weight: 800;
   background: rgba(0,0,0,0.55);
 }
@@ -256,8 +257,8 @@ body.deckPage .deckBuilder{
   bottom: 6px;
   height: 40%;
   padding: 6px 7px;
-  font-size: 9px;
-  line-height: 1.3;
+  font-size: clamp(6px, 6.2cqw, 16px);
+  line-height: 1.35;
   border-radius: 7px;
   background: rgba(10, 10, 16, 0.7);
   border: 1px solid rgba(255,255,255,0.25);
@@ -269,57 +270,21 @@ body.deckPage .deckBuilder{
 }
 
 #field .cardVisualApplied .cvHeader {
-  grid-template-columns: 60px 1fr;
-  gap: 10px;
-  padding: 12px 12px 0;
-}
-
-#field .cardVisualApplied .cvAttack {
-  min-height: 42px;
-  font-size: 24px;
-}
-
-#field .cardVisualApplied .cvAttackCircle {
-  width: 40px;
-  height: 40px;
-  border-width: 3px;
-}
-
-#field .cardVisualApplied .cvAttackNone {
-  width: 40px;
-  height: 40px;
-}
-
-#field .cardVisualApplied .cvAttackNone > span {
-  width: 28px;
-  height: 3px;
-}
-
-#field .cardVisualApplied .cvName {
-  left: 16px;
-  right: 16px;
-  font-size: 24px;
-  line-height: 1.22;
+  grid-template-columns: clamp(30px, 20cqw, 64px) 1fr;
+  gap: clamp(4px, 2.8cqw, 12px);
+  padding: clamp(6px, 3.5cqw, 14px) clamp(6px, 3.5cqw, 14px) 0;
 }
 
 #field .cardVisualApplied .cvSubMeta {
-  padding: 4px 0 0 12px;
-}
-
-#field .cardVisualApplied .cvAttribute {
-  width: 30px;
-  height: 30px;
-  font-size: 13px;
+  padding: clamp(2px, 1.2cqw, 6px) 0 0 clamp(6px, 3.5cqw, 14px);
 }
 
 #field .cardVisualApplied .cvEffectText {
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  padding: 10px 12px;
-  font-size: 15px;
-  line-height: 1.4;
-  border-radius: 10px;
+  left: clamp(6px, 3.5cqw, 14px);
+  right: clamp(6px, 3.5cqw, 14px);
+  bottom: clamp(6px, 3.5cqw, 14px);
+  padding: clamp(4px, 2.2cqw, 12px);
+  border-radius: clamp(6px, 2.6cqw, 12px);
   -webkit-line-clamp: 9;
 }
 

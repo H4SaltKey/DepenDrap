@@ -51,13 +51,62 @@
     if (typeof window.drawToHand === "function") window.drawToHand(amount);
   }
 
+  function moveCardToOwnerHand(cardEl, owner) {
+    if (!cardEl) return;
+    if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(cardEl);
+    const handY = Number(window.HAND_ZONE_Y_MIN || 1460) + 40;
+    const handOrder = (typeof window.nextHandOrder === "function")
+      ? window.nextHandOrder()
+      : (Date.now() * 1000);
+    cardEl.dataset.handOrder = String(handOrder);
+    cardEl.dataset.owner = owner;
+    cardEl.dataset.zoneType = "";
+    cardEl.style.left = String(Number(cardEl.dataset.x || 1200)) + "px";
+    cardEl.style.top = String(handY) + "px";
+    cardEl.dataset.y = String(handY);
+    if (typeof window.organizeHands === "function") window.organizeHands();
+  }
+
+  function triggerLeaveEffects(cardEl, owner) {
+    if (!cardEl) return;
+    const id = String(cardEl.dataset.id || "");
+    const didDirectAttack = cardEl.dataset.didDirectAttack === "1";
+
+    // cd001-001 退場時: 直接攻撃していないなら 自身HP-1 / PPを1まで回復 / 手札へ戻る
+    if (id === "cd001-001" && !didDirectAttack) {
+      reduceHp(owner, 1);
+      setPpAtLeast(owner, 1);
+      moveCardToOwnerHand(cardEl, owner);
+      if (typeof window.addGameLog === "function") {
+        window.addGameLog("[EFFECT] 黒魔術師 退場時効果を発動");
+      }
+      return { consumed: true };
+    }
+
+    // cd001-005 退場時: 直接攻撃していないなら 自身HPを3回復
+    if (id === "cd001-005" && !didDirectAttack) {
+      healHp(owner, 3);
+      if (typeof window.addGameLog === "function") {
+        window.addGameLog("[EFFECT] 創世の賢者 退場時効果を発動");
+      }
+    }
+
+    return { consumed: false };
+  }
+
   function moveOwnerBattleCardsToGrave(owner) {
     if (typeof window.getZoneCards !== "function" || typeof window.placeCardInZone !== "function") return;
     ["attacker", "skill"].forEach((zone) => {
       const cards = window.getZoneCards(owner, zone) || [];
-      cards.forEach((cardEl) => window.placeCardInZone(cardEl, owner, "grave"));
+      cards.forEach((cardEl) => {
+        // 墓地送り直前に退場時判定を挟む
+        const leaveResult = triggerLeaveEffects(cardEl, owner);
+        if (leaveResult && leaveResult.consumed) return;
+        window.placeCardInZone(cardEl, owner, "grave");
+      });
     });
     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    if (typeof window.organizeHands === "function") window.organizeHands();
   }
 
   function isMagicBattleState(owner) {

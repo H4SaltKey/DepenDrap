@@ -4529,3 +4529,58 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - 退場時分岐、直接攻撃時専用分岐、継続監視の完全再現
 - テキスト中の全条件分岐（厳密裁定）
 
+
+---
+
+## Round 13 — 場の並び順再整列漏れの修正（2026-05-31）
+
+### 原因
+
+- `cardManager.js` のドラッグ終了処理に早期 `return` 分岐があり、
+  - `window._isDraggingCard` が解除されないケース
+  - ゾーン再整列（`organizeBattleZones`）が呼ばれないケース
+  が発生していた。
+- その結果、以後の `organizeHands()` がスキップされ、手札に空白が残ることがあった。
+- ゾーン→デッキ戻し時に、ゾーン側再整列が抜けていた。
+
+### 修正
+
+- `js/card/cardManager.js`
+  - 早期 `return` となる分岐（手札→デッキ戻し、手札→ゾーン配置、PPモーダル経由）で `window._isDraggingCard = false` を確実に実行
+  - 手札→デッキ戻し時に `organizeBattleZones()` も実行
+  - `pointerup` の `finally` でも `window._isDraggingCard = false` を実行して取りこぼしを防止
+
+- `js/ui/contextMenu.js`
+  - 「デッキに戻す」実行時に `organizeBattleZones()` を追加
+
+### 効果
+
+- 手札/スキル場/墓地の並び順が、移動完了後に詰まらない問題を低減
+- 「手札から場へ出した後に元の場所が空白になる」再現条件を解消
+
+---
+
+## Round 14 — 墓地送り時の退場時判定を挿入（2026-05-31）
+
+### 指摘反映
+
+- `cd001-002` 等で「場のカードを墓地へ送る」際、
+  - **墓地送りの直前に退場時判定を挟む**処理を追加
+
+### 実装
+
+- `js/game/auto/firstEightCardEffects.js`
+  - `triggerLeaveEffects(cardEl, owner)` を追加
+  - `moveOwnerBattleCardsToGrave(owner)` 内で、各カードごとに退場時判定を先行実行
+  - 退場時効果でカードが手札へ戻る等で処理済みになった場合は墓地送りをスキップ
+
+### 反映済み退場時効果（先頭8枚範囲）
+
+- `cd001-001` 黒魔術師
+  - 直接攻撃していないなら: HP-1 / PPを1まで回復 / 手札へ戻る
+- `cd001-005` 創世の賢者
+  - 直接攻撃していないなら: HPを3回復
+
+### 補足
+
+- 直接攻撃済み判定は `dataset.didDirectAttack` を参照（将来的に直接攻撃処理側で明示フラグ管理を強化予定）

@@ -1266,7 +1266,9 @@ function enablePointerDrag(el){
 
           if(overlapRatio >= 0.8 && el.dataset.id){
             el.remove();
+            window._isDraggingCard = false;
             if (typeof window.organizeHands === "function") window.organizeHands();
+            if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
             saveFieldCards();
             if(typeof returnToDeck === "function"){
               const isTemp = el.dataset.isTemp === "true";
@@ -1296,6 +1298,7 @@ function enablePointerDrag(el){
           const shouldBypassModalByCostRule = costPolicy === "joker" || costPolicy === "all_in";
           if (!usePpModal || shouldBypassModalByCostRule) {
             placeCardInZone(el, myRole2, zoneHit);
+            window._isDraggingCard = false;
             if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
             if (typeof window.organizeHands === "function") window.organizeHands();
             saveFieldCards();
@@ -1312,6 +1315,8 @@ function enablePointerDrag(el){
             cardEl: el,
             owner: myRole2,
             onDone: () => {
+              window._isDraggingCard = false;
+              if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
               if (typeof window.organizeHands === "function") window.organizeHands();
               document.body.classList.remove("isInteractingCard");
             }
@@ -1320,6 +1325,7 @@ function enablePointerDrag(el){
         }
         if (zoneHit) {
           placeCardInZone(el, myRole2, zoneHit);
+          window._isDraggingCard = false;
           if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
           if (typeof window.organizeHands === "function") window.organizeHands();
           saveFieldCards();
@@ -1419,6 +1425,7 @@ function enablePointerDrag(el){
         showCardHoverPreview(el, e.clientX, e.clientY);
       }
     } finally {
+      window._isDraggingCard = false;
       restoreCardDragZIndex(el);
     }
 

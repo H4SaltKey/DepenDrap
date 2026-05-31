@@ -4375,3 +4375,40 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - 1段/2段切替時の行高揺れを抑制
 - リサイズ時やフィルター変更時のカード配置ジャンプを低減
 - カード一覧の横スクロール領域の描画安定性向上
+
+---
+
+## Round 9 — 手動効果選択用の汎用モーダル追加（2026-05-31）
+
+### 追加
+
+- `js/ui/effectChoiceUI.js` を新規追加
+  - `showEffectChoiceModal(options)` を提供（Promise返却）
+  - `openEffectChoiceModal(options, onDone)` も提供（callback互換）
+
+### 仕様
+
+- 単一選択 / 複数選択モード
+- 最小選択数 / 最大選択数の制約
+- キャンセル可否
+- 背景クリック閉じる可否
+- Esc / Enter 操作
+- 返却データ
+  - `confirmed`
+  - `selectedIds`
+  - `selectedChoices`
+  - `selectedChoice`
+
+### UI方針
+
+- 既存の overlay/modal 系UIと同様、`document.body` 直下に固定オーバーレイを表示
+- 既存の画面内パネル方式とは分離し、カード効果の「自由選択」用途に特化した汎用モーダルとして実装
+
+### 接続
+
+- `game.html` に `js/ui/effectChoiceUI.js` を読み込み追加
+
+### 備考
+
+- まだカード個別の具体効果フローには未接続
+- 本実装は「手動自由選択系効果」の土台UI/APIの提供が目的

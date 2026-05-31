@@ -1821,6 +1821,7 @@ body.deckPage{
     padding:4px 0 8px;
     align-items:start;   /* グリッドを上揃え、stretch禁止 */
     box-sizing: border-box;
+    contain: layout paint;
 }
 
 /* ── カード一覧グリッド（2段固定・列同期） ──
@@ -1831,8 +1832,8 @@ body.deckPage{
 */
 #cards.cardRow{
     display:grid;
-    grid-template-rows: auto auto;
-    grid-auto-rows: auto;
+    grid-template-rows: repeat(2, max-content);
+    grid-auto-rows: max-content;
     grid-auto-flow:column;
     grid-auto-columns: var(--cards-card-width, 80px);
     gap:8px;
@@ -1842,7 +1843,16 @@ body.deckPage{
     min-width:0;
     width:max-content;
     align-items:start;
+    align-content:start;
     box-sizing: border-box;
+}
+
+#cards.cardRow.catalogSingleRow{
+    grid-template-rows: max-content;
+}
+
+#cards.cardRow.catalogTwoRow{
+    grid-template-rows: repeat(2, max-content);
 }
 
 /* カード一覧の空スロット（列同期用） */

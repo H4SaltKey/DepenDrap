@@ -649,6 +649,7 @@ window.addEventListener("resize", hideDeckContextMenu);
 function renderCatalogGrid(cardsDiv, cardIds) {
   if (!cardsDiv) return;
   cardsDiv.innerHTML = "";
+  cardsDiv.classList.remove("catalogSingleRow", "catalogTwoRow");
 
   // タイプで分類
   const topIds = [];   // アタッカー / サポート
@@ -671,13 +672,12 @@ function renderCatalogGrid(cardsDiv, cardIds) {
     // 1段: 全カードをそのまま並べる
     const allIds = topIds.length > 0 ? topIds : botIds;
     allIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
-    // grid-template-rows を1行に上書き
-    cardsDiv.style.gridTemplateRows = "1fr";
+    cardsDiv.classList.add("catalogSingleRow");
     return;
   }
 
   // 2段: 列数 = max(topIds.length, botIds.length)
-  cardsDiv.style.gridTemplateRows = "1fr 1fr";
+  cardsDiv.classList.add("catalogTwoRow");
   const colCount = Math.max(topIds.length, botIds.length);
 
   for (let col = 0; col < colCount; col++) {
@@ -1199,4 +1199,3 @@ function setupVerticalResizer() {
     }
   });
 }
-

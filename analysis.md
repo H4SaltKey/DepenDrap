@@ -4347,3 +4347,31 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - まだ「カード個別の詳細効果フロー実装」は未着手
 - 今回はあくまで、DSL化に進むための標準化土台と編集導線を実装
+
+---
+
+## Round 8 — デッキ構築カード整列の安定化（2026-05-31）
+
+### 症状
+
+- カード一覧グリッドで、フィルター条件により1段表示へ切替時に `gridTemplateRows = "1fr"` を直接適用していた。
+- `1fr` はコンテナ高さに依存して伸縮するため、カード整列が環境やリサイズで不安定になりやすかった。
+
+### 修正
+
+- `js/deck/deck.js`
+  - `renderCatalogGrid()` の行数制御を inline style から class 制御へ変更
+  - 追加クラス:
+    - `catalogSingleRow`
+    - `catalogTwoRow`
+- `css/style.css`
+  - `#cards.cardRow` の行定義を `max-content` ベースへ統一
+  - `catalogSingleRow` / `catalogTwoRow` の行定義を明示
+  - `align-content:start` を追加して上寄せ固定
+  - `.cardListScroll` に `contain: layout paint` を追加して再レイアウト影響を局所化
+
+### 期待効果
+
+- 1段/2段切替時の行高揺れを抑制
+- リサイズ時やフィルター変更時のカード配置ジャンプを低減
+- カード一覧の横スクロール領域の描画安定性向上

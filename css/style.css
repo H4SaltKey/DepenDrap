@@ -87,10 +87,12 @@ body.deckPage{
 }
 
 body.deckPage .deckBuilder{
-  transform: scale(var(--deck-scale, 1));
-  transform-origin: top left;
-  width: calc(100% / var(--deck-scale, 1));
-  height: calc(100dvh / var(--deck-scale, 1));
+  /* deck.js 側でカードサイズ/ペイン分割を実寸計算しているため、
+     画面全体の追加スケールはレイアウト崩れの原因になる。 */
+  transform: none;
+  transform-origin: initial;
+  width: 100%;
+  height: 100dvh;
 }
 
 .card{

@@ -4716,3 +4716,24 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `js/dev/dev.js`
   - `js/ui/contextMenu.js`
   - すべて構文エラーなし
+
+---
+
+## Round 18 — デッキ構築レイアウト崩れ修正（2026-05-31）
+
+### 原因
+
+- `deckPage` で `body.deckPage .deckBuilder` に対して `--deck-scale` の全体 `transform: scale(...)` が適用されていた
+- 同時に `js/deck/deck.js` 側で、実寸ベースのカードサイズ計算（`updateCardSizes`）と分割リサイザ（縦分割/プレビュー幅）が動作
+- 結果として「全体縮尺」と「要素実寸リサイズ」が二重に効き、崩れやすい状態になっていた
+
+### 対応
+
+- `css/style.css`
+  - `body.deckPage .deckBuilder` の全体スケールを無効化
+  - `transform: none; width: 100%; height: 100dvh;` に統一
+
+### 方針
+
+- デッキ構築画面は `deck.js` の実寸リサイズロジックを唯一の基準にする
+- 旧来のページ全体スケールは併用しない

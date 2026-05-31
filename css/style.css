@@ -126,10 +126,13 @@ body.deckPage .deckBuilder{
 .cardVisualApplied {
   position: relative;
   overflow: hidden;
-  container-type: inline-size;
+  container-type: size;
   --cv-base-w: 320;
   --cv-base-h: 453;
-  --cv-scale: calc(100cqw / var(--cv-base-w));
+  --cv-scale: min(
+    calc(100cqw / var(--cv-base-w)),
+    calc(100cqh / var(--cv-base-h))
+  );
 }
 
 .cardVisualApplied > img {
@@ -148,12 +151,12 @@ body.deckPage .deckBuilder{
 
 .cardVisualOverlay {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 50%;
+  top: 50%;
   width: calc(var(--cv-base-w) * 1px);
   height: calc(var(--cv-base-h) * 1px);
-  transform: scale(var(--cv-scale));
-  transform-origin: top left;
+  transform: translate(-50%, -50%) scale(var(--cv-scale));
+  transform-origin: center center;
   color: #f7f3de;
   text-shadow: 0 1px 2px rgba(0,0,0,0.72);
   font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
@@ -186,7 +189,7 @@ body.deckPage .deckBuilder{
 
 .cvAttack {
   min-height: 38px;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
   display: flex;
@@ -200,21 +203,21 @@ body.deckPage .deckBuilder{
 }
 
 .cvAttackCircle {
-  width: 38px;
-  height: 38px;
-  border: 3px solid rgba(245, 224, 162, 0.95);
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(245, 224, 162, 0.95);
   border-radius: 999px;
   background: rgba(16, 12, 20, 0.58);
 }
 
 .cvAttackNone {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
 }
 
 .cvAttackNone > span {
-  width: 26px;
-  height: 3px;
+  width: 22px;
+  height: 2px;
   background: rgba(245, 224, 162, 0.95);
   border-radius: 2px;
   display: inline-block;
@@ -227,7 +230,7 @@ body.deckPage .deckBuilder{
   top: 50%;
   transform: translateY(-50%);
   text-align: center;
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.2;
   overflow: hidden;
@@ -242,14 +245,14 @@ body.deckPage .deckBuilder{
 }
 
 .cvAttribute {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.74);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   background: rgba(0,0,0,0.55);
 }
@@ -265,7 +268,7 @@ body.deckPage .deckBuilder{
   bottom: 12px;
   height: 40%;
   padding: 10px 10px;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.35;
   border-radius: 10px;
   background: rgba(10, 10, 16, 0.7);

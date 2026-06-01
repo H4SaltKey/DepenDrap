@@ -4846,3 +4846,26 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - ブラウザ依存のコンテナ単位に左右されず、常にスケールが有効
 - 中央固定の意図どおり表示される
+
+---
+
+## Round 23 — デッキ構築のカード一覧/デッキ一覧でテキスト過大問題を修正（2026-06-01）
+
+### 原因
+
+- ゲーム中カードは `applyToCardElement()` 経由で `syncScale()` が呼ばれる
+- 一方、デッキ構築画面（カード一覧/デッキ一覧）は `buildDeckCardInnerHtml()` のみを使っており、`syncScale()` 未実行
+- そのため `--cv-scale` が初期値 `1` のままになり、カード本体に対してテキストが大きく表示されていた
+
+### 対応
+
+- `js/deck/deck.js`
+  - カード生成・拡大表示・デッキプレビュー後に `CardVisualLayout.syncScale(el)` を実行
+- `js/dev/dev.js`
+  - 編集プレビュー・拡大表示後に `CardVisualLayout.syncScale(el)` を実行
+- `js/ui/contextMenu.js`
+  - ゲーム内拡大表示カードにも `syncScale(el)` を実行
+
+### 備考
+
+- `requestAnimationFrame` でDOM配置後に実測スケール反映するため、一覧内の実寸に追従

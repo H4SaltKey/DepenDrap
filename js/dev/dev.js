@@ -122,6 +122,10 @@ function showPreview(src) {
   if (card && window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
     const previewCard = Object.assign({}, card, { image: src });
     box.innerHTML = `<div class="deckCard cardVisualApplied" style="width:100%;height:100%;">${window.CardVisualLayout.buildDeckCardInnerHtml(previewCard, { count: 0 })}</div>`;
+    const previewCardEl = box.querySelector(".cardVisualApplied");
+    if (previewCardEl && typeof window.CardVisualLayout.syncScale === "function") {
+      requestAnimationFrame(() => window.CardVisualLayout.syncScale(previewCardEl));
+    }
     return;
   }
   document.getElementById("previewImg").src = src;
@@ -360,6 +364,9 @@ function showCardZoom(id) {
     el.className = "deckCard cardVisualApplied";
     if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
       el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: 0 });
+      if (typeof window.CardVisualLayout.syncScale === "function") {
+        requestAnimationFrame(() => window.CardVisualLayout.syncScale(el));
+      }
     } else {
       const src = card.image ? (card.image.startsWith("assets/") ? card.image : encodeURI("assets/cards/" + card.image)) : "assets/System/404.png";
       el.innerHTML = `<img src="${src}" alt="">`;

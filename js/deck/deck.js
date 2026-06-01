@@ -356,6 +356,9 @@ function createCardElement(id, count, source) {
   if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
     el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: count || 0 });
     el.classList.add("cardVisualApplied");
+    if (typeof window.CardVisualLayout.syncScale === "function") {
+      requestAnimationFrame(() => window.CardVisualLayout.syncScale(el));
+    }
   } else {
     el.innerHTML = `
       <img src="${imageSrc}" alt="">
@@ -603,6 +606,9 @@ function showCardZoom(id) {
     el.className = "deckCard cardVisualApplied";
     if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
       el.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(card, { count: 0 });
+      if (typeof window.CardVisualLayout.syncScale === "function") {
+        requestAnimationFrame(() => window.CardVisualLayout.syncScale(el));
+      }
     } else {
       const src = card.image ? encodeURI(card.image) : "assets/System/404.png";
       el.innerHTML = `<img src="${src}" alt="">`;
@@ -639,6 +645,10 @@ function updateDeckCardPreview(id) {
       </div>
     </div>
   `;
+  const previewCardEl = previewDiv.querySelector(".cardVisualApplied");
+  if (previewCardEl && window.CardVisualLayout && typeof window.CardVisualLayout.syncScale === "function") {
+    requestAnimationFrame(() => window.CardVisualLayout.syncScale(previewCardEl));
+  }
 }
 
 window.addEventListener("keydown", (e) => {

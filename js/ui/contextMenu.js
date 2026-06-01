@@ -451,6 +451,9 @@ function showCardZoom(card){
   zoomCard.className = "deckCard cardVisualApplied";
   if (data && window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
     zoomCard.innerHTML = window.CardVisualLayout.buildDeckCardInnerHtml(data, { count: 0 });
+    if (typeof window.CardVisualLayout.syncScale === "function") {
+      requestAnimationFrame(() => window.CardVisualLayout.syncScale(zoomCard));
+    }
   } else {
     const img = card.querySelector("img");
     if (!img) return;

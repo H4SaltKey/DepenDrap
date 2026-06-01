@@ -126,10 +126,9 @@ body.deckPage .deckBuilder{
 .cardVisualApplied {
   position: relative;
   overflow: hidden;
-  container-type: inline-size;
   --cv-base-w: 320;
   --cv-base-h: 453;
-  --cv-scale: calc(100cqw / var(--cv-base-w));
+  --cv-scale: 1;
 }
 
 .cardVisualApplied > img {

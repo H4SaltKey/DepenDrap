@@ -4817,3 +4817,32 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - カード中央基準で情報レイヤーが安定
 - 画面別（通常/拡大/デッキ）で文字が過大になりにくい
+
+---
+
+## Round 22 — 同時座標指定の調査 + スケール計算方式修正（2026-06-01）
+
+### 調査結果
+
+- `cardVisual/cv*` の座標指定は CSS 内で単一系統（重複上書きなし）
+- JS側で `left/top/transform` を追加上書きする処理なし
+
+### 実原因
+
+- `--cv-scale` が `cqw` 依存だったため、環境によって無効化
+- 無効時、`.cardVisualOverlay` の `transform` 全体が落ち、`left:50% top:50%` のみ有効
+- 見かけ上「テキスト群の左上端が中央」に固定される
+
+### 対応
+
+- `css/style.css`
+  - `--cv-scale` の `cqw` 計算を廃止し、JS注入値を使う初期値 `1` へ変更
+- `js/card/cardVisualLayout.js`
+  - `clientWidth / 320` の実測値で `--cv-scale` を設定
+  - `ResizeObserver` でカード幅変化時に自動再計算
+  - フォールバックとして `window.resize` 対応
+
+### 効果
+
+- ブラウザ依存のコンテナ単位に左右されず、常にスケールが有効
+- 中央固定の意図どおり表示される

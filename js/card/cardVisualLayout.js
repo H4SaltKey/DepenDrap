@@ -1,4 +1,7 @@
 (function() {
+  const BASE_W = 320;
+  const scaleObservers = new WeakMap();
+
   function escapeHtml(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -56,6 +59,7 @@
   function applyToCardElement(el, card, options = {}) {
     if (!el || !card) return;
     el.classList.add("cardVisualApplied");
+    attachScaleSync(el);
     const old = el.querySelector(".cardVisualOverlay");
     if (old) old.remove();
 
@@ -63,6 +67,30 @@
     overlay.className = "cardVisualOverlayHost card-front-overlay";
     overlay.innerHTML = buildLayoutHtml(card, options);
     el.appendChild(overlay);
+  }
+
+  function syncScale(el) {
+    const w = Number(el.clientWidth || 0);
+    if (!Number.isFinite(w) || w <= 0) return;
+    const scale = w / BASE_W;
+    el.style.setProperty("--cv-scale", String(scale));
+  }
+
+  function attachScaleSync(el) {
+    syncScale(el);
+    if (scaleObservers.has(el)) return;
+
+    if (typeof ResizeObserver === "function") {
+      const ro = new ResizeObserver(() => syncScale(el));
+      ro.observe(el);
+      scaleObservers.set(el, ro);
+      return;
+    }
+
+    // ResizeObserver 非対応環境フォールバック
+    const onResize = () => syncScale(el);
+    window.addEventListener("resize", onResize, { passive: true });
+    scaleObservers.set(el, { disconnect: () => window.removeEventListener("resize", onResize) });
   }
 
   function buildDeckCardInnerHtml(card, options = {}) {
@@ -74,6 +102,7 @@
   window.CardVisualLayout = {
     normalizeType,
     normalizeAttribute,
+    syncScale,
     applyToCardElement,
     buildDeckCardInnerHtml
   };

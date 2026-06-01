@@ -129,6 +129,7 @@ body.deckPage .deckBuilder{
   --cv-base-w: 320;
   --cv-base-h: 453;
   --cv-scale: 1;
+  --cv-content-scale: 0.95;
 }
 
 .cardVisualApplied > img {
@@ -151,11 +152,16 @@ body.deckPage .deckBuilder{
   top: 50%;
   width: calc(var(--cv-base-w) * 1px);
   height: calc(var(--cv-base-h) * 1px);
-  transform: translate(-50%, -50%) scale(var(--cv-scale));
+  transform: translate(-50%, -50%) scale(calc(var(--cv-scale) * var(--cv-content-scale)));
   transform-origin: center center;
   color: #f7f3de;
   text-shadow: 0 1px 2px rgba(0,0,0,0.72);
   font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
+}
+
+/* デッキ構築画面でも同じ縮小率を明示適用 */
+body.deckPage .cardVisualApplied {
+  --cv-content-scale: 0.95;
 }
 
 .cardVisualOverlay::before {

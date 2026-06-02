@@ -71,8 +71,15 @@
 - PP系: `recover_pp`, `set_pp_min`
 - HP操作系: `heal`
 - HP操作系: `hp_reduce`
-- 効果付与系: `grant_status`（準備のみ）
-- カードに対する効果系: `trigger_attack_effect`（既存連携）
+- 効果付与系: `grant_effect_bundle`
+  - 重複可否:
+    - 「同名カードから付与」かつ「効果名が同じ」場合のみ重複判定
+  - 継続期間:
+    - `count`（回数）
+    - `turn`（ターン）
+    - `both`（回数+ターン）
+  - 付与する効果:
+    - カテゴリを再選択して複数追加可能
 
 ## 6. 変換ルール（EffectEngine DSL へのマッピング）
 
@@ -80,14 +87,21 @@
 
 - `add_atk` -> `ADD_ATK`
 - `damage` -> `DAMAGE`
-- `draw` -> `DRAW`
-- `move_source_to_hand` -> `MOVE_SOURCE_TO_HAND`
-- `move_source_to_grave` -> `MOVE_SOURCE_TO_GRAVE`
+- `draw_card` -> `DRAW`
+- `add_hand` -> `DRAW`
+- `add_hand_to_n` -> `DRAW_TO_HAND_MIN`
+- `fetch_card` -> `FETCH_CARD`
+- `return_to_hand` -> `MOVE_SOURCE_TO_HAND`
+- `send_to_grave` -> `MOVE_SOURCE_TO_GRAVE`
+- `return_to_deck` -> `MOVE_SOURCE_TO_DECK`
+- `duplicate_to_hand` -> `DUPLICATE_SOURCE_TO_HAND`
+- `play_to_field` -> `PLAY_SOURCE_TO_FIELD`
+- `reveal_card` -> `REVEAL_CARD`
 - `recover_pp` -> `RECOVER_PP`
 - `set_pp_min` -> `SET_PP_MIN`
 - `heal` -> `HEAL`
 - `hp_reduce` -> `DAMAGE` (`damageType: "hp_reduce"`, `subType: "none"`)
-- `trigger_attack_effect` -> `TRIGGER_ATTACK_EFFECT`
+- `grant_effect_bundle` -> `GRANT_EFFECT_BUNDLE`
 
 `grant_status` は現時点では DSL 未対応のため、将来拡張予約として保持する（コンパイル時は無視）。
 

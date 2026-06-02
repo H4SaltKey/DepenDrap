@@ -5237,3 +5237,43 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `setMonsterAttack(slotIndex, value)` を追加
 - `docs/dev-card-effect-block-spec.md`
   - `add_atk` モードに `set` を追記
+
+---
+
+## Round 35 — 効果付与系/カード系仕様の再編（2026-06-02）
+
+### 効果付与系
+
+- カテゴリを `effect_grant`（効果付与系）へ統一
+- ブロック `grant_effect_bundle` を追加
+  - 重複可否チェック（同名カード + 同効果名を重複判定）
+  - 継続期間設定（回数 / ターン / 両方）
+  - 付与する効果をカテゴリから再選択して複数追加
+
+### カード系
+
+- カード系ブロックを以下へ差し替え
+  - `draw_card`
+  - `add_hand`
+  - `add_hand_to_n`
+  - `fetch_card`
+  - `return_to_hand`
+  - `send_to_grave`
+  - `return_to_deck`
+  - `duplicate_to_hand`
+  - `play_to_field`
+  - `reveal_card`
+
+### 実装
+
+- `js/dev/cardEffectBlockCatalog.js`
+  - カテゴリ定義とカード系効果リストを更新
+- `js/dev/dev.js`
+  - 効果付与系のUI（重複可否/継続期間/付与効果複数）を追加
+  - カード系の `toZone` 編集UIを追加
+- `js/dev/cardEffectBlockCompiler.js`
+  - 新カード系/効果付与系のDSL変換を追加
+- `js/game/effects/effectEngine.js`
+  - `GRANT_EFFECT_BUNDLE` 受理と付与情報の登録処理を追加
+- `docs/dev-card-effect-block-spec.md`
+  - 仕様とマッピングを更新

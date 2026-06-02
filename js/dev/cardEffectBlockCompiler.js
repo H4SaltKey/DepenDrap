@@ -6,14 +6,21 @@
     add_atk: "ADD_ATK",
     damage: "DAMAGE",
     hp_reduce: "DAMAGE",
-    draw: "DRAW",
-    move_source_to_hand: "MOVE_SOURCE_TO_HAND",
-    move_source_to_grave: "MOVE_SOURCE_TO_GRAVE",
+    draw_card: "DRAW",
+    add_hand: "DRAW",
+    add_hand_to_n: "DRAW_TO_HAND_MIN",
+    fetch_card: "FETCH_CARD",
+    return_to_hand: "MOVE_SOURCE_TO_HAND",
+    send_to_grave: "MOVE_SOURCE_TO_GRAVE",
+    return_to_deck: "MOVE_SOURCE_TO_DECK",
+    duplicate_to_hand: "DUPLICATE_SOURCE_TO_HAND",
+    play_to_field: "PLAY_SOURCE_TO_FIELD",
+    reveal_card: "REVEAL_CARD",
     recover_pp: "RECOVER_PP",
     set_pp_min: "SET_PP_MIN",
     recover_pp_to: "SET_PP_MIN",
     heal: "HEAL",
-    trigger_attack_effect: "TRIGGER_ATTACK_EFFECT"
+    grant_effect_bundle: "GRANT_EFFECT_BUNDLE"
   };
 
   function normalizeTarget(target) {
@@ -61,12 +68,36 @@
       return compiled;
     }
 
-    if (["add_atk", "draw", "recover_pp", "set_pp_min", "recover_pp_to", "heal"].includes(kind)) {
+    if (["add_atk", "draw_card", "add_hand", "add_hand_to_n", "recover_pp", "set_pp_min", "recover_pp_to", "heal", "duplicate_to_hand", "reveal_card"].includes(kind)) {
       compiled.amount = normalizeValue(effect.value, 1);
       if (kind === "add_atk") {
         compiled.atkMode = String(effect.atkMode || "increase");
         compiled.atkTarget = String(effect.atkTarget || "this_card");
       }
+      return compiled;
+    }
+
+    if (kind === "fetch_card") {
+      compiled.amount = Math.max(1, normalizeValue(effect.value, 1));
+      compiled.toZone = String(effect.toZone || "hand");
+      return compiled;
+    }
+
+    if (kind === "play_to_field") {
+      compiled.toZone = String(effect.toZone || "attacker");
+      return compiled;
+    }
+
+    if (kind === "grant_effect_bundle") {
+      compiled.effectName = String(effect.effectName || "付与効果");
+      compiled.allowDuplicate = effect.allowDuplicate === true;
+      compiled.duration = effect.duration && typeof effect.duration === "object"
+        ? effect.duration
+        : { mode: "turn", turns: 1, counts: 0 };
+      compiled.grantedEffects = Array.isArray(effect.grantedEffects) ? effect.grantedEffects.map((g) => {
+        const child = compileBlockEffect(g);
+        return child || null;
+      }).filter(Boolean) : [];
       return compiled;
     }
 

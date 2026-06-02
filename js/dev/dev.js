@@ -59,6 +59,17 @@ const ATK_TARGET_OPTIONS = [
   { value: "self_base_atk", label: "自身の基礎攻撃力" },
   { value: "target_base_atk", label: "現在のターゲットの基礎攻撃力" }
 ];
+const DURATION_MODE_OPTIONS = [
+  { value: "count", label: "回数" },
+  { value: "turn", label: "ターン" },
+  { value: "both", label: "その両方" }
+];
+const FETCH_TO_ZONE_OPTIONS = [
+  { value: "hand", label: "手札" },
+  { value: "attacker", label: "アタッカー場" },
+  { value: "skill", label: "スキル場" },
+  { value: "grave", label: "墓地" }
+];
 const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "continuous", "manual"];
 const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "continuous", "manual"];
 
@@ -104,6 +115,10 @@ function createDefaultEffectByCategory(categoryId) {
     atkMode: "increase",
     atkTarget: "this_card",
     useCondition: false,
+    effectName: "付与効果",
+    allowDuplicate: false,
+    duration: { mode: "turn", turns: 1, counts: 0 },
+    grantedEffects: [],
     condition: {
       whileOnField: false,
       thisTurn: true,
@@ -217,6 +232,28 @@ function renderEffectBlocksEditor() {
           <span style="font-size:12px;color:#666;">対象</span>
           <select data-role="atkTarget" style="min-width:300px;"></select>
         </div>
+        <div class="blockRow" data-role="cardExtra" style="display:none;">
+          <span style="font-size:12px;color:#666;">取り出し先/場</span>
+          <select data-role="toZone"></select>
+        </div>
+        <div class="blockRow" data-role="grantExtra" style="display:none;border-top:1px solid #eee;padding-top:6px;">
+          <span style="font-size:12px;color:#666;">効果名</span>
+          <input data-role="effectName" type="text" style="width:140px;" value="${effect.effectName || "付与効果"}">
+          <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="allowDuplicate"> 重複可（同名カード+同効果名のみ重複判定）</label>
+        </div>
+        <div class="blockRow" data-role="grantExtra" style="display:none;">
+          <span style="font-size:12px;color:#666;">継続期間</span>
+          <select data-role="durationMode"></select>
+          <span style="font-size:12px;color:#666;">回数</span>
+          <input data-role="durationCounts" type="number" style="width:80px;" value="0">
+          <span style="font-size:12px;color:#666;">ターン</span>
+          <input data-role="durationTurns" type="number" style="width:80px;" value="1">
+        </div>
+        <div class="blockRow" data-role="grantExtra" style="display:none;">
+          <button type="button" data-role="addGrantedEffect">付与する効果を追加</button>
+          <span style="font-size:12px;color:#666;">※カテゴリから再選択</span>
+        </div>
+        <div data-role="grantList" style="display:none;"></div>
         <div class="blockRow" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#333;"><input type="checkbox" data-role="useCondition"> 条件を使う</label>
         </div>
@@ -246,6 +283,16 @@ function renderEffectBlocksEditor() {
       const atkExtra = effectEl.querySelector('[data-role="atkExtra"]');
       const atkModeInput = effectEl.querySelector('[data-role="atkMode"]');
       const atkTargetInput = effectEl.querySelector('[data-role="atkTarget"]');
+      const cardExtra = effectEl.querySelector('[data-role="cardExtra"]');
+      const toZoneInput = effectEl.querySelector('[data-role="toZone"]');
+      const grantExtras = effectEl.querySelectorAll('[data-role="grantExtra"]');
+      const grantList = effectEl.querySelector('[data-role="grantList"]');
+      const effectNameInput = effectEl.querySelector('[data-role="effectName"]');
+      const allowDuplicateInput = effectEl.querySelector('[data-role="allowDuplicate"]');
+      const durationModeInput = effectEl.querySelector('[data-role="durationMode"]');
+      const durationCountsInput = effectEl.querySelector('[data-role="durationCounts"]');
+      const durationTurnsInput = effectEl.querySelector('[data-role="durationTurns"]');
+      const addGrantedEffectBtn = effectEl.querySelector('[data-role="addGrantedEffect"]');
       const useConditionInput = effectEl.querySelector('[data-role="useCondition"]');
       const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
       const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
@@ -283,6 +330,16 @@ function renderEffectBlocksEditor() {
       atkTargetInput.innerHTML = ATK_TARGET_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.atkTarget || "this_card") ? "selected" : ""}>${x.label}</option>`)
         .join("");
+      toZoneInput.innerHTML = FETCH_TO_ZONE_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.toZone || "hand") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      durationModeInput.innerHTML = DURATION_MODE_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.duration?.mode || "turn") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      durationCountsInput.value = String(Number(effect.duration?.counts || 0));
+      durationTurnsInput.value = String(Number(effect.duration?.turns || 1));
+      effectNameInput.value = String(effect.effectName || "付与効果");
+      allowDuplicateInput.checked = effect.allowDuplicate === true;
       trackerOwnerInput.innerHTML = `<option value="self" ${(effect.condition.trackerCheck.owner || "self") === "self" ? "selected" : ""}>自身</option><option value="target" ${(effect.condition.trackerCheck.owner || "self") === "target" ? "selected" : ""}>現在ターゲット</option>`;
       trackerScopeInput.innerHTML = TRACKER_SCOPE_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.scope || "turn") ? "selected" : ""}>${x.label}</option>`)
@@ -323,6 +380,74 @@ function renderEffectBlocksEditor() {
         atkExtra.style.display = effect.kind === "add_atk" ? "flex" : "none";
         targetSelect.style.display = effect.kind === "add_atk" ? "none" : "";
       }
+      function refreshCardVisible() {
+        const on = effect.kind === "fetch_card" || effect.kind === "play_to_field";
+        cardExtra.style.display = on ? "flex" : "none";
+      }
+      function renderGrantList() {
+        if (!grantList) return;
+        if (!Array.isArray(effect.grantedEffects)) effect.grantedEffects = [];
+        if (effect.kind !== "grant_effect_bundle") {
+          grantList.style.display = "none";
+          grantList.innerHTML = "";
+          return;
+        }
+        grantList.style.display = "";
+        grantList.innerHTML = "";
+        effect.grantedEffects.forEach((g, gi) => {
+          const row = document.createElement("div");
+          row.className = "effectRow";
+          row.innerHTML = `
+            <div class="blockRow">
+              <span style="font-size:12px;color:#666;">付与効果${gi + 1}</span>
+              <select data-role="gCategory"></select>
+              <select data-role="gKind"></select>
+              <input data-role="gValue" type="number" style="width:70px;" value="${Number(g.value ?? 1)}">
+              <button type="button" data-role="gRemove" style="background:#fbe7e7;border:1px solid #e0a0a0;">削除</button>
+            </div>
+          `;
+          const gCategory = row.querySelector('[data-role="gCategory"]');
+          const gKind = row.querySelector('[data-role="gKind"]');
+          const gValue = row.querySelector('[data-role="gValue"]');
+          gCategory.innerHTML = (window.CardEffectBlockCatalog?.EFFECT_CATEGORIES || [])
+            .filter((c) => c.id !== "effect_grant")
+            .map((c) => `<option value="${c.id}" ${c.id === (g.category || "damage") ? "selected" : ""}>${c.label}</option>`)
+            .join("");
+          function refreshGKind() {
+            const kinds = getKindsByCategory(g.category).filter((k) => k.category !== "effect_grant");
+            if (kinds.length === 0) {
+              gKind.innerHTML = "";
+              return;
+            }
+            if (!kinds.find((k) => k.id === g.kind)) g.kind = kinds[0].id;
+            gKind.innerHTML = kinds.map((k) => `<option value="${k.id}" ${k.id === g.kind ? "selected" : ""}>${k.label}</option>`).join("");
+          }
+          refreshGKind();
+          gCategory.addEventListener("change", () => {
+            g.category = gCategory.value;
+            refreshGKind();
+          });
+          gKind.addEventListener("change", () => {
+            g.kind = gKind.value;
+          });
+          gValue.addEventListener("input", () => {
+            g.value = Number(gValue.value) || 0;
+          });
+          row.querySelector('[data-role="gRemove"]').addEventListener("click", () => {
+            effect.grantedEffects.splice(gi, 1);
+            renderGrantList();
+          });
+          grantList.appendChild(row);
+        });
+      }
+      function refreshGrantVisible() {
+        const on = effect.kind === "grant_effect_bundle";
+        grantExtras.forEach((el) => {
+          el.style.display = on ? "flex" : "none";
+        });
+        if (grantList) grantList.style.display = on ? "" : "none";
+        renderGrantList();
+      }
       function refreshConditionVisible() {
         conditionAreas.forEach((el) => {
           el.style.display = effect.useCondition === true ? "" : "none";
@@ -332,6 +457,8 @@ function renderEffectBlocksEditor() {
       refreshKindOptions();
       refreshDamageVisible();
       refreshAtkVisible();
+      refreshCardVisible();
+      refreshGrantVisible();
       refreshConditionVisible();
 
       categorySelect.addEventListener("change", (e) => {
@@ -350,11 +477,15 @@ function renderEffectBlocksEditor() {
         refreshKindOptions();
         refreshDamageVisible();
         refreshAtkVisible();
+        refreshCardVisible();
+        refreshGrantVisible();
       });
       kindSelect.addEventListener("change", (e) => {
         effect.kind = e.target.value;
         refreshDamageVisible();
         refreshAtkVisible();
+        refreshCardVisible();
+        refreshGrantVisible();
       });
       targetSelect.addEventListener("change", (e) => {
         effect.target = e.target.value;
@@ -373,6 +504,37 @@ function renderEffectBlocksEditor() {
       });
       atkTargetInput.addEventListener("change", () => {
         effect.atkTarget = atkTargetInput.value || "this_card";
+      });
+      toZoneInput.addEventListener("change", () => {
+        effect.toZone = toZoneInput.value || "hand";
+      });
+      effectNameInput.addEventListener("input", () => {
+        effect.effectName = effectNameInput.value || "付与効果";
+      });
+      allowDuplicateInput.addEventListener("change", () => {
+        effect.allowDuplicate = allowDuplicateInput.checked;
+      });
+      durationModeInput.addEventListener("change", () => {
+        if (!effect.duration || typeof effect.duration !== "object") effect.duration = {};
+        effect.duration.mode = durationModeInput.value || "turn";
+      });
+      durationCountsInput.addEventListener("input", () => {
+        if (!effect.duration || typeof effect.duration !== "object") effect.duration = {};
+        effect.duration.counts = Math.max(0, Number(durationCountsInput.value) || 0);
+      });
+      durationTurnsInput.addEventListener("input", () => {
+        if (!effect.duration || typeof effect.duration !== "object") effect.duration = {};
+        effect.duration.turns = Math.max(0, Number(durationTurnsInput.value) || 0);
+      });
+      addGrantedEffectBtn.addEventListener("click", () => {
+        if (!Array.isArray(effect.grantedEffects)) effect.grantedEffects = [];
+        effect.grantedEffects.push({
+          category: "damage",
+          kind: "damage",
+          target: "current_target",
+          value: 1
+        });
+        renderGrantList();
       });
       useConditionInput.addEventListener("change", () => {
         effect.useCondition = useConditionInput.checked;

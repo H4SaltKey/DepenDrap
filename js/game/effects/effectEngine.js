@@ -253,6 +253,34 @@
     return false;
   }
 
+  function registerGrantedEffect(effect, context, targetOwner) {
+    const s = getPlayer(targetOwner);
+    if (!s) return;
+    if (!Array.isArray(s.grantedEffects)) s.grantedEffects = [];
+    const sourceCardId = String(context.sourceProfile?.id || context.sourceCard?.dataset?.id || "unknown");
+    const effectName = String(effect.effectName || "付与効果");
+    const allowDuplicate = effect.allowDuplicate === true;
+    if (!allowDuplicate) {
+      const exists = s.grantedEffects.some((g) => (
+        String(g.sourceCardId || "") === sourceCardId
+        && String(g.effectName || "") === effectName
+      ));
+      if (exists) return;
+    }
+    const row = {
+      sourceCardId,
+      effectName,
+      allowDuplicate,
+      duration: effect.duration && typeof effect.duration === "object"
+        ? effect.duration
+        : { mode: "turn", turns: 1, counts: 0 },
+      grantedEffects: Array.isArray(effect.grantedEffects) ? effect.grantedEffects : [],
+      createdAt: Date.now()
+    };
+    s.grantedEffects.push(row);
+    if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+  }
+
   function isCardOnField(cardEl) {
     const zone = String(cardEl?.dataset?.zoneType || "");
     return zone === "attacker" || zone === "skill";
@@ -401,6 +429,12 @@
         if (window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
           window.FirstEightCardEffects.resolveAttackTriggerForAttacker(context.owner);
         }
+        return { applied: true, type };
+      }
+      if (type === "GRANT_EFFECT_BUNDLE") {
+        targetOwners.forEach((targetOwner) => {
+          registerGrantedEffect(effect, context, targetOwner);
+        });
         return { applied: true, type };
       }
       return { applied: false, type };

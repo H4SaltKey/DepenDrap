@@ -15,35 +15,74 @@
           "effects": [
             {
               "type": "SET_PP_MIN",
-              "target": "self",
+              "target": "self_player",
               "amount": 1
+            },
+            {
+              "type": "DAMAGE",
+              "target": "self_player",
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "dec",
+                  "metric": "count",
+                  "op": "gte",
+                  "value": 1
+                }
+              },
+              "amount": 1,
+              "damageType": "hp_reduce",
+              "subType": "none"
+            }
+          ]
+        },
+        {
+          "on": "onDirectAttack",
+          "effects": [
+            {
+              "type": "ADD_ATK",
+              "target": "self_player",
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "dec",
+                  "metric": "count",
+                  "op": "gte",
+                  "value": 2
+                }
+              },
+              "amount": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card"
             }
           ]
         },
         {
           "on": "onLeave",
-          "condition": {
-            "left": {
-              "ref": "event.didDirectAttack"
-            },
-            "eq": false
-          },
           "effects": [
             {
               "type": "DAMAGE",
-              "target": "self",
+              "target": "self_player",
+              "amount": 1,
               "damageType": "hp_reduce",
-              "subType": "none",
-              "amount": 1
+              "subType": "none"
             },
             {
               "type": "SET_PP_MIN",
-              "target": "self",
+              "target": "self_player",
               "amount": 1
             },
             {
-              "type": "MOVE_SOURCE_TO_HAND",
-              "target": "self"
+              "type": "TRIGGER_ATTACK_EFFECT",
+              "target": "self_player"
             }
           ]
         }
@@ -52,7 +91,171 @@
     "tags": [
       "neko",
       "meow"
-    ]
+    ],
+    "effectBlocks": {
+      "format": "dependrap.effectblocks.v1",
+      "timings": [
+        {
+          "timing": "onSummon",
+          "effects": [
+            {
+              "category": "pp",
+              "kind": "set_pp_min",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": false,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "inc",
+                  "metric": "amount",
+                  "op": "gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            },
+            {
+              "category": "hp",
+              "kind": "hp_reduce",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": true,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "dec",
+                  "metric": "count",
+                  "op": "gte",
+                  "value": 1
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            }
+          ]
+        },
+        {
+          "timing": "onDirectAttack",
+          "effects": [
+            {
+              "category": "atk_adjust",
+              "kind": "add_atk",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": true,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "dec",
+                  "metric": "count",
+                  "op": "gte",
+                  "value": 2
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            }
+          ]
+        },
+        {
+          "timing": "onLeave",
+          "effects": [
+            {
+              "category": "hp",
+              "kind": "hp_reduce",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": false,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "inc",
+                  "metric": "amount",
+                  "op": "gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            },
+            {
+              "category": "pp",
+              "kind": "set_pp_min",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": false,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "inc",
+                  "metric": "amount",
+                  "op": "gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            },
+            {
+              "category": "card_effect",
+              "kind": "trigger_attack_effect",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "useCondition": false,
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "trackerCheck": {
+                  "owner": "self",
+                  "scope": "turn",
+                  "stat": "hp",
+                  "direction": "inc",
+                  "metric": "amount",
+                  "op": "gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            }
+          ]
+        }
+      ]
+    }
   },
   {
     "id": "cd001-002",
@@ -63,53 +266,8 @@
     "attack": 1,
     "effectText": "魔法の場合、\n後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る。\n②：自身のHPを1減らす。\n③：手札を1枚増やす。",
     "effectDsl": {
-      "version": 1,
-      "triggers": [
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "魔法の場合、"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "後述の効果を上から順に全て発動する"
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "effects": [
-            {
-              "type": "DESTROY"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "②：自身のHPを1減らす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "③：手札を1枚増やす"
-            }
-          ]
-        }
-      ]
+      "format": "dependrap.dsl.v1",
+      "triggers": []
     },
     "tags": []
   },
@@ -123,125 +281,7 @@
     "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のHPが15以上なら、手札を1枚増やす。\n②：自身[のHPが20以上、がシールドを持つ]のいずれかなら、自身のPPを1回復する。\u000b攻撃時：自身のHPを1回復し、自身に1のシールドを付与する。\n自身のターン開始時：後述の効果を上から順に全て発動する。\n①：自身がシールドを持つなら、相手のHPをx減らす。\n②：自身がシールドを持たないなら、自身に2のシールドを付与する。\n③：これを墓地へ送る。\n直接攻撃時：“攻撃時”効果を1回発動する。\nx=（自身のシールド層数）+2。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
-      "triggers": [
-        {
-          "on": "onSummon",
-          "condition": {
-            "selfHp": {
-              "gte": 15
-            }
-          },
-          "effects": [
-            {
-              "type": "DRAW",
-              "target": "self",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onSummon",
-          "condition": {
-            "or": [
-              {
-                "selfHp": {
-                  "gte": 20
-                }
-              },
-              {
-                "selfShield": {
-                  "gt": 0
-                }
-              }
-            ]
-          },
-          "effects": [
-            {
-              "type": "RECOVER_PP",
-              "target": "self",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "HEAL",
-              "target": "self",
-              "amount": 1
-            },
-            {
-              "type": "ADD_SHIELD",
-              "target": "self",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onTurnStart",
-          "variables": {
-            "x": {
-              "add": [
-                {
-                  "ref": "self.shield"
-                },
-                2
-              ]
-            }
-          },
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "target": "opponent",
-              "damageType": "hp_reduce",
-              "subType": "none",
-              "amount": {
-                "if": [
-                  {
-                    "selfShield": {
-                      "gt": 0
-                    }
-                  },
-                  {
-                    "var": "x"
-                  },
-                  0
-                ]
-              }
-            },
-            {
-              "type": "ADD_SHIELD",
-              "target": "self",
-              "amount": {
-                "if": [
-                  {
-                    "selfShield": {
-                      "eq": 0
-                    }
-                  },
-                  2,
-                  0
-                ]
-              }
-            },
-            {
-              "type": "MOVE_SOURCE_TO_GRAVE",
-              "target": "self"
-            }
-          ]
-        },
-        {
-          "on": "onDirectAttack",
-          "effects": [
-            {
-              "type": "TRIGGER_ATTACK_EFFECT",
-              "target": "self",
-              "amount": 1
-            }
-          ]
-        }
-      ]
+      "triggers": []
     },
     "tags": []
   },
@@ -254,71 +294,8 @@
     "attack": 0,
     "effectText": "【これの攻撃力は増加しない。】\n\n魔法の場合、\n後述の効果を上から順に全て発動する。\n①：”攻撃時“効果をもう1回発動する。\n②：”攻撃時“効果で自身のHPを回復したなら、”攻撃時“効果を追加で1回発動する。\n③：”攻撃時“効果で自身にシールドを付与したなら、”攻撃時“効果を追加で1回発動する。",
     "effectDsl": {
-      "version": 1,
-      "triggers": [
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "】"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "魔法の場合、"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "後述の効果を上から順に全て発動する"
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "amount": 1
-            }
-          ]
-        }
-      ]
+      "format": "dependrap.dsl.v1",
+      "triggers": []
     },
     "tags": []
   },
@@ -332,38 +309,7 @@
     "effectText": "継続：自身がHPを回復する度、相手のHPを1回復する。\u000b攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPを2回復する（場にいる間1回）。\n②：“①”を発動していないなら、自身のHPを1回復する。\n退場時：”直接攻撃”をしていないなら、自身のHPを3回復。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
-      "triggers": [
-        {
-          "on": "continuous",
-          "effects": []
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "HEAL",
-              "target": "self",
-              "amount": 2
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "condition": {
-            "left": {
-              "ref": "event.didDirectAttack"
-            },
-            "eq": false
-          },
-          "effects": [
-            {
-              "type": "HEAL",
-              "target": "self",
-              "amount": 3
-            }
-          ]
-        }
-      ]
+      "triggers": []
     },
     "tags": [
       "baka",
@@ -379,79 +325,8 @@
     "attack": 0,
     "effectText": "魔法の場合、\u000b”攻撃時“効果で自身のHPを回復したなら、後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る 。\n②：自身のHPを1回復する。\n③：自身のHPが相手より多いなら、相手のHPをx減らす。\n\u000b差が1~3なら、x=1。\u000b差が4~5なら、x=2。\n差が6~7なら、x=3。\u000b差が8~なら、x=4。",
     "effectDsl": {
-      "version": 1,
-      "triggers": [
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "effects": [
-            {
-              "type": "DESTROY"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "HEAL",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "③：自身のHPが相手より多いなら、相手のHPをx減らす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "差が1~3なら、x=1"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "差が4~5なら、x=2"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "差が6~7なら、x=3"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "差が8~なら、x=4"
-            }
-          ]
-        }
-      ]
+      "format": "dependrap.dsl.v1",
+      "triggers": []
     },
     "tags": []
   },
@@ -464,95 +339,8 @@
     "attack": 1,
     "effectText": "継続：自身のHPを回復する時、その回復量を記録し、合計回復量yとして次のターン開始時まで保持する。代わりに、自身のターン中、自身のHPは増加しなくなる。\n登場時：自身のHPが11以上なら、自身のPPを1回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPが11以上なら、自身のHPを1減らす。\n②：攻撃力を+xする。\n自身のHPが10~6なら、x=1\n自身のHPが5~2なら、  x=2\n自身のHPが1なら、  x=3\n相手のターン開始時：自身のHPをy回復する。",
     "effectDsl": {
-      "version": 1,
-      "triggers": [
-        {
-          "on": "onTurnStart",
-          "effects": [
-            {
-              "type": "HEAL"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "代わりに、自身のターン中、自身のHPは増加しなくなる"
-            }
-          ]
-        },
-        {
-          "on": "onSummon",
-          "effects": [
-            {
-              "type": "HEAL",
-              "amount": 11
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "①：自身のHPが11以上なら、自身のHPを1減らす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "自身のHPが10~6なら、x=1"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "自身のHPが5~2なら、  x=2"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "自身のHPが1なら、  x=3"
-            }
-          ]
-        },
-        {
-          "on": "onTurnStart",
-          "effects": [
-            {
-              "type": "HEAL"
-            }
-          ]
-        }
-      ]
+      "format": "dependrap.dsl.v1",
+      "triggers": []
     },
     "tags": []
   },
@@ -565,61 +353,8 @@
     "attack": 1,
     "effectText": "魔法の場合、\n【自身のHPが10以下なら、 これはジョーカーを持つ（1ターンの間これと同様の効果は1回まで発動できる。） 。】\n\u000bこれの使用時と、この“ターン終了時” 、自身のHPをx回復する。\nx=（これの攻撃力）",
     "effectDsl": {
-      "version": 1,
-      "triggers": [
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "魔法の場合、"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "【自身のHPが10以下なら、 これはジョーカーを持つ（1ターンの間これと同様の効果は1回まで発動できる"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "）"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "】"
-            }
-          ]
-        },
-        {
-          "on": "onTurnEnd",
-          "effects": [
-            {
-              "type": "HEAL"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "DAMAGE"
-            }
-          ]
-        }
-      ]
+      "format": "dependrap.dsl.v1",
+      "triggers": []
     },
     "tags": []
   },
@@ -631,7 +366,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -642,7 +380,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -653,7 +394,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -664,7 +408,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -675,7 +422,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -686,7 +436,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -697,7 +450,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -708,7 +464,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -719,7 +478,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -730,7 +492,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -741,7 +506,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -752,7 +520,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -763,7 +534,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -774,7 +548,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -785,7 +562,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -796,7 +576,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -807,7 +590,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -818,7 +604,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -829,7 +618,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -840,7 +632,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -851,7 +646,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -862,7 +660,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -873,7 +674,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -884,7 +688,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -895,7 +702,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -906,7 +716,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -917,7 +730,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -928,7 +744,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -939,7 +758,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -950,7 +772,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -961,7 +786,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -972,7 +800,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -983,7 +814,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -994,7 +828,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1005,7 +842,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1016,7 +856,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1027,7 +870,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1038,7 +884,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1049,7 +898,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1060,7 +912,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1071,7 +926,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1082,7 +940,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1093,7 +954,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1104,7 +968,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1115,7 +982,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1126,7 +996,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1137,7 +1010,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1148,7 +1024,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1159,7 +1038,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1170,7 +1052,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1181,7 +1066,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1192,7 +1080,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1203,7 +1094,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1214,7 +1108,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1225,7 +1122,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1236,7 +1136,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1247,7 +1150,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1258,7 +1164,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1269,7 +1178,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1280,7 +1192,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1291,7 +1206,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1302,7 +1220,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1313,7 +1234,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1324,7 +1248,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1335,7 +1262,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1346,7 +1276,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1357,7 +1290,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1368,7 +1304,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1379,7 +1318,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1390,7 +1332,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1401,7 +1346,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1412,7 +1360,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1423,7 +1374,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1434,7 +1388,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1445,7 +1402,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1456,7 +1416,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1467,7 +1430,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1478,7 +1444,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1489,7 +1458,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1500,7 +1472,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1511,7 +1486,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1522,7 +1500,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1533,7 +1514,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1544,7 +1528,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1555,7 +1542,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1566,7 +1556,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1577,7 +1570,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1588,7 +1584,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1599,7 +1598,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1610,7 +1612,10 @@
     "type": "サポート",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1621,7 +1626,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1632,7 +1640,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1643,7 +1654,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1654,7 +1668,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1665,7 +1682,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1676,7 +1696,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1687,7 +1710,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1698,7 +1724,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1709,7 +1738,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1720,7 +1752,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1731,7 +1766,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1742,7 +1780,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1753,7 +1794,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1764,7 +1808,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1775,7 +1822,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1786,7 +1836,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1797,7 +1850,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1808,7 +1864,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1819,7 +1878,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1830,7 +1892,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1841,7 +1906,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1852,7 +1920,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1863,7 +1934,10 @@
     "type": "アタッカー",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   },
   {
@@ -1874,7 +1948,10 @@
     "type": "スキル",
     "attack": 0,
     "effectText": "",
-    "effectDsl": null,
+    "effectDsl": {
+      "format": "dependrap.dsl.v1",
+      "triggers": []
+    },
     "tags": []
   }
 ]

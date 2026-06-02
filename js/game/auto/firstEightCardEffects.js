@@ -134,6 +134,19 @@
     const attacker = (window.getZoneCards(owner, "attacker") || []).slice(-1)[0];
     if (!attacker) return;
     const id = attacker.dataset.id;
+    const profile = window.CardCombatData?.getResolvedCardData?.(id);
+    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl?.format === window.EffectEngine.DSL_FORMAT) {
+      window.EffectEngine.execute(profile.effectDsl, {
+        game: window.state,
+        sourceCard: attacker,
+        sourceProfile: profile,
+        owner,
+        opponent: meToOp(owner),
+        target: meToOp(owner),
+        event: { name: "onAttack", zoneType: "attacker", targetOwner: meToOp(owner) }
+      });
+      return;
+    }
     const self = getPlayer(owner);
     if (!self) return;
 
@@ -179,6 +192,7 @@
     const { profile, owner, zoneType } = context;
     const id = profile?.id;
     if (!id || !TARGET_IDS.has(id)) return { handled: false };
+    if (profile?.effectDsl?.format === "dependrap.dsl.v1") return { handled: false };
 
     const self = getPlayer(owner);
     const op = meToOp(owner);

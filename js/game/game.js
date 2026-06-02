@@ -2435,6 +2435,10 @@ function startTurnDraw() {
   const m = state.matchData || {};
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
+  if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+    window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onTurnStart", { targetOwner: me });
+    window.EffectEngine.triggerZoneCardEffects(me, "skill", "onTurnStart", { targetOwner: me });
+  }
   const myState = state[me];
   if (!myState || myState.deck.length === 0) {
     console.warn("[TurnDraw] デッキが空です。敗北判定を実行します。");

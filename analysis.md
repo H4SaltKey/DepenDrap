@@ -2,6 +2,64 @@
 
 ---
 
+## Round 2026-06-01 — Auto進行の二重実行（PP/効果）修正
+
+### 原因
+
+- 5/31 追加の `js/game/auto/autoBattleEngine.js` で、オートプレイ時に以下を先行実行していた:
+  1. `usePP()` で PP 消費
+  2. `applyEffectActions()` でカード効果を即時適用
+- その後 `placeCardInZone()` を呼ぶため、`js/game/auto/playerActionResolver.js` のフック（`resolveCardOnPlay`）が通常操作と同じく再度コスト処理・効果処理を実行。
+- 結果としてオート時のみ PP 消費/効果発動が二重化。
+
+### 対応内容
+
+- `autoBattleEngine.js` から `usePP()` と `applyEffectActions()` を削除。
+- オート側は `canPayCardCost()` で「実行可否の事前判定のみ」を行い、実際のコスト処理・効果解決は `placeCardInZone()` → `PlayerActionResolver` に委譲。
+- これにより、通常操作とオート操作で resolver を単一の実行源に統一。
+
+### 再発防止の要点
+
+- **カード使用時の副作用（PP消費・効果解決）は `PlayerActionResolver` に一本化**し、入力系（手動/オート/UI）は「配置要求」だけを行う。
+- 新しい入力導線（自動化/ショートカット/AI操作）を追加する際は、`placeCardInZone` 前後で副作用処理を書かないレビュー観点を追加する。
+- 回帰観点:
+  - 手動配置とオート配置で同じカードを使い、PP減少量と効果発動回数が一致すること
+  - `cardCostPolicy`（`normal`/`joker`/`all_in`）ごとに挙動一致すること
+
+---
+
+## Round 2026-06-01 — Effect Engine フェーズ着手（DSL v1 + 骨格実装）
+
+### 実施内容
+
+- `docs/dependrap-dsl-v1.md` を新規作成し、`Trigger / Condition / Effect / Target / Variable` を JSON 仕様として固定化。
+- `js/game/effects/effectEngine.js` を新規作成し、以下を分離実装:
+  - `TriggerSystem`（イベント一致）
+  - `ConditionEvaluator`（真偽評価）
+  - `VariableResolver`（式評価）
+  - `EffectExecutor`（switch型実行）
+  - `execute()`（統合実行）
+- `game.html` に `effectEngine.js` を読み込み追加。
+- `PlayerActionResolver` を改修し、`effectDsl.format === "dependrap.dsl.v1"` の場合は新エンジンを優先実行（旧DSLは従来フォールバック）。
+- `startTurnDraw()` に `onTurnStart` 発火を追加（自陣 attacker/skill）。
+- `placeCardInZone(..., \"grave\")` 経由時に `onLeave` を評価できるよう resolver 側フックを追加。
+
+### カード移行（3枚のみ）
+
+- `cd001-001` 黒魔術師
+- `cd001-003` 放浪の魔法使い
+- `cd001-005` 創世の賢者
+
+上記3枚の `effectDsl` を `dependrap.dsl.v1` へ差し替え。  
+122枚一括移行は未実施（段階移行）。
+
+### 注意点 / 次ラウンド課題
+
+- 手動の「直接攻撃」導線では `onDirectAttack` のイベント文脈連携が未統一。現時点はオート導線でのみ `onDirectAttack` を明示実行。
+- 継続効果（`on: "continuous"`）は仕様定義と骨格実装まで。イベント購読と永続レイヤーは次段で拡張する。
+
+---
+
 ## Round 1 — デッキコード / ファーストドロー
 
 ### 発見事項
@@ -4869,3 +4927,49 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 備考
 
 - `requestAnimationFrame` でDOM配置後に実測スケール反映するため、一覧内の実寸に追従
+
+---
+
+## Round 24 — 開発者モード向け「ブロック組み換え式カード効果」準備（2026-06-02）
+
+### 目的
+
+- 最終的に開発者モードで Scratch 的に効果ブロックを組み換えられるようにするための土台を先行実装
+- 先に仕様を固定し、保存時のデータモデルを拡張して既存DSL実行基盤へ接続可能にする
+
+### 仕様整理
+
+- 仕様書を追加: `docs/dev-card-effect-block-spec.md`
+- 構成は `[発動タイミング] -> [効果カテゴリ内ブロック]`
+- 効果カテゴリ:
+  - 攻撃力調整系
+  - ダメージ系
+  - カード系
+  - PP系
+  - HP操作系
+  - 効果付与系
+  - カードに対する効果系
+
+### 実装（準備）
+
+- `js/dev/cardEffectBlockCatalog.js`
+  - 発動タイミング定義
+  - 効果カテゴリ定義
+  - ブロック定義（`add_atk`, `damage`, `draw`, `recover_pp`, `heal` など）
+
+- `js/dev/cardEffectBlockCompiler.js`
+  - `effectBlocks` の簡易バリデーション
+  - `effectBlocks -> dependrap.dsl.v1` 変換
+  - 未対応ブロック（現時点では `grant_status`）を安全にスキップ
+
+- `dev.html`
+  - 上記2スクリプトを読み込み
+
+- `js/dev/dev.js`
+  - カード編集データに `effectBlocks` を保持
+  - 保存時は `effectBlocks` 由来DSLを優先し、未設定時のみ `effectText` 由来DSLへフォールバック
+  - `cards.json` 出力時に `effectBlocks` を保持
+
+### 備考
+
+- 今回は「土台のみ」。ブロックUI（ドラッグ&ドロップ編集、条件式GUI、リアルタイムプレビュー）は次段で追加する。

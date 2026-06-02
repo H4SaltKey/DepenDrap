@@ -123,6 +123,22 @@
     }
   }
 
+  function resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName) {
+    if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") return null;
+    const dsl = profile?.effectDsl;
+    if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return null;
+    const context = {
+      game: window.state,
+      sourceCard: cardEl,
+      sourceProfile: profile,
+      owner,
+      opponent: owner === "player1" ? "player2" : "player1",
+      target: owner === "player1" ? "player2" : "player1",
+      event: { name: triggerName, zoneType }
+    };
+    return window.EffectEngine.execute(dsl, context);
+  }
+
   function resolveCardOnPlay(cardEl, zoneType) {
     if (!runtime.enabled) return;
     if (!cardEl || !zoneType) return;
@@ -190,7 +206,21 @@
       const dsl = profile.effectDsl;
       let resolvedEffects = 0;
       let knownEffects = 0;
-      if (dsl && Array.isArray(dsl.triggers)) {
+      const engineResult = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
+      if (engineResult && engineResult.handled) {
+        (engineResult.effects || []).forEach((item) => {
+          const effectType = String(item?.type || "UNKNOWN");
+          resolvedEffects += 1;
+          if (item?.applied) knownEffects += 1;
+          trackEffectActivation(owner, cardId, triggerName, effectType);
+        });
+        if (resolvedEffects > 0) {
+          logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} engine=1`);
+        } else {
+          logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (engine-no-match)`);
+          trackEffectActivation(owner, cardId, triggerName, "NONE");
+        }
+      } else if (dsl && Array.isArray(dsl.triggers)) {
         const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
         matched.forEach((t) => {
           (t.effects || []).forEach((effect) => {
@@ -229,15 +259,55 @@
     bumpFlowCounter("game", owner, "flow.end.done", 1);
   }
 
+  function resolveCardOnLeave(cardEl) {
+    if (!runtime.enabled || !cardEl) return;
+    const owner = cardEl.dataset.owner || getMyRoleSafe();
+    const me = getMyRoleSafe();
+    if (owner !== me) return;
+    const card = getCardByElement(cardEl);
+    if (!card) return;
+    const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
+      ? window.CardCombatData.getResolvedCardData(card.id)
+      : card;
+    const triggerName = "onLeave";
+    const dsl = profile?.effectDsl;
+    const engine = window.EffectEngine;
+    const engineResult = (engine && typeof engine.execute === "function" && dsl && dsl.format === engine.DSL_FORMAT)
+      ? engine.execute(dsl, {
+        game: window.state,
+        sourceCard: cardEl,
+        sourceProfile: profile,
+        owner,
+        opponent: owner === "player1" ? "player2" : "player1",
+        target: owner === "player1" ? "player2" : "player1",
+        event: {
+          name: triggerName,
+          zoneType: "grave",
+          didDirectAttack: cardEl.dataset.didDirectAttack === "1"
+        }
+      })
+      : null;
+    if (!engineResult || !engineResult.handled) return;
+    (engineResult.effects || []).forEach((item) => {
+      trackEffectActivation(owner, profile.id || cardEl.dataset.id || "unknown", triggerName, String(item?.type || "UNKNOWN"));
+    });
+  }
+
   function installPlaceCardHook() {
     if (typeof window.placeCardInZone !== "function") return;
     if (window.placeCardInZone._playerActionResolverWrapped) return;
 
     const original = window.placeCardInZone;
     const wrapped = function(cardEl, owner, zoneType) {
+      const prevZoneType = cardEl?.dataset?.zoneType || "";
+      const prevDidDirectAttack = cardEl?.dataset?.didDirectAttack || "0";
       const result = original.apply(this, arguments);
       try {
         resolveCardOnPlay(cardEl, zoneType);
+        if (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill")) {
+          if (cardEl) cardEl.dataset.didDirectAttack = prevDidDirectAttack;
+          resolveCardOnLeave(cardEl);
+        }
       } catch (e) {
         console.warn("[PlayerActionResolver] resolve error:", e);
       }

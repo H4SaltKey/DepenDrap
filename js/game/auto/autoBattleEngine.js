@@ -49,16 +49,13 @@
     return window.CardCombatData.getResolvedCardData(id);
   }
 
-  function usePP(owner, amount) {
+  function canPayCardCost(owner, profile) {
     const s = window.state?.[owner];
     if (!s) return false;
-    const cur = Number(s.pp || 0);
-    if (cur < amount) return false;
-    s.pp = cur - amount;
-    if (typeof window.pushMyStateDebounced === "function" && owner === getMe()) {
-      window.pushMyStateDebounced();
-    }
-    return true;
+    const policy = String(profile?.cardCostPolicy || "normal");
+    if (policy === "joker" || policy === "all_in") return true;
+    const cost = Math.max(0, Number(profile?.cost || 0));
+    return Number(s.pp || 0) >= cost;
   }
 
   function safeUpdate() {
@@ -77,33 +74,6 @@
     }
   }
 
-  function applyEffectActions(actions, owner) {
-    const me = owner;
-    const op = me === "player1" ? "player2" : "player1";
-    if (!Array.isArray(actions)) return;
-
-    actions.forEach((action) => {
-      if (action.type === "draw_to_hand") {
-        if (typeof window.drawToHand === "function") window.drawToHand(Number(action.amount || 1));
-      } else if (action.type === "recover_pp") {
-        if (typeof window.addVal === "function") window.addVal(me, "pp", Number(action.amount || 1));
-      } else if (action.type === "heal_hp") {
-        if (typeof window.addVal === "function") window.addVal(me, "hp", Number(action.amount || 1));
-      } else if (action.type === "damage") {
-        if (typeof window.applyCalculatedDamage === "function") {
-          window.applyCalculatedDamage(
-            op,
-            action.damageType || "damage",
-            action.subType || "normal",
-            Number(action.amount || 1),
-            false,
-            { source: "auto" }
-          );
-        }
-      }
-    });
-  }
-
   function playUnitIfPossible(me) {
     const attackerOnField = getZoneTopCard(me, "attacker");
     if (attackerOnField) return false;
@@ -115,12 +85,11 @@
     if (!candidate) return false;
 
     const cost = Number(candidate.profile.cost || 0);
-    if (!usePP(me, cost)) return false;
+    if (!canPayCardCost(me, candidate.profile)) return false;
 
     if (typeof window.placeCardInZone === "function") {
       window.placeCardInZone(candidate.el, me, "attacker");
       if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
-      applyEffectActions(candidate.profile.effectActions, me);
       safeUpdate();
       log(`場に ${candidate.el.dataset.id} を配置（cost:${cost}）`);
       return true;
@@ -143,11 +112,10 @@
     if (!skill) return false;
 
     const cost = Number(skill.profile.cost || 0);
-    if (!usePP(me, cost)) return false;
+    if (!canPayCardCost(me, skill.profile)) return false;
 
     if (typeof window.placeCardInZone === "function") {
       window.placeCardInZone(skill.el, me, "skill");
-      applyEffectActions(skill.profile.effectActions, me);
       if (typeof window.placeCardInZone === "function") {
         window.placeCardInZone(skill.el, me, "grave");
       }
@@ -176,6 +144,18 @@
     if (typeof window.applyCalculatedDamage !== "function") return false;
 
     window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, { source: "auto" });
+    attacker.dataset.didDirectAttack = "1";
+    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl) {
+      window.EffectEngine.execute(profile.effectDsl, {
+        game: window.state,
+        sourceCard: attacker,
+        sourceProfile: profile,
+        owner: me,
+        opponent: getOp(),
+        target: getOp(),
+        event: { name: "onDirectAttack", zoneType: "attacker", targetOwner: getOp() }
+      });
+    }
     runtime.lastDirectAttackKey = attackKey;
     log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtk})`);
     return true;

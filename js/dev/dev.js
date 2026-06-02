@@ -19,6 +19,7 @@ async function initDev() {
       attack: Number.isFinite(Number(c.attack)) ? Number(c.attack) : 0,
       effectText: String(c.effectText || ""),
       effectDsl: c.effectDsl || null,
+      effectBlocks: c.effectBlocks || null,
       attribute: c.attribute || "近接",
       type: c.type || "アタッカー",
       tags: Array.isArray(c.tags) ? c.tags.join(", ") : (typeof c.tags === "string" ? c.tags : "")
@@ -45,6 +46,7 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
     attack: 0,
     effectText: "",
     effectDsl: null,
+    effectBlocks: null,
     attribute: "近接",
     type: "アタッカー",
     tags: ""
@@ -433,9 +435,13 @@ document.getElementById("doneBtn").addEventListener("click", () => {
 
   const output = devCards.map(c => {
     const effectText = String(c.effectText || "").trim();
-    const compiledDsl = (window.CardDSL && typeof window.CardDSL.compileText === "function")
+    const fromBlocks = (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function")
+      ? window.CardEffectBlockCompiler.compileProgramToDsl(c.effectBlocks)
+      : null;
+    const fromText = (window.CardDSL && typeof window.CardDSL.compileText === "function")
       ? window.CardDSL.compileText(effectText)
       : null;
+    const compiledDsl = fromBlocks || fromText;
     const entry = {
       id: c.id,
       image: c.image || "",
@@ -447,6 +453,9 @@ document.getElementById("doneBtn").addEventListener("click", () => {
       effectDsl: compiledDsl,
       tags: normalizeTags(c.tags)
     };
+    if (c.effectBlocks && Array.isArray(c.effectBlocks.timings)) {
+      entry.effectBlocks = c.effectBlocks;
+    }
     return entry;
   });
 

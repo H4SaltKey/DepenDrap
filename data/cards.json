@@ -8,75 +8,42 @@
     "attack": 1,
     "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のPPを1まで回復する。\n②：このターン中、自身のHPが1回以上減少していたなら、自身のHPを1減らす。\n直接攻撃時：このターン中、自身のHPが2回以上減少したなら、これの攻撃力を+1する。\n退場時：“直接攻撃”していないなら、後述の効果を上から順に全て発動する。\n①：自身のHPを1減らす。\n②：自身のPPを1まで回復する。\n③：手札へ戻る。",
     "effectDsl": {
-      "version": 1,
+      "format": "dependrap.dsl.v1",
       "triggers": [
         {
           "on": "onSummon",
           "effects": [
             {
-              "type": "SUMMON"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "HEAL",
+              "type": "SET_PP_MIN",
+              "target": "self",
               "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "DEBUFF",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "amount": 2
             }
           ]
         },
         {
           "on": "onLeave",
+          "condition": {
+            "left": {
+              "ref": "event.didDirectAttack"
+            },
+            "eq": false
+          },
           "effects": [
             {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "①：自身のHPを1減らす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "HEAL",
+              "type": "DAMAGE",
+              "target": "self",
+              "damageType": "hp_reduce",
+              "subType": "none",
               "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
+            },
             {
-              "type": "UNKNOWN",
-              "raw": "③：手札へ戻る"
+              "type": "SET_PP_MIN",
+              "target": "self",
+              "amount": 1
+            },
+            {
+              "type": "MOVE_SOURCE_TO_HAND",
+              "target": "self"
             }
           ]
         }
@@ -155,31 +122,44 @@
     "attack": 1,
     "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のHPが15以上なら、手札を1枚増やす。\n②：自身[のHPが20以上、がシールドを持つ]のいずれかなら、自身のPPを1回復する。\u000b攻撃時：自身のHPを1回復し、自身に1のシールドを付与する。\n自身のターン開始時：後述の効果を上から順に全て発動する。\n①：自身がシールドを持つなら、相手のHPをx減らす。\n②：自身がシールドを持たないなら、自身に2のシールドを付与する。\n③：これを墓地へ送る。\n直接攻撃時：“攻撃時”効果を1回発動する。\nx=（自身のシールド層数）+2。",
     "effectDsl": {
-      "version": 1,
+      "format": "dependrap.dsl.v1",
       "triggers": [
         {
           "on": "onSummon",
+          "condition": {
+            "selfHp": {
+              "gte": 15
+            }
+          },
           "effects": [
             {
-              "type": "SUMMON"
+              "type": "DRAW",
+              "target": "self",
+              "amount": 1
             }
           ]
         },
         {
-          "on": "manual",
+          "on": "onSummon",
+          "condition": {
+            "or": [
+              {
+                "selfHp": {
+                  "gte": 20
+                }
+              },
+              {
+                "selfShield": {
+                  "gt": 0
+                }
+              }
+            ]
+          },
           "effects": [
             {
-              "type": "UNKNOWN",
-              "raw": "①：自身のHPが15以上なら、手札を1枚増やす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "HEAL",
-              "amount": 20
+              "type": "RECOVER_PP",
+              "target": "self",
+              "amount": 1
             }
           ]
         },
@@ -187,61 +167,77 @@
           "on": "onAttack",
           "effects": [
             {
-              "type": "DAMAGE",
+              "type": "HEAL",
+              "target": "self",
+              "amount": 1
+            },
+            {
+              "type": "ADD_SHIELD",
+              "target": "self",
               "amount": 1
             }
           ]
         },
         {
           "on": "onTurnStart",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "自身のターン開始時：後述の効果を上から順に全て発動する"
+          "variables": {
+            "x": {
+              "add": [
+                {
+                  "ref": "self.shield"
+                },
+                2
+              ]
             }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "①：自身がシールドを持つなら、相手のHPをx減らす"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "raw": "②：自身がシールドを持たないなら、自身に2のシールドを付与する"
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "effects": [
-            {
-              "type": "DESTROY"
-            }
-          ]
-        },
-        {
-          "on": "onAttack",
+          },
           "effects": [
             {
               "type": "DAMAGE",
-              "amount": 1
+              "target": "opponent",
+              "damageType": "hp_reduce",
+              "subType": "none",
+              "amount": {
+                "if": [
+                  {
+                    "selfShield": {
+                      "gt": 0
+                    }
+                  },
+                  {
+                    "var": "x"
+                  },
+                  0
+                ]
+              }
+            },
+            {
+              "type": "ADD_SHIELD",
+              "target": "self",
+              "amount": {
+                "if": [
+                  {
+                    "selfShield": {
+                      "eq": 0
+                    }
+                  },
+                  2,
+                  0
+                ]
+              }
+            },
+            {
+              "type": "MOVE_SOURCE_TO_GRAVE",
+              "target": "self"
             }
           ]
         },
         {
-          "on": "manual",
+          "on": "onDirectAttack",
           "effects": [
             {
-              "type": "UNKNOWN",
-              "raw": "x=（自身のシールド層数）+2"
+              "type": "TRIGGER_ATTACK_EFFECT",
+              "target": "self",
+              "amount": 1
             }
           ]
         }
@@ -335,48 +331,34 @@
     "attack": 1,
     "effectText": "継続：自身がHPを回復する度、相手のHPを1回復する。\u000b攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPを2回復する（場にいる間1回）。\n②：“①”を発動していないなら、自身のHPを1回復する。\n退場時：”直接攻撃”をしていないなら、自身のHPを3回復。",
     "effectDsl": {
-      "version": 1,
+      "format": "dependrap.dsl.v1",
       "triggers": [
         {
           "on": "continuous",
-          "effects": [
-            {
-              "type": "HEAL",
-              "amount": 1
-            }
-          ]
+          "effects": []
         },
         {
           "on": "onAttack",
           "effects": [
             {
-              "type": "DAMAGE"
-            }
-          ]
-        },
-        {
-          "on": "manual",
-          "effects": [
-            {
               "type": "HEAL",
+              "target": "self",
               "amount": 2
             }
           ]
         },
         {
-          "on": "manual",
+          "on": "onLeave",
+          "condition": {
+            "left": {
+              "ref": "event.didDirectAttack"
+            },
+            "eq": false
+          },
           "effects": [
             {
               "type": "HEAL",
-              "amount": 1
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "effects": [
-            {
-              "type": "DAMAGE",
+              "target": "self",
               "amount": 3
             }
           ]

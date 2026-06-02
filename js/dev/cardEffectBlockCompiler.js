@@ -42,7 +42,7 @@
 
     const target = normalizeTarget(effect.target);
     const compiled = { type: dslType, target };
-    if (effect.condition && typeof effect.condition === "object") {
+    if (effect.useCondition === true && effect.condition && typeof effect.condition === "object") {
       compiled.condition = effect.condition;
     }
 

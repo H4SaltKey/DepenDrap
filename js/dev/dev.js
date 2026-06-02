@@ -86,6 +86,7 @@ function createDefaultEffectByCategory(categoryId) {
     kind: first.id,
     target: "self_player",
     value: 1,
+    useCondition: false,
     condition: {
       whileOnField: false,
       thisTurn: true,
@@ -191,10 +192,13 @@ function renderEffectBlocksEditor() {
           <select data-role="damageAttr"></select>
         </div>
         <div class="blockRow" style="border-top:1px solid #eee;padding-top:6px;">
+          <label style="font-size:12px;color:#333;"><input type="checkbox" data-role="useCondition"> 条件を使う</label>
+        </div>
+        <div class="blockRow" data-role="conditionArea" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="whileOnField"> これが場にある間</label>
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="thisTurn"> このターン中</label>
         </div>
-        <div class="blockRow" style="align-items:flex-end;">
+        <div class="blockRow" data-role="conditionArea" style="align-items:flex-end;">
           <span style="font-size:12px;color:#666;">記録条件</span>
           <select data-role="trackerOwner"></select>
           <select data-role="trackerScope"></select>
@@ -213,6 +217,7 @@ function renderEffectBlocksEditor() {
       const damageExtra = effectEl.querySelector('[data-role="damageExtra"]');
       const damageTypeInput = effectEl.querySelector('[data-role="damageType"]');
       const damageAttrInput = effectEl.querySelector('[data-role="damageAttr"]');
+      const useConditionInput = effectEl.querySelector('[data-role="useCondition"]');
       const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
       const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
       const trackerOwnerInput = effectEl.querySelector('[data-role="trackerOwner"]');
@@ -222,6 +227,7 @@ function renderEffectBlocksEditor() {
       const trackerMetricInput = effectEl.querySelector('[data-role="trackerMetric"]');
       const trackerOpInput = effectEl.querySelector('[data-role="trackerOp"]');
       const trackerValueInput = effectEl.querySelector('[data-role="trackerValue"]');
+      const conditionAreas = effectEl.querySelectorAll('[data-role="conditionArea"]');
 
       if (!effect.condition || typeof effect.condition !== "object") {
         effect.condition = {};
@@ -261,6 +267,7 @@ function renderEffectBlocksEditor() {
       trackerValueInput.value = String(Number(effect.condition.trackerCheck.value || 0));
       whileOnFieldInput.checked = effect.condition.whileOnField === true;
       thisTurnInput.checked = effect.condition.thisTurn !== false;
+      useConditionInput.checked = effect.useCondition === true;
 
       function refreshKindOptions() {
         const kinds = getKindsByCategory(effect.category);
@@ -277,9 +284,16 @@ function renderEffectBlocksEditor() {
       function refreshDamageVisible() {
         damageExtra.style.display = effect.kind === "damage" ? "flex" : "none";
       }
+      function refreshConditionVisible() {
+        conditionAreas.forEach((el) => {
+          el.style.opacity = effect.useCondition === true ? "1" : "0.45";
+          el.style.pointerEvents = effect.useCondition === true ? "auto" : "none";
+        });
+      }
 
       refreshKindOptions();
       refreshDamageVisible();
+      refreshConditionVisible();
 
       categorySelect.addEventListener("change", (e) => {
         effect.category = e.target.value;
@@ -312,6 +326,10 @@ function renderEffectBlocksEditor() {
       });
       damageAttrInput.addEventListener("change", () => {
         effect.damageAttr = damageAttrInput.value || "none";
+      });
+      useConditionInput.addEventListener("change", () => {
+        effect.useCondition = useConditionInput.checked;
+        refreshConditionVisible();
       });
       whileOnFieldInput.addEventListener("change", () => {
         effect.condition.whileOnField = whileOnFieldInput.checked;

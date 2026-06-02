@@ -5065,3 +5065,21 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 補足
 
 - `thisTurn` は条件評価時に tracker 参照スコープを `turn` に強制する挙動で扱う。
+
+---
+
+## Round 27 — 「条件の有無」切替を追加（2026-06-02）
+
+### 対応内容
+
+- 効果ごとに `条件を使う` チェックボックスを追加
+- OFF時は条件入力UIをグレーアウトし、編集不可にする
+- コンパイル時は `useCondition === true` のときのみ `effect.condition` をDSLへ出力
+
+### 実装ファイル
+
+- `js/dev/dev.js`
+  - `effect.useCondition` フィールド追加（初期値 `false`）
+  - `条件を使う` UI + conditionエリアの有効/無効制御を追加
+- `js/dev/cardEffectBlockCompiler.js`
+  - `useCondition` が true のときのみ `compiled.condition` を付与

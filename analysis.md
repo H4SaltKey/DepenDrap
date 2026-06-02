@@ -5215,3 +5215,25 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - モンスター攻撃計算で `def.atk + atkBonus` を使用
 - `js/game/auto/autoBattleEngine.js`
   - 直接攻撃計算時に `attacker.dataset.attackBonus` を反映
+
+---
+
+## Round 34 — 攻撃力「Nにする」効果を追加（2026-06-02）
+
+### 追加
+
+- 攻撃力調整モードに `set`（Nにする）を追加
+
+### 実装
+
+- `js/dev/dev.js`
+  - 攻撃力調整モードに `Nにする` を追加
+- `js/game/effects/effectEngine.js`
+  - `ADD_ATK` 実行時、`atkMode === "set"` なら対象攻撃力を指定値へ設定
+  - カード対象は `attackBonus` を再計算して設定
+  - プレイヤー基礎攻撃力は `state[owner].atk` を指定値へ更新
+  - モンスター対象は `MonsterManager.setMonsterAttack()` を使用
+- `js/game/monsters/MonsterManager.js`
+  - `setMonsterAttack(slotIndex, value)` を追加
+- `docs/dev-card-effect-block-spec.md`
+  - `add_atk` モードに `set` を追記

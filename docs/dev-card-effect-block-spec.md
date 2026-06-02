@@ -57,7 +57,7 @@
 ## 5. カテゴリ内ブロック（初期定義）
 
 - 攻撃力調整系: `add_atk`
-  - 効果: `increase | decrease`
+  - 効果: `increase | decrease | set(Nにする)`
   - 対象:
     - `attacker_zone_card`（アタッカー場のカード）
     - `this_card`（このカード）

@@ -276,6 +276,15 @@ window.MonsterManager = (function() {
     slot.atkBonus = Number(slot.atkBonus || 0) + Number(delta || 0);
     return getMonsterAttack(slotIndex);
   }
+  function setMonsterAttack(slotIndex, value) {
+    const slot = _slots[slotIndex];
+    if (!slot) return 0;
+    const def = _getDef(slot.monsterId);
+    const base = Math.max(0, Number(def?.atk || 0));
+    const target = Math.max(0, Number(value || 0));
+    slot.atkBonus = target - base;
+    return getMonsterAttack(slotIndex);
+  }
 
   /**
    * Firebase同期用シリアライズ
@@ -311,6 +320,7 @@ window.MonsterManager = (function() {
     getAllSlots,
     getMonsterAttack,
     addMonsterAttack,
+    setMonsterAttack,
     serialize,
     deserialize,
     SLOT_COUNT

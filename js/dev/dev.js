@@ -48,7 +48,8 @@ const TRACKER_OP_OPTIONS = [
 ];
 const ATK_MODE_OPTIONS = [
   { value: "increase", label: "増加" },
-  { value: "decrease", label: "減少" }
+  { value: "decrease", label: "減少" },
+  { value: "set", label: "Nにする" }
 ];
 const ATK_TARGET_OPTIONS = [
   { value: "attacker_zone_card", label: "アタッカー場のカード" },

@@ -48,7 +48,7 @@
 
   function normalizeTrigger(trigger) {
     const t = String(trigger || "manual");
-    if (t === "onSummon" || t === "onAttack" || t === "onDirectAttack") return t;
+    if (t === "onSummon" || t === "onAttack" || t === "onDirectAttack" || t === "onSkillBeforeAttackEffect" || t === "onSkillAfterAttackEffect") return t;
     if (t === "manual" || t === "instant" || t === "continuous") return "onSummon";
     return "onSummon";
   }
@@ -137,6 +137,18 @@
       event: { name: triggerName, zoneType }
     };
     return window.EffectEngine.execute(dsl, context);
+  }
+
+  function runEngineForTrigger(profile, cardEl, owner, zoneType, triggerName) {
+    const r = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
+    if (!r || !r.handled) return;
+    const cardId = profile.id || cardEl.dataset.id || "unknown";
+    let count = 0;
+    (r.effects || []).forEach((item) => {
+      count += 1;
+      trackEffectActivation(owner, cardId, triggerName, String(item?.type || "UNKNOWN"));
+    });
+    if (count === 0) trackEffectActivation(owner, cardId, triggerName, "NONE");
   }
 
   function resolveCardOnPlay(cardEl, zoneType) {
@@ -246,8 +258,14 @@
       trackEffectActivation(owner, cardId, triggerName, "SCRIPTED_FIRST8");
     }
 
+    if (profile.cardKind === "skill") {
+      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillBeforeAttackEffect");
+    }
     if (profile.cardKind === "skill" && window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
       window.FirstEightCardEffects.resolveAttackTriggerForAttacker(owner);
+    }
+    if (profile.cardKind === "skill") {
+      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillAfterAttackEffect");
     }
 
     runtime.lastResolvedInstanceKey = instanceKey;

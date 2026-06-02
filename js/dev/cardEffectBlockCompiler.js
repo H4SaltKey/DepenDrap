@@ -5,6 +5,7 @@
   const BLOCK_TO_EFFECT_TYPE = {
     add_atk: "ADD_ATK",
     damage: "DAMAGE",
+    hp_reduce: "DAMAGE",
     draw: "DRAW",
     move_source_to_hand: "MOVE_SOURCE_TO_HAND",
     move_source_to_grave: "MOVE_SOURCE_TO_GRAVE",
@@ -15,9 +16,10 @@
   };
 
   function normalizeTarget(target) {
-    const t = String(target || "self");
+    const t = String(target || "self_player");
+    if (["self_player", "current_target", "self_and_current_target"].includes(t)) return t;
     if (["self", "opponent", "owner", "eventTarget"].includes(t)) return t;
-    return "self";
+    return "self_player";
   }
 
   function normalizeValue(value, fallback) {
@@ -40,11 +42,21 @@
 
     const target = normalizeTarget(effect.target);
     const compiled = { type: dslType, target };
+    if (effect.condition && typeof effect.condition === "object") {
+      compiled.condition = effect.condition;
+    }
 
     if (kind === "damage") {
       compiled.amount = Math.max(0, normalizeValue(effect.value, 1));
       compiled.damageType = String(effect.damageType || "damage");
-      compiled.subType = String(effect.subType || "normal");
+      compiled.subType = String(effect.damageAttr || effect.subType || "none");
+      return compiled;
+    }
+
+    if (kind === "hp_reduce") {
+      compiled.amount = Math.max(0, normalizeValue(effect.value, 1));
+      compiled.damageType = "hp_reduce";
+      compiled.subType = "none";
       return compiled;
     }
 

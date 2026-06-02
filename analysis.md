@@ -5012,3 +5012,56 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - Scratch 的なドラッグ&ドロップ並べ替えは未実装（クリック編集方式）
 - 条件式ブロック（`condition`/`variables`）のGUI入力は未実装
+
+---
+
+## Round 26 — 効果条件/スキル前後タイミング/対象仕様の拡張（2026-06-02）
+
+### 追加要件対応
+
+- 効果ごとに条件を設定
+  - `whileOnField`（これが場にある間）
+  - `thisTurn`（このターン中）
+  - `trackerCheck`（増/減/増減 × 量/回数 の数値判定）
+- スキルタイミング追加
+  - `onSkillBeforeAttackEffect`
+  - `onSkillAfterAttackEffect`
+- ダメージ設定を一覧選択化
+  - ダメージタイプ: `通常/貫通/脆弱/アルカナ`
+  - ダメージ属性: `なし/追加`
+- HP操作系に `HPを減らす` を追加
+- 対象を3択へ変更
+  - `自身プレイヤー`
+  - `現在のターゲット`
+  - `自身と現在のターゲット`
+
+### 実装
+
+- `js/dev/cardEffectBlockCatalog.js`
+  - 新タイミング、新ブロック（`hp_reduce`）を追加
+  - ブロックparamsに `condition` を追加
+
+- `js/dev/cardEffectBlockCompiler.js`
+  - 新対象指定を許可
+  - `damageAttr` を `subType` に変換
+  - `hp_reduce` を `DAMAGE + damageType:hp_reduce` へ変換
+  - 効果ごとの `condition` を DSL 効果へ引き継ぎ
+
+- `js/game/effects/effectEngine.js`
+  - 新対象指定（単体/現在ターゲット/両方）を解決
+  - 効果ごとの `condition` 判定を追加
+  - `trackerCheck` は `GameStatTracker.resolvePath` を使って比較演算で評価
+
+- `js/game/auto/playerActionResolver.js`
+  - スキル使用時に以下トリガーを実行
+    - 攻撃時効果発動前: `onSkillBeforeAttackEffect`
+    - 攻撃時効果発動後: `onSkillAfterAttackEffect`
+
+- `js/dev/dev.js`
+  - 条件GUI（チェックボックス + 記録条件セレクタ群）を追加
+  - ダメージタイプ/属性をセレクト化
+  - 対象を3択に変更
+
+### 補足
+
+- `thisTurn` は条件評価時に tracker 参照スコープを `turn` に強制する挙動で扱う。

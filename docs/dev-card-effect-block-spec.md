@@ -34,6 +34,8 @@
 - `onSummon`（登場時）
 - `onAttack`（攻撃時）
 - `onDirectAttack`（直接攻撃時）
+- `onSkillBeforeAttackEffect`（攻撃時効果発動前(スキル)）
+- `onSkillAfterAttackEffect`（攻撃時効果発動後(スキル)）
 - `onTurnStart`（ターン開始時）
 - `onTurnEnd`（ターン終了時）
 - `onLeave`（退場時）
@@ -59,6 +61,7 @@
 - カード系: `draw`, `move_source_to_hand`, `move_source_to_grave`
 - PP系: `recover_pp`, `set_pp_min`
 - HP操作系: `heal`
+- HP操作系: `hp_reduce`
 - 効果付与系: `grant_status`（準備のみ）
 - カードに対する効果系: `trigger_attack_effect`（既存連携）
 
@@ -74,6 +77,7 @@
 - `recover_pp` -> `RECOVER_PP`
 - `set_pp_min` -> `SET_PP_MIN`
 - `heal` -> `HEAL`
+- `hp_reduce` -> `DAMAGE` (`damageType: "hp_reduce"`, `subType: "none"`)
 - `trigger_attack_effect` -> `TRIGGER_ATTACK_EFFECT`
 
 `grant_status` は現時点では DSL 未対応のため、将来拡張予約として保持する（コンパイル時は無視）。
@@ -83,6 +87,40 @@
 - `effectBlocks` をカードごとに保持可能にする。
 - `effectBlocks` が有効なら、保存時の `effectDsl` は `effectBlocks` から生成する。
 - `effectBlocks` が空または不正な場合は従来どおり `effectText` からの簡易コンパイルを利用する。
+
+## 7.1 効果ごとの条件
+
+各効果ブロックに `condition` を持てる。
+
+```json
+{
+  "condition": {
+    "whileOnField": true,
+    "thisTurn": true,
+    "trackerCheck": {
+      "owner": "self",
+      "scope": "turn",
+      "stat": "hp",
+      "direction": "inc",
+      "metric": "amount",
+      "op": "gte",
+      "value": 1
+    }
+  }
+}
+```
+
+- `whileOnField`: これが場にある間のみ有効
+- `thisTurn`: true の場合、記録参照をターンスコープで評価
+- `trackerCheck`: 増/減/増減 と 量/回数 を組み合わせて判定
+
+## 7.2 対象指定（新仕様）
+
+対象は以下の3択。
+
+- `self_player`（自身プレイヤー）
+- `current_target`（現在のターゲット）
+- `self_and_current_target`（自身と現在のターゲット）
 
 ## 8. 今回の実装範囲（準備）
 

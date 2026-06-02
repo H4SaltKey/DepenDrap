@@ -4,7 +4,48 @@ let pendingImages = {};
 let selectedId = null;
 let cardSearchQuery = "";
 let cardSortMode = "idAsc";
-const BLOCK_TARGET_OPTIONS = ["self", "opponent", "owner", "eventTarget"];
+const BLOCK_TARGET_OPTIONS = [
+  { value: "self_player", label: "自身プレイヤー" },
+  { value: "current_target", label: "現在のターゲット" },
+  { value: "self_and_current_target", label: "自身と現在のターゲット" }
+];
+const DAMAGE_TYPE_OPTIONS = [
+  { value: "damage", label: "通常" },
+  { value: "pierce", label: "貫通" },
+  { value: "fragile", label: "脆弱" },
+  { value: "arcana", label: "アルカナ" }
+];
+const DAMAGE_ATTR_OPTIONS = [
+  { value: "none", label: "なし" },
+  { value: "additional", label: "追加" }
+];
+const TRACKER_SCOPE_OPTIONS = [
+  { value: "turn", label: "このターン中" },
+  { value: "game", label: "ゲーム中" }
+];
+const TRACKER_STAT_OPTIONS = [
+  { value: "hp", label: "HP" },
+  { value: "pp", label: "PP" },
+  { value: "shield", label: "Shield" },
+  { value: "atk", label: "ATK" },
+  { value: "defstack", label: "DEFStack" }
+];
+const TRACKER_DIRECTION_OPTIONS = [
+  { value: "inc", label: "増" },
+  { value: "dec", label: "減" },
+  { value: "both", label: "増減" }
+];
+const TRACKER_METRIC_OPTIONS = [
+  { value: "amount", label: "量" },
+  { value: "count", label: "回数" }
+];
+const TRACKER_OP_OPTIONS = [
+  { value: "gte", label: "以上" },
+  { value: "gt", label: "より大きい" },
+  { value: "eq", label: "等しい" },
+  { value: "lte", label: "以下" },
+  { value: "lt", label: "より小さい" }
+];
 
 function getSelectedCard() {
   if (!selectedId) return null;
@@ -43,12 +84,28 @@ function createDefaultEffectByCategory(categoryId) {
   const base = {
     category: categoryId,
     kind: first.id,
-    target: "self",
-    value: 1
+    target: "self_player",
+    value: 1,
+    condition: {
+      whileOnField: false,
+      thisTurn: true,
+      trackerCheck: {
+        owner: "self",
+        scope: "turn",
+        stat: "hp",
+        direction: "inc",
+        metric: "amount",
+        op: "gte",
+        value: 0
+      }
+    }
   };
   if (first.id === "damage") {
     base.damageType = "damage";
-    base.subType = "normal";
+    base.damageAttr = "none";
+  }
+  if (first.id === "hp_reduce") {
+    base.value = 1;
   }
   return base;
 }
@@ -128,10 +185,24 @@ function renderEffectBlocksEditor() {
           <button type="button" data-role="removeEffect" style="background:#fbe7e7;border:1px solid #e0a0a0;">削除</button>
         </div>
         <div class="blockRow" data-role="damageExtra" style="display:none;">
-          <span style="font-size:12px;color:#666;">damageType</span>
-          <input data-role="damageType" type="text" style="width:130px;" value="${effect.damageType || "damage"}">
-          <span style="font-size:12px;color:#666;">subType</span>
-          <input data-role="subType" type="text" style="width:130px;" value="${effect.subType || "normal"}">
+          <span style="font-size:12px;color:#666;">ダメージタイプ</span>
+          <select data-role="damageType"></select>
+          <span style="font-size:12px;color:#666;">ダメージ属性</span>
+          <select data-role="damageAttr"></select>
+        </div>
+        <div class="blockRow" style="border-top:1px solid #eee;padding-top:6px;">
+          <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="whileOnField"> これが場にある間</label>
+          <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="thisTurn"> このターン中</label>
+        </div>
+        <div class="blockRow" style="align-items:flex-end;">
+          <span style="font-size:12px;color:#666;">記録条件</span>
+          <select data-role="trackerOwner"></select>
+          <select data-role="trackerScope"></select>
+          <select data-role="trackerStat"></select>
+          <select data-role="trackerDirection"></select>
+          <select data-role="trackerMetric"></select>
+          <select data-role="trackerOp"></select>
+          <input data-role="trackerValue" type="number" style="width:90px;" value="0">
         </div>
       `;
 
@@ -141,14 +212,55 @@ function renderEffectBlocksEditor() {
       const valueInput = effectEl.querySelector('[data-role="value"]');
       const damageExtra = effectEl.querySelector('[data-role="damageExtra"]');
       const damageTypeInput = effectEl.querySelector('[data-role="damageType"]');
-      const subTypeInput = effectEl.querySelector('[data-role="subType"]');
+      const damageAttrInput = effectEl.querySelector('[data-role="damageAttr"]');
+      const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
+      const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
+      const trackerOwnerInput = effectEl.querySelector('[data-role="trackerOwner"]');
+      const trackerScopeInput = effectEl.querySelector('[data-role="trackerScope"]');
+      const trackerStatInput = effectEl.querySelector('[data-role="trackerStat"]');
+      const trackerDirectionInput = effectEl.querySelector('[data-role="trackerDirection"]');
+      const trackerMetricInput = effectEl.querySelector('[data-role="trackerMetric"]');
+      const trackerOpInput = effectEl.querySelector('[data-role="trackerOp"]');
+      const trackerValueInput = effectEl.querySelector('[data-role="trackerValue"]');
+
+      if (!effect.condition || typeof effect.condition !== "object") {
+        effect.condition = {};
+      }
+      if (!effect.condition.trackerCheck || typeof effect.condition.trackerCheck !== "object") {
+        effect.condition.trackerCheck = {};
+      }
 
       categorySelect.innerHTML = (window.CardEffectBlockCatalog?.EFFECT_CATEGORIES || [])
         .map((c) => `<option value="${c.id}" ${c.id === effect.category ? "selected" : ""}>${c.label}</option>`)
         .join("");
       targetSelect.innerHTML = BLOCK_TARGET_OPTIONS
-        .map((t) => `<option value="${t}" ${t === (effect.target || "self") ? "selected" : ""}>${t}</option>`)
+        .map((t) => `<option value="${t.value}" ${t.value === (effect.target || "self_player") ? "selected" : ""}>${t.label}</option>`)
         .join("");
+      damageTypeInput.innerHTML = DAMAGE_TYPE_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.damageType || "damage") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      damageAttrInput.innerHTML = DAMAGE_ATTR_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.damageAttr || "none") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerOwnerInput.innerHTML = `<option value="self" ${(effect.condition.trackerCheck.owner || "self") === "self" ? "selected" : ""}>自身</option><option value="target" ${(effect.condition.trackerCheck.owner || "self") === "target" ? "selected" : ""}>現在ターゲット</option>`;
+      trackerScopeInput.innerHTML = TRACKER_SCOPE_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.scope || "turn") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerStatInput.innerHTML = TRACKER_STAT_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.stat || "hp") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerDirectionInput.innerHTML = TRACKER_DIRECTION_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.direction || "inc") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerMetricInput.innerHTML = TRACKER_METRIC_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.metric || "amount") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerOpInput.innerHTML = TRACKER_OP_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.op || "gte") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      trackerValueInput.value = String(Number(effect.condition.trackerCheck.value || 0));
+      whileOnFieldInput.checked = effect.condition.whileOnField === true;
+      thisTurnInput.checked = effect.condition.thisTurn !== false;
 
       function refreshKindOptions() {
         const kinds = getKindsByCategory(effect.category);
@@ -172,7 +284,16 @@ function renderEffectBlocksEditor() {
       categorySelect.addEventListener("change", (e) => {
         effect.category = e.target.value;
         const first = createDefaultEffectByCategory(effect.category);
-        if (first) effect.kind = first.kind;
+        if (first) {
+          effect.kind = first.kind;
+          if (effect.kind === "damage") {
+            effect.damageType = "damage";
+            effect.damageAttr = "none";
+          }
+          if (effect.kind === "hp_reduce") {
+            effect.value = Math.max(1, Number(effect.value || 1));
+          }
+        }
         refreshKindOptions();
         refreshDamageVisible();
       });
@@ -186,11 +307,38 @@ function renderEffectBlocksEditor() {
       valueInput.addEventListener("input", () => {
         effect.value = Number(valueInput.value) || 0;
       });
-      damageTypeInput.addEventListener("input", () => {
+      damageTypeInput.addEventListener("change", () => {
         effect.damageType = damageTypeInput.value || "damage";
       });
-      subTypeInput.addEventListener("input", () => {
-        effect.subType = subTypeInput.value || "normal";
+      damageAttrInput.addEventListener("change", () => {
+        effect.damageAttr = damageAttrInput.value || "none";
+      });
+      whileOnFieldInput.addEventListener("change", () => {
+        effect.condition.whileOnField = whileOnFieldInput.checked;
+      });
+      thisTurnInput.addEventListener("change", () => {
+        effect.condition.thisTurn = thisTurnInput.checked;
+      });
+      trackerOwnerInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.owner = trackerOwnerInput.value || "self";
+      });
+      trackerScopeInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.scope = trackerScopeInput.value || "turn";
+      });
+      trackerStatInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.stat = trackerStatInput.value || "hp";
+      });
+      trackerDirectionInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.direction = trackerDirectionInput.value || "inc";
+      });
+      trackerMetricInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.metric = trackerMetricInput.value || "amount";
+      });
+      trackerOpInput.addEventListener("change", () => {
+        effect.condition.trackerCheck.op = trackerOpInput.value || "gte";
+      });
+      trackerValueInput.addEventListener("input", () => {
+        effect.condition.trackerCheck.value = Number(trackerValueInput.value) || 0;
       });
       effectEl.querySelector('[data-role="removeEffect"]').addEventListener("click", () => {
         timing.effects.splice(ei, 1);

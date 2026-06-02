@@ -122,50 +122,131 @@
     if (t === "opponent") return context.opponent;
     if (t === "owner" || t === "self") return context.owner;
     if (t === "eventTarget") return context.event?.targetOwner || context.opponent;
+    if (t === "self_player") return context.owner;
+    if (t === "current_target") return context.event?.targetOwner || context.opponent;
+    if (t === "self_and_current_target") return context.owner;
     return context.owner;
+  }
+
+  function resolveTargetOwners(effect, context) {
+    const t = String(effect?.target || "self");
+    if (t === "self_and_current_target") {
+      const current = context.event?.targetOwner || context.opponent;
+      if (!current || current === context.owner) return [context.owner];
+      return [context.owner, current];
+    }
+    return [resolveTargetOwner(effect, context)];
+  }
+
+  function isCardOnField(cardEl) {
+    const zone = String(cardEl?.dataset?.zoneType || "");
+    return zone === "attacker" || zone === "skill";
+  }
+
+  function compareByOp(left, op, right) {
+    if (op === "eq") return left === right;
+    if (op === "neq") return left !== right;
+    if (op === "gt") return Number(left) > Number(right);
+    if (op === "gte") return Number(left) >= Number(right);
+    if (op === "lt") return Number(left) < Number(right);
+    if (op === "lte") return Number(left) <= Number(right);
+    return false;
+  }
+
+  function getTrackerValueForCondition(check, context, forceTurnScope) {
+    if (!window.GameStatTracker || typeof window.GameStatTracker.resolvePath !== "function") return 0;
+    if (!check || typeof check !== "object") return 0;
+    const scope = forceTurnScope ? "turn" : String(check.scope || "turn");
+    const stat = String(check.stat || "hp");
+    const direction = String(check.direction || "inc");
+    const metric = String(check.metric || "amount");
+    const ownerType = String(check.owner || "self");
+    const owner = ownerType === "target"
+      ? (context.event?.targetOwner || context.opponent)
+      : context.owner;
+    const basePath = `${scope}.${stat}.`;
+    const read = (field) => Number(window.GameStatTracker.resolvePath(basePath + field, owner) || 0);
+    if (direction === "inc") return metric === "count" ? read("incCount") : read("incAmount");
+    if (direction === "dec") return metric === "count" ? read("decCount") : read("decAmount");
+    const inc = metric === "count" ? read("incCount") : read("incAmount");
+    const dec = metric === "count" ? read("decCount") : read("decAmount");
+    return inc + dec;
+  }
+
+  function evaluateEffectCondition(effect, context) {
+    const cond = effect?.condition;
+    if (!cond || typeof cond !== "object") return true;
+    if (Object.prototype.hasOwnProperty.call(cond, "whileOnField") && cond.whileOnField === true) {
+      if (!isCardOnField(context.sourceCard)) return false;
+    }
+    const thisTurnOnly = Object.prototype.hasOwnProperty.call(cond, "thisTurn") && cond.thisTurn === true;
+    if (cond.trackerCheck && typeof cond.trackerCheck === "object") {
+      const left = getTrackerValueForCondition(cond.trackerCheck, context, thisTurnOnly);
+      const op = String(cond.trackerCheck.op || "gte");
+      const right = Number(cond.trackerCheck.value || 0);
+      if (!compareByOp(left, op, right)) return false;
+    }
+    return true;
   }
 
   const EffectExecutor = {
     executeEffect(effect, context, vars) {
       const type = String(effect?.type || "UNKNOWN");
-      const targetOwner = resolveTargetOwner(effect, context);
       const amount = Number(VariableResolver.resolveValue(effect.amount ?? 1, context, vars) || 0);
+      if (!evaluateEffectCondition(effect, context)) {
+        return { applied: false, type, skippedByCondition: true };
+      }
+      const targetOwners = resolveTargetOwners(effect, context);
 
       if (type === "DRAW") {
-        if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
+        targetOwners.forEach((targetOwner) => {
+          if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
+        });
         return { applied: true, type };
       }
       if (type === "HEAL") {
-        if (typeof window.addVal === "function") window.addVal(targetOwner, "hp", Math.max(0, amount));
+        targetOwners.forEach((targetOwner) => {
+          if (typeof window.addVal === "function") window.addVal(targetOwner, "hp", Math.max(0, amount));
+        });
         return { applied: true, type };
       }
       if (type === "DAMAGE") {
-        if (typeof window.applyCalculatedDamage === "function") {
-          const damageType = String(effect.damageType || "damage");
-          const subType = String(effect.subType || "normal");
-          window.applyCalculatedDamage(targetOwner, damageType, subType, Math.max(0, amount), false, { source: "effect_engine" });
-        }
+        targetOwners.forEach((targetOwner) => {
+          if (typeof window.applyCalculatedDamage === "function") {
+            const damageType = String(effect.damageType || "damage");
+            const subType = String(effect.subType || "none");
+            window.applyCalculatedDamage(targetOwner, damageType, subType, Math.max(0, amount), false, { source: "effect_engine" });
+          }
+        });
         return { applied: true, type };
       }
       if (type === "RECOVER_PP") {
-        if (typeof window.addVal === "function") window.addVal(targetOwner, "pp", Math.max(0, amount));
+        targetOwners.forEach((targetOwner) => {
+          if (typeof window.addVal === "function") window.addVal(targetOwner, "pp", Math.max(0, amount));
+        });
         return { applied: true, type };
       }
       if (type === "SET_PP_MIN") {
-        const s = getPlayer(targetOwner);
-        if (s) {
-          const max = Number(s.ppMax || 2);
-          s.pp = Math.max(Number(s.pp || 0), Math.min(max, Math.max(0, amount)));
-          if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
-        }
+        targetOwners.forEach((targetOwner) => {
+          const s = getPlayer(targetOwner);
+          if (s) {
+            const max = Number(s.ppMax || 2);
+            s.pp = Math.max(Number(s.pp || 0), Math.min(max, Math.max(0, amount)));
+            if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+          }
+        });
         return { applied: true, type };
       }
       if (type === "ADD_SHIELD") {
-        if (typeof window.addVal === "function") window.addVal(targetOwner, "shield", Math.max(0, amount));
+        targetOwners.forEach((targetOwner) => {
+          if (typeof window.addVal === "function") window.addVal(targetOwner, "shield", Math.max(0, amount));
+        });
         return { applied: true, type };
       }
       if (type === "ADD_ATK") {
-        if (typeof window.addVal === "function") window.addVal(targetOwner, "atk", amount);
+        targetOwners.forEach((targetOwner) => {
+          if (typeof window.addVal === "function") window.addVal(targetOwner, "atk", amount);
+        });
         return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_GRAVE") {

@@ -25,7 +25,7 @@
 
   function normalizeTarget(target) {
     const t = String(target || "self_player");
-    if (["self_player", "current_target", "self_and_current_target"].includes(t)) return t;
+    if (["self_player", "current_target", "self_and_current_target", "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "this_card", "grave_card", "hand_card"].includes(t)) return t;
     if (["self", "opponent", "owner", "eventTarget"].includes(t)) return t;
     return "self_player";
   }
@@ -73,6 +73,12 @@
       if (kind === "add_atk") {
         compiled.atkMode = String(effect.atkMode || "increase");
         compiled.atkTarget = String(effect.atkTarget || "this_card");
+      } else if (["draw_card", "add_hand", "add_hand_to_n"].includes(kind)) {
+        compiled.target = normalizeTarget(effect.target || "self_player");
+        compiled.cardTargetMode = "player";
+      } else if (["duplicate_to_hand", "reveal_card"].includes(kind)) {
+        compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
+        compiled.cardTargetMode = "card";
       }
       return compiled;
     }
@@ -80,11 +86,21 @@
     if (kind === "fetch_card") {
       compiled.amount = Math.max(1, normalizeValue(effect.value, 1));
       compiled.toZone = String(effect.toZone || "hand");
+      compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
+      compiled.cardTargetMode = "card";
       return compiled;
     }
 
     if (kind === "play_to_field") {
       compiled.toZone = String(effect.toZone || "attacker");
+      compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
+      compiled.cardTargetMode = "card";
+      return compiled;
+    }
+
+    if (["return_to_hand", "send_to_grave", "return_to_deck"].includes(kind)) {
+      compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
+      compiled.cardTargetMode = "card";
       return compiled;
     }
 

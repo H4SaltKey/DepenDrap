@@ -70,6 +70,16 @@ const FETCH_TO_ZONE_OPTIONS = [
   { value: "skill", label: "スキル場" },
   { value: "grave", label: "墓地" }
 ];
+const CARD_EFFECT_CARD_TARGET_OPTIONS = [
+  { value: "attacker_zone_card", label: "アタッカー場のカード" },
+  { value: "target_attacker_zone_card", label: "現在のターゲットのアタッカー場のカード" },
+  { value: "self_and_target_attacker_zone_card", label: "自身と現在のターゲットのアタッカー場のカード" },
+  { value: "this_card", label: "このカード" },
+  { value: "grave_card", label: "墓地のカード" },
+  { value: "hand_card", label: "手札のカード" }
+];
+const CARD_PLAYER_TARGET_KINDS = new Set(["draw_card", "add_hand", "add_hand_to_n"]);
+const CARD_CARD_TARGET_KINDS = new Set(["fetch_card", "return_to_hand", "send_to_grave", "return_to_deck", "duplicate_to_hand", "play_to_field", "reveal_card"]);
 const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "continuous", "manual"];
 const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "continuous", "manual"];
 
@@ -114,6 +124,7 @@ function createDefaultEffectByCategory(categoryId) {
     value: 1,
     atkMode: "increase",
     atkTarget: "this_card",
+    cardTarget: "this_card",
     useCondition: false,
     effectName: "付与効果",
     allowDuplicate: false,
@@ -233,6 +244,8 @@ function renderEffectBlocksEditor() {
           <select data-role="atkTarget" style="min-width:300px;"></select>
         </div>
         <div class="blockRow" data-role="cardExtra" style="display:none;">
+          <span style="font-size:12px;color:#666;">カード対象</span>
+          <select data-role="cardTarget" style="min-width:300px;"></select>
           <span style="font-size:12px;color:#666;">取り出し先/場</span>
           <select data-role="toZone"></select>
         </div>
@@ -284,6 +297,7 @@ function renderEffectBlocksEditor() {
       const atkModeInput = effectEl.querySelector('[data-role="atkMode"]');
       const atkTargetInput = effectEl.querySelector('[data-role="atkTarget"]');
       const cardExtra = effectEl.querySelector('[data-role="cardExtra"]');
+      const cardTargetInput = effectEl.querySelector('[data-role="cardTarget"]');
       const toZoneInput = effectEl.querySelector('[data-role="toZone"]');
       const grantExtras = effectEl.querySelectorAll('[data-role="grantExtra"]');
       const grantList = effectEl.querySelector('[data-role="grantList"]');
@@ -333,6 +347,9 @@ function renderEffectBlocksEditor() {
       toZoneInput.innerHTML = FETCH_TO_ZONE_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.toZone || "hand") ? "selected" : ""}>${x.label}</option>`)
         .join("");
+      cardTargetInput.innerHTML = CARD_EFFECT_CARD_TARGET_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.cardTarget || "this_card") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
       durationModeInput.innerHTML = DURATION_MODE_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.duration?.mode || "turn") ? "selected" : ""}>${x.label}</option>`)
         .join("");
@@ -381,8 +398,12 @@ function renderEffectBlocksEditor() {
         targetSelect.style.display = effect.kind === "add_atk" ? "none" : "";
       }
       function refreshCardVisible() {
-        const on = effect.kind === "fetch_card" || effect.kind === "play_to_field";
-        cardExtra.style.display = on ? "flex" : "none";
+        const isCardMode = CARD_CARD_TARGET_KINDS.has(effect.kind);
+        const needsZone = effect.kind === "fetch_card" || effect.kind === "play_to_field";
+        cardExtra.style.display = isCardMode ? "flex" : "none";
+        cardTargetInput.style.display = isCardMode ? "" : "none";
+        toZoneInput.style.display = needsZone ? "" : "none";
+        targetSelect.style.display = (effect.kind === "add_atk" || isCardMode) ? "none" : "";
       }
       function renderGrantList() {
         if (!grantList) return;
@@ -507,6 +528,9 @@ function renderEffectBlocksEditor() {
       });
       toZoneInput.addEventListener("change", () => {
         effect.toZone = toZoneInput.value || "hand";
+      });
+      cardTargetInput.addEventListener("change", () => {
+        effect.cardTarget = cardTargetInput.value || "this_card";
       });
       effectNameInput.addEventListener("input", () => {
         effect.effectName = effectNameInput.value || "付与効果";

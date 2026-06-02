@@ -143,6 +143,54 @@
     const cards = window.getZoneCards(owner, zoneType) || [];
     return cards.length > 0 ? cards[cards.length - 1] : null;
   }
+  function getTargetInfoForOwner(owner) {
+    if (window.BattleTargetSystem && typeof window.BattleTargetSystem.getTarget === "function") {
+      const t = window.BattleTargetSystem.getTarget(owner);
+      if (t && typeof t === "object" && typeof t.slotIndex === "number") return { type: "monster", slotIndex: t.slotIndex };
+    }
+    return { type: "player", owner: owner === "player1" ? "player2" : "player1" };
+  }
+  function getHandCardsOfOwner(owner) {
+    const content = (typeof window.getFieldContent === "function") ? window.getFieldContent() : document.getElementById("fieldContent");
+    if (!content) return [];
+    const handYMin = Number(window.HAND_ZONE_Y_MIN || 1460);
+    return Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+      .filter((el) => (el.dataset.owner || "") === owner && !el.dataset.zoneType && Number(el.dataset.y || 0) >= handYMin);
+  }
+  function resolveCardTargets(effect, context) {
+    const t = String(effect.cardTarget || "this_card");
+    const current = getCurrentTargetInfo(context.owner, context);
+    const isMonster = current.type === "monster";
+    if ((t.includes("target_") || t.includes("self_and_target")) && isMonster) return [];
+    if (t === "this_card") return context.sourceCard ? [context.sourceCard] : [];
+    if (t === "attacker_zone_card") return [getTopZoneCard(context.owner, "attacker")].filter(Boolean);
+    if (t === "target_attacker_zone_card") return [getTopZoneCard(current.owner, "attacker")].filter(Boolean);
+    if (t === "self_and_target_attacker_zone_card") {
+      const out = [getTopZoneCard(context.owner, "attacker"), getTopZoneCard(current.owner, "attacker")].filter(Boolean);
+      return out;
+    }
+    if (t === "grave_card") return [getTopZoneCard(context.owner, "grave")].filter(Boolean);
+    if (t === "hand_card") {
+      const cards = getHandCardsOfOwner(context.owner);
+      return cards.length > 0 ? [cards[cards.length - 1]] : [];
+    }
+    return [];
+  }
+  function isMonsterCurrentTargetForCardEffect(effect, context) {
+    const target = String(effect.target || "self_player");
+    if (target !== "current_target" && target !== "self_and_current_target") return false;
+    return getCurrentTargetInfo(context.owner, context).type === "monster";
+  }
+  function moveCardToHand(card, owner) {
+    if (!card) return;
+    if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(card);
+    card.dataset.owner = owner;
+    card.dataset.handOrder = String(typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now());
+    const handY = Number(window.HAND_ZONE_Y_MIN || 1460) + 40;
+    card.dataset.y = String(handY);
+    card.style.top = `${handY}px`;
+    if (typeof window.organizeHands === "function") window.organizeHands();
+  }
 
   function addCardAttack(cardEl, delta) {
     if (!cardEl) return;
@@ -342,6 +390,7 @@
       const targetOwners = resolveTargetOwners(effect, context);
 
       if (type === "DRAW") {
+        if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true };
         targetOwners.forEach((targetOwner) => {
           if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
         });
@@ -409,20 +458,55 @@
         return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_GRAVE") {
-        if (context.sourceCard && typeof window.placeCardInZone === "function") window.placeCardInZone(context.sourceCard, context.owner, "grave");
+        const cards = resolveCardTargets(effect, context);
+        cards.forEach((card) => {
+          const owner = card.dataset.owner || context.owner;
+          if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
+        });
         return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_HAND") {
-        const card = context.sourceCard;
-        if (card) {
+        const cards = resolveCardTargets(effect, context);
+        cards.forEach((card) => moveCardToHand(card, card.dataset.owner || context.owner));
+        return { applied: true, type };
+      }
+      if (type === "MOVE_SOURCE_TO_DECK") {
+        const cards = resolveCardTargets(effect, context);
+        cards.forEach((card) => {
+          const owner = card.dataset.owner || context.owner;
           if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(card);
-          card.dataset.owner = context.owner;
-          card.dataset.handOrder = String(typeof window.nextHandOrder === "function" ? window.nextHandOrder() : Date.now());
-          const handY = Number(window.HAND_ZONE_Y_MIN || 1460) + 40;
-          card.dataset.y = String(handY);
-          card.style.top = `${handY}px`;
+          card.dataset.zoneType = "";
+          card.dataset.owner = owner;
+          card.dataset.y = String(Number(window.HAND_ZONE_Y_MIN || 1460) + 20);
           if (typeof window.organizeHands === "function") window.organizeHands();
+        });
+        return { applied: true, type };
+      }
+      if (type === "DUPLICATE_SOURCE_TO_HAND") {
+        const cards = resolveCardTargets(effect, context);
+        cards.forEach((card) => {
+          if (typeof window.duplicateCard === "function") {
+            const dup = window.duplicateCard(card);
+            moveCardToHand(dup, card.dataset.owner || context.owner);
+          }
+        });
+        return { applied: true, type };
+      }
+      if (type === "REVEAL_CARD") {
+        const cards = resolveCardTargets(effect, context);
+        if (typeof window.addGameLog === "function") {
+          cards.forEach((card) => window.addGameLog(`[REVEAL] ${card.dataset.id || "unknown"}`));
         }
+        return { applied: true, type };
+      }
+      if (type === "FETCH_CARD" || type === "PLAY_SOURCE_TO_FIELD") {
+        const cards = resolveCardTargets(effect, context);
+        const toZone = String(effect.toZone || (type === "PLAY_SOURCE_TO_FIELD" ? "attacker" : "hand"));
+        cards.forEach((card) => {
+          const owner = card.dataset.owner || context.owner;
+          if (toZone === "hand") moveCardToHand(card, owner);
+          else if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, toZone);
+        });
         return { applied: true, type };
       }
       if (type === "TRIGGER_ATTACK_EFFECT") {

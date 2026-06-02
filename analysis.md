@@ -5277,3 +5277,37 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `GRANT_EFFECT_BUNDLE` 受理と付与情報の登録処理を追加
 - `docs/dev-card-effect-block-spec.md`
   - 仕様とマッピングを更新
+
+---
+
+## Round 36 — カード系対象を「カード対象/プレイヤー対象」で分離（2026-06-02）
+
+### 要件対応
+
+- カード系効果を以下に分離
+  - カード対象:
+    - アタッカー場のカード
+    - 現在のターゲットのアタッカー場のカード
+    - 自身と現在のターゲットのアタッカー場のカード
+    - このカード
+    - 墓地のカード
+    - 手札のカード
+  - プレイヤー対象:
+    - 自身
+    - 現在のターゲット
+    - 自身と現在のターゲット
+- 現在のターゲット系でターゲットがモンスターの場合、成立しないカード系効果は無効化
+
+### 実装
+
+- `js/dev/dev.js`
+  - カード系の対象セレクト (`cardTarget`) を追加
+  - カード対象効果時はプレイヤー対象セレクトを隠す
+  - プレイヤー対象効果時は既存対象セレクトを使用
+- `js/dev/cardEffectBlockCompiler.js`
+  - `cardTarget` をDSLへ出力
+  - カード系の target 文字列許容リストを拡張
+- `js/game/effects/effectEngine.js`
+  - `cardTarget` から実カードを解決する処理を追加
+  - `MOVE_SOURCE_TO_HAND/GRAVE/DECK`, `FETCH_CARD`, `PLAY_SOURCE_TO_FIELD`, `DUPLICATE_SOURCE_TO_HAND`, `REVEAL_CARD` へ適用
+  - モンスターターゲット時の不成立カード系を `skippedByInvalidTarget` で無効化

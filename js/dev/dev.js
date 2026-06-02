@@ -19,10 +19,6 @@ const DAMAGE_ATTR_OPTIONS = [
   { value: "none", label: "なし" },
   { value: "additional", label: "追加" }
 ];
-const TRACKER_SCOPE_OPTIONS = [
-  { value: "turn", label: "このターン中" },
-  { value: "game", label: "ゲーム中" }
-];
 const TRACKER_STAT_OPTIONS = [
   { value: "hp", label: "HP" },
   { value: "pp", label: "PP" },
@@ -36,7 +32,9 @@ const TRACKER_STAT_OPTIONS = [
   { value: "grave", label: "墓地" }
 ];
 const TRACKER_MODE_OPTIONS = [
-  { value: "current", label: "現在値" },
+  { value: "current_eq", label: "現在値がN" },
+  { value: "current_gte", label: "現在値がN以上" },
+  { value: "current_lte", label: "現在値がN以下" },
   { value: "inc_n", label: "がN以上増加" },
   { value: "dec_n", label: "がN以上減少" },
   { value: "both_n", label: "がN以上増減" }
@@ -150,6 +148,8 @@ function createDefaultCondition() {
     whileOnField: false,
     thisTurn: true,
     directAttack: "any",
+    directAttackEnabled: false,
+    directAttackValue: true,
     byAttackerEffect: false,
     attackerTriggerT: "onAttack",
     bySkillEffect: false,
@@ -158,9 +158,8 @@ function createDefaultCondition() {
     requiredExecutedOrderMode: "any",
     trackerCheck: {
       owner: "self",
-      scope: "turn",
       stat: "hp",
-      mode: "current",
+      mode: "current_gte",
       value: 0
     }
   };
@@ -212,12 +211,12 @@ function renderEffectBlocksEditor() {
       <div class="blockRow" data-role="timingConditionArea">
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingWhileOnField"> これが場にある間</label>
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingThisTurn"> このターン中</label>
-        <select data-role="timingDirectAttack" style="display:none;"></select>
+        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackWrap"><input type="checkbox" data-role="timingDirectAttackEnabled"> 直接攻撃したかで判定</label>
+        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackWrap"><input type="checkbox" data-role="timingDirectAttackValue"> 直接攻撃した(True) / 未チェック=False</label>
       </div>
       <div class="blockRow" data-role="timingConditionArea" style="align-items:flex-end;">
         <span style="font-size:12px;color:#666;">記録条件</span>
         <select data-role="timingTrackerOwner"></select>
-        <select data-role="timingTrackerScope"></select>
         <select data-role="timingTrackerStat"></select>
         <select data-role="timingTrackerMode"></select>
         <input data-role="timingTrackerValue" type="number" style="width:90px;" value="0">
@@ -236,9 +235,10 @@ function renderEffectBlocksEditor() {
     const timingUseCondition = timingEl.querySelector('[data-role="timingUseCondition"]');
     const timingWhileOnField = timingEl.querySelector('[data-role="timingWhileOnField"]');
     const timingThisTurn = timingEl.querySelector('[data-role="timingThisTurn"]');
-    const timingDirectAttack = timingEl.querySelector('[data-role="timingDirectAttack"]');
+    const timingDirectAttackEnabled = timingEl.querySelector('[data-role="timingDirectAttackEnabled"]');
+    const timingDirectAttackValue = timingEl.querySelector('[data-role="timingDirectAttackValue"]');
+    const timingDirectAttackWraps = timingEl.querySelectorAll('[data-role="timingDirectAttackWrap"]');
     const timingTrackerOwner = timingEl.querySelector('[data-role="timingTrackerOwner"]');
-    const timingTrackerScope = timingEl.querySelector('[data-role="timingTrackerScope"]');
     const timingTrackerStat = timingEl.querySelector('[data-role="timingTrackerStat"]');
     const timingTrackerMode = timingEl.querySelector('[data-role="timingTrackerMode"]');
     const timingTrackerValue = timingEl.querySelector('[data-role="timingTrackerValue"]');
@@ -249,13 +249,8 @@ function renderEffectBlocksEditor() {
     timingUseCondition.checked = timing.useCondition === true;
     timingWhileOnField.checked = timing.condition.whileOnField === true;
     timingThisTurn.checked = timing.condition.thisTurn !== false;
-    timingDirectAttack.innerHTML = `
-      <option value="any">直接攻撃: 問わない</option>
-      <option value="did">直接攻撃: した</option>
-      <option value="not">直接攻撃: していない</option>
-    `;
-    timingDirectAttack.value = timing.condition.directAttack || "any";
-    timingDirectAttack.style.display = timing.timing === "onLeave" ? "" : "none";
+    timingDirectAttackEnabled.checked = timing.condition.directAttackEnabled === true;
+    timingDirectAttackValue.checked = timing.condition.directAttackValue !== false;
     const timingOwnerValue = timing.condition.trackerCheck.owner || "self";
     timingTrackerOwner.innerHTML = `
       <option value="self" ${timingOwnerValue === "self" ? "selected" : ""}>自身</option>
@@ -264,15 +259,15 @@ function renderEffectBlocksEditor() {
       <option value="used_skill_card" ${timingOwnerValue === "used_skill_card" ? "selected" : ""}>使用したスキルカード</option>
       <option value="this_card" ${timingOwnerValue === "this_card" ? "selected" : ""}>このカード</option>
     `;
-    timingTrackerScope.innerHTML = TRACKER_SCOPE_OPTIONS.map((x) => `<option value="${x.value}" ${x.value === (timing.condition.trackerCheck.scope || "turn") ? "selected" : ""}>${x.label}</option>`).join("");
     timingTrackerStat.innerHTML = TRACKER_STAT_OPTIONS.map((x) => `<option value="${x.value}" ${x.value === (timing.condition.trackerCheck.stat || "hp") ? "selected" : ""}>${x.label}</option>`).join("");
-    timingTrackerMode.innerHTML = TRACKER_MODE_OPTIONS.map((x) => `<option value="${x.value}" ${x.value === (timing.condition.trackerCheck.mode || "current") ? "selected" : ""}>${x.label}</option>`).join("");
+    timingTrackerMode.innerHTML = TRACKER_MODE_OPTIONS.map((x) => `<option value="${x.value}" ${x.value === (timing.condition.trackerCheck.mode || "current_gte") ? "selected" : ""}>${x.label}</option>`).join("");
     timingTrackerValue.value = String(Number(timing.condition.trackerCheck.value || 0));
     function refreshTimingConditionVisible() {
       timingConditionAreas.forEach((el) => {
         el.style.display = timing.useCondition ? "" : "none";
       });
-      timingDirectAttack.style.display = (timing.useCondition && timing.timing === "onLeave") ? "" : "none";
+      const show = (timing.useCondition && timing.timing === "onLeave");
+      timingDirectAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
     }
     refreshTimingConditionVisible();
     timingUseCondition.addEventListener("change", () => {
@@ -281,11 +276,11 @@ function renderEffectBlocksEditor() {
     });
     timingWhileOnField.addEventListener("change", () => { timing.condition.whileOnField = timingWhileOnField.checked; });
     timingThisTurn.addEventListener("change", () => { timing.condition.thisTurn = timingThisTurn.checked; });
-    timingDirectAttack.addEventListener("change", () => { timing.condition.directAttack = timingDirectAttack.value || "any"; });
+    timingDirectAttackEnabled.addEventListener("change", () => { timing.condition.directAttackEnabled = timingDirectAttackEnabled.checked; });
+    timingDirectAttackValue.addEventListener("change", () => { timing.condition.directAttackValue = timingDirectAttackValue.checked; });
     timingTrackerOwner.addEventListener("change", () => { timing.condition.trackerCheck.owner = timingTrackerOwner.value || "self"; });
-    timingTrackerScope.addEventListener("change", () => { timing.condition.trackerCheck.scope = timingTrackerScope.value || "turn"; });
     timingTrackerStat.addEventListener("change", () => { timing.condition.trackerCheck.stat = timingTrackerStat.value || "hp"; });
-    timingTrackerMode.addEventListener("change", () => { timing.condition.trackerCheck.mode = timingTrackerMode.value || "current"; });
+    timingTrackerMode.addEventListener("change", () => { timing.condition.trackerCheck.mode = timingTrackerMode.value || "current_gte"; });
     timingTrackerValue.addEventListener("input", () => { timing.condition.trackerCheck.value = Number(timingTrackerValue.value) || 0; });
     timingEl.querySelector('[data-role="addEffect"]').addEventListener("click", () => {
       const added = createDefaultEffectByCategory("damage");
@@ -373,7 +368,8 @@ function renderEffectBlocksEditor() {
         <div class="blockRow" data-role="conditionArea" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="whileOnField"> これが場にある間</label>
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="thisTurn"> このターン中</label>
-          <select data-role="directAttack" style="display:none;"></select>
+          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackWrap"><input type="checkbox" data-role="directAttackEnabled"> 直接攻撃したかで判定</label>
+          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackWrap"><input type="checkbox" data-role="directAttackValue"> 直接攻撃した(True) / 未チェック=False</label>
         </div>
         <div class="blockRow" data-role="conditionArea">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="byAttackerEffect"> アタッカー場のカードのT効果によって</label>
@@ -392,7 +388,6 @@ function renderEffectBlocksEditor() {
         <div class="blockRow" data-role="conditionArea" style="align-items:flex-end;">
           <span style="font-size:12px;color:#666;">記録条件</span>
           <select data-role="trackerOwner"></select>
-          <select data-role="trackerScope"></select>
           <select data-role="trackerStat"></select>
           <select data-role="trackerMode"></select>
           <input data-role="trackerValue" type="number" style="width:90px;" value="0">
@@ -423,7 +418,9 @@ function renderEffectBlocksEditor() {
       const useConditionInput = effectEl.querySelector('[data-role="useCondition"]');
       const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
       const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
-      const directAttackInput = effectEl.querySelector('[data-role="directAttack"]');
+      const directAttackEnabledInput = effectEl.querySelector('[data-role="directAttackEnabled"]');
+      const directAttackValueInput = effectEl.querySelector('[data-role="directAttackValue"]');
+      const directAttackWraps = effectEl.querySelectorAll('[data-role="directAttackWrap"]');
       const byAttackerEffectInput = effectEl.querySelector('[data-role="byAttackerEffect"]');
       const attackerTriggerTInput = effectEl.querySelector('[data-role="attackerTriggerT"]');
       const bySkillEffectInput = effectEl.querySelector('[data-role="bySkillEffect"]');
@@ -431,7 +428,6 @@ function renderEffectBlocksEditor() {
       const requiredOrderModeInput = effectEl.querySelector('[data-role="requiredOrderMode"]');
       const requiredOrderBox = effectEl.querySelector('[data-role="requiredOrderBox"]');
       const trackerOwnerInput = effectEl.querySelector('[data-role="trackerOwner"]');
-      const trackerScopeInput = effectEl.querySelector('[data-role="trackerScope"]');
       const trackerStatInput = effectEl.querySelector('[data-role="trackerStat"]');
       const trackerModeInput = effectEl.querySelector('[data-role="trackerMode"]');
       const trackerValueInput = effectEl.querySelector('[data-role="trackerValue"]');
@@ -486,28 +482,20 @@ function renderEffectBlocksEditor() {
         <option value="used_skill_card" ${ownerValue === "used_skill_card" ? "selected" : ""}>使用したスキルカード</option>
         <option value="this_card" ${ownerValue === "this_card" ? "selected" : ""}>このカード</option>
       `;
-      trackerScopeInput.innerHTML = TRACKER_SCOPE_OPTIONS
-        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.scope || "turn") ? "selected" : ""}>${x.label}</option>`)
-        .join("");
       trackerStatInput.innerHTML = TRACKER_STAT_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.stat || "hp") ? "selected" : ""}>${x.label}</option>`)
         .join("");
       trackerModeInput.innerHTML = TRACKER_MODE_OPTIONS
-        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.mode || "current") ? "selected" : ""}>${x.label}</option>`)
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.trackerCheck.mode || "current_gte") ? "selected" : ""}>${x.label}</option>`)
         .join("");
       trackerValueInput.value = String(Number(effect.condition.trackerCheck.value || 0));
       whileOnFieldInput.checked = effect.condition.whileOnField === true;
       thisTurnInput.checked = effect.condition.thisTurn !== false;
-      directAttackInput.innerHTML = `
-        <option value="any">直接攻撃: 問わない</option>
-        <option value="did">直接攻撃: した</option>
-        <option value="not">直接攻撃: していない</option>
-      `;
       attackerTriggerTInput.innerHTML = TRIGGER_T_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.attackerTriggerT || "onAttack") ? "selected" : ""}>${x.label}</option>`)
         .join("");
-      directAttackInput.value = effect.condition.directAttack || "any";
-      directAttackInput.style.display = timing.timing === "onLeave" ? "" : "none";
+      directAttackEnabledInput.checked = effect.condition.directAttackEnabled === true;
+      directAttackValueInput.checked = effect.condition.directAttackValue !== false;
       useConditionInput.checked = effect.useCondition === true;
       byAttackerEffectInput.checked = effect.condition.byAttackerEffect === true;
       bySkillEffectInput.checked = effect.condition.bySkillEffect === true;
@@ -628,7 +616,8 @@ function renderEffectBlocksEditor() {
         conditionAreas.forEach((el) => {
           el.style.display = effect.useCondition === true ? "" : "none";
         });
-        directAttackInput.style.display = (effect.useCondition === true && timing.timing === "onLeave") ? "" : "none";
+        const show = (effect.useCondition === true && timing.timing === "onLeave");
+        directAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
         attackerTriggerTInput.style.display = (effect.useCondition === true && byAttackerEffectInput.checked) ? "" : "none";
       }
 
@@ -727,8 +716,11 @@ function renderEffectBlocksEditor() {
       thisTurnInput.addEventListener("change", () => {
         effect.condition.thisTurn = thisTurnInput.checked;
       });
-      directAttackInput.addEventListener("change", () => {
-        effect.condition.directAttack = directAttackInput.value || "any";
+      directAttackEnabledInput.addEventListener("change", () => {
+        effect.condition.directAttackEnabled = directAttackEnabledInput.checked;
+      });
+      directAttackValueInput.addEventListener("change", () => {
+        effect.condition.directAttackValue = directAttackValueInput.checked;
       });
       byAttackerEffectInput.addEventListener("change", () => {
         effect.condition.byAttackerEffect = byAttackerEffectInput.checked;
@@ -749,14 +741,11 @@ function renderEffectBlocksEditor() {
       trackerOwnerInput.addEventListener("change", () => {
         effect.condition.trackerCheck.owner = trackerOwnerInput.value || "self";
       });
-      trackerScopeInput.addEventListener("change", () => {
-        effect.condition.trackerCheck.scope = trackerScopeInput.value || "turn";
-      });
       trackerStatInput.addEventListener("change", () => {
         effect.condition.trackerCheck.stat = trackerStatInput.value || "hp";
       });
       trackerModeInput.addEventListener("change", () => {
-        effect.condition.trackerCheck.mode = trackerModeInput.value || "current";
+        effect.condition.trackerCheck.mode = trackerModeInput.value || "current_gte";
       });
       trackerValueInput.addEventListener("input", () => {
         effect.condition.trackerCheck.value = Number(trackerValueInput.value) || 0;

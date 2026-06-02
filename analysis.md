@@ -5398,3 +5398,49 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `requiredExecutedOrderMode` に応じて `some/every` で判定
 - `docs/dev-card-effect-block-spec.md`
   - 判定モード仕様を追記
+
+---
+
+## Round 40 — 現在値判定3種 + スコープ選択廃止（2026-06-03）
+
+### 変更
+
+- 現在値判定を3種へ分離
+  - `現在値がN`
+  - `現在値がN以上`
+  - `現在値がN以下`
+- `このターン中/ゲーム中` の明示セレクトを廃止
+  - `thisTurn=true` なら `turn`
+  - `thisTurn=false` なら自動で `game`
+
+### 実装
+
+- `js/dev/dev.js`
+  - `TRACKER_MODE_OPTIONS` を更新（`current_eq/current_gte/current_lte`）
+  - `trackerScope` UI（タイミング条件・効果条件）を削除
+  - デフォルトモードを `current_gte` に変更
+- `js/game/effects/effectEngine.js`
+  - scope決定を `thisTurn` 連動へ変更（`turn/game` 自動）
+  - 新 mode 3種を比較演算で評価
+- `docs/dev-card-effect-block-spec.md`
+  - mode と scope 自動化仕様を追記
+
+---
+
+## Round 41 — 直接攻撃有無のT/F判定をチェックボックス化（2026-06-03）
+
+### 変更
+
+- 退場時条件の `直接攻撃` 判定をセレクト式からチェックボックス式へ変更
+  - `直接攻撃したかで判定`（有効化）
+  - `直接攻撃した(True) / 未チェック=False`（期待値）
+- タイミング一括条件 / 効果条件の両方に適用
+
+### 実装
+
+- `js/dev/dev.js`
+  - 条件デフォルトに `directAttackEnabled / directAttackValue` を追加
+  - 退場時条件UIをチェックボックス2つへ変更
+- `js/game/effects/effectEngine.js`
+  - `directAttackEnabled === true` の場合は `didDirectAttack` と `directAttackValue` を比較
+  - 旧 `directAttack(any/did/not)` は後方互換として維持

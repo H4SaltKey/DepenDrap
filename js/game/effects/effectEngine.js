@@ -347,9 +347,9 @@
   function getTrackerValueForCondition(check, context, forceTurnScope) {
     if (!window.GameStatTracker || typeof window.GameStatTracker.resolvePath !== "function") return 0;
     if (!check || typeof check !== "object") return 0;
-    const scope = forceTurnScope ? "turn" : String(check.scope || "turn");
+    const scope = forceTurnScope ? "turn" : "game";
     const stat = String(check.stat || "hp");
-    const mode = String(check.mode || "current");
+    const mode = String(check.mode || "current_gte");
     const ownerType = String(check.owner || "self");
     const owner = ownerType === "target"
       ? (context.event?.targetOwner || context.opponent)
@@ -407,9 +407,14 @@
       if (!isCardOnField(context.sourceCard)) return false;
     }
     const thisTurnOnly = Object.prototype.hasOwnProperty.call(cond, "thisTurn") && cond.thisTurn === true;
-    const directAttackMode = String(cond.directAttack || "any");
-    if (directAttackMode === "did" && context.event?.didDirectAttack !== true) return false;
-    if (directAttackMode === "not" && context.event?.didDirectAttack !== false) return false;
+    if (cond.directAttackEnabled === true) {
+      const expected = cond.directAttackValue === true;
+      if (Boolean(context.event?.didDirectAttack) !== expected) return false;
+    } else {
+      const directAttackMode = String(cond.directAttack || "any");
+      if (directAttackMode === "did" && context.event?.didDirectAttack !== true) return false;
+      if (directAttackMode === "not" && context.event?.didDirectAttack !== false) return false;
+    }
     if (cond.byAttackerEffect === true) {
       const isAttacker = (context.sourceProfile?.cardKind === "attacker")
         || (context.sourceCard?.dataset?.zoneType === "attacker");
@@ -440,13 +445,14 @@
     }
     if (cond.trackerCheck && typeof cond.trackerCheck === "object") {
       const left = getTrackerValueForCondition(cond.trackerCheck, context, thisTurnOnly);
-      const mode = String(cond.trackerCheck.mode || "current");
+      const mode = String(cond.trackerCheck.mode || "current_gte");
       const right = Number(cond.trackerCheck.value || 0);
-      if (mode === "current") {
-        if (!compareByOp(left, "gte", right)) return false;
-      } else {
-        if (!compareByOp(left, "gte", right)) return false;
-      }
+      if (mode === "current_eq" && !compareByOp(left, "eq", right)) return false;
+      if (mode === "current_gte" && !compareByOp(left, "gte", right)) return false;
+      if (mode === "current_lte" && !compareByOp(left, "lte", right)) return false;
+      if (mode === "inc_n" && !compareByOp(left, "gte", right)) return false;
+      if (mode === "dec_n" && !compareByOp(left, "gte", right)) return false;
+      if (mode === "both_n" && !compareByOp(left, "gte", right)) return false;
     }
     return true;
   }

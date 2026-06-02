@@ -5083,3 +5083,43 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `条件を使う` UI + conditionエリアの有効/無効制御を追加
 - `js/dev/cardEffectBlockCompiler.js`
   - `useCondition` が true のときのみ `compiled.condition` を付与
+
+---
+
+## Round 28 — スキル発動手順の仕様修正（2026-06-02）
+
+### 仕様変更
+
+- スキル使用時に通常の `onAttack` は使わない
+- スキル使用時の効果タイミングは
+  - `onSkillBeforeAttackEffect`
+  - `onSkillAfterAttackEffect`
+  のみを使用
+- スキルカードに対して `onLeave` は実行しない
+
+### 実装
+
+- `js/game/auto/playerActionResolver.js`
+  - `resolveCardOnPlay` のデフォルトトリガーを `onSummon` 固定に変更（スキル `onAttack` 起動を回避）
+  - デフォルトDSL実行ブロックを `profile.cardKind !== "skill"` の場合のみ実行
+  - 墓地移動時の `resolveCardOnLeave` 呼び出し対象を `prevZoneType === "attacker"` のみに限定
+
+---
+
+## Round 29 — タイミング選択制限 + 例外文脈選択（2026-06-02）
+
+### 要件対応
+
+- タイミング追加の候補を文脈別に制限
+  - アタッカー使用時: `onSummon/onAttack/onDirectAttack/onTurnStart/onTurnEnd/onLeave/continuous/manual`
+  - スキル使用時: `onSkillBeforeAttackEffect/onSkillAfterAttackEffect/continuous/manual`
+- ただし特例対応として、カード種別がアタッカーでも `スキル使用時` 文脈を選択可能にした
+
+### 実装
+
+- `dev.html`
+  - `timingContextSelect`（アタッカー使用時 / スキル使用時）を追加
+- `js/dev/dev.js`
+  - 文脈ごとの許可タイミング配列を追加
+  - `newTimingSelect` の候補を `timingContextSelect` に応じてフィルタ
+  - カード選択時に種別が `スキル` なら初期文脈を `skill`、それ以外は `attacker` に設定

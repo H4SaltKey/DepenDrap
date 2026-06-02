@@ -387,6 +387,10 @@ if(localStorage.getItem("dev") !== "true"){
       <div class="blockEditor">
         <label><input type="checkbox" id="useEffectBlocks"> ブロック編集を使う（`effectBlocks` 優先）</label>
         <div class="blockRow">
+          <select id="timingContextSelect">
+            <option value="attacker">アタッカー使用時</option>
+            <option value="skill">スキル使用時</option>
+          </select>
           <select id="newTimingSelect"></select>
           <button type="button" id="addTimingBtn">発動タイミングを追加</button>
           <span id="effectBlocksSummary" style="font-size:12px;color:#666;"></span>

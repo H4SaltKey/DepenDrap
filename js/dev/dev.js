@@ -46,6 +46,8 @@ const TRACKER_OP_OPTIONS = [
   { value: "lte", label: "以下" },
   { value: "lt", label: "より小さい" }
 ];
+const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "continuous", "manual"];
+const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "continuous", "manual"];
 
 function getSelectedCard() {
   if (!selectedId) return null;
@@ -114,7 +116,9 @@ function createDefaultEffectByCategory(categoryId) {
 function renderTimingSelectOptions() {
   const select = document.getElementById("newTimingSelect");
   if (!select) return;
-  const timings = window.CardEffectBlockCatalog?.TIMINGS || [];
+  const context = document.getElementById("timingContextSelect")?.value || "attacker";
+  const allowed = context === "skill" ? SKILL_TIMINGS : ATTACKER_TIMINGS;
+  const timings = (window.CardEffectBlockCatalog?.TIMINGS || []).filter((t) => allowed.includes(t.id));
   select.innerHTML = timings.map((t) => `<option value="${t.id}">${t.label}</option>`).join("");
 }
 
@@ -151,6 +155,7 @@ function renderEffectBlocksEditor() {
     `;
     const timingSelect = timingEl.querySelector('[data-role="timingSelect"]');
     timingSelect.innerHTML = (window.CardEffectBlockCatalog?.TIMINGS || [])
+      .filter((t) => ATTACKER_TIMINGS.includes(t.id) || SKILL_TIMINGS.includes(t.id) || t.id === timing.timing)
       .map((t) => `<option value="${t.id}" ${t.id === timing.timing ? "selected" : ""}>${t.label}</option>`)
       .join("");
     timingSelect.addEventListener("change", (e) => {
@@ -429,6 +434,12 @@ if (addTimingBtn) {
     renderEffectBlocksEditor();
   });
 }
+const timingContextSelect = document.getElementById("timingContextSelect");
+if (timingContextSelect) {
+  timingContextSelect.addEventListener("change", () => {
+    renderTimingSelectOptions();
+  });
+}
 
 // ===== カード追加 =====
 document.getElementById("addCardBtn").addEventListener("click", () => {
@@ -510,6 +521,11 @@ function selectCard(id) {
   const useBlocks = document.getElementById("useEffectBlocks");
   if (useBlocks) {
     useBlocks.checked = !!(card.effectBlocks && Array.isArray(card.effectBlocks.timings));
+  }
+  const timingContextSelect = document.getElementById("timingContextSelect");
+  if (timingContextSelect) {
+    timingContextSelect.value = card.type === "スキル" ? "skill" : "attacker";
+    renderTimingSelectOptions();
   }
   renderEffectBlocksEditor();
   renderDevCards();

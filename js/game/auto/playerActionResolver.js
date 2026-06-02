@@ -178,7 +178,7 @@
     const cardName = profile.name || profile.id || "カード";
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const flowId = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
-    const triggerName = normalizeTrigger(profile.cardKind === "skill" ? "onAttack" : "onSummon");
+    const triggerName = normalizeTrigger("onSummon");
 
     logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
     bumpFlowCounter("turn", owner, "flow.start.count", 1);
@@ -214,7 +214,7 @@
       if (scriptResult && scriptResult.preventDefaultDsl) preventDefaultDsl = true;
     }
 
-    if (!preventDefaultDsl) {
+    if (!preventDefaultDsl && profile.cardKind !== "skill") {
       const dsl = profile.effectDsl;
       let resolvedEffects = 0;
       let knownEffects = 0;
@@ -253,7 +253,7 @@
         logFlow(`EFFECT_CHECK ${flowId} dsl=none`);
         trackEffectActivation(owner, cardId, triggerName, "NONE_DSL");
       }
-    } else {
+    } else if (preventDefaultDsl) {
       logFlow(`EFFECT_CHECK ${flowId} scripted=first8`);
       trackEffectActivation(owner, cardId, triggerName, "SCRIPTED_FIRST8");
     }
@@ -322,7 +322,7 @@
       const result = original.apply(this, arguments);
       try {
         resolveCardOnPlay(cardEl, zoneType);
-        if (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill")) {
+        if (zoneType === "grave" && prevZoneType === "attacker") {
           if (cardEl) cardEl.dataset.didDirectAttack = prevDidDirectAttack;
           resolveCardOnLeave(cardEl);
         }

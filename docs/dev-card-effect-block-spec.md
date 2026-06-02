@@ -59,7 +59,7 @@
 - 攻撃力調整系: `add_atk`
 - ダメージ系: `damage`
 - カード系: `draw`, `move_source_to_hand`, `move_source_to_grave`
-- PP系: `recover_pp`, `set_pp_min`, `recover_pp_to`
+- PP系: `recover_pp`, `set_pp_min`
 - HP操作系: `heal`
 - HP操作系: `hp_reduce`
 - 効果付与系: `grant_status`（準備のみ）
@@ -76,7 +76,6 @@
 - `move_source_to_grave` -> `MOVE_SOURCE_TO_GRAVE`
 - `recover_pp` -> `RECOVER_PP`
 - `set_pp_min` -> `SET_PP_MIN`
-- `recover_pp_to` -> `SET_PP_MIN`
 - `heal` -> `HEAL`
 - `hp_reduce` -> `DAMAGE` (`damageType: "hp_reduce"`, `subType: "none"`)
 - `trigger_attack_effect` -> `TRIGGER_ATTACK_EFFECT`

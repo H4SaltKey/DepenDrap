@@ -5159,3 +5159,24 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `js/dev/cardEffectBlockCatalog.js`
 - `js/dev/cardEffectBlockCompiler.js`
 - `docs/dev-card-effect-block-spec.md`
+
+---
+
+## Round 32 — PP回復ブロック重複を整理（2026-06-02）
+
+### 結論
+
+- `set_pp_min` と `recover_pp_to` は同一挙動だったため、UI定義上の重複を解消
+
+### 対応
+
+- `js/dev/cardEffectBlockCatalog.js`
+  - `recover_pp_to` を削除
+  - PP「Nまで回復」は `set_pp_min` のみを使用
+- `docs/dev-card-effect-block-spec.md`
+  - PP系一覧から `recover_pp_to` を削除
+  - 変換ルールの `recover_pp_to` 記述を削除
+
+### 互換
+
+- 既存データ互換のため、コンパイラ側は `recover_pp_to` 入力を受理できる状態を維持

@@ -183,6 +183,13 @@
     logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
     bumpFlowCounter("turn", owner, "flow.start.count", 1);
     bumpFlowCounter("game", owner, "flow.start.count", 1);
+    if (profile.cardKind === "skill") {
+      bumpFlowCounter("turn", owner, "use.skill", 1);
+      bumpFlowCounter("game", owner, "use.skill", 1);
+    } else if (profile.cardKind === "attacker" || profile.cardKind === "support") {
+      bumpFlowCounter("turn", owner, "use.attacker", 1);
+      bumpFlowCounter("game", owner, "use.attacker", 1);
+    }
 
     if (!spendCardCost(owner, profile)) {
       logFlow(`EFFECT_CHECK ${flowId} skipped: PP不足`);

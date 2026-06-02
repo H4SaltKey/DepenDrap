@@ -5311,3 +5311,90 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `cardTarget` から実カードを解決する処理を追加
   - `MOVE_SOURCE_TO_HAND/GRAVE/DECK`, `FETCH_CARD`, `PLAY_SOURCE_TO_FIELD`, `DUPLICATE_SOURCE_TO_HAND`, `REVEAL_CARD` へ適用
   - モンスターターゲット時の不成立カード系を `skippedByInvalidTarget` で無効化
+
+---
+
+## Round 37 — タイミング一括条件 + 条件項目拡張（2026-06-02）
+
+### タイミング一括条件
+
+- 各タイミングに `このタイミングの条件を使う` を追加
+- 条件成立時のみ、そのタイミング配下効果を順番実行
+- コンパイル時は `trigger.bundleCondition` として出力
+
+### 条件仕様更新
+
+- 退場時条件に `直接攻撃したか`（`any/did/not`）を追加
+- 記録条件 `何が` に以下を追加
+  - `HP/PP/シールド/防御力(合計)/攻撃力/スキルカードの使用枚数/アタッカーカードの使用枚数/手札/山札/墓地`
+- 記録条件モードを以下へ変更
+  - `現在値`
+  - `がN以上増加`
+  - `がN以上減少`
+  - `がN以上増減`
+
+### 実装
+
+- `js/dev/dev.js`
+  - タイミング単位の一括条件UIを追加
+  - 効果条件UIを新モードへ更新
+  - `onLeave` のときだけ `直接攻撃したか` を表示
+- `js/dev/cardEffectBlockCompiler.js`
+  - タイミング条件を `bundleCondition` 出力
+- `js/game/effects/effectEngine.js`
+  - `bundleCondition` 評価を追加
+  - `directAttack` 条件を評価
+  - 新 `trackerCheck.mode`（current/inc_n/dec_n/both_n）を評価
+  - `skill_use/attacker_use/hand/deck/grave` の値解決を追加
+- `js/game/auto/playerActionResolver.js`
+  - カード使用時に `use.skill/use.attacker` カウンタを記録
+
+---
+
+## Round 38 — 条件階層拡張 + 効果番号連動（2026-06-02）
+
+### 追加仕様
+
+- 条件同階層に以下を追加
+  - `アタッカー場のカードのT効果によって`（T選択）
+  - `スキルカードの効果によって`
+  - `この一連(同じタイミング内)の効果中`
+- `N番目が発動したなら` を追加（複数番号選択）
+- 同タイミング内の効果番号を表示し、上下移動可能にした
+  - 実行順は番号（上から1..N）の昇順
+  - 並べ替え後は位置に応じて番号が更新される
+- 記録条件 owner を拡張
+  - `アタッカー場のカード / 使用したスキルカード / このカード`
+
+### 実装
+
+- `js/dev/dev.js`
+  - 効果番号表示、上下移動ボタンを追加
+  - 新条件UI（T効果/スキル効果/同一連/N番目）を追加
+  - タイミング一括条件にも同等入力を追加
+  - 記録条件 owner の選択肢を拡張
+- `js/game/effects/effectEngine.js`
+  - 同一タイミング実行チェーン (`__chain.executedOrders`) を導入
+  - `requiredExecutedOrder`（N番目条件）評価を追加
+  - `byAttackerEffect / attackerTriggerT / bySkillEffect / inSameChain` を評価
+  - 記録条件 owner（attacker_card/used_skill_card/this_card）評価を追加
+
+---
+
+## Round 39 — N番目条件の OR/AND 切替を追加（2026-06-02）
+
+### 追加
+
+- `N番目が発動したなら` の判定モードを追加
+  - `どれか(OR)` = any
+  - `すべて(AND)` = all
+
+### 実装
+
+- `js/dev/dev.js`
+  - `requiredExecutedOrderMode` UI を追加
+  - 条件デフォルトに `requiredExecutedOrderMode: "any"` を追加
+- `js/game/effects/effectEngine.js`
+  - `requiredExecutedOrderMode` に応じて `some/every` で判定
+- `docs/dev-card-effect-block-spec.md`
+  - 判定モード仕様を追記

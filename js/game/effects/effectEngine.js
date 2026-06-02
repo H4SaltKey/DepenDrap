@@ -349,35 +349,110 @@
     if (!check || typeof check !== "object") return 0;
     const scope = forceTurnScope ? "turn" : String(check.scope || "turn");
     const stat = String(check.stat || "hp");
-    const direction = String(check.direction || "inc");
-    const metric = String(check.metric || "amount");
+    const mode = String(check.mode || "current");
     const ownerType = String(check.owner || "self");
     const owner = ownerType === "target"
       ? (context.event?.targetOwner || context.opponent)
       : context.owner;
+    const sourceCard = context.sourceCard || null;
+    const sourceOwner = sourceCard?.dataset?.owner || context.owner;
+    const attackerCard = getTopZoneCard(context.owner, "attacker");
+    const skillCard = (context.sourceProfile?.cardKind === "skill" || sourceCard?.dataset?.zoneType === "skill")
+      ? sourceCard
+      : getTopZoneCard(context.owner, "skill");
+    function readCardStat(card, key) {
+      if (!card) return 0;
+      if (key === "atk") {
+        const profile = window.CardCombatData?.getResolvedCardData?.(card.dataset.id, card.dataset.owner || sourceOwner) || null;
+        const base = Number(profile?.attack || 0);
+        const bonus = Number(card.dataset.attackBonus || 0);
+        return Math.max(0, base + bonus);
+      }
+      return 0;
+    }
+    if (ownerType === "attacker_card") return readCardStat(attackerCard, stat);
+    if (ownerType === "used_skill_card") return readCardStat(skillCard, stat);
+    if (ownerType === "this_card") return readCardStat(sourceCard, stat);
+    if (["hand", "deck", "grave"].includes(stat)) {
+      if (typeof window.getZoneCards === "function") {
+        if (stat === "grave") return Number((window.getZoneCards(owner, "grave") || []).length);
+      }
+      if (stat === "hand") {
+        const content = (typeof window.getFieldContent === "function") ? window.getFieldContent() : document.getElementById("fieldContent");
+        if (!content) return 0;
+        const handYMin = Number(window.HAND_ZONE_Y_MIN || 1460);
+        return Number(Array.from(content.querySelectorAll(".card:not(.deckObject)"))
+          .filter((el) => (el.dataset.owner || "") === owner && !el.dataset.zoneType && Number(el.dataset.y || 0) >= handYMin).length);
+      }
+      if (stat === "deck") {
+        if (typeof window.getDeckCount === "function") return Number(window.getDeckCount(owner) || 0);
+        return 0;
+      }
+    }
+    if (stat === "skill_use" || stat === "attacker_use") {
+      const key = stat === "skill_use" ? "use.skill" : "use.attacker";
+      return Number(window.GameStatTracker.resolvePath(`${scope}.custom.${key}`, owner) || 0);
+    }
     const basePath = `${scope}.${stat}.`;
     const read = (field) => Number(window.GameStatTracker.resolvePath(basePath + field, owner) || 0);
-    if (direction === "inc") return metric === "count" ? read("incCount") : read("incAmount");
-    if (direction === "dec") return metric === "count" ? read("decCount") : read("decAmount");
-    const inc = metric === "count" ? read("incCount") : read("incAmount");
-    const dec = metric === "count" ? read("decCount") : read("decAmount");
-    return inc + dec;
+    if (mode === "inc_n") return read("incAmount");
+    if (mode === "dec_n") return read("decAmount");
+    if (mode === "both_n") return read("incAmount") + read("decAmount");
+    return read("lastAfter");
   }
 
-  function evaluateEffectCondition(effect, context) {
-    const cond = effect?.condition;
+  function evaluateRuntimeCondition(cond, context) {
     if (!cond || typeof cond !== "object") return true;
     if (Object.prototype.hasOwnProperty.call(cond, "whileOnField") && cond.whileOnField === true) {
       if (!isCardOnField(context.sourceCard)) return false;
     }
     const thisTurnOnly = Object.prototype.hasOwnProperty.call(cond, "thisTurn") && cond.thisTurn === true;
+    const directAttackMode = String(cond.directAttack || "any");
+    if (directAttackMode === "did" && context.event?.didDirectAttack !== true) return false;
+    if (directAttackMode === "not" && context.event?.didDirectAttack !== false) return false;
+    if (cond.byAttackerEffect === true) {
+      const isAttacker = (context.sourceProfile?.cardKind === "attacker")
+        || (context.sourceCard?.dataset?.zoneType === "attacker");
+      if (!isAttacker) return false;
+      const t = String(cond.attackerTriggerT || "onAttack");
+      if (String(context.event?.name || "") !== t) return false;
+    }
+    if (cond.bySkillEffect === true) {
+      const isSkill = (context.sourceProfile?.cardKind === "skill")
+        || (context.sourceCard?.dataset?.zoneType === "skill");
+      if (!isSkill) return false;
+    }
+    if (cond.inSameChain === true) {
+      const chain = context.event?.__chain;
+      if (!chain || !Array.isArray(chain.executedOrders) || chain.executedOrders.length === 0) return false;
+    }
+    if (Array.isArray(cond.requiredExecutedOrder) && cond.requiredExecutedOrder.length > 0) {
+      const chain = context.event?.__chain;
+      const done = new Set((chain && Array.isArray(chain.executedOrders)) ? chain.executedOrders : []);
+      const mode = String(cond.requiredExecutedOrderMode || "any");
+      if (mode === "all") {
+        const allMatched = cond.requiredExecutedOrder.every((n) => done.has(Number(n)));
+        if (!allMatched) return false;
+      } else {
+        const anyMatched = cond.requiredExecutedOrder.some((n) => done.has(Number(n)));
+        if (!anyMatched) return false;
+      }
+    }
     if (cond.trackerCheck && typeof cond.trackerCheck === "object") {
       const left = getTrackerValueForCondition(cond.trackerCheck, context, thisTurnOnly);
-      const op = String(cond.trackerCheck.op || "gte");
+      const mode = String(cond.trackerCheck.mode || "current");
       const right = Number(cond.trackerCheck.value || 0);
-      if (!compareByOp(left, op, right)) return false;
+      if (mode === "current") {
+        if (!compareByOp(left, "gte", right)) return false;
+      } else {
+        if (!compareByOp(left, "gte", right)) return false;
+      }
     }
     return true;
+  }
+
+  function evaluateEffectCondition(effect, context) {
+    return evaluateRuntimeCondition(effect?.condition, context);
   }
 
   const EffectExecutor = {
@@ -550,8 +625,20 @@
     matched.forEach((trigger) => {
       const vars = evaluateVariables(trigger.variables, context);
       if (!ConditionEvaluator.evaluateCondition(trigger.condition, context, vars)) return;
-      (trigger.effects || []).forEach((effect) => {
-        const r = EffectExecutor.executeEffect(effect, context, vars);
+      if (!evaluateRuntimeCondition(trigger.bundleCondition, context)) return;
+      const chain = { executedOrders: [] };
+      (trigger.effects || []).forEach((effect, idx) => {
+        const order = idx + 1;
+        const localContext = {
+          ...context,
+          event: {
+            ...(context.event || {}),
+            __chain: chain,
+            __effectOrder: order
+          }
+        };
+        const r = EffectExecutor.executeEffect(effect, localContext, vars);
+        if (r && r.applied) chain.executedOrders.push(order);
         resultEffects.push(r);
       });
     });

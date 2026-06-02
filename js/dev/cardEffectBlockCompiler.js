@@ -132,7 +132,11 @@
         .map(compileBlockEffect)
         .filter(Boolean);
       if (effects.length === 0) return;
-      triggers.push({ on, effects });
+      const trigger = { on, effects };
+      if (timingNode.useCondition === true && timingNode.condition && typeof timingNode.condition === "object") {
+        trigger.bundleCondition = timingNode.condition;
+      }
+      triggers.push(trigger);
     });
 
     return {

@@ -291,8 +291,7 @@ function renderEffectBlocksEditor() {
       }
       function refreshConditionVisible() {
         conditionAreas.forEach((el) => {
-          el.style.opacity = effect.useCondition === true ? "1" : "0.45";
-          el.style.pointerEvents = effect.useCondition === true ? "auto" : "none";
+          el.style.display = effect.useCondition === true ? "" : "none";
         });
       }
 
@@ -853,10 +852,10 @@ document.getElementById("doneBtn").addEventListener("click", () => {
     const fromBlocks = (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function")
       ? window.CardEffectBlockCompiler.compileProgramToDsl(c.effectBlocks)
       : null;
-    const fromText = (window.CardDSL && typeof window.CardDSL.compileText === "function")
-      ? window.CardDSL.compileText(effectText)
-      : null;
-    const compiledDsl = fromBlocks || fromText;
+    const compiledDsl = fromBlocks || {
+      format: (window.CardEffectBlockCompiler && window.CardEffectBlockCompiler.DSL_FORMAT) || "dependrap.dsl.v1",
+      triggers: []
+    };
     const entry = {
       id: c.id,
       image: c.image || "",

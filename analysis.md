@@ -5123,3 +5123,22 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - 文脈ごとの許可タイミング配列を追加
   - `newTimingSelect` の候補を `timingContextSelect` に応じてフィルタ
   - カード選択時に種別が `スキル` なら初期文脈を `skill`、それ以外は `attacker` に設定
+
+---
+
+## Round 30 — DSL自動生成（effectText由来）を削除（2026-06-02）
+
+### 変更
+
+- `effectText -> CardDSL.compileText` の自動生成経路を完全削除
+- 保存時の `effectDsl` は `effectBlocks` からのみ生成
+- `effectBlocks` 未設定/不正時は空DSL（`triggers: []`）を出力
+
+### 反映
+
+- `js/dev/dev.js`
+  - `fromText` / `CardDSL.compileText` フォールバックを削除
+  - `compiledDsl` を `fromBlocks` 専用に変更
+- `dev.html`
+  - `js/card/cardDsl.js` の読み込みを削除
+  - 効果テキストのラベルを「表示/検索用メモ」へ変更

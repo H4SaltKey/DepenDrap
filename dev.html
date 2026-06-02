@@ -381,7 +381,7 @@ if(localStorage.getItem("dev") !== "true"){
         <input type="text" id="editTags" placeholder="例: 火力, 範囲, 支援">
       </div>
       <div>
-        <label>効果テキスト（DSL生成の元テキスト）</label><br>
+        <label>効果テキスト（表示/検索用メモ）</label><br>
         <textarea id="editEffectText" rows="5" style="width:100%;font-size:14px;padding:6px;border:1px solid #aaa;box-sizing:border-box;resize:vertical;" placeholder="例: 登場時：カードを1枚引く"></textarea>
       </div>
       <div class="blockEditor">
@@ -443,7 +443,6 @@ if(localStorage.getItem("dev") !== "true"){
 <!-- フッター（完了ボタン削除済み） -->
 <div class="devFooter" style="display:none;"></div>
 
-<script src="js/card/cardDsl.js?v=1"></script>
 <script src="js/dev/cardEffectBlockCatalog.js?v=1"></script>
 <script src="js/dev/cardEffectBlockCompiler.js?v=1"></script>
 <script src="js/card/cardData.js"></script>

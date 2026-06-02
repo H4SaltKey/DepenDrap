@@ -11,6 +11,7 @@
     move_source_to_grave: "MOVE_SOURCE_TO_GRAVE",
     recover_pp: "RECOVER_PP",
     set_pp_min: "SET_PP_MIN",
+    recover_pp_to: "SET_PP_MIN",
     heal: "HEAL",
     trigger_attack_effect: "TRIGGER_ATTACK_EFFECT"
   };
@@ -60,7 +61,7 @@
       return compiled;
     }
 
-    if (["add_atk", "draw", "recover_pp", "set_pp_min", "heal"].includes(kind)) {
+    if (["add_atk", "draw", "recover_pp", "set_pp_min", "recover_pp_to", "heal"].includes(kind)) {
       compiled.amount = normalizeValue(effect.value, 1);
       return compiled;
     }

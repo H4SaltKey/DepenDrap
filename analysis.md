@@ -5142,3 +5142,20 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `dev.html`
   - `js/card/cardDsl.js` の読み込みを削除
   - 効果テキストのラベルを「表示/検索用メモ」へ変更
+
+---
+
+## Round 31 — PP「Nまで回復（不足分のみ）」設定を明示追加（2026-06-02）
+
+### 対応
+
+- PP系ブロックに `recover_pp_to` を追加
+  - 例: 値を `1` にすると「現在値が0なら1まで回復」
+- 既存の `set_pp_min` も同じ挙動としてラベルを明確化
+- どちらもコンパイル時は `SET_PP_MIN` に変換
+
+### 変更ファイル
+
+- `js/dev/cardEffectBlockCatalog.js`
+- `js/dev/cardEffectBlockCompiler.js`
+- `docs/dev-card-effect-block-spec.md`

@@ -152,6 +152,32 @@
     font-size: 13px;
     color: #555;
   }
+  .blockEditor {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background: #fafafa;
+  }
+  .blockRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .timingCard {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px;
+    margin-top: 10px;
+  }
+  .effectRow {
+    border: 1px dashed #ccc;
+    border-radius: 6px;
+    padding: 8px;
+    margin-top: 8px;
+  }
 
   .devEditFields input[type="text"] {
     width: 100%;
@@ -357,6 +383,15 @@ if(localStorage.getItem("dev") !== "true"){
       <div>
         <label>効果テキスト（DSL生成の元テキスト）</label><br>
         <textarea id="editEffectText" rows="5" style="width:100%;font-size:14px;padding:6px;border:1px solid #aaa;box-sizing:border-box;resize:vertical;" placeholder="例: 登場時：カードを1枚引く"></textarea>
+      </div>
+      <div class="blockEditor">
+        <label><input type="checkbox" id="useEffectBlocks"> ブロック編集を使う（`effectBlocks` 優先）</label>
+        <div class="blockRow">
+          <select id="newTimingSelect"></select>
+          <button type="button" id="addTimingBtn">発動タイミングを追加</button>
+          <span id="effectBlocksSummary" style="font-size:12px;color:#666;"></span>
+        </div>
+        <div id="effectBlocksContainer"></div>
       </div>
       <button class="selectImageBtn" id="selectImageBtn">📁 画像を選択（PNG）</button>
       <input type="file" id="imageFileInput" accept="image/png" style="display:none;">

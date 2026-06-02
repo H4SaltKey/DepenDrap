@@ -4,6 +4,205 @@ let pendingImages = {};
 let selectedId = null;
 let cardSearchQuery = "";
 let cardSortMode = "idAsc";
+const BLOCK_TARGET_OPTIONS = ["self", "opponent", "owner", "eventTarget"];
+
+function getSelectedCard() {
+  if (!selectedId) return null;
+  return devCards.find((c) => c.id === selectedId) || null;
+}
+
+function createEmptyEffectBlocks() {
+  if (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.createEmptyProgram === "function") {
+    return window.CardEffectBlockCompiler.createEmptyProgram();
+  }
+  return { format: "dependrap.effectblocks.v1", timings: [] };
+}
+
+function ensureEffectBlocks(card) {
+  if (!card) return null;
+  if (!card.effectBlocks || !Array.isArray(card.effectBlocks.timings)) {
+    card.effectBlocks = createEmptyEffectBlocks();
+  }
+  return card.effectBlocks;
+}
+
+function getTimingLabel(timingId) {
+  const list = window.CardEffectBlockCatalog?.TIMINGS || [];
+  const hit = list.find((t) => t.id === timingId);
+  return hit ? hit.label : timingId;
+}
+
+function getKindsByCategory(categoryId) {
+  return (window.CardEffectBlockCatalog?.EFFECT_BLOCKS || []).filter((b) => b.category === categoryId);
+}
+
+function createDefaultEffectByCategory(categoryId) {
+  const kinds = getKindsByCategory(categoryId);
+  const first = kinds[0];
+  if (!first) return null;
+  const base = {
+    category: categoryId,
+    kind: first.id,
+    target: "self",
+    value: 1
+  };
+  if (first.id === "damage") {
+    base.damageType = "damage";
+    base.subType = "normal";
+  }
+  return base;
+}
+
+function renderTimingSelectOptions() {
+  const select = document.getElementById("newTimingSelect");
+  if (!select) return;
+  const timings = window.CardEffectBlockCatalog?.TIMINGS || [];
+  select.innerHTML = timings.map((t) => `<option value="${t.id}">${t.label}</option>`).join("");
+}
+
+function renderEffectBlocksEditor() {
+  const card = getSelectedCard();
+  const container = document.getElementById("effectBlocksContainer");
+  const useBlocks = document.getElementById("useEffectBlocks");
+  const summary = document.getElementById("effectBlocksSummary");
+  if (!container || !useBlocks || !summary) return;
+
+  if (!card || !useBlocks.checked) {
+    container.innerHTML = "";
+    summary.textContent = "テキストDSLのみ使用";
+    return;
+  }
+
+  const program = ensureEffectBlocks(card);
+  const timingCount = program.timings.length;
+  const effectCount = program.timings.reduce((n, t) => n + (Array.isArray(t.effects) ? t.effects.length : 0), 0);
+  summary.textContent = `${timingCount}タイミング / ${effectCount}効果ブロック`;
+  container.innerHTML = "";
+
+  program.timings.forEach((timing, ti) => {
+    const timingEl = document.createElement("div");
+    timingEl.className = "timingCard";
+    timingEl.innerHTML = `
+      <div class="blockRow">
+        <strong>${getTimingLabel(timing.timing)}</strong>
+        <select data-role="timingSelect"></select>
+        <button type="button" data-role="addEffect">効果を追加</button>
+        <button type="button" data-role="removeTiming" style="background:#fbe7e7;border:1px solid #e0a0a0;">このタイミングを削除</button>
+      </div>
+      <div data-role="effectList"></div>
+    `;
+    const timingSelect = timingEl.querySelector('[data-role="timingSelect"]');
+    timingSelect.innerHTML = (window.CardEffectBlockCatalog?.TIMINGS || [])
+      .map((t) => `<option value="${t.id}" ${t.id === timing.timing ? "selected" : ""}>${t.label}</option>`)
+      .join("");
+    timingSelect.addEventListener("change", (e) => {
+      timing.timing = e.target.value;
+      renderEffectBlocksEditor();
+    });
+    timingEl.querySelector('[data-role="addEffect"]').addEventListener("click", () => {
+      const added = createDefaultEffectByCategory("damage");
+      if (!added) return;
+      if (!Array.isArray(timing.effects)) timing.effects = [];
+      timing.effects.push(added);
+      renderEffectBlocksEditor();
+    });
+    timingEl.querySelector('[data-role="removeTiming"]').addEventListener("click", () => {
+      program.timings.splice(ti, 1);
+      renderEffectBlocksEditor();
+    });
+
+    const effectList = timingEl.querySelector('[data-role="effectList"]');
+    (timing.effects || []).forEach((effect, ei) => {
+      const effectEl = document.createElement("div");
+      effectEl.className = "effectRow";
+      effectEl.innerHTML = `
+        <div class="blockRow">
+          <span style="font-size:12px;color:#666;">カテゴリ</span>
+          <select data-role="category"></select>
+          <span style="font-size:12px;color:#666;">効果</span>
+          <select data-role="kind"></select>
+          <span style="font-size:12px;color:#666;">対象</span>
+          <select data-role="target"></select>
+          <span style="font-size:12px;color:#666;">値</span>
+          <input data-role="value" type="number" style="width:80px;" value="${Number(effect.value ?? 1)}">
+          <button type="button" data-role="removeEffect" style="background:#fbe7e7;border:1px solid #e0a0a0;">削除</button>
+        </div>
+        <div class="blockRow" data-role="damageExtra" style="display:none;">
+          <span style="font-size:12px;color:#666;">damageType</span>
+          <input data-role="damageType" type="text" style="width:130px;" value="${effect.damageType || "damage"}">
+          <span style="font-size:12px;color:#666;">subType</span>
+          <input data-role="subType" type="text" style="width:130px;" value="${effect.subType || "normal"}">
+        </div>
+      `;
+
+      const categorySelect = effectEl.querySelector('[data-role="category"]');
+      const kindSelect = effectEl.querySelector('[data-role="kind"]');
+      const targetSelect = effectEl.querySelector('[data-role="target"]');
+      const valueInput = effectEl.querySelector('[data-role="value"]');
+      const damageExtra = effectEl.querySelector('[data-role="damageExtra"]');
+      const damageTypeInput = effectEl.querySelector('[data-role="damageType"]');
+      const subTypeInput = effectEl.querySelector('[data-role="subType"]');
+
+      categorySelect.innerHTML = (window.CardEffectBlockCatalog?.EFFECT_CATEGORIES || [])
+        .map((c) => `<option value="${c.id}" ${c.id === effect.category ? "selected" : ""}>${c.label}</option>`)
+        .join("");
+      targetSelect.innerHTML = BLOCK_TARGET_OPTIONS
+        .map((t) => `<option value="${t}" ${t === (effect.target || "self") ? "selected" : ""}>${t}</option>`)
+        .join("");
+
+      function refreshKindOptions() {
+        const kinds = getKindsByCategory(effect.category);
+        if (kinds.length === 0) {
+          kindSelect.innerHTML = "";
+          return;
+        }
+        if (!kinds.find((k) => k.id === effect.kind)) {
+          effect.kind = kinds[0].id;
+        }
+        kindSelect.innerHTML = kinds.map((k) => `<option value="${k.id}" ${k.id === effect.kind ? "selected" : ""}>${k.label}</option>`).join("");
+      }
+
+      function refreshDamageVisible() {
+        damageExtra.style.display = effect.kind === "damage" ? "flex" : "none";
+      }
+
+      refreshKindOptions();
+      refreshDamageVisible();
+
+      categorySelect.addEventListener("change", (e) => {
+        effect.category = e.target.value;
+        const first = createDefaultEffectByCategory(effect.category);
+        if (first) effect.kind = first.kind;
+        refreshKindOptions();
+        refreshDamageVisible();
+      });
+      kindSelect.addEventListener("change", (e) => {
+        effect.kind = e.target.value;
+        refreshDamageVisible();
+      });
+      targetSelect.addEventListener("change", (e) => {
+        effect.target = e.target.value;
+      });
+      valueInput.addEventListener("input", () => {
+        effect.value = Number(valueInput.value) || 0;
+      });
+      damageTypeInput.addEventListener("input", () => {
+        effect.damageType = damageTypeInput.value || "damage";
+      });
+      subTypeInput.addEventListener("input", () => {
+        effect.subType = subTypeInput.value || "normal";
+      });
+      effectEl.querySelector('[data-role="removeEffect"]').addEventListener("click", () => {
+        timing.effects.splice(ei, 1);
+        renderEffectBlocksEditor();
+      });
+
+      effectList.appendChild(effectEl);
+    });
+
+    container.appendChild(timingEl);
+  });
+}
 
 // ===== 初期化 =====
 async function initDev() {
@@ -32,9 +231,38 @@ async function initDev() {
   const cardsScroll = getCardsScrollContainer();
   if (cardsScroll) cardsScroll.addEventListener("scroll", updateScrollButtons);
   renderLevelStatsTable();
+  renderTimingSelectOptions();
 }
 
 initDev();
+
+const useBlocksInput = document.getElementById("useEffectBlocks");
+if (useBlocksInput) {
+  useBlocksInput.addEventListener("change", () => {
+    const card = getSelectedCard();
+    if (!card) return;
+    if (useBlocksInput.checked) {
+      ensureEffectBlocks(card);
+    } else {
+      card.effectBlocks = null;
+    }
+    renderEffectBlocksEditor();
+  });
+}
+
+const addTimingBtn = document.getElementById("addTimingBtn");
+if (addTimingBtn) {
+  addTimingBtn.addEventListener("click", () => {
+    const card = getSelectedCard();
+    if (!card) return;
+    const useBlocks = document.getElementById("useEffectBlocks");
+    if (useBlocks && !useBlocks.checked) useBlocks.checked = true;
+    const program = ensureEffectBlocks(card);
+    const selectedTiming = document.getElementById("newTimingSelect")?.value || "onSummon";
+    program.timings.push({ timing: selectedTiming, effects: [] });
+    renderEffectBlocksEditor();
+  });
+}
 
 // ===== カード追加 =====
 document.getElementById("addCardBtn").addEventListener("click", () => {
@@ -113,6 +341,11 @@ function selectCard(id) {
   }
 
   document.getElementById("editMessage").innerText = "";
+  const useBlocks = document.getElementById("useEffectBlocks");
+  if (useBlocks) {
+    useBlocks.checked = !!(card.effectBlocks && Array.isArray(card.effectBlocks.timings));
+  }
+  renderEffectBlocksEditor();
   renderDevCards();
 }
 

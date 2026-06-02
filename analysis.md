@@ -4973,3 +4973,42 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 備考
 
 - 今回は「土台のみ」。ブロックUI（ドラッグ&ドロップ編集、条件式GUI、リアルタイムプレビュー）は次段で追加する。
+
+---
+
+## Round 25 — 開発者モードにブロックエディタUIを追加（2026-06-02）
+
+### 実装内容
+
+- `dev.html`
+  - 編集パネルにブロック編集領域を追加
+    - `useEffectBlocks`（有効/無効）
+    - `newTimingSelect` + `addTimingBtn`（発動タイミング追加）
+    - `effectBlocksContainer`（タイミング/効果ブロック編集本体）
+  - UI用の最小スタイル（`blockEditor`, `timingCard`, `effectRow`）を追加
+
+- `js/dev/dev.js`
+  - `effectBlocks` 編集ヘルパーを追加
+    - 空プログラム生成
+    - 選択カード取得
+    - タイミング/効果のレンダリング
+  - タイミング単位で以下を編集可能化
+    - 発動タイミング変更
+    - 効果ブロック追加/削除
+  - 効果ブロック単位で以下を編集可能化
+    - カテゴリ
+    - 効果種別
+    - 対象
+    - 値
+    - `damage` の追加パラメータ（`damageType`, `subType`）
+  - カード選択時に `effectBlocks` の有無を反映してエディタを再描画
+
+### 現在の到達点
+
+- 開発者モード内で `effectBlocks.timings[]` をGUI経由で編集できる状態になった
+- 保存処理は前Round実装により `effectBlocks -> effectDsl` 優先で出力される
+
+### 残課題
+
+- Scratch 的なドラッグ&ドロップ並べ替えは未実装（クリック編集方式）
+- 条件式ブロック（`condition`/`variables`）のGUI入力は未実装

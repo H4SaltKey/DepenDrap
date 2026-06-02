@@ -44,6 +44,7 @@ window.MonsterManager = (function() {
           monsterId: id,
           currentHp: def?.hp || 5,
           maxHp: def?.hp || 5,
+          atkBonus: 0,
           shield: Number(def?.shield || 0),
           def: Number(def?.def || 0),
           hitCountThisTurn: 0,
@@ -63,6 +64,7 @@ window.MonsterManager = (function() {
           monsterId: id,
           currentHp: def?.hp || 5,
           maxHp: def?.hp || 5,
+          atkBonus: 0,
           shield: Number(def?.shield || 0),
           def: Number(def?.def || 0),
           hitCountThisTurn: 0,
@@ -220,7 +222,7 @@ window.MonsterManager = (function() {
       if (rand <= 0) { chosen = a; break; }
     }
 
-    let dmg = def.atk || 1;
+    let dmg = Math.max(0, Number(def.atk || 1) + Number(slot.atkBonus || 0));
     if (chosen.type === "attack_double") dmg = Math.floor(dmg * 1.5);
 
     if (typeof window.addGameLog === "function") {
@@ -262,6 +264,18 @@ window.MonsterManager = (function() {
    */
   function getSlot(i) { return _slots[i] || null; }
   function getAllSlots() { return _slots.slice(); }
+  function getMonsterAttack(slotIndex) {
+    const slot = _slots[slotIndex];
+    if (!slot) return 0;
+    const def = _getDef(slot.monsterId);
+    return Math.max(0, Number(def?.atk || 0) + Number(slot.atkBonus || 0));
+  }
+  function addMonsterAttack(slotIndex, delta) {
+    const slot = _slots[slotIndex];
+    if (!slot) return 0;
+    slot.atkBonus = Number(slot.atkBonus || 0) + Number(delta || 0);
+    return getMonsterAttack(slotIndex);
+  }
 
   /**
    * Firebase同期用シリアライズ
@@ -295,6 +309,8 @@ window.MonsterManager = (function() {
     processRetreatAttacks,
     getSlot,
     getAllSlots,
+    getMonsterAttack,
+    addMonsterAttack,
     serialize,
     deserialize,
     SLOT_COUNT

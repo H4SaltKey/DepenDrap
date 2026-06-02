@@ -63,6 +63,10 @@
 
     if (["add_atk", "draw", "recover_pp", "set_pp_min", "recover_pp_to", "heal"].includes(kind)) {
       compiled.amount = normalizeValue(effect.value, 1);
+      if (kind === "add_atk") {
+        compiled.atkMode = String(effect.atkMode || "increase");
+        compiled.atkTarget = String(effect.atkTarget || "this_card");
+      }
       return compiled;
     }
 

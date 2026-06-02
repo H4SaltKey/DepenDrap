@@ -57,6 +57,15 @@
 ## 5. カテゴリ内ブロック（初期定義）
 
 - 攻撃力調整系: `add_atk`
+  - 効果: `increase | decrease`
+  - 対象:
+    - `attacker_zone_card`（アタッカー場のカード）
+    - `this_card`（このカード）
+    - `target_attacker_zone_card`（現在のターゲットのアタッカー場のカード）
+    - `target_skill_card`（現在のターゲットの使用するスキルカード）
+    - `self_base_atk`（自身の基礎攻撃力）
+    - `target_base_atk`（現在のターゲットの基礎攻撃力）
+  - 特例: 現在のターゲットがモンスターの場合、`target_*` 系対象はモンスター攻撃力を対象にする
 - ダメージ系: `damage`
 - カード系: `draw`, `move_source_to_hand`, `move_source_to_grave`
 - PP系: `recover_pp`, `set_pp_min`

@@ -138,6 +138,82 @@
     return [resolveTargetOwner(effect, context)];
   }
 
+  function getTopZoneCard(owner, zoneType) {
+    if (typeof window.getZoneCards !== "function") return null;
+    const cards = window.getZoneCards(owner, zoneType) || [];
+    return cards.length > 0 ? cards[cards.length - 1] : null;
+  }
+
+  function addCardAttack(cardEl, delta) {
+    if (!cardEl) return;
+    const prev = Number(cardEl.dataset.attackBonus || 0);
+    const next = prev + Number(delta || 0);
+    cardEl.dataset.attackBonus = String(next);
+    if (typeof window.update === "function") window.update(true);
+  }
+
+  function getCurrentTargetInfo(owner, context) {
+    if (window.BattleTargetSystem && typeof window.BattleTargetSystem.getTarget === "function") {
+      const t = window.BattleTargetSystem.getTarget(owner);
+      if (t && typeof t === "object" && typeof t.slotIndex === "number") {
+        return { type: "monster", slotIndex: t.slotIndex };
+      }
+    }
+    return {
+      type: "player",
+      owner: context.event?.targetOwner || context.opponent
+    };
+  }
+
+  function applyAddAtkByTarget(effect, context, amountSigned) {
+    const atkTarget = String(effect.atkTarget || "");
+    const targetInfo = getCurrentTargetInfo(context.owner, context);
+
+    if (atkTarget === "attacker_zone_card") {
+      addCardAttack(getTopZoneCard(context.owner, "attacker"), amountSigned);
+      return true;
+    }
+    if (atkTarget === "this_card") {
+      addCardAttack(context.sourceCard, amountSigned);
+      return true;
+    }
+    if (atkTarget === "target_attacker_zone_card") {
+      if (targetInfo.type === "monster") {
+        if (window.MonsterManager && typeof window.MonsterManager.addMonsterAttack === "function") {
+          window.MonsterManager.addMonsterAttack(targetInfo.slotIndex, amountSigned);
+        }
+        return true;
+      }
+      addCardAttack(getTopZoneCard(targetInfo.owner, "attacker"), amountSigned);
+      return true;
+    }
+    if (atkTarget === "target_skill_card") {
+      if (targetInfo.type === "monster") {
+        if (window.MonsterManager && typeof window.MonsterManager.addMonsterAttack === "function") {
+          window.MonsterManager.addMonsterAttack(targetInfo.slotIndex, amountSigned);
+        }
+        return true;
+      }
+      addCardAttack(getTopZoneCard(targetInfo.owner, "skill"), amountSigned);
+      return true;
+    }
+    if (atkTarget === "self_base_atk") {
+      if (typeof window.addVal === "function") window.addVal(context.owner, "atk", amountSigned);
+      return true;
+    }
+    if (atkTarget === "target_base_atk") {
+      if (targetInfo.type === "monster") {
+        if (window.MonsterManager && typeof window.MonsterManager.addMonsterAttack === "function") {
+          window.MonsterManager.addMonsterAttack(targetInfo.slotIndex, amountSigned);
+        }
+        return true;
+      }
+      if (typeof window.addVal === "function") window.addVal(targetInfo.owner, "atk", amountSigned);
+      return true;
+    }
+    return false;
+  }
+
   function isCardOnField(cardEl) {
     const zone = String(cardEl?.dataset?.zoneType || "");
     return zone === "attacker" || zone === "skill";
@@ -244,9 +320,15 @@
         return { applied: true, type };
       }
       if (type === "ADD_ATK") {
-        targetOwners.forEach((targetOwner) => {
-          if (typeof window.addVal === "function") window.addVal(targetOwner, "atk", amount);
-        });
+        const mode = String(effect.atkMode || "increase");
+        const sign = mode === "decrease" ? -1 : 1;
+        const amountSigned = sign * Math.max(0, amount);
+        const handledByTargetMode = applyAddAtkByTarget(effect, context, amountSigned);
+        if (!handledByTargetMode) {
+          targetOwners.forEach((targetOwner) => {
+            if (typeof window.addVal === "function") window.addVal(targetOwner, "atk", amountSigned);
+          });
+        }
         return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_GRAVE") {

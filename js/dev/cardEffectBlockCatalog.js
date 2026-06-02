@@ -25,7 +25,7 @@
   ];
 
   const EFFECT_BLOCKS = [
-    { id: "add_atk", category: "atk_adjust", label: "攻撃力を増減", params: ["target", "value", "condition"] },
+    { id: "add_atk", category: "atk_adjust", label: "攻撃力を増減", params: ["atkMode", "atkTarget", "value", "condition"] },
     { id: "damage", category: "damage", label: "ダメージを与える", params: ["target", "value", "damageType", "damageAttr", "condition"] },
     { id: "draw", category: "card", label: "カードを引く", params: ["target", "value", "condition"] },
     { id: "move_source_to_hand", category: "card", label: "このカードを手札へ戻す", params: ["target", "condition"] },

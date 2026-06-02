@@ -139,7 +139,9 @@
 
     const profile = ensureCardProfile(attacker);
     const myAtkBase = Number(window.state?.[me]?.atk || 0);
-    const cardAtk = Math.max(0, Number(profile?.attack || 0));
+    const cardAtkBase = Math.max(0, Number(profile?.attack || 0));
+    const cardAtkBonus = Number(attacker.dataset.attackBonus || 0);
+    const cardAtk = Math.max(0, cardAtkBase + cardAtkBonus);
     const amount = Math.max(1, myAtkBase + cardAtk);
     if (typeof window.applyCalculatedDamage !== "function") return false;
 
@@ -157,7 +159,7 @@
       });
     }
     runtime.lastDirectAttackKey = attackKey;
-    log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtk})`);
+    log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtkBase}${cardAtkBonus ? (cardAtkBonus > 0 ? `+${cardAtkBonus}` : `${cardAtkBonus}`) : ""})`);
     return true;
   }
 

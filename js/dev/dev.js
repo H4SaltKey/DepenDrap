@@ -46,6 +46,18 @@ const TRACKER_OP_OPTIONS = [
   { value: "lte", label: "以下" },
   { value: "lt", label: "より小さい" }
 ];
+const ATK_MODE_OPTIONS = [
+  { value: "increase", label: "増加" },
+  { value: "decrease", label: "減少" }
+];
+const ATK_TARGET_OPTIONS = [
+  { value: "attacker_zone_card", label: "アタッカー場のカード" },
+  { value: "this_card", label: "このカード" },
+  { value: "target_attacker_zone_card", label: "現在のターゲットのアタッカー場のカード" },
+  { value: "target_skill_card", label: "現在のターゲットの使用するスキルカード" },
+  { value: "self_base_atk", label: "自身の基礎攻撃力" },
+  { value: "target_base_atk", label: "現在のターゲットの基礎攻撃力" }
+];
 const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "continuous", "manual"];
 const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "continuous", "manual"];
 
@@ -88,6 +100,8 @@ function createDefaultEffectByCategory(categoryId) {
     kind: first.id,
     target: "self_player",
     value: 1,
+    atkMode: "increase",
+    atkTarget: "this_card",
     useCondition: false,
     condition: {
       whileOnField: false,
@@ -196,6 +210,12 @@ function renderEffectBlocksEditor() {
           <span style="font-size:12px;color:#666;">ダメージ属性</span>
           <select data-role="damageAttr"></select>
         </div>
+        <div class="blockRow" data-role="atkExtra" style="display:none;">
+          <span style="font-size:12px;color:#666;">増減</span>
+          <select data-role="atkMode"></select>
+          <span style="font-size:12px;color:#666;">対象</span>
+          <select data-role="atkTarget" style="min-width:300px;"></select>
+        </div>
         <div class="blockRow" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#333;"><input type="checkbox" data-role="useCondition"> 条件を使う</label>
         </div>
@@ -222,6 +242,9 @@ function renderEffectBlocksEditor() {
       const damageExtra = effectEl.querySelector('[data-role="damageExtra"]');
       const damageTypeInput = effectEl.querySelector('[data-role="damageType"]');
       const damageAttrInput = effectEl.querySelector('[data-role="damageAttr"]');
+      const atkExtra = effectEl.querySelector('[data-role="atkExtra"]');
+      const atkModeInput = effectEl.querySelector('[data-role="atkMode"]');
+      const atkTargetInput = effectEl.querySelector('[data-role="atkTarget"]');
       const useConditionInput = effectEl.querySelector('[data-role="useCondition"]');
       const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
       const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
@@ -252,6 +275,12 @@ function renderEffectBlocksEditor() {
         .join("");
       damageAttrInput.innerHTML = DAMAGE_ATTR_OPTIONS
         .map((x) => `<option value="${x.value}" ${x.value === (effect.damageAttr || "none") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      atkModeInput.innerHTML = ATK_MODE_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.atkMode || "increase") ? "selected" : ""}>${x.label}</option>`)
+        .join("");
+      atkTargetInput.innerHTML = ATK_TARGET_OPTIONS
+        .map((x) => `<option value="${x.value}" ${x.value === (effect.atkTarget || "this_card") ? "selected" : ""}>${x.label}</option>`)
         .join("");
       trackerOwnerInput.innerHTML = `<option value="self" ${(effect.condition.trackerCheck.owner || "self") === "self" ? "selected" : ""}>自身</option><option value="target" ${(effect.condition.trackerCheck.owner || "self") === "target" ? "selected" : ""}>現在ターゲット</option>`;
       trackerScopeInput.innerHTML = TRACKER_SCOPE_OPTIONS
@@ -289,6 +318,10 @@ function renderEffectBlocksEditor() {
       function refreshDamageVisible() {
         damageExtra.style.display = effect.kind === "damage" ? "flex" : "none";
       }
+      function refreshAtkVisible() {
+        atkExtra.style.display = effect.kind === "add_atk" ? "flex" : "none";
+        targetSelect.style.display = effect.kind === "add_atk" ? "none" : "";
+      }
       function refreshConditionVisible() {
         conditionAreas.forEach((el) => {
           el.style.display = effect.useCondition === true ? "" : "none";
@@ -297,6 +330,7 @@ function renderEffectBlocksEditor() {
 
       refreshKindOptions();
       refreshDamageVisible();
+      refreshAtkVisible();
       refreshConditionVisible();
 
       categorySelect.addEventListener("change", (e) => {
@@ -314,10 +348,12 @@ function renderEffectBlocksEditor() {
         }
         refreshKindOptions();
         refreshDamageVisible();
+        refreshAtkVisible();
       });
       kindSelect.addEventListener("change", (e) => {
         effect.kind = e.target.value;
         refreshDamageVisible();
+        refreshAtkVisible();
       });
       targetSelect.addEventListener("change", (e) => {
         effect.target = e.target.value;
@@ -330,6 +366,12 @@ function renderEffectBlocksEditor() {
       });
       damageAttrInput.addEventListener("change", () => {
         effect.damageAttr = damageAttrInput.value || "none";
+      });
+      atkModeInput.addEventListener("change", () => {
+        effect.atkMode = atkModeInput.value || "increase";
+      });
+      atkTargetInput.addEventListener("change", () => {
+        effect.atkTarget = atkTargetInput.value || "this_card";
       });
       useConditionInput.addEventListener("change", () => {
         effect.useCondition = useConditionInput.checked;

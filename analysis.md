@@ -5180,3 +5180,38 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 互換
 
 - 既存データ互換のため、コンパイラ側は `recover_pp_to` 入力を受理できる状態を維持
+
+---
+
+## Round 33 — 攻撃力調整の対象仕様を拡張（2026-06-02）
+
+### 追加仕様
+
+- `add_atk` に `増加/減少` モードを追加
+- 対象を以下6種に拡張
+  - `attacker_zone_card`
+  - `this_card`
+  - `target_attacker_zone_card`
+  - `target_skill_card`
+  - `self_base_atk`
+  - `target_base_atk`
+- ターゲット系対象で現在ターゲットがモンスターの場合は、モンスター攻撃力を対象にする
+
+### 実装
+
+- `js/dev/dev.js`
+  - 攻撃力調整専用UI（増減/対象セレクト）を追加
+- `js/dev/cardEffectBlockCatalog.js`
+  - `add_atk` のparamsを `atkMode/atkTarget/value` へ更新
+- `js/dev/cardEffectBlockCompiler.js`
+  - `atkMode/atkTarget` を DSL 効果に出力
+- `js/game/effects/effectEngine.js`
+  - `ADD_ATK` 実行時に対象6種を解決
+  - カード攻撃力補正を `cardEl.dataset.attackBonus` として管理
+  - モンスター対象時は `MonsterManager.addMonsterAttack` を呼ぶ
+- `js/game/monsters/MonsterManager.js`
+  - モンスターに `atkBonus` を追加
+  - `getMonsterAttack/addMonsterAttack` を追加
+  - モンスター攻撃計算で `def.atk + atkBonus` を使用
+- `js/game/auto/autoBattleEngine.js`
+  - 直接攻撃計算時に `attacker.dataset.attackBonus` を反映

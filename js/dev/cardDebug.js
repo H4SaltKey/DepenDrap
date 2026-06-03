@@ -53,14 +53,38 @@
   }
 
   function installLauncherButton() {
-    if (!window.devMode) return;
+    const devEnabled = (window.devMode === true) || (localStorage.getItem("dev") === "true");
+    if (!devEnabled) return;
     if (document.getElementById("cardDebugLaunchBtn")) return;
     const btn = document.createElement("button");
     btn.id = "cardDebugLaunchBtn";
     btn.textContent = "カードデバッグ";
-    btn.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:12050;padding:10px 14px;border:1px solid #475569;border-radius:10px;background:#0b1220;color:#e2e8f0;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.35);";
+    btn.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:12050;padding:10px 14px;border:1px solid #475569;border-radius:10px;background:#0b1220;color:#e2e8f0;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.35);max-width:calc(100vw - 24px);";
     btn.addEventListener("click", () => openCardDebugModal());
     document.body.appendChild(btn);
+  }
+
+  function installInlineLauncherButton() {
+    const devEnabled = (window.devMode === true) || (localStorage.getItem("dev") === "true");
+    if (!devEnabled) return;
+    if (document.getElementById("cardDebugLaunchInlineBtn")) return;
+    const layout = document.querySelector(".devLayout");
+    if (!layout) return;
+    const panel = document.createElement("section");
+    panel.id = "cardDebugLaunchInlinePanel";
+    panel.style.cssText = "background:white;border:1px solid #aaa;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;";
+    panel.innerHTML = `
+      <div style="font-size:14px;color:#334155;font-weight:600;">カード効果の単体検証はカードデバッグから開始</div>
+      <button id="cardDebugLaunchInlineBtn" type="button" style="padding:10px 14px;border:1px solid #1d4ed8;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;">カードデバッグを起動</button>
+    `;
+    const firstSection = layout.querySelector("section");
+    if (firstSection && firstSection.parentNode === layout) {
+      layout.insertBefore(panel, firstSection);
+    } else {
+      layout.appendChild(panel);
+    }
+    const btn = panel.querySelector("#cardDebugLaunchInlineBtn");
+    if (btn) btn.addEventListener("click", () => openCardDebugModal());
   }
 
   function openCardDebugModal() {
@@ -536,11 +560,18 @@
   window.openCardDebugModal = openCardDebugModal;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", installLauncherButton);
+    document.addEventListener("DOMContentLoaded", () => {
+      installLauncherButton();
+      installInlineLauncherButton();
+    });
   } else {
     installLauncherButton();
+    installInlineLauncherButton();
   }
   if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installLauncherButton)) {
     window._afterUpdateHooks.push(installLauncherButton);
+  }
+  if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installInlineLauncherButton)) {
+    window._afterUpdateHooks.push(installInlineLauncherButton);
   }
 })();

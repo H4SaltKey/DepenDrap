@@ -53,6 +53,12 @@
   }
 
   function getCardSourceList() {
+    if (typeof window.getCardIds === "function" && typeof window.getCardData === "function") {
+      const ids = window.getCardIds();
+      if (Array.isArray(ids) && ids.length > 0) {
+        return ids.map((id) => window.getCardData(id)).filter(Boolean);
+      }
+    }
     if (Array.isArray(window.CARD_DB) && window.CARD_DB.length > 0) return window.CARD_DB;
     if (Array.isArray(window.devCards) && window.devCards.length > 0) {
       return window.devCards.map((c) => ({
@@ -575,7 +581,17 @@
       };
     }
 
-    renderDeckBuilder();
+    const tryOpen = async () => {
+      let cards = getCardSourceList();
+      if (cards.length === 0 && typeof window.loadCardData === "function") {
+        try {
+          await window.loadCardData();
+        } catch (_) {}
+        cards = getCardSourceList();
+      }
+      renderDeckBuilder();
+    };
+    tryOpen();
   }
 
   window.openCardDebugModal = openCardDebugModal;

@@ -32,7 +32,8 @@
                   "metric": "count",
                   "op": "gte",
                   "value": 1
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "amount": 1,
               "damageType": "hp_reduce",
@@ -57,7 +58,8 @@
                   "metric": "count",
                   "op": "gte",
                   "value": 2
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "amount": 1,
               "atkMode": "increase",
@@ -81,10 +83,31 @@
               "amount": 1
             },
             {
-              "type": "TRIGGER_ATTACK_EFFECT",
-              "target": "self_player"
+              "type": "MOVE_SOURCE_TO_HAND",
+              "target": "self_player",
+              "cardTarget": "this_card",
+              "cardTargetMode": "card"
             }
-          ]
+          ],
+          "bundleCondition": {
+            "whileOnField": false,
+            "thisTurn": false,
+            "directAttack": "any",
+            "directAttackEnabled": true,
+            "directAttackValue": false,
+            "byAttackerEffect": false,
+            "attackerTriggerT": "onAttack",
+            "bySkillEffect": false,
+            "inSameChain": false,
+            "requiredExecutedOrder": [],
+            "requiredExecutedOrderMode": "any",
+            "trackerCheck": {
+              "owner": "self",
+              "stat": "hp",
+              "mode": "current_gte",
+              "value": 999
+            }
+          }
         }
       ]
     },
@@ -117,10 +140,12 @@
                   "metric": "amount",
                   "op": "gte",
                   "value": 0
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": []
             },
             {
               "category": "hp",
@@ -141,12 +166,34 @@
                   "metric": "count",
                   "op": "gte",
                   "value": 1
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": []
             }
-          ]
+          ],
+          "useCondition": false,
+          "condition": {
+            "whileOnField": false,
+            "thisTurn": true,
+            "directAttack": "any",
+            "directAttackEnabled": false,
+            "directAttackValue": true,
+            "byAttackerEffect": false,
+            "attackerTriggerT": "onAttack",
+            "bySkillEffect": false,
+            "inSameChain": false,
+            "requiredExecutedOrder": [],
+            "requiredExecutedOrderMode": "any",
+            "trackerCheck": {
+              "owner": "self",
+              "stat": "hp",
+              "mode": "current_gte",
+              "value": 0
+            }
+          }
         },
         {
           "timing": "onDirectAttack",
@@ -170,12 +217,34 @@
                   "metric": "count",
                   "op": "gte",
                   "value": 2
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": []
             }
-          ]
+          ],
+          "useCondition": false,
+          "condition": {
+            "whileOnField": false,
+            "thisTurn": true,
+            "directAttack": "any",
+            "directAttackEnabled": false,
+            "directAttackValue": true,
+            "byAttackerEffect": false,
+            "attackerTriggerT": "onAttack",
+            "bySkillEffect": false,
+            "inSameChain": false,
+            "requiredExecutedOrder": [],
+            "requiredExecutedOrderMode": "any",
+            "trackerCheck": {
+              "owner": "self",
+              "stat": "hp",
+              "mode": "current_gte",
+              "value": 0
+            }
+          }
         },
         {
           "timing": "onLeave",
@@ -199,10 +268,12 @@
                   "metric": "amount",
                   "op": "gte",
                   "value": 0
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": []
             },
             {
               "category": "pp",
@@ -223,14 +294,16 @@
                   "metric": "amount",
                   "op": "gte",
                   "value": 0
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": []
             },
             {
-              "category": "card_effect",
-              "kind": "trigger_attack_effect",
+              "category": "card",
+              "kind": "return_to_hand",
               "target": "self_player",
               "value": 1,
               "atkMode": "increase",
@@ -247,12 +320,35 @@
                   "metric": "amount",
                   "op": "gte",
                   "value": 0
-                }
+                },
+                "requiredExecutedOrder": []
               },
               "damageType": "damage",
-              "damageAttr": "none"
+              "damageAttr": "none",
+              "grantedEffects": [],
+              "cardTarget": "this_card"
             }
-          ]
+          ],
+          "useCondition": true,
+          "condition": {
+            "whileOnField": false,
+            "thisTurn": false,
+            "directAttack": "any",
+            "directAttackEnabled": true,
+            "directAttackValue": false,
+            "byAttackerEffect": false,
+            "attackerTriggerT": "onAttack",
+            "bySkillEffect": false,
+            "inSameChain": false,
+            "requiredExecutedOrder": [],
+            "requiredExecutedOrderMode": "any",
+            "trackerCheck": {
+              "owner": "self",
+              "stat": "hp",
+              "mode": "current_gte",
+              "value": 999
+            }
+          }
         }
       ]
     }
@@ -267,9 +363,181 @@
     "effectText": "魔法の場合、\n後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る。\n②：自身のHPを1減らす。\n③：手札を1枚増やす。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
-      "triggers": []
+      "triggers": [
+        {
+          "on": "onSkillAfterAttackEffect",
+          "effects": [
+            {
+              "type": "MOVE_SOURCE_TO_GRAVE",
+              "target": "self_player",
+              "cardTarget": "attacker_zone_card",
+              "cardTargetMode": "card"
+            },
+            {
+              "type": "DAMAGE",
+              "target": "self_player",
+              "amount": 1,
+              "damageType": "hp_reduce",
+              "subType": "none"
+            },
+            {
+              "type": "DRAW",
+              "target": "self_player",
+              "amount": 1,
+              "cardTargetMode": "player"
+            }
+          ]
+        }
+      ]
     },
-    "tags": []
+    "tags": [],
+    "effectBlocks": {
+      "format": "dependrap.effectblocks.v1",
+      "timings": [
+        {
+          "timing": "onSkillAfterAttackEffect",
+          "effects": [
+            {
+              "category": "card",
+              "kind": "send_to_grave",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "cardTarget": "attacker_zone_card",
+              "useCondition": false,
+              "effectName": "付与効果",
+              "allowDuplicate": false,
+              "duration": {
+                "mode": "turn",
+                "turns": 1,
+                "counts": 0
+              },
+              "grantedEffects": [],
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "directAttack": "any",
+                "directAttackEnabled": false,
+                "directAttackValue": true,
+                "byAttackerEffect": false,
+                "attackerTriggerT": "onAttack",
+                "bySkillEffect": false,
+                "inSameChain": false,
+                "requiredExecutedOrder": [],
+                "requiredExecutedOrderMode": "any",
+                "trackerCheck": {
+                  "owner": "self",
+                  "stat": "hp",
+                  "mode": "current_gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            },
+            {
+              "category": "hp",
+              "kind": "hp_reduce",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "cardTarget": "this_card",
+              "useCondition": false,
+              "effectName": "付与効果",
+              "allowDuplicate": false,
+              "duration": {
+                "mode": "turn",
+                "turns": 1,
+                "counts": 0
+              },
+              "grantedEffects": [],
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "directAttack": "any",
+                "directAttackEnabled": false,
+                "directAttackValue": true,
+                "byAttackerEffect": false,
+                "attackerTriggerT": "onAttack",
+                "bySkillEffect": false,
+                "inSameChain": false,
+                "requiredExecutedOrder": [],
+                "requiredExecutedOrderMode": "any",
+                "trackerCheck": {
+                  "owner": "self",
+                  "stat": "hp",
+                  "mode": "current_gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            },
+            {
+              "category": "card",
+              "kind": "add_hand",
+              "target": "self_player",
+              "value": 1,
+              "atkMode": "increase",
+              "atkTarget": "this_card",
+              "cardTarget": "this_card",
+              "useCondition": false,
+              "effectName": "付与効果",
+              "allowDuplicate": false,
+              "duration": {
+                "mode": "turn",
+                "turns": 1,
+                "counts": 0
+              },
+              "grantedEffects": [],
+              "condition": {
+                "whileOnField": false,
+                "thisTurn": true,
+                "directAttack": "any",
+                "directAttackEnabled": false,
+                "directAttackValue": true,
+                "byAttackerEffect": false,
+                "attackerTriggerT": "onAttack",
+                "bySkillEffect": false,
+                "inSameChain": false,
+                "requiredExecutedOrder": [],
+                "requiredExecutedOrderMode": "any",
+                "trackerCheck": {
+                  "owner": "self",
+                  "stat": "hp",
+                  "mode": "current_gte",
+                  "value": 0
+                }
+              },
+              "damageType": "damage",
+              "damageAttr": "none"
+            }
+          ],
+          "useCondition": false,
+          "condition": {
+            "whileOnField": false,
+            "thisTurn": true,
+            "directAttack": "any",
+            "directAttackEnabled": false,
+            "directAttackValue": true,
+            "byAttackerEffect": false,
+            "attackerTriggerT": "onAttack",
+            "bySkillEffect": false,
+            "inSameChain": false,
+            "requiredExecutedOrder": [],
+            "requiredExecutedOrderMode": "any",
+            "trackerCheck": {
+              "owner": "self",
+              "stat": "hp",
+              "mode": "current_gte",
+              "value": 0
+            }
+          }
+        }
+      ]
+    }
   },
   {
     "id": "cd001-003",

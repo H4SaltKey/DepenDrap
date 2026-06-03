@@ -52,6 +52,24 @@
     return window.__cardDebugDeckSelection;
   }
 
+  function getCardSourceList() {
+    if (Array.isArray(window.CARD_DB) && window.CARD_DB.length > 0) return window.CARD_DB;
+    if (Array.isArray(window.devCards) && window.devCards.length > 0) {
+      return window.devCards.map((c) => ({
+        id: c.id,
+        name: c.name || "",
+        effectText: c.effectText || "",
+        image: c.image || "",
+        attribute: c.attribute || "近接",
+        type: c.type || "アタッカー",
+        attack: Number(c.attack || 0),
+        effectDsl: c.effectDsl || null,
+        tags: Array.isArray(c.tags) ? c.tags : String(c.tags || "").split(",").map((x) => x.trim()).filter(Boolean)
+      }));
+    }
+    return [];
+  }
+
   function installLauncherButton() {
     const devEnabled = (window.devMode === true) || (localStorage.getItem("dev") === "true");
     if (!devEnabled) return;
@@ -371,7 +389,8 @@
       `;
 
       const selector = root.querySelector("#dbgCardSelect");
-      selector.innerHTML = (window.CARD_DB || []).map((c) => `<option value="${c.id}">${c.id} ${c.name || ""}</option>`).join("");
+      const cardSource = getCardSourceList();
+      selector.innerHTML = cardSource.map((c) => `<option value="${c.id}">${c.id} ${c.name || ""}</option>`).join("");
 
       function render() {
         const zoneEls = {
@@ -421,7 +440,7 @@
       };
       root.querySelector("#dbgAddHand").onclick = () => {
         const id = selector.value;
-        const row = (window.CARD_DB || []).find((x) => x.id === id);
+        const row = cardSource.find((x) => x.id === id);
         if (!row) return;
         const card = createCardObj(row, "player1");
         moveCard(card, "hand");
@@ -456,9 +475,10 @@
     function renderDeckBuilder() {
       const selection = getDeckSelectionState();
       let query = "";
+      const cardSource = getCardSourceList();
 
       function buildRows() {
-        const list = (window.CARD_DB || []).filter((c) => {
+        const list = cardSource.filter((c) => {
           if (!query) return true;
           const q = query.toLowerCase();
           return String(c.id || "").toLowerCase().includes(q)
@@ -477,6 +497,7 @@
         }).join("");
       }
 
+      const hasCards = cardSource.length > 0;
       root.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <h3 style="margin:0;font-size:18px;">カードデバッグ起動設定</h3>
@@ -487,10 +508,10 @@
           <input id="dbgSetupSearch" type="text" placeholder="検索: id / 名前 / 効果テキスト" style="flex:1;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;">
           <button id="dbgSetupClear" style="padding:8px 12px;background:#334155;color:#fff;border:0;border-radius:6px;cursor:pointer;">枚数クリア</button>
         </div>
-        <div id="dbgSetupList" style="flex:1;min-height:0;overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;">${buildRows()}</div>
+        <div id="dbgSetupList" style="flex:1;min-height:0;overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;">${hasCards ? buildRows() : '<div style="padding:14px;color:#fca5a5;font-size:12px;">カードデータが未ロードです。開発画面のカード一覧を表示後に再度開いてください。</div>'}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <div style="font-size:12px;color:#93c5fd;">合計枚数: <span id="dbgSetupTotal">0</span></div>
-          <button id="dbgSetupStart" style="padding:10px 18px;background:#2563eb;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;">このデッキで開始</button>
+          <button id="dbgSetupStart" ${hasCards ? "" : "disabled"} style="padding:10px 18px;background:${hasCards ? "#2563eb" : "#334155"};color:#fff;border:0;border-radius:8px;font-weight:700;cursor:${hasCards ? "pointer" : "not-allowed"};">このデッキで開始</button>
         </div>
       `;
 
@@ -529,7 +550,7 @@
 
       root.querySelector("#dbgSetupStart").onclick = () => {
         const deckRows = [];
-        (window.CARD_DB || []).forEach((row) => {
+        cardSource.forEach((row) => {
           const count = Math.max(0, Number(selection[row.id] || 0));
           for (let i = 0; i < count; i += 1) deckRows.push(row);
         });

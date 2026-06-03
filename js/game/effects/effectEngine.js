@@ -544,12 +544,12 @@
           const owner = card.dataset.owner || context.owner;
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });
-        return { applied: true, type };
+        return { applied: true, type, flowBreak: true };
       }
       if (type === "MOVE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
         cards.forEach((card) => moveCardToHand(card, card.dataset.owner || context.owner));
-        return { applied: true, type };
+        return { applied: true, type, flowBreak: true };
       }
       if (type === "MOVE_SOURCE_TO_DECK") {
         const cards = resolveCardTargets(effect, context);
@@ -561,7 +561,7 @@
           card.dataset.y = String(Number(window.HAND_ZONE_Y_MIN || 1460) + 20);
           if (typeof window.organizeHands === "function") window.organizeHands();
         });
-        return { applied: true, type };
+        return { applied: true, type, flowBreak: true };
       }
       if (type === "DUPLICATE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
@@ -622,18 +622,28 @@
     return out;
   }
 
+  function shouldBreakBySourceZone(context, originZoneType) {
+    if (!context?.sourceCard) return false;
+    if (originZoneType !== "attacker" && originZoneType !== "skill") return false;
+    const currentZone = context.sourceCard.dataset.zoneType || "";
+    return currentZone !== originZoneType;
+  }
+
   function execute(cardDsl, context) {
     if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
     if (matched.length === 0) return { handled: true, effects: [] };
 
     const resultEffects = [];
-    matched.forEach((trigger) => {
+    const originZoneType = String(context?.event?.zoneType || context?.sourceCard?.dataset?.zoneType || "");
+    for (const trigger of matched) {
       const vars = evaluateVariables(trigger.variables, context);
-      if (!ConditionEvaluator.evaluateCondition(trigger.condition, context, vars)) return;
-      if (!evaluateRuntimeCondition(trigger.bundleCondition, context)) return;
+      if (!ConditionEvaluator.evaluateCondition(trigger.condition, context, vars)) continue;
+      if (!evaluateRuntimeCondition(trigger.bundleCondition, context)) continue;
       const chain = { executedOrders: [] };
-      (trigger.effects || []).forEach((effect, idx) => {
+      const effects = trigger.effects || [];
+      for (let idx = 0; idx < effects.length; idx += 1) {
+        const effect = effects[idx];
         const order = idx + 1;
         const localContext = {
           ...context,
@@ -646,8 +656,11 @@
         const r = EffectExecutor.executeEffect(effect, localContext, vars);
         if (r && r.applied) chain.executedOrders.push(order);
         resultEffects.push(r);
-      });
-    });
+        if (r?.flowBreak || shouldBreakBySourceZone(localContext, originZoneType)) {
+          return { handled: true, effects: resultEffects, flowBreak: true };
+        }
+      }
+    }
     return { handled: true, effects: resultEffects };
   }
 

@@ -284,7 +284,7 @@
     bumpFlowCounter("game", owner, "flow.end.done", 1);
   }
 
-  function resolveCardOnLeave(cardEl) {
+  function resolveCardOnLeave(cardEl, options = {}) {
     if (!runtime.enabled || !cardEl) return;
     const owner = cardEl.dataset.owner || getMyRoleSafe();
     const me = getMyRoleSafe();
@@ -307,7 +307,7 @@
         target: owner === "player1" ? "player2" : "player1",
         event: {
           name: triggerName,
-          zoneType: "grave",
+          zoneType: options.zoneType || "grave",
           didDirectAttack: cardEl.dataset.didDirectAttack === "1"
         }
       })
@@ -359,17 +359,22 @@
     const wrapped = function(cardEl, owner, zoneType) {
       const prevZoneType = cardEl?.dataset?.zoneType || "";
       const prevDidDirectAttack = cardEl?.dataset?.didDirectAttack || "0";
+      const isBattleFieldLeave = (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill"));
+      if (isBattleFieldLeave && cardEl) {
+        cardEl.dataset.didDirectAttack = prevDidDirectAttack;
+        if (cardEl.dataset.skipAutoOnLeave === "1") {
+          delete cardEl.dataset.skipAutoOnLeave;
+        } else {
+          resolveCardOnLeave(cardEl, { zoneType: prevZoneType });
+          const movedByLeaveEffect = (cardEl.dataset.zoneType || "") !== prevZoneType;
+          if (movedByLeaveEffect) {
+            return cardEl;
+          }
+        }
+      }
       const result = original.apply(this, arguments);
       try {
         resolveCardOnPlay(cardEl, zoneType);
-        if (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill")) {
-          if (cardEl) cardEl.dataset.didDirectAttack = prevDidDirectAttack;
-          if (cardEl?.dataset?.skipAutoOnLeave === "1") {
-            delete cardEl.dataset.skipAutoOnLeave;
-          } else {
-            resolveCardOnLeave(cardEl);
-          }
-        }
       } catch (e) {
         console.warn("[PlayerActionResolver] resolve error:", e);
       }

@@ -5466,3 +5466,33 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `js/game/effects/effectEngine.js`
   - `directAttackEnabled === true` の場合は `didDirectAttack` と `directAttackValue` を比較
   - 旧 `directAttack(any/did/not)` は後方互換として維持
+
+## Round 2026-06-04 — 効果フローの割り込み原則を実装ルール化
+
+### 反映した原則
+
+- 効果は現在フローに割り込んで即時実行する。
+- アタッカー場 / スキル場のカードを起点にした効果フロー中、
+  途中でカード移動（墓地・手札・山札相当）が発生した時点で、そのフローを中断する。
+- 処理順序は「一回の効果フロー中に条件が達成される」前提を崩さないよう固定する。
+
+### 墓地へ送るフロー（統一）
+
+1. 退場時効果を先に発動
+2. その後、カードを墓地へ移動
+
+補足: 退場時効果の結果として移動先が変わった場合（例: 手札へ戻る）は墓地移動を中止する。
+
+### 手札へ戻るフロー（置換）
+
+- 「墓地 or 山札へ行くなら代わりに手札へ戻る」は、移動先を手札に確定した時点でフローを終了する。
+
+### 実装箇所
+
+- `js/game/auto/playerActionResolver.js`
+  - `placeCardInZone(..., "grave")` フックを前処理型に変更
+  - 退場時効果を先に実行し、移動先変更時は墓地遷移を中断
+- `js/game/effects/effectEngine.js`
+  - `MOVE_SOURCE_TO_GRAVE/HAND/DECK` を flowBreak 扱いに変更
+  - sourceカードが起点ゾーン（attacker/skill）を離れたら即時break
+

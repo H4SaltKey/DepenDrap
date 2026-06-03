@@ -5496,3 +5496,28 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `MOVE_SOURCE_TO_GRAVE/HAND/DECK` を flowBreak 扱いに変更
   - sourceカードが起点ゾーン（attacker/skill）を離れたら即時break
 
+
+## Round 2026-06-04 — 開発者モード「カードデバッグ」追加
+
+### 追加内容
+
+- 開発者メニュー（デッキ右クリック）に `カードデバッグ (Dev)` を追加。
+- 新規 `js/dev/cardDebug.js` を追加し、ゲーム上でモーダル起動できる1人用シミュレーターを実装。
+
+### 機能
+
+- ゾーン: アタッカー場 / スキル場 / 手札 / 墓地 / 山札 / 直接攻撃フィールド
+- 操作: 山札再構築、ドロー、任意カードを手札へ追加、手札→場、場→墓地、直接攻撃
+- 直接攻撃フロー（デバッグ内）:
+  1. `onDirectAttack` 実行
+  2. 直接攻撃ダメージ適用
+  3. `onLeave` 実行
+  4. 墓地へ移動
+- 効果条件向け記録データ: tracker値（turn/game + custom/use + hp/pp/shield/atk）を一覧表示し手動編集可能
+- フローログ: 効果フローをチャットログに追記、手入力メモ送信にも対応
+
+### 実装上の方針
+
+- 既存ゲーム状態を汚さないため、デバッグ実行時のみ `window.state` / `addVal` / `applyCalculatedDamage` / `GameStatTracker.resolvePath` などを一時差し替え、
+  `EffectEngine.execute` をローカル状態で実行する。
+

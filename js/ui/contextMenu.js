@@ -653,6 +653,10 @@ function openDeckMenu(deck, x, y){
       label: "レベルステータス編集 (Dev)",
       action: () => { if (typeof openLevelStatsEditor === "function") openLevelStatsEditor(); }
     });
+    items.push({
+      label: "カードデバッグ (Dev)",
+      action: () => { if (typeof openCardDebugModal === "function") openCardDebugModal(); }
+    });
   }
 
   buildMenu(items, x, y, deck);

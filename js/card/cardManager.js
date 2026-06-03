@@ -1157,11 +1157,140 @@ function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   content.appendChild(g);
 }
 
+function isDirectAttackDropArea(centerY) {
+  return Number(centerY || 0) <= (FIELD_H / 2);
+}
+
+function getDirectAttackTargetInfo(owner) {
+  const op = owner === "player1" ? "player2" : "player1";
+  const opName = String(window.state?.[op]?.username || "相手プレイヤー");
+  const target = window.BattleTargetSystem?.getTarget?.(owner);
+  if (!target || target === "player") {
+    return { type: "player", owner: op, label: opName };
+  }
+  if (typeof target === "object" && typeof target.slotIndex === "number") {
+    const slot = window.MonsterManager?.getSlot?.(target.slotIndex);
+    if (!slot) {
+      return { type: "invalid", label: "討伐済みターゲット", slotIndex: target.slotIndex };
+    }
+    const def = (window.MONSTER_DEFINITIONS || []).find((m) => m.id === slot.monsterId);
+    return { type: "monster", slotIndex: target.slotIndex, label: String(def?.name || slot.monsterId || "モンスター") };
+  }
+  return { type: "player", owner: op, label: opName };
+}
+
+function ensureDirectAttackOverlay() {
+  const content = getFieldContent();
+  if (!content) return null;
+  let ov = document.getElementById("directAttackDropOverlay");
+  if (ov) return ov;
+  ov = document.createElement("div");
+  ov.id = "directAttackDropOverlay";
+  ov.style.cssText = `
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: ${FIELD_W}px;
+    height: ${Math.floor(FIELD_H / 2)}px;
+    z-index: 1200;
+    display: none;
+    pointer-events: none;
+    background: rgba(180, 40, 40, 0.12);
+    border: 2px dashed rgba(240, 120, 120, 0.5);
+    box-sizing: border-box;
+  `;
+  const caption = document.createElement("div");
+  caption.id = "directAttackDropOverlayText";
+  caption.style.cssText = `
+    position: absolute;
+    left: 50%;
+    top: 32px;
+    transform: translateX(-50%);
+    padding: 10px 16px;
+    background: rgba(8, 8, 16, 0.68);
+    border: 1px solid rgba(255, 200, 200, 0.45);
+    border-radius: 12px;
+    color: #ffe2d8;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+  `;
+  ov.appendChild(caption);
+  content.appendChild(ov);
+  return ov;
+}
+
+function setDirectAttackOverlayState(owner, isVisible, isActive) {
+  const ov = ensureDirectAttackOverlay();
+  if (!ov) return;
+  const textEl = ov.querySelector("#directAttackDropOverlayText");
+  const target = getDirectAttackTargetInfo(owner);
+  if (textEl) {
+    textEl.textContent = `ドラッグして「${target.label}」に直接攻撃。`;
+  }
+  ov.style.display = isVisible ? "block" : "none";
+  ov.style.background = isActive ? "rgba(220, 60, 60, 0.2)" : "rgba(180, 40, 40, 0.12)";
+  ov.style.borderColor = isActive ? "rgba(255, 170, 140, 0.88)" : "rgba(240, 120, 120, 0.5)";
+}
+
+function hideDirectAttackOverlay() {
+  const ov = document.getElementById("directAttackDropOverlay");
+  if (ov) ov.style.display = "none";
+}
+
+function performDirectAttackByDrag(cardEl, owner) {
+  const profile = window.CardCombatData?.getResolvedCardData?.(cardEl?.dataset?.id);
+  const cardAtk = Math.max(0, Number(profile?.attack || 0));
+  const baseAtk = Math.max(0, Number(window.state?.[owner]?.atk || 0));
+  const amount = Math.max(1, baseAtk + cardAtk);
+  const target = getDirectAttackTargetInfo(owner);
+
+  if (target.type === "invalid") {
+    if (typeof window.showWarningMessage === "function") {
+      window.showWarningMessage("攻撃対象が討伐済みです。ターゲットを再選択してください。");
+    }
+    return false;
+  }
+
+  if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveDirectAttack === "function") {
+    window.PlayerActionResolver.resolveDirectAttack(cardEl, owner, target);
+  }
+
+  if (target.type === "monster") {
+    window.MonsterCombatSystem?.playerAttackMonster?.(owner, target.slotIndex, amount, "direct_attack");
+  } else {
+    window.applyCalculatedDamage?.(target.owner, "direct_attack", "none", amount, false, { source: "drag_direct_attack" });
+  }
+
+  if (cardEl) {
+    cardEl.dataset.didDirectAttack = "1";
+    if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardOnLeave === "function") {
+      window.PlayerActionResolver.resolveCardOnLeave(cardEl);
+      cardEl.dataset.skipAutoOnLeave = "1";
+    }
+  }
+  window.BattleTargetSystem?.lockTarget?.(owner);
+  window.placeCardInZone?.(cardEl, owner, "grave");
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  if (typeof window.organizeHands === "function") window.organizeHands();
+  if (typeof saveFieldCards === "function") saveFieldCards();
+  if (typeof pushMyStateDebounced === "function") pushMyStateDebounced();
+  if (typeof window.update === "function") window.update();
+
+  if (typeof window.addGameLog === "function") {
+    const actor = String(window.state?.[owner]?.username || owner);
+    window.addGameLog(`[ACTION] ${actor} が ${target.label} に直接攻撃 (${amount})`);
+  }
+  return true;
+}
+
 // ===== Pointer Eventsベースのドラッグ =====
 function enablePointerDrag(el){
   let pointerId = null;
   let offsetX = 0, offsetY = 0;
   let isDragging = false;
+  let dragFromAttackerZone = false;
   let clickStartX = 0, clickStartY = 0;
   const DRAG_THRESHOLD = 4; // px、これ以上動いたらドラッグ開始
 
@@ -1170,6 +1299,7 @@ function enablePointerDrag(el){
     const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     if (el.dataset.owner !== myRole) return;
     if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
+    if (el.dataset.zoneType === "attacker" && !isTopZoneCard(el)) return;
     e.stopPropagation();
 
     // ホバー状態をリセット（すべての手札カードの展開を解除）
@@ -1193,6 +1323,7 @@ function enablePointerDrag(el){
     clickStartX = e.clientX;
     clickStartY = e.clientY;
     isDragging = false;
+    dragFromAttackerZone = (el.dataset.zoneType === "attacker");
     el.dataset.prevX = el.dataset.x || "0";
     el.dataset.prevY = el.dataset.y || "0";
     el.dataset.prevZoneType = el.dataset.zoneType || "";
@@ -1240,6 +1371,10 @@ function enablePointerDrag(el){
     if (isDragging) {
       el.style.zIndex = DRAG_Z_TOP;
       updateHandReorderGuides(el, fieldX, fieldY);
+      if (dragFromAttackerZone) {
+        const centerY = fieldY + CARD_H / 2;
+        setDirectAttackOverlayState(el.dataset.owner || "player1", true, isDirectAttackDropArea(centerY));
+      }
     }
   });
 
@@ -1297,6 +1432,17 @@ function enablePointerDrag(el){
         const myRole2 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
         const centerX = fieldX + CARD_W / 2;
         const centerY = fieldY + CARD_H / 2;
+        if (dragFromAttackerZone && isDirectAttackDropArea(centerY)) {
+          const myRole3 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+          const ok = performDirectAttackByDrag(el, myRole3);
+          hideDirectAttackOverlay();
+          if (ok) {
+            window._isDraggingCard = false;
+            pointerId = null;
+            document.body.classList.remove("isInteractingCard");
+            return;
+          }
+        }
         const zoneHit = battleZoneHitTypeAt(centerX, centerY, myRole2);
         if (zoneHit === "attacker" || zoneHit === "skill") {
           const costPolicy = getCardCostPolicy(el);
@@ -1432,6 +1578,7 @@ function enablePointerDrag(el){
       }
     } finally {
       window._isDraggingCard = false;
+      hideDirectAttackOverlay();
       restoreCardDragZIndex(el);
     }
 
@@ -1462,6 +1609,7 @@ function enablePointerDrag(el){
     el.style.opacity = "";
     isDragging = false;
     draggingCard = null;
+    hideDirectAttackOverlay();
     document.body.classList.remove("isDraggingCard");
     document.body.classList.remove("isInteractingCard");
     restoreCardDragZIndex(el);

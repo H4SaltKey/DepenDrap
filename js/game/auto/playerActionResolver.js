@@ -318,6 +318,39 @@
     });
   }
 
+  function resolveDirectAttack(cardEl, owner, targetInfo = {}) {
+    if (!runtime.enabled || !cardEl) return;
+    const me = getMyRoleSafe();
+    if ((owner || cardEl.dataset.owner || me) !== me) return;
+    const card = getCardByElement(cardEl);
+    if (!card) return;
+    const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
+      ? window.CardCombatData.getResolvedCardData(card.id)
+      : card;
+    const cardId = profile.id || cardEl.dataset.id || "unknown";
+    const triggerName = "onDirectAttack";
+
+    const dsl = profile.effectDsl;
+    const engineResult = resolveWithEffectEngine(profile, cardEl, owner || me, "attacker", triggerName);
+    if (engineResult && engineResult.handled) {
+      (engineResult.effects || []).forEach((item) => {
+        trackEffectActivation(owner || me, cardId, triggerName, String(item?.type || "UNKNOWN"));
+      });
+      return;
+    }
+
+    if (dsl && Array.isArray(dsl.triggers)) {
+      const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
+      matched.forEach((t) => {
+        (t.effects || []).forEach((effect) => {
+          const effectType = String(effect?.type || "UNKNOWN");
+          trackEffectActivation(owner || me, cardId, triggerName, effectType);
+          applyKnownEffect(effect, owner || me);
+        });
+      });
+    }
+  }
+
   function installPlaceCardHook() {
     if (typeof window.placeCardInZone !== "function") return;
     if (window.placeCardInZone._playerActionResolverWrapped) return;
@@ -329,9 +362,13 @@
       const result = original.apply(this, arguments);
       try {
         resolveCardOnPlay(cardEl, zoneType);
-        if (zoneType === "grave" && prevZoneType === "attacker") {
+        if (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill")) {
           if (cardEl) cardEl.dataset.didDirectAttack = prevDidDirectAttack;
-          resolveCardOnLeave(cardEl);
+          if (cardEl?.dataset?.skipAutoOnLeave === "1") {
+            delete cardEl.dataset.skipAutoOnLeave;
+          } else {
+            resolveCardOnLeave(cardEl);
+          }
         }
       } catch (e) {
         console.warn("[PlayerActionResolver] resolve error:", e);
@@ -352,7 +389,9 @@
   window.PlayerActionResolver = {
     runtime,
     init,
-    resolveCardOnPlay
+    resolveCardOnPlay,
+    resolveCardOnLeave,
+    resolveDirectAttack
   };
 
   init();

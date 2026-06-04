@@ -494,10 +494,14 @@
         return list.map((c) => {
           const count = Number(selection[c.id] || 0);
           return `
-            <div style="display:grid;grid-template-columns:130px 1fr 88px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f2937;">
+            <div style="display:grid;grid-template-columns:130px 1fr 124px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f2937;">
               <div style="font-size:11px;color:#93c5fd;">${c.id}</div>
               <div style="font-size:12px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name || "(名前なし)"}</div>
-              <input data-card-id="${c.id}" type="number" min="0" step="1" value="${count}" style="width:100%;padding:6px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;">
+              <div style="display:grid;grid-template-columns:30px 1fr 30px;gap:4px;align-items:center;">
+                <button type="button" data-card-minus="${c.id}" style="height:30px;border:1px solid #334155;border-radius:6px;background:#1f2937;color:#fff;cursor:pointer;">-</button>
+                <input data-card-id="${c.id}" type="number" min="0" step="1" value="${count}" style="width:100%;padding:6px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;text-align:center;">
+                <button type="button" data-card-plus="${c.id}" style="height:30px;border:1px solid #334155;border-radius:6px;background:#1f2937;color:#fff;cursor:pointer;">+</button>
+              </div>
             </div>
           `;
         }).join("");
@@ -533,6 +537,26 @@
             const id = inp.dataset.cardId;
             const v = Math.max(0, Number(inp.value || 0));
             selection[id] = v;
+            syncTotal();
+          });
+        });
+        root.querySelectorAll("button[data-card-minus]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.cardMinus;
+            const next = Math.max(0, Number(selection[id] || 0) - 1);
+            selection[id] = next;
+            const input = root.querySelector(`input[data-card-id="${id}"]`);
+            if (input) input.value = String(next);
+            syncTotal();
+          });
+        });
+        root.querySelectorAll("button[data-card-plus]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.cardPlus;
+            const next = Math.max(0, Number(selection[id] || 0) + 1);
+            selection[id] = next;
+            const input = root.querySelector(`input[data-card-id="${id}"]`);
+            if (input) input.value = String(next);
             syncTotal();
           });
         });

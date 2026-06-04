@@ -83,7 +83,7 @@
     const btn = document.createElement("button");
     btn.id = "cardDebugLaunchBtn";
     btn.textContent = "カードデバッグ";
-    btn.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:12050;padding:10px 14px;border:1px solid #475569;border-radius:10px;background:#0b1220;color:#e2e8f0;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.35);max-width:calc(100vw - 24px);";
+    btn.style.cssText = "position:fixed;left:20px;bottom:138px;z-index:1100;padding:10px 14px;border:1px solid #475569;border-radius:10px;background:#0b1220;color:#e2e8f0;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.35);";
     btn.addEventListener("click", () => openCardDebugModal());
     document.body.appendChild(btn);
   }

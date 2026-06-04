@@ -268,6 +268,23 @@
       });
     }
 
+    function applyZoneAfterLeaveResolution(card, fromZone) {
+      const now = String(card.dataset.zoneType || "");
+      if (now === "grave") {
+        moveCard(card, "grave");
+        return true;
+      }
+      if (now === "attacker" || now === "skill") {
+        return false;
+      }
+      // attacker/skill 以外へ離れた場合は手札へ戻った扱いにする
+      if (fromZone === "attacker" || fromZone === "skill") {
+        moveCard(card, "hand");
+        return true;
+      }
+      return false;
+    }
+
     function renderTrackerGrid() {
       const box = root.querySelector("#dbgTrackerGrid");
       if (!box) return;
@@ -318,20 +335,47 @@
             moveCard(card, "attacker");
             debug.tracker.player1.turn.custom.use.attacker += 1;
             debug.tracker.player1.game.custom.use.attacker += 1;
-            runCardEvent(card, "onSummon");
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveCardOnPlay) {
+                window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
+              } else {
+                runCardEvent(card, "onSummon");
+              }
+            });
           } else if (act === "toSkill") {
             moveCard(card, "skill");
             debug.tracker.player1.turn.custom.use.skill += 1;
             debug.tracker.player1.game.custom.use.skill += 1;
-            runCardEvent(card, "onAttack");
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveCardOnPlay) {
+                window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
+              } else {
+                runCardEvent(card, "onAttack");
+              }
+            });
           } else if (act === "toGrave") {
-            runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
-            if (card.dataset.zoneType === "attacker" || card.dataset.zoneType === "skill") moveCard(card, "grave");
+            const fromZone = String(card.dataset.zoneType || "");
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+              } else {
+                runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+              }
+            });
+            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+              moveCard(card, "grave");
+            }
           } else if (act === "toHand") {
             moveCard(card, "hand");
           } else if (act === "direct") {
             card.dataset.didDirectAttack = "1";
-            runCardEvent(card, "onDirectAttack", { didDirectAttack: true });
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveDirectAttack) {
+                window.PlayerActionResolver.resolveDirectAttack(card, "player1", { type: debug.target === "player" ? "player" : "monster" });
+              } else {
+                runCardEvent(card, "onDirectAttack", { didDirectAttack: true });
+              }
+            });
             const amount = Math.max(1, Number(card.profile?.attack || 0) + Number(debug.state.player1.atk || 0));
             if (debug.target === "player") {
               const before = Number(debug.state.player2.hp || 0);
@@ -342,8 +386,17 @@
               const tname = debug.target === "goblin" ? "ゴブリン" : "シャドウハウンド";
               log(`[DIRECT] ${card.name} -> ${tname} ${amount}ダメージ（簡易）`);
             }
-            runCardEvent(card, "onLeave", { didDirectAttack: true });
-            if (card.dataset.zoneType === "attacker") moveCard(card, "grave");
+            const fromZone = "attacker";
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+              } else {
+                runCardEvent(card, "onLeave", { didDirectAttack: true });
+              }
+            });
+            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+              moveCard(card, "grave");
+            }
           }
           render();
         });

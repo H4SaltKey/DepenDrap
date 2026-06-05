@@ -30,10 +30,12 @@
   }
 
   function createCardObj(cardData, owner) {
+    const resolved = window.CardCombatData?.getResolvedCardData?.(cardData.id) || cardData;
     return {
       id: cardData.id,
       name: cardData.name || cardData.id,
-      profile: (window.CardCombatData?.getResolvedCardData?.(cardData.id) || cardData),
+      // インスタンス単位で調整できるよう浅いコピーを持つ
+      profile: { ...resolved },
       dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0" },
       style: {}
     };
@@ -323,7 +325,11 @@
       const el = document.createElement("div");
       el.style.cssText = "border:1px solid #475569;border-radius:8px;padding:6px;background:#111827;min-width:120px;";
       const controls = [];
-      if (zone === "hand") { controls.push(["toAttacker", "ATK"], ["toSkill", "SKILL"]); }
+      const kind = String(card.profile?.cardKind || "attacker");
+      if (zone === "hand") {
+        if (kind === "attacker" || kind === "support") controls.push(["toAttacker", "ATK"]);
+        if (kind === "skill" || kind === "support") controls.push(["toSkill", "SKILL"]);
+      }
       if (zone === "attacker") { controls.push(["direct", "直接攻撃"], ["toGrave", "墓地へ"]); }
       if (zone === "skill") { controls.push(["toGrave", "墓地へ"]); }
       if (zone === "grave" || zone === "deck") { controls.push(["toHand", "手札"]); }
@@ -339,8 +345,6 @@
             moveCard(card, "attacker");
             debug.tracker.player1.turn.custom.use.attacker += 1;
             debug.tracker.player1.game.custom.use.attacker += 1;
-            // デバッグではPP不足で効果確認が止まらないよう、コスト処理済みとして扱う
-            card.dataset.ppCostHandled = "1";
             withPatchedRuntime(() => {
               if (window.PlayerActionResolver?.resolveCardOnPlay) {
                 window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
@@ -349,11 +353,21 @@
               }
             });
           } else if (act === "toSkill") {
+            const activatorExists = debug.zones.attacker.some((c) => {
+              const k = String(c.profile?.cardKind || "attacker");
+              return k === "attacker" || k === "support";
+            });
+            if (!activatorExists) {
+              log("[RULE] スキル使用には場のアタッカー/サポートが必要です");
+              render();
+              return;
+            }
             moveCard(card, "skill");
             debug.tracker.player1.turn.custom.use.skill += 1;
             debug.tracker.player1.game.custom.use.skill += 1;
-            // デバッグではPP不足で効果確認が止まらないよう、コスト処理済みとして扱う
-            card.dataset.ppCostHandled = "1";
+            const prevCost = Number(card.profile?.cost || 0);
+            // サポートをスキル使用する場合は PP1 消費扱い
+            if (kind === "support" && card.profile) card.profile.cost = 1;
             withPatchedRuntime(() => {
               if (window.PlayerActionResolver?.resolveCardOnPlay) {
                 window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
@@ -361,6 +375,20 @@
                 runCardEvent(card, "onSummon");
               }
             });
+            if (kind === "support" && card.profile) card.profile.cost = prevCost;
+
+            // ゲーム同様、スキル使用後は退場時効果を処理して墓地へ送る
+            const fromZone = "skill";
+            withPatchedRuntime(() => {
+              if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+              } else {
+                runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+              }
+            });
+            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+              moveCard(card, "grave");
+            }
           } else if (act === "toGrave") {
             const fromZone = String(card.dataset.zoneType || "");
             withPatchedRuntime(() => {

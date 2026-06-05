@@ -37,6 +37,26 @@
     });
   }
 
+  function logEffectJudgement(owner, cardId, trigger, item) {
+    if (typeof window.addGameLog !== "function") return;
+    const effectType = String(item?.type || "UNKNOWN");
+    const applied = item?.applied === true;
+    if (applied) {
+      window.addGameLog(`[EFFECT] ${cardId} ${trigger} ${effectType} 判定=発動`);
+      return;
+    }
+    if (item?.skippedByCondition) {
+      window.addGameLog(`[EFFECT] ${cardId} ${trigger} ${effectType} 判定=条件不成立`);
+      return;
+    }
+    if (item?.skippedByInvalidTarget) {
+      window.addGameLog(`[EFFECT] ${cardId} ${trigger} ${effectType} 判定=対象不成立`);
+      return;
+    }
+    // 実行候補に入った効果のみ記録。未定義/未一致（NONE系）は記録しない。
+    window.addGameLog(`[EFFECT] ${cardId} ${trigger} ${effectType} 判定=不発`);
+  }
+
   function bumpFlowCounter(scope, owner, key, amount) {
     if (!window.GameStatTracker || typeof window.GameStatTracker.bumpCustom !== "function") return;
     window.GameStatTracker.bumpCustom(scope, owner || "player1", key, Number(amount || 1));
@@ -166,12 +186,10 @@
     const r = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
     if (!r || !r.handled) return;
     const cardId = profile.id || cardEl.dataset.id || "unknown";
-    let count = 0;
     (r.effects || []).forEach((item) => {
-      count += 1;
       trackEffectActivation(owner, cardId, triggerName, String(item?.type || "UNKNOWN"));
+      logEffectJudgement(owner, cardId, triggerName, item);
     });
-    if (count === 0) trackEffectActivation(owner, cardId, triggerName, "NONE");
   }
 
   function resolveCardOnPlay(cardEl, zoneType) {
@@ -266,12 +284,12 @@
           resolvedEffects += 1;
           if (item?.applied) knownEffects += 1;
           trackEffectActivation(owner, cardId, triggerName, effectType);
+          logEffectJudgement(owner, cardId, triggerName, item);
         });
         if (resolvedEffects > 0) {
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} engine=1`);
         } else {
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (engine-no-match)`);
-          trackEffectActivation(owner, cardId, triggerName, "NONE");
         }
       } else if (dsl && Array.isArray(dsl.triggers)) {
         const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
@@ -288,11 +306,9 @@
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} known=${knownEffects} unknown=${Math.max(0, resolvedEffects - knownEffects)}`);
         } else {
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (定義なし)`);
-          trackEffectActivation(owner, cardId, triggerName, "NONE");
         }
       } else {
         logFlow(`EFFECT_CHECK ${flowId} dsl=none`);
-        trackEffectActivation(owner, cardId, triggerName, "NONE_DSL");
       }
     } else if (preventDefaultDsl) {
       logFlow(`EFFECT_CHECK ${flowId} scripted=first8`);
@@ -353,6 +369,7 @@
     if (!engineResult || !engineResult.handled) return;
     (engineResult.effects || []).forEach((item) => {
       trackEffectActivation(owner, profile.id || cardEl.dataset.id || "unknown", triggerName, String(item?.type || "UNKNOWN"));
+      logEffectJudgement(owner, profile.id || cardEl.dataset.id || "unknown", triggerName, item);
     });
   }
 
@@ -373,6 +390,7 @@
     if (engineResult && engineResult.handled) {
       (engineResult.effects || []).forEach((item) => {
         trackEffectActivation(owner || me, cardId, triggerName, String(item?.type || "UNKNOWN"));
+        logEffectJudgement(owner || me, cardId, triggerName, item);
       });
       return;
     }

@@ -1,4 +1,6 @@
 (function() {
+  let debugInstanceSeq = 1;
+
   function deepClone(v) { return JSON.parse(JSON.stringify(v)); }
 
   function getByPath(obj, path) {
@@ -36,7 +38,7 @@
       name: cardData.name || cardData.id,
       // インスタンス単位で調整できるよう浅いコピーを持つ
       profile: { ...resolved },
-      dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0" },
+      dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0", instanceId: `dbg-${Date.now()}-${debugInstanceSeq++}` },
       style: {}
     };
   }
@@ -125,6 +127,22 @@
 
     overlay.appendChild(root);
     document.body.appendChild(overlay);
+
+    let detachEsc = null;
+    const closeModal = () => {
+      if (detachEsc) detachEsc();
+      overlay.remove();
+    };
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal();
+    });
+    const onEsc = (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      closeModal();
+    };
+    document.addEventListener("keydown", onEsc);
+    detachEsc = () => document.removeEventListener("keydown", onEsc);
 
     const debug = {
       owner: "player1",
@@ -328,7 +346,7 @@
       const kind = String(card.profile?.cardKind || "attacker");
       if (zone === "hand") {
         if (kind === "attacker" || kind === "support") controls.push(["toAttacker", "ATK"]);
-        if (kind === "skill" || kind === "support") controls.push(["toSkill", "SKILL"]);
+        if (kind === "skill" || kind === "support" || kind === "attacker") controls.push(["toSkill", "SKILL"]);
       }
       if (zone === "attacker") { controls.push(["direct", "直接攻撃"], ["toGrave", "墓地へ"]); }
       if (zone === "skill") { controls.push(["toGrave", "墓地へ"]); }
@@ -342,6 +360,8 @@
         btn.addEventListener("click", () => {
           const act = btn.dataset.act;
           if (act === "toAttacker") {
+            delete card.dataset.debugCardKind;
+            delete card.dataset.debugCostOverride;
             moveCard(card, "attacker");
             debug.tracker.player1.turn.custom.use.attacker += 1;
             debug.tracker.player1.game.custom.use.attacker += 1;
@@ -353,21 +373,22 @@
               }
             });
           } else if (act === "toSkill") {
+            const attackerCount = debug.zones.attacker.filter((c) => String(c.profile?.cardKind || "attacker") === "attacker").length;
             const activatorExists = debug.zones.attacker.some((c) => {
               const k = String(c.profile?.cardKind || "attacker");
               return k === "attacker" || k === "support";
             });
-            if (!activatorExists) {
-              log("[RULE] スキル使用には場のアタッカー/サポートが必要です");
+            if ((kind === "attacker" && attackerCount < 1) || ((kind === "skill" || kind === "support") && !activatorExists)) {
+              log("[RULE] スキル使用条件を満たしていません");
               render();
               return;
             }
             moveCard(card, "skill");
             debug.tracker.player1.turn.custom.use.skill += 1;
             debug.tracker.player1.game.custom.use.skill += 1;
-            const prevCost = Number(card.profile?.cost || 0);
-            // サポートをスキル使用する場合は PP1 消費扱い
-            if (kind === "support" && card.profile) card.profile.cost = 1;
+            // カード種別に依存せず、スキルとして処理する
+            card.dataset.debugCardKind = "skill";
+            if (kind === "support") card.dataset.debugCostOverride = "1";
             withPatchedRuntime(() => {
               if (window.PlayerActionResolver?.resolveCardOnPlay) {
                 window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
@@ -375,7 +396,8 @@
                 runCardEvent(card, "onSummon");
               }
             });
-            if (kind === "support" && card.profile) card.profile.cost = prevCost;
+            delete card.dataset.debugCardKind;
+            delete card.dataset.debugCostOverride;
 
             // ゲーム同様、スキル使用後は退場時効果を処理して墓地へ送る
             const fromZone = "skill";
@@ -515,7 +537,7 @@
         renderTrackerGrid();
       }
 
-      root.querySelector("#dbgClose").onclick = () => overlay.remove();
+      root.querySelector("#dbgClose").onclick = () => closeModal();
       root.querySelector("#dbgReset").onclick = () => renderDeckBuilder();
       root.querySelector("#dbgTarget").onchange = (e) => { debug.target = e.target.value; render(); };
       root.querySelector("#dbgShuffle").onclick = () => {
@@ -654,7 +676,7 @@
       bindInputs();
       syncTotal();
 
-      root.querySelector("#dbgSetupClose").onclick = () => overlay.remove();
+      root.querySelector("#dbgSetupClose").onclick = () => closeModal();
       root.querySelector("#dbgSetupSearch").addEventListener("input", (e) => {
         query = String(e.target.value || "").trim();
         root.querySelector("#dbgSetupList").innerHTML = buildRows();

@@ -59,6 +59,26 @@
     return window.getCardData(cardId);
   }
 
+  function buildResolvedProfile(cardEl, card) {
+    const base = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
+      ? window.CardCombatData.getResolvedCardData(card.id)
+      : card;
+    const profile = { ...base };
+    if (cardEl?.dataset?.debugCardKind) {
+      profile.cardKind = String(cardEl.dataset.debugCardKind);
+    }
+    if (cardEl?.dataset?.debugCostOverride != null) {
+      profile.cost = Math.max(0, Number(cardEl.dataset.debugCostOverride || 0));
+    }
+    return profile;
+  }
+
+  function hasOtherAttackerOnField(owner, sourceCard) {
+    if (typeof window.getZoneCards !== "function") return false;
+    const cards = window.getZoneCards(owner, "attacker") || [];
+    return cards.some((c) => c && c !== sourceCard);
+  }
+
   function spendCardCost(owner, card) {
     if (card && card._ppCostHandledByModal) return true;
     const costPolicy = String(card?.cardCostPolicy || "normal");
@@ -170,13 +190,24 @@
     if (!card) return;
 
     // cards.json を単一情報源として参照
-    const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
-      ? window.CardCombatData.getResolvedCardData(card.id)
-      : card;
+    const profile = buildResolvedProfile(cardEl, card);
     if (cardEl.dataset.ppCostHandled === "1") {
       profile._ppCostHandledByModal = true;
       delete cardEl.dataset.ppCostHandled;
       delete cardEl.dataset.ppCostValue;
+    }
+    let effectiveKind = String(profile.cardKind || "attacker");
+    if (zoneType === "skill" && effectiveKind === "attacker" && hasOtherAttackerOnField(owner, cardEl)) {
+      effectiveKind = "skill";
+    }
+    if (zoneType === "skill" && effectiveKind !== "skill" && String(profile.cardKind || "") === "attacker") {
+      if (typeof window.showWarningMessage === "function") {
+        window.showWarningMessage("アタッカーをスキルとして使うには、場に他のアタッカーが必要です。");
+      }
+      if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(cardEl);
+      if (typeof window.organizeHands === "function") window.organizeHands();
+      if (typeof window.update === "function") window.update(true);
+      return;
     }
     const cardName = profile.name || profile.id || "カード";
     const cardId = profile.id || cardEl.dataset.id || "unknown";
@@ -186,10 +217,10 @@
     logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
     bumpFlowCounter("turn", owner, "flow.start.count", 1);
     bumpFlowCounter("game", owner, "flow.start.count", 1);
-    if (profile.cardKind === "skill") {
+    if (effectiveKind === "skill") {
       bumpFlowCounter("turn", owner, "use.skill", 1);
       bumpFlowCounter("game", owner, "use.skill", 1);
-    } else if (profile.cardKind === "attacker" || profile.cardKind === "support") {
+    } else if (effectiveKind === "attacker" || effectiveKind === "support") {
       bumpFlowCounter("turn", owner, "use.attacker", 1);
       bumpFlowCounter("game", owner, "use.attacker", 1);
     }
@@ -224,7 +255,7 @@
       if (scriptResult && scriptResult.preventDefaultDsl) preventDefaultDsl = true;
     }
 
-    if (!preventDefaultDsl && profile.cardKind !== "skill") {
+    if (!preventDefaultDsl && effectiveKind !== "skill") {
       const dsl = profile.effectDsl;
       let resolvedEffects = 0;
       let knownEffects = 0;
@@ -268,13 +299,13 @@
       trackEffectActivation(owner, cardId, triggerName, "SCRIPTED_FIRST8");
     }
 
-    if (profile.cardKind === "skill") {
+    if (effectiveKind === "skill") {
       runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillBeforeAttackEffect");
     }
-    if (profile.cardKind === "skill" && window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
+    if (effectiveKind === "skill" && window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
       window.FirstEightCardEffects.resolveAttackTriggerForAttacker(owner);
     }
-    if (profile.cardKind === "skill") {
+    if (effectiveKind === "skill") {
       runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillAfterAttackEffect");
     }
 

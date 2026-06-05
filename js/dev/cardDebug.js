@@ -339,6 +339,8 @@
             moveCard(card, "attacker");
             debug.tracker.player1.turn.custom.use.attacker += 1;
             debug.tracker.player1.game.custom.use.attacker += 1;
+            // デバッグではPP不足で効果確認が止まらないよう、コスト処理済みとして扱う
+            card.dataset.ppCostHandled = "1";
             withPatchedRuntime(() => {
               if (window.PlayerActionResolver?.resolveCardOnPlay) {
                 window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
@@ -350,11 +352,13 @@
             moveCard(card, "skill");
             debug.tracker.player1.turn.custom.use.skill += 1;
             debug.tracker.player1.game.custom.use.skill += 1;
+            // デバッグではPP不足で効果確認が止まらないよう、コスト処理済みとして扱う
+            card.dataset.ppCostHandled = "1";
             withPatchedRuntime(() => {
               if (window.PlayerActionResolver?.resolveCardOnPlay) {
                 window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
               } else {
-                runCardEvent(card, "onAttack");
+                runCardEvent(card, "onSummon");
               }
             });
           } else if (act === "toGrave") {

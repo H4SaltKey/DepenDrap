@@ -320,13 +320,124 @@
       effectName,
       allowDuplicate,
       duration: effect.duration && typeof effect.duration === "object"
-        ? effect.duration
+        ? {
+          mode: String(effect.duration.mode || "turn"),
+          turns: Math.max(0, Number(effect.duration.turns || 0)),
+          counts: Math.max(0, Number(effect.duration.counts || 0))
+        }
         : { mode: "turn", turns: 1, counts: 0 },
       grantedEffects: Array.isArray(effect.grantedEffects) ? effect.grantedEffects : [],
       createdAt: Date.now()
     };
     s.grantedEffects.push(row);
     if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+  }
+
+  const grantedTurnTickMemo = {
+    player1: "",
+    player2: ""
+  };
+
+  function normalizeDuration(duration) {
+    const src = (duration && typeof duration === "object") ? duration : {};
+    return {
+      mode: String(src.mode || "turn"),
+      turns: Math.max(0, Number(src.turns || 0)),
+      counts: Math.max(0, Number(src.counts || 0))
+    };
+  }
+
+  function shouldRunGrantedEffects(granted, eventName) {
+    const mode = String(granted?.duration?.mode || "turn");
+    if (mode === "turn") return eventName === "onTurnStart";
+    return true;
+  }
+
+  function shouldConsumeTurn(granted, context) {
+    const mode = String(granted?.duration?.mode || "turn");
+    if (mode !== "turn" && mode !== "both") return false;
+    if (String(context?.event?.name || "") !== "onTurnStart") return false;
+    const owner = context?.owner;
+    if (!owner) return false;
+    const m = window.state?.matchData || {};
+    const key = `${Number(m.round || 0)}:${Number(m.turn || 0)}:${owner}`;
+    if (grantedTurnTickMemo[owner] === key) return false;
+    grantedTurnTickMemo[owner] = key;
+    return true;
+  }
+
+  function isGrantedExpired(granted) {
+    const mode = String(granted?.duration?.mode || "turn");
+    const turns = Number(granted?.duration?.turns || 0);
+    const counts = Number(granted?.duration?.counts || 0);
+    if (mode === "count") return counts <= 0;
+    if (mode === "turn") return turns <= 0;
+    if (mode === "both") return turns <= 0 || counts <= 0;
+    return false;
+  }
+
+  function executeGrantedEffects(context) {
+    const owner = context?.owner;
+    const s = getPlayer(owner);
+    if (!owner || !s || !Array.isArray(s.grantedEffects) || s.grantedEffects.length === 0) {
+      return { handled: false, effects: [] };
+    }
+
+    const eventName = String(context?.event?.name || "");
+    const resultEffects = [];
+    const nextGranted = [];
+    let changed = false;
+
+    s.grantedEffects.forEach((row) => {
+      const granted = {
+        ...row,
+        duration: normalizeDuration(row?.duration)
+      };
+      if (isGrantedExpired(granted)) {
+        changed = true;
+        return;
+      }
+
+      let didApply = false;
+      if (shouldRunGrantedEffects(granted, eventName)) {
+        const effects = Array.isArray(granted.grantedEffects) ? granted.grantedEffects : [];
+        effects.forEach((effect, idx) => {
+          const localContext = {
+            ...context,
+            event: {
+              ...(context.event || {}),
+              __chain: { executedOrders: [] },
+              __effectOrder: idx + 1
+            }
+          };
+          const r = EffectExecutor.executeEffect(effect, localContext, {});
+          resultEffects.push(r);
+          if (r?.applied) didApply = true;
+        });
+      }
+
+      if ((granted.duration.mode === "count" || granted.duration.mode === "both") && didApply) {
+        granted.duration.counts = Math.max(0, Number(granted.duration.counts || 0) - 1);
+        changed = true;
+      }
+      if (shouldConsumeTurn(granted, context)) {
+        granted.duration.turns = Math.max(0, Number(granted.duration.turns || 0) - 1);
+        changed = true;
+      }
+
+      if (!isGrantedExpired(granted)) {
+        nextGranted.push(granted);
+      } else {
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      s.grantedEffects = nextGranted;
+      if (typeof window.pushMyStateDebounced === "function" && owner === meRole()) window.pushMyStateDebounced();
+    }
+
+    return { handled: true, effects: resultEffects };
   }
 
   function isCardOnField(cardEl) {
@@ -689,6 +800,7 @@
     EffectExecutor,
     VariableResolver,
     execute,
-    triggerZoneCardEffects
+    triggerZoneCardEffects,
+    executeGrantedEffects
   };
 })();

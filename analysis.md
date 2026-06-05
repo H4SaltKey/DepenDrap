@@ -5559,3 +5559,41 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `Failed to load resource ... %25E3...` は画像パスの二重エンコード/存在しない画像由来の可能性が高く、
   デバッグフロー処理そのものとは別問題。
 
+
+## Round 2026-06-05 — `grant_effect_bundle` の発火/継続消費を EffectEngine へ実装
+
+### 問題
+
+- 2026-06-02 時点では `GRANT_EFFECT_BUNDLE` で `state[owner].grantedEffects` へ登録するのみで、
+  付与効果の実行・継続期間（turn/count）の消費・期限切れ削除が未実装だった。
+
+### 実装
+
+- `js/game/effects/effectEngine.js`
+  - `executeGrantedEffects(context)` を追加。
+  - `grantedEffects` をイベント文脈（owner/opponent/source/event）で実行できるようにした。
+  - duration を正規化して保持（`mode/turns/counts` を数値クランプ）。
+  - 期限切れ判定を追加し、失効エントリを自動削除。
+  - 消費ルール:
+    - `count`: 付与効果で1つ以上 `applied` されたイベントで `counts -1`
+    - `turn`: `onTurnStart` のタイミングで `turns -1`
+    - `both`: 上記両方を適用し、どちらか0で失効
+  - 同一ターン中の重複 turn 消費防止として、`round:turn:owner` 単位で `onTurnStart` の減算を1回化。
+
+- 呼び出し側拡張（イベント発生時に通常トリガーと同じ文脈で付与効果を先に実行）
+  - `js/game/game.js`
+    - `startTurnDraw()` の `onTurnStart` で `executeGrantedEffects(...)` を1回呼ぶ。
+  - `js/game/auto/playerActionResolver.js`
+    - `onSummon` / `onDirectAttack` の実行経路（`resolveWithEffectEngine`）で付与効果を実行。
+    - `onLeave` 経路（`resolveCardOnLeave`）でも付与効果を実行。
+  - `js/game/auto/autoBattleEngine.js`
+    - 自動戦闘の `onDirectAttack` 実行時に付与効果を実行。
+  - `js/game/auto/firstEightCardEffects.js`
+    - `onAttack` 実行時に付与効果を実行。
+
+### 仕様/制約
+
+- 付与効果 (`grantedEffects[]`) は「付与先プレイヤーがイベントを起こした時」に、そのイベント文脈で実行される。
+- `turn` モードの付与効果は `onTurnStart` 時のみ発火する（毎イベント発火しない）。
+- `count` / `both` の回数消費は「効果が1件以上適用されたイベント」のみで行う（全件 `skipped` の場合は消費しない）。
+- 今回は最小差分を優先し、`data/cards.json` への検証用カード追加は行っていない。

@@ -2436,6 +2436,14 @@ function startTurnDraw() {
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
   if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+    if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+      window.EffectEngine.executeGrantedEffects({
+        game: window.state,
+        owner: me,
+        opponent: me === "player1" ? "player2" : "player1",
+        event: { name: "onTurnStart", zoneType: "turn", targetOwner: me }
+      });
+    }
     window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onTurnStart", { targetOwner: me });
     window.EffectEngine.triggerZoneCardEffects(me, "skill", "onTurnStart", { targetOwner: me });
   }

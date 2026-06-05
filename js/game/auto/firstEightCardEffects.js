@@ -136,7 +136,7 @@
     const id = attacker.dataset.id;
     const profile = window.CardCombatData?.getResolvedCardData?.(id);
     if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl?.format === window.EffectEngine.DSL_FORMAT) {
-      window.EffectEngine.execute(profile.effectDsl, {
+      const context = {
         game: window.state,
         sourceCard: attacker,
         sourceProfile: profile,
@@ -144,7 +144,11 @@
         opponent: meToOp(owner),
         target: meToOp(owner),
         event: { name: "onAttack", zoneType: "attacker", targetOwner: meToOp(owner) }
-      });
+      };
+      if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+        window.EffectEngine.executeGrantedEffects(context);
+      }
+      window.EffectEngine.execute(profile.effectDsl, context);
       return;
     }
     const self = getPlayer(owner);

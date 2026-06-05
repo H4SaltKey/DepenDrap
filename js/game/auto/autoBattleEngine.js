@@ -148,7 +148,7 @@
     window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, { source: "auto" });
     attacker.dataset.didDirectAttack = "1";
     if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl) {
-      window.EffectEngine.execute(profile.effectDsl, {
+      const context = {
         game: window.state,
         sourceCard: attacker,
         sourceProfile: profile,
@@ -156,7 +156,11 @@
         opponent: getOp(),
         target: getOp(),
         event: { name: "onDirectAttack", zoneType: "attacker", targetOwner: getOp() }
-      });
+      };
+      if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+        window.EffectEngine.executeGrantedEffects(context);
+      }
+      window.EffectEngine.execute(profile.effectDsl, context);
     }
     runtime.lastDirectAttackKey = attackKey;
     log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtkBase}${cardAtkBonus ? (cardAtkBonus > 0 ? `+${cardAtkBonus}` : `${cardAtkBonus}`) : ""})`);

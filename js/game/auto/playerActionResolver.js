@@ -125,8 +125,6 @@
 
   function resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName) {
     if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") return null;
-    const dsl = profile?.effectDsl;
-    if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return null;
     const context = {
       game: window.state,
       sourceCard: cardEl,
@@ -136,6 +134,11 @@
       target: owner === "player1" ? "player2" : "player1",
       event: { name: triggerName, zoneType }
     };
+    if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+      window.EffectEngine.executeGrantedEffects(context);
+    }
+    const dsl = profile?.effectDsl;
+    if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return { handled: true, effects: [] };
     return window.EffectEngine.execute(dsl, context);
   }
 
@@ -297,20 +300,24 @@
     const triggerName = "onLeave";
     const dsl = profile?.effectDsl;
     const engine = window.EffectEngine;
+    const context = {
+      game: window.state,
+      sourceCard: cardEl,
+      sourceProfile: profile,
+      owner,
+      opponent: owner === "player1" ? "player2" : "player1",
+      target: owner === "player1" ? "player2" : "player1",
+      event: {
+        name: triggerName,
+        zoneType: options.zoneType || "grave",
+        didDirectAttack: cardEl.dataset.didDirectAttack === "1"
+      }
+    };
+    if (engine && typeof engine.executeGrantedEffects === "function") {
+      engine.executeGrantedEffects(context);
+    }
     const engineResult = (engine && typeof engine.execute === "function" && dsl && dsl.format === engine.DSL_FORMAT)
-      ? engine.execute(dsl, {
-        game: window.state,
-        sourceCard: cardEl,
-        sourceProfile: profile,
-        owner,
-        opponent: owner === "player1" ? "player2" : "player1",
-        target: owner === "player1" ? "player2" : "player1",
-        event: {
-          name: triggerName,
-          zoneType: options.zoneType || "grave",
-          didDirectAttack: cardEl.dataset.didDirectAttack === "1"
-        }
-      })
+      ? engine.execute(dsl, context)
       : null;
     if (!engineResult || !engineResult.handled) return;
     (engineResult.effects || []).forEach((item) => {

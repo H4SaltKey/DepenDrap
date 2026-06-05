@@ -249,7 +249,7 @@
       const dsl = card.profile?.effectDsl;
       if (!dsl) return;
       withPatchedRuntime(() => {
-        const res = window.EffectEngine.execute(dsl, {
+        const context = {
           game: debug.state,
           sourceCard: card,
           sourceProfile: card.profile,
@@ -263,7 +263,11 @@
             didDirectAttack: card.dataset.didDirectAttack === "1",
             ...extra
           }
-        });
+        };
+        if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+          window.EffectEngine.executeGrantedEffects(context);
+        }
+        const res = window.EffectEngine.execute(dsl, context);
         log(`[FLOW] ${card.name} -> ${eventName} effects=${(res?.effects || []).length}`);
       });
     }

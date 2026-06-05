@@ -5590,6 +5590,8 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - 自動戦闘の `onDirectAttack` 実行時に付与効果を実行。
   - `js/game/auto/firstEightCardEffects.js`
     - `onAttack` 実行時に付与効果を実行。
+  - `js/dev/cardDebug.js`
+    - デバッグ実行でも `executeGrantedEffects` を先に呼び、本編と同じイベント文脈に揃えた。
 
 ### 仕様/制約
 

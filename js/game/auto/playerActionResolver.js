@@ -93,6 +93,22 @@
     return profile;
   }
 
+  function resolveEffectiveDsl(profile) {
+    if (
+      profile?.effectBlocks
+      && Array.isArray(profile.effectBlocks.timings)
+      && window.CardEffectBlockCompiler
+      && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
+    ) {
+      const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(profile.effectBlocks);
+      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) return compiled;
+    }
+    if (profile?.effectDsl && profile.effectDsl.format === "dependrap.dsl.v1" && Array.isArray(profile.effectDsl.triggers)) {
+      return profile.effectDsl;
+    }
+    return { format: "dependrap.dsl.v1", triggers: [] };
+  }
+
   function hasOtherAttackerOnField(owner, sourceCard) {
     if (typeof window.getZoneCards !== "function") return false;
     const cards = window.getZoneCards(owner, "attacker") || [];
@@ -172,14 +188,26 @@
       owner,
       opponent: owner === "player1" ? "player2" : "player1",
       target: owner === "player1" ? "player2" : "player1",
-      event: { name: triggerName, zoneType }
+      event: { name: triggerName, zoneType },
+      debugReporter: typeof cardEl?._debugReporter === "function" ? cardEl._debugReporter : null
     };
     if (typeof window.EffectEngine.executeGrantedEffects === "function") {
       window.EffectEngine.executeGrantedEffects(context);
     }
-    const dsl = profile?.effectDsl;
+    const dsl = resolveEffectiveDsl(profile);
     if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return { handled: true, effects: [] };
-    return window.EffectEngine.execute(dsl, context);
+    const result = window.EffectEngine.execute(dsl, context);
+    if (typeof cardEl?._debugOnEngineResult === "function") {
+      try {
+        cardEl._debugOnEngineResult({
+          trigger: triggerName,
+          cardId: profile?.id || cardEl?.dataset?.id || "unknown",
+          cardName: profile?.name || cardEl?.dataset?.id || "unknown",
+          result
+        });
+      } catch (_) {}
+    }
+    return result;
   }
 
   function runEngineForTrigger(profile, cardEl, owner, zoneType, triggerName) {
@@ -274,7 +302,10 @@
     }
 
     if (!preventDefaultDsl && effectiveKind !== "skill") {
-      const dsl = profile.effectDsl;
+      const dsl = resolveEffectiveDsl(profile);
+      if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+        logFlow(`EFFECT_CHECK ${flowId} dsl=empty (DSL未実装)`);
+      }
       let resolvedEffects = 0;
       let knownEffects = 0;
       const engineResult = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
@@ -344,8 +375,9 @@
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
       ? window.CardCombatData.getResolvedCardData(card.id)
       : card;
+    if (cardEl.dataset.onLeaveResolving === "1") return;
     const triggerName = "onLeave";
-    const dsl = profile?.effectDsl;
+    const dsl = resolveEffectiveDsl(profile);
     const engine = window.EffectEngine;
     const context = {
       game: window.state,
@@ -358,14 +390,31 @@
         name: triggerName,
         zoneType: options.zoneType || "grave",
         didDirectAttack: cardEl.dataset.didDirectAttack === "1"
-      }
+      },
+      debugReporter: typeof cardEl?._debugReporter === "function" ? cardEl._debugReporter : null
     };
     if (engine && typeof engine.executeGrantedEffects === "function") {
       engine.executeGrantedEffects(context);
     }
-    const engineResult = (engine && typeof engine.execute === "function" && dsl && dsl.format === engine.DSL_FORMAT)
-      ? engine.execute(dsl, context)
-      : null;
+    let engineResult = null;
+    cardEl.dataset.onLeaveResolving = "1";
+    try {
+      engineResult = (engine && typeof engine.execute === "function" && dsl && dsl.format === engine.DSL_FORMAT)
+        ? engine.execute(dsl, context)
+        : null;
+    } finally {
+      delete cardEl.dataset.onLeaveResolving;
+    }
+    if (typeof cardEl?._debugOnEngineResult === "function") {
+      try {
+        cardEl._debugOnEngineResult({
+          trigger: triggerName,
+          cardId: profile?.id || cardEl?.dataset?.id || "unknown",
+          cardName: profile?.name || cardEl?.dataset?.id || "unknown",
+          result: engineResult
+        });
+      } catch (_) {}
+    }
     if (!engineResult || !engineResult.handled) return;
     (engineResult.effects || []).forEach((item) => {
       trackEffectActivation(owner, profile.id || cardEl.dataset.id || "unknown", triggerName, String(item?.type || "UNKNOWN"));
@@ -385,7 +434,7 @@
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const triggerName = "onDirectAttack";
 
-    const dsl = profile.effectDsl;
+    const dsl = resolveEffectiveDsl(profile);
     const engineResult = resolveWithEffectEngine(profile, cardEl, owner || me, "attacker", triggerName);
     if (engineResult && engineResult.handled) {
       (engineResult.effects || []).forEach((item) => {
@@ -418,7 +467,7 @@
       const isBattleFieldLeave = (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill"));
       if (isBattleFieldLeave && cardEl) {
         cardEl.dataset.didDirectAttack = prevDidDirectAttack;
-        if (cardEl.dataset.skipAutoOnLeave === "1") {
+        if (cardEl.dataset.skipAutoOnLeave === "1" || cardEl.dataset.onLeaveResolving === "1") {
           delete cardEl.dataset.skipAutoOnLeave;
         } else {
           resolveCardOnLeave(cardEl, { zoneType: prevZoneType });

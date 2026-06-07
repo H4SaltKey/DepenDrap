@@ -25,7 +25,13 @@
 
   function normalizeTarget(target) {
     const t = String(target || "self_player");
-    if (["self_player", "current_target", "self_and_current_target", "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "this_card", "grave_card", "hand_card"].includes(t)) return t;
+    if ([
+      "self_player", "current_target", "self_and_current_target",
+      "player", "target_player", "source_player",
+      "card", "target_card", "source_card",
+      "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card",
+      "this_card", "grave_card", "hand_card"
+    ].includes(t)) return t;
     if (["self", "opponent", "owner", "eventTarget"].includes(t)) return t;
     return "self_player";
   }
@@ -50,11 +56,13 @@
 
     const target = normalizeTarget(effect.target);
     const compiled = { type: dslType, target };
+    compiled.useCondition = effect.useCondition === true;
     if (effect.useCondition === true && effect.condition && typeof effect.condition === "object") {
       compiled.condition = effect.condition;
     }
 
     if (kind === "damage") {
+      compiled.targetType = "player";
       compiled.amount = Math.max(0, normalizeValue(effect.value, 1));
       compiled.damageType = String(effect.damageType || "damage");
       compiled.subType = String(effect.damageAttr || effect.subType || "none");
@@ -62,6 +70,7 @@
     }
 
     if (kind === "hp_reduce") {
+      compiled.targetType = "player";
       compiled.amount = Math.max(0, normalizeValue(effect.value, 1));
       compiled.damageType = "hp_reduce";
       compiled.subType = "none";
@@ -75,32 +84,34 @@
         compiled.atkTarget = String(effect.atkTarget || "this_card");
       } else if (["draw_card", "add_hand", "add_hand_to_n"].includes(kind)) {
         compiled.target = normalizeTarget(effect.target || "self_player");
-        compiled.cardTargetMode = "player";
+        compiled.targetType = "player";
       } else if (["duplicate_to_hand", "reveal_card"].includes(kind)) {
         compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
-        compiled.cardTargetMode = "card";
+        compiled.targetType = "card";
+      } else if (["recover_pp", "set_pp_min", "recover_pp_to", "heal"].includes(kind)) {
+        compiled.targetType = "player";
       }
       return compiled;
     }
 
     if (kind === "fetch_card") {
+      compiled.targetType = "card";
       compiled.amount = Math.max(1, normalizeValue(effect.value, 1));
       compiled.toZone = String(effect.toZone || "hand");
       compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
-      compiled.cardTargetMode = "card";
       return compiled;
     }
 
     if (kind === "play_to_field") {
+      compiled.targetType = "card";
       compiled.toZone = String(effect.toZone || "attacker");
       compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
-      compiled.cardTargetMode = "card";
       return compiled;
     }
 
     if (["return_to_hand", "send_to_grave", "return_to_deck"].includes(kind)) {
+      compiled.targetType = "card";
       compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
-      compiled.cardTargetMode = "card";
       return compiled;
     }
 
@@ -133,6 +144,7 @@
         .filter(Boolean);
       if (effects.length === 0) return;
       const trigger = { on, effects };
+      trigger.useCondition = timingNode.useCondition === true;
       if (timingNode.useCondition === true && timingNode.condition && typeof timingNode.condition === "object") {
         trigger.bundleCondition = timingNode.condition;
       }

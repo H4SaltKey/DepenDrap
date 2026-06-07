@@ -33,14 +33,43 @@
 
   function createCardObj(cardData, owner) {
     const resolved = window.CardCombatData?.getResolvedCardData?.(cardData.id) || cardData;
+    const dsl = resolveCardDslForDebug(resolved);
     return {
       id: cardData.id,
       name: cardData.name || cardData.id,
       // インスタンス単位で調整できるよう浅いコピーを持つ
-      profile: { ...resolved },
+      profile: { ...resolved, effectDsl: dsl },
       dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0", instanceId: `dbg-${Date.now()}-${debugInstanceSeq++}` },
       style: {}
     };
+  }
+
+  function createEmptyDsl() {
+    return { format: "dependrap.dsl.v1", triggers: [] };
+  }
+
+  function resolveCardDslForDebug(cardLike) {
+    if (
+      cardLike?.effectBlocks
+      && Array.isArray(cardLike.effectBlocks.timings)
+      && window.CardEffectBlockCompiler
+      && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
+    ) {
+      const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(cardLike.effectBlocks);
+      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) {
+        return compiled;
+      }
+      return createEmptyDsl();
+    }
+    if (
+      cardLike?.effectDsl
+      && typeof cardLike.effectDsl === "object"
+      && String(cardLike.effectDsl.format || "") === "dependrap.dsl.v1"
+      && Array.isArray(cardLike.effectDsl.triggers)
+    ) {
+      return cardLike.effectDsl;
+    }
+    return createEmptyDsl();
   }
 
   function createDefaultDebugState() {
@@ -150,7 +179,9 @@
       state: createDefaultDebugState(),
       zones: { hand: [], attacker: [], skill: [], grave: [], deck: [] },
       tracker: { player1: createTrackerNode(), player2: createTrackerNode() },
-      logs: []
+      logs: [],
+      lastExecution: null,
+      errors: []
     };
 
     function log(msg) {
@@ -266,8 +297,22 @@
 
     function runCardEvent(card, eventName, extra = {}) {
       if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") return;
-      const dsl = card.profile?.effectDsl;
-      if (!dsl) return;
+      const dsl = resolveCardDslForDebug(card.profile || {});
+      card.profile.effectDsl = dsl;
+      if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+        const row = {
+          cardId: card.id,
+          cardName: card.name,
+          trigger: eventName,
+          dslUnimplemented: true,
+          triggerReports: [],
+          effects: [],
+          error: null
+        };
+        debug.lastExecution = row;
+        log(`[DSL] ${card.name} はDSL未実装（効果なしとして扱い）`);
+        return;
+      }
       withPatchedRuntime(() => {
         const context = {
           game: debug.state,
@@ -284,12 +329,73 @@
             ...extra
           }
         };
+        const debugEvents = [];
+        context.debugReporter = (payload) => {
+          debugEvents.push(payload);
+        };
+        let res = null;
+        let caught = null;
         if (typeof window.EffectEngine.executeGrantedEffects === "function") {
           window.EffectEngine.executeGrantedEffects(context);
         }
-        const res = window.EffectEngine.execute(dsl, context);
-        log(`[FLOW] ${card.name} -> ${eventName} effects=${(res?.effects || []).length}`);
+        try {
+          res = window.EffectEngine.execute(dsl, context);
+        } catch (error) {
+          caught = error;
+        }
+        const row = {
+          cardId: card.id,
+          cardName: card.name,
+          trigger: eventName,
+          dslUnimplemented: false,
+          triggerReports: Array.isArray(res?.triggerReports) ? res.triggerReports : [],
+          effects: Array.isArray(res?.effects) ? res.effects : [],
+          debugEvents,
+          error: caught ? {
+            message: String(caught?.message || caught || "unknown-error"),
+            stack: String(caught?.stack || "")
+          } : null
+        };
+        debug.lastExecution = row;
+        if (row.error) {
+          debug.errors.push(row);
+          const errLine = `[ERROR] card=${row.cardId} trigger=${eventName} ${row.error.message}`;
+          console.error(errLine, caught);
+          log(errLine);
+          throw caught;
+        }
+        log(`[FLOW] ${card.name} -> ${eventName} effects=${(row.effects || []).length}`);
       });
+    }
+
+    function attachEngineDebugHook(card) {
+      if (!card) return;
+      card._debugReporter = (payload) => {
+        // 逐次イベントは execute の戻り値にも入るため、ここでは保持のみ
+        if (!Array.isArray(card._debugEvents)) card._debugEvents = [];
+        card._debugEvents.push(payload);
+      };
+      card._debugOnEngineResult = (payload) => {
+        const row = {
+          cardId: payload?.cardId || card.id,
+          cardName: payload?.cardName || card.name,
+          trigger: payload?.trigger || "unknown",
+          dslUnimplemented: false,
+          triggerReports: Array.isArray(payload?.result?.triggerReports) ? payload.result.triggerReports : [],
+          effects: Array.isArray(payload?.result?.effects) ? payload.result.effects : [],
+          debugEvents: Array.isArray(card._debugEvents) ? card._debugEvents : [],
+          error: null
+        };
+        card._debugEvents = [];
+        if ((row.triggerReports || []).length === 0 && (!row.effects || row.effects.length === 0)) {
+          const dsl = resolveCardDslForDebug(card.profile || {});
+          if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+            row.dslUnimplemented = true;
+            log(`[DSL] ${card.name} はDSL未実装（効果なしとして扱い）`);
+          }
+        }
+        debug.lastExecution = row;
+      };
     }
 
     function applyZoneAfterLeaveResolution(card, fromZone) {
@@ -307,6 +413,83 @@
         return true;
       }
       return false;
+    }
+
+    function recordRuntimeError(card, trigger, effect, error) {
+      const row = {
+        cardId: card?.id || "unknown",
+        cardName: card?.name || "unknown",
+        trigger: trigger || "unknown",
+        dslUnimplemented: false,
+        triggerReports: [],
+        effects: [],
+        debugEvents: [],
+        error: {
+          message: String(error?.message || error || "unknown-error"),
+          stack: String(error?.stack || ""),
+          effectType: String(effect || "unknown")
+        }
+      };
+      debug.lastExecution = row;
+      debug.errors.push(row);
+      console.error(`[CARD_DEBUG_ERROR] card=${row.cardId} trigger=${row.trigger} effect=${row.error.effectType}`, error);
+      log(`[ERROR] card=${row.cardId} trigger=${row.trigger} effect=${row.error.effectType} ${row.error.message}`);
+    }
+
+    function esc(v) {
+      return String(v == null ? "" : v)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;");
+    }
+
+    function renderExecutionSummary() {
+      const execEl = root.querySelector("#dbgExecPanel");
+      const errEl = root.querySelector("#dbgErrorPanel");
+      if (!execEl || !errEl) return;
+      const row = debug.lastExecution;
+      if (!row) {
+        execEl.innerHTML = `<div style="font-size:12px;color:#94a3b8;">まだ効果実行はありません。</div>`;
+      } else if (row.dslUnimplemented) {
+        execEl.innerHTML = `<div style="font-size:12px;color:#fcd34d;">このカードはDSL未実装（効果なし）</div>`;
+      } else {
+        const triggerRows = (row.triggerReports || []).map((t) => {
+          const effects = (t.effects || []).map((e) => {
+            const status = e.error ? "失敗" : (e.applied ? "実行" : "スキップ");
+            const reason = e.error ? `error:${e.error.message}` : (e.skippedReason || "");
+            return `<div style="font-size:11px;color:#cbd5e1;">#${e.order} ${esc(e.type)} → ${status} ${reason ? `(${esc(reason)})` : ""}</div>`;
+          }).join("");
+          return `
+            <div style="padding:6px;border:1px solid #334155;border-radius:6px;background:#0f172a;">
+              <div style="font-size:12px;color:#e2e8f0;">発火タイミング: ${esc(t.on)}</div>
+              <div style="font-size:11px;color:${t.triggerConditionPassed ? "#86efac" : "#fca5a5"};">条件判定: ${t.triggerConditionPassed ? "成功" : "失敗"} ${t.triggerConditionReason ? `(${esc(t.triggerConditionReason)})` : ""}</div>
+              <div style="font-size:11px;color:${t.bundleConditionPassed ? "#86efac" : "#fca5a5"};">条件失敗理由: ${esc(t.bundleConditionReason || "なし")}</div>
+              <div style="margin-top:4px;">${effects || '<div style="font-size:11px;color:#94a3b8;">効果なし</div>'}</div>
+            </div>
+          `;
+        }).join("");
+        const fallbackEffects = (row.effects || []).map((e, idx) => {
+          const status = e.error ? "失敗" : (e.applied ? "実行" : "スキップ");
+          return `<div style="font-size:11px;color:#cbd5e1;">#${idx + 1} ${esc(e.type || "UNKNOWN")} → ${status}</div>`;
+        }).join("");
+        execEl.innerHTML = `
+          <div style="font-size:12px;color:#93c5fd;">カード: ${esc(row.cardId)} / トリガー: ${esc(row.trigger)}</div>
+          <div style="margin-top:6px;display:grid;gap:6px;">${triggerRows || fallbackEffects || '<div style="font-size:11px;color:#94a3b8;">一致トリガーなし</div>'}</div>
+        `;
+      }
+
+      const errors = debug.errors.slice(-5).reverse();
+      if (errors.length === 0) {
+        errEl.innerHTML = `<div style="font-size:11px;color:#94a3b8;">実行エラーなし</div>`;
+      } else {
+        errEl.innerHTML = errors.map((e) => `
+          <div style="padding:6px;border:1px solid #7f1d1d;border-radius:6px;background:#450a0a;">
+            <div style="font-size:11px;color:#fecaca;">card=${esc(e.cardId)} trigger=${esc(e.trigger)} effect=${esc(e.error?.effectType || "unknown")}</div>
+            <div style="font-size:11px;color:#fca5a5;">${esc(e.error?.message || "error")}</div>
+          </div>
+        `).join("");
+      }
     }
 
     function renderTrackerGrid() {
@@ -359,102 +542,106 @@
       el.querySelectorAll("button").forEach((btn) => {
         btn.addEventListener("click", () => {
           const act = btn.dataset.act;
-          if (act === "toAttacker") {
-            delete card.dataset.debugCardKind;
-            delete card.dataset.debugCostOverride;
-            moveCard(card, "attacker");
-            debug.tracker.player1.turn.custom.use.attacker += 1;
-            debug.tracker.player1.game.custom.use.attacker += 1;
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveCardOnPlay) {
-                window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
-              } else {
-                runCardEvent(card, "onSummon");
+          try {
+            if (act === "toAttacker") {
+              delete card.dataset.debugCardKind;
+              delete card.dataset.debugCostOverride;
+              moveCard(card, "attacker");
+              debug.tracker.player1.turn.custom.use.attacker += 1;
+              debug.tracker.player1.game.custom.use.attacker += 1;
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveCardOnPlay) {
+                  window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
+                } else {
+                  runCardEvent(card, "onSummon");
+                }
+              });
+            } else if (act === "toSkill") {
+              const attackerCount = debug.zones.attacker.filter((c) => String(c.profile?.cardKind || "attacker") === "attacker").length;
+              const activatorExists = debug.zones.attacker.some((c) => {
+                const k = String(c.profile?.cardKind || "attacker");
+                return k === "attacker" || k === "support";
+              });
+              if ((kind === "attacker" && attackerCount < 1) || ((kind === "skill" || kind === "support") && !activatorExists)) {
+                log("[RULE] スキル使用条件を満たしていません");
+                render();
+                return;
               }
-            });
-          } else if (act === "toSkill") {
-            const attackerCount = debug.zones.attacker.filter((c) => String(c.profile?.cardKind || "attacker") === "attacker").length;
-            const activatorExists = debug.zones.attacker.some((c) => {
-              const k = String(c.profile?.cardKind || "attacker");
-              return k === "attacker" || k === "support";
-            });
-            if ((kind === "attacker" && attackerCount < 1) || ((kind === "skill" || kind === "support") && !activatorExists)) {
-              log("[RULE] スキル使用条件を満たしていません");
-              render();
-              return;
-            }
-            moveCard(card, "skill");
-            debug.tracker.player1.turn.custom.use.skill += 1;
-            debug.tracker.player1.game.custom.use.skill += 1;
-            // カード種別に依存せず、スキルとして処理する
-            card.dataset.debugCardKind = "skill";
-            if (kind === "support") card.dataset.debugCostOverride = "1";
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveCardOnPlay) {
-                window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
-              } else {
-                runCardEvent(card, "onSummon");
-              }
-            });
-            delete card.dataset.debugCardKind;
-            delete card.dataset.debugCostOverride;
+              moveCard(card, "skill");
+              debug.tracker.player1.turn.custom.use.skill += 1;
+              debug.tracker.player1.game.custom.use.skill += 1;
+              // カード種別に依存せず、スキルとして処理する
+              card.dataset.debugCardKind = "skill";
+              if (kind === "support") card.dataset.debugCostOverride = "1";
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveCardOnPlay) {
+                  window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
+                } else {
+                  runCardEvent(card, "onSummon");
+                }
+              });
+              delete card.dataset.debugCardKind;
+              delete card.dataset.debugCostOverride;
 
-            // ゲーム同様、スキル使用後は退場時効果を処理して墓地へ送る
-            const fromZone = "skill";
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveCardOnLeave) {
-                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
-              } else {
-                runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+              // ゲーム同様、スキル使用後は退場時効果を処理して墓地へ送る
+              const fromZone = "skill";
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                  window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+                } else {
+                  runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+                }
+              });
+              if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+                moveCard(card, "grave");
               }
-            });
-            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
-              moveCard(card, "grave");
-            }
-          } else if (act === "toGrave") {
-            const fromZone = String(card.dataset.zoneType || "");
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveCardOnLeave) {
-                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
-              } else {
-                runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+            } else if (act === "toGrave") {
+              const fromZone = String(card.dataset.zoneType || "");
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                  window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+                } else {
+                  runCardEvent(card, "onLeave", { didDirectAttack: card.dataset.didDirectAttack === "1" });
+                }
+              });
+              if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+                moveCard(card, "grave");
               }
-            });
-            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
-              moveCard(card, "grave");
-            }
-          } else if (act === "toHand") {
-            moveCard(card, "hand");
-          } else if (act === "direct") {
-            card.dataset.didDirectAttack = "1";
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveDirectAttack) {
-                window.PlayerActionResolver.resolveDirectAttack(card, "player1", { type: debug.target === "player" ? "player" : "monster" });
+            } else if (act === "toHand") {
+              moveCard(card, "hand");
+            } else if (act === "direct") {
+              card.dataset.didDirectAttack = "1";
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveDirectAttack) {
+                  window.PlayerActionResolver.resolveDirectAttack(card, "player1", { type: debug.target === "player" ? "player" : "monster" });
+                } else {
+                  runCardEvent(card, "onDirectAttack", { didDirectAttack: true });
+                }
+              });
+              const amount = Math.max(1, Number(card.profile?.attack || 0) + Number(debug.state.player1.atk || 0));
+              if (debug.target === "player") {
+                const before = Number(debug.state.player2.hp || 0);
+                debug.state.player2.hp = Math.max(0, before - amount);
+                bumpTracker("player2", "hp", before, debug.state.player2.hp);
+                log(`[DIRECT] ${card.name} -> ${ownerName("player2", debug.state)} ${amount}ダメージ`);
               } else {
-                runCardEvent(card, "onDirectAttack", { didDirectAttack: true });
+                const tname = debug.target === "goblin" ? "ゴブリン" : "シャドウハウンド";
+                log(`[DIRECT] ${card.name} -> ${tname} ${amount}ダメージ（簡易）`);
               }
-            });
-            const amount = Math.max(1, Number(card.profile?.attack || 0) + Number(debug.state.player1.atk || 0));
-            if (debug.target === "player") {
-              const before = Number(debug.state.player2.hp || 0);
-              debug.state.player2.hp = Math.max(0, before - amount);
-              bumpTracker("player2", "hp", before, debug.state.player2.hp);
-              log(`[DIRECT] ${card.name} -> ${ownerName("player2", debug.state)} ${amount}ダメージ`);
-            } else {
-              const tname = debug.target === "goblin" ? "ゴブリン" : "シャドウハウンド";
-              log(`[DIRECT] ${card.name} -> ${tname} ${amount}ダメージ（簡易）`);
-            }
-            const fromZone = "attacker";
-            withPatchedRuntime(() => {
-              if (window.PlayerActionResolver?.resolveCardOnLeave) {
-                window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
-              } else {
-                runCardEvent(card, "onLeave", { didDirectAttack: true });
+              const fromZone = "attacker";
+              withPatchedRuntime(() => {
+                if (window.PlayerActionResolver?.resolveCardOnLeave) {
+                  window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: fromZone });
+                } else {
+                  runCardEvent(card, "onLeave", { didDirectAttack: true });
+                }
+              });
+              if (!applyZoneAfterLeaveResolution(card, fromZone)) {
+                moveCard(card, "grave");
               }
-            });
-            if (!applyZoneAfterLeaveResolution(card, fromZone)) {
-              moveCard(card, "grave");
             }
+          } catch (error) {
+            recordRuntimeError(card, act, "button_action", error);
           }
           render();
         });
@@ -497,8 +684,12 @@
             </div>
             <button id="dbgApplyStats" style="padding:8px;background:#0ea5e9;color:#082f49;border:0;border-radius:6px;font-weight:700;cursor:pointer;">ステータス適用</button>
           </section>
-          <section style="display:grid;grid-template-rows:auto 1fr auto;gap:8px;min-height:0;">
+          <section style="display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;min-height:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;"><h4 style="margin:0;font-size:14px;">記録データ / フローチャット</h4><button id="dbgClearLog" style="padding:6px 10px;background:#334155;color:#fff;border:0;border-radius:6px;cursor:pointer;">クリア</button></div>
+            <div style="display:grid;grid-template-rows:auto auto;gap:8px;">
+              <div id="dbgExecPanel" style="overflow:auto;max-height:200px;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div>
+              <div id="dbgErrorPanel" style="overflow:auto;max-height:120px;border:1px solid #7f1d1d;border-radius:8px;padding:8px;background:#1f1116;"></div>
+            </div>
             <div style="display:grid;grid-template-rows:220px 1fr;gap:8px;min-height:0;"><div id="dbgTrackerGrid" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div><div id="dbgLog" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;font-size:12px;line-height:1.5;"></div></div>
             <div style="display:flex;gap:6px;"><input id="dbgChatInput" type="text" placeholder="メモ/チャット" style="flex:1;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;"><button id="dbgChatSend" style="padding:8px 12px;background:#2563eb;color:#fff;border:0;border-radius:6px;cursor:pointer;">送信</button></div>
           </section>
@@ -535,6 +726,7 @@
         root.querySelector("#dbgP2atk").value = String(debug.state.player2.atk);
 
         renderTrackerGrid();
+        renderExecutionSummary();
       }
 
       root.querySelector("#dbgClose").onclick = () => closeModal();
@@ -560,6 +752,7 @@
         const row = cardSource.find((x) => x.id === id);
         if (!row) return;
         const card = createCardObj(row, "player1");
+        attachEngineDebugHook(card);
         moveCard(card, "hand");
         log(`[ADD] 手札に追加 ${card.name}`);
         render();
@@ -577,7 +770,7 @@
         log("[STATE] ステータスを反映");
         render();
       };
-      root.querySelector("#dbgClearLog").onclick = () => { debug.logs = []; render(); };
+      root.querySelector("#dbgClearLog").onclick = () => { debug.logs = []; debug.errors = []; debug.lastExecution = null; render(); };
       root.querySelector("#dbgChatSend").onclick = () => {
         const input = root.querySelector("#dbgChatInput");
         const text = String(input.value || "").trim();
@@ -704,8 +897,14 @@
         debug.zones = { hand: [], attacker: [], skill: [], grave: [], deck: [] };
         debug.tracker = { player1: createTrackerNode(), player2: createTrackerNode() };
         debug.logs = [];
+        debug.lastExecution = null;
+        debug.errors = [];
 
-        debug.zones.deck = deckRows.map((row) => createCardObj(row, "player1"));
+        debug.zones.deck = deckRows.map((row) => {
+          const card = createCardObj(row, "player1");
+          attachEngineDebugHook(card);
+          return card;
+        });
         for (let i = debug.zones.deck.length - 1; i > 0; i -= 1) {
           const j = Math.floor(Math.random() * (i + 1));
           [debug.zones.deck[i], debug.zones.deck[j]] = [debug.zones.deck[j], debug.zones.deck[i]];

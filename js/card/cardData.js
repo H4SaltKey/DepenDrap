@@ -14,7 +14,7 @@ async function loadCardData(){
     type: card.type || "アタッカー",
     attack: normalizeCardAttack(card.attack),
     effectText: String(card.effectText || "").trim(),
-    effectDsl: normalizeCardEffectDsl(card.effectDsl, card.effectText),
+    effectDsl: resolveCardEffectDsl(card),
     tags: normalizeCardTags(card.tags),
     image: normalizeCardImagePath(card.image || "")
   }));
@@ -50,22 +50,41 @@ function normalizeCardAttack(attack) {
   return Math.max(0, Math.floor(val));
 }
 
-function normalizeCardEffectDsl(effectDsl, effectText) {
-  if (effectDsl && typeof effectDsl === "object") return effectDsl;
-  const text = String(effectText || "").trim();
-  if (!text) return null;
-  if (window.CardDSL && typeof window.CardDSL.compileText === "function") {
-    return window.CardDSL.compileText(text);
-  }
+function createEmptyEffectDsl() {
   return {
-    version: 1,
-    triggers: [
-      {
-        on: "manual",
-        effects: [{ type: "UNKNOWN", raw: text }]
-      }
-    ]
+    format: "dependrap.dsl.v1",
+    triggers: []
   };
+}
+
+function normalizeCardEffectDsl(effectDsl) {
+  if (
+    effectDsl
+    && typeof effectDsl === "object"
+    && String(effectDsl.format || "") === "dependrap.dsl.v1"
+    && Array.isArray(effectDsl.triggers)
+  ) {
+    return effectDsl;
+  }
+  return createEmptyEffectDsl();
+}
+
+function resolveCardEffectDsl(card) {
+  const rawBlocks = card?.effectBlocks;
+  if (
+    rawBlocks
+    && typeof rawBlocks === "object"
+    && Array.isArray(rawBlocks.timings)
+    && window.CardEffectBlockCompiler
+    && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
+  ) {
+    const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(rawBlocks);
+    if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) {
+      return compiled;
+    }
+    return createEmptyEffectDsl();
+  }
+  return normalizeCardEffectDsl(card?.effectDsl);
 }
 
 function getCardIds(){

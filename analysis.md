@@ -5671,3 +5671,44 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - 「〇〇時/継続が無い」などの不在判定ログを減らし、
   実際に評価された効果だけをテキストログで追跡できるようにする。
+
+## Round 2026-06-08 — カードデバッグのDSL参照統一と条件/対象/例外可視化
+
+### 変更
+
+- `js/card/cardData.js`
+  - `effectText` から `effectDsl` を自動推測する経路を削除。
+  - 読み込み時は `effectBlocks` があれば `effectBlocks -> effectDsl` を優先し、無い場合のみ `effectDsl` を使用。
+  - どちらも無効な場合は空DSL（`format: dependrap.dsl.v1, triggers: []`）に統一。
+
+- `js/dev/cardEffectBlockCompiler.js`
+  - `effect.useCondition` と `trigger.useCondition` をDSLへ明示出力。
+  - `targetType`（`player` / `card`）を効果ごとに出力。
+  - 対象トークンに `player/card/source_card/target_card/source_player/target_player` を追加。
+
+- `js/game/effects/effectEngine.js`
+  - 条件判定を `effect.useCondition === true` のときのみ評価するよう変更。
+  - runtime条件判定を詳細化し、失敗理由（`skippedReason`）を返却。
+  - `DAMAGE/HEAL/ADD_SHIELD/RECOVER_PP/SET_PP_MIN/DRAW/GRANT_EFFECT_BUNDLE` でプレイヤー対象を厳密判定。
+  - カード対象効果で対象不在時は `skippedByInvalidTarget` を返却。
+  - `trackerCheck.owner` に `self_player/target_player/card/source_card/target_card` などを追加し、プレイヤー値とカード値（`dataset.hp/shield/attackBonus`）を分離。
+  - `execute` の返却に `triggerReports` を追加し、発火タイミング・条件結果・実行/スキップ効果・理由を取得可能化。
+  - `debugReporter` フックを追加し、デバッグUIが実行イベントを受け取れるようにした。
+
+- `js/game/auto/playerActionResolver.js`
+  - 実行時DSLを `effectBlocks` 優先で解決する `resolveEffectiveDsl` を追加（実行経路の参照元を統一）。
+  - `onLeave` 実行中フラグ（`dataset.onLeaveResolving`）を導入し、
+    `MOVE_SOURCE_TO_HAND/GRAVE` などによる同一チェーン内の二重 `onLeave` 発火を抑止。
+  - DSL空（`triggers: []`）時ログを明示。
+  - デバッグ用に `cardEl._debugOnEngineResult` / `cardEl._debugReporter` コールバックを受け取れるよう拡張。
+
+- `js/dev/cardDebug.js`
+  - `effectDsl` 参照を `effectBlocks` 優先で統一（デバッグ側の独自推測なし）。
+  - DSL空のカードは「DSL未実装（効果なし）」として扱い、`effectText` 推測を行わない。
+  - 右ペインに以下を追加表示:
+    - 発火タイミング
+    - 条件判定結果
+    - 条件失敗理由
+    - 実行された効果 / スキップされた効果
+    - 実行エラー（カード/トリガー/効果単位）
+  - 例外は `console.error` と画面の両方に表示し、握り潰さない構成へ変更。

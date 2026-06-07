@@ -13,6 +13,40 @@
     return window.state?.[owner] || null;
   }
 
+  function uniqueOwners(owners) {
+    return Array.from(new Set((owners || []).filter(Boolean)));
+  }
+
+  function isPlayerTargetToken(token) {
+    return [
+      "self",
+      "owner",
+      "opponent",
+      "eventTarget",
+      "self_player",
+      "current_target",
+      "self_and_current_target",
+      "player",
+      "target_player",
+      "source_player"
+    ].includes(String(token || ""));
+  }
+
+  function isCardTargetToken(token) {
+    return [
+      "card",
+      "target_card",
+      "source_card",
+      "this_card",
+      "attacker_zone_card",
+      "target_attacker_zone_card",
+      "self_and_target_attacker_zone_card",
+      "grave_card",
+      "hand_card",
+      "target_skill_card"
+    ].includes(String(token || ""));
+  }
+
   function getRefValue(refPath, context, vars) {
     if (!refPath || typeof refPath !== "string") return null;
     if (refPath.startsWith("var.")) {
@@ -123,6 +157,9 @@
     if (t === "owner" || t === "self") return context.owner;
     if (t === "eventTarget") return context.event?.targetOwner || context.opponent;
     if (t === "self_player") return context.owner;
+    if (t === "source_player") return context.owner;
+    if (t === "target_player") return context.event?.targetOwner || context.opponent;
+    if (t === "player") return context.owner;
     if (t === "current_target") return context.event?.targetOwner || context.opponent;
     if (t === "self_and_current_target") return context.owner;
     return context.owner;
@@ -135,7 +172,16 @@
       if (!current || current === context.owner) return [context.owner];
       return [context.owner, current];
     }
-    return [resolveTargetOwner(effect, context)];
+    return uniqueOwners([resolveTargetOwner(effect, context)]);
+  }
+
+  function resolvePlayerTargetOwners(effect, context) {
+    const target = String(effect?.target || "self");
+    const targetType = String(effect?.targetType || "");
+    if (targetType === "card" || isCardTargetToken(target)) {
+      return { owners: [], invalidReason: `player-target-required:${target}` };
+    }
+    return { owners: resolveTargetOwners(effect, context), invalidReason: "" };
   }
 
   function getTopZoneCard(owner, zoneType) {
@@ -158,11 +204,17 @@
       .filter((el) => (el.dataset.owner || "") === owner && !el.dataset.zoneType && Number(el.dataset.y || 0) >= handYMin);
   }
   function resolveCardTargets(effect, context) {
-    const t = String(effect.cardTarget || "this_card");
+    const cardToken = String(effect.cardTarget || effect.target || "this_card");
+    const targetType = String(effect.targetType || "");
+    if (targetType === "player" || isPlayerTargetToken(cardToken)) return [];
+    const t = cardToken;
     const current = getCurrentTargetInfo(context.owner, context);
     const isMonster = current.type === "monster";
     if ((t.includes("target_") || t.includes("self_and_target")) && isMonster) return [];
     if (t === "this_card") return context.sourceCard ? [context.sourceCard] : [];
+    if (t === "source_card") return context.sourceCard ? [context.sourceCard] : [];
+    if (t === "target_card") return [getTopZoneCard(current.owner, "attacker")].filter(Boolean);
+    if (t === "card") return context.sourceCard ? [context.sourceCard] : [];
     if (t === "attacker_zone_card") return [getTopZoneCard(context.owner, "attacker")].filter(Boolean);
     if (t === "target_attacker_zone_card") return [getTopZoneCard(current.owner, "attacker")].filter(Boolean);
     if (t === "self_and_target_attacker_zone_card") {
@@ -461,8 +513,8 @@
     const scope = forceTurnScope ? "turn" : "game";
     const stat = String(check.stat || "hp");
     const mode = String(check.mode || "current_gte");
-    const ownerType = String(check.owner || "self");
-    const owner = ownerType === "target"
+    const ownerType = String(check.owner || "self_player");
+    const owner = (ownerType === "target" || ownerType === "target_player")
       ? (context.event?.targetOwner || context.opponent)
       : context.owner;
     const sourceCard = context.sourceCard || null;
@@ -471,6 +523,8 @@
     const skillCard = (context.sourceProfile?.cardKind === "skill" || sourceCard?.dataset?.zoneType === "skill")
       ? sourceCard
       : getTopZoneCard(context.owner, "skill");
+    const targetInfo = getCurrentTargetInfo(context.owner, context);
+    const targetCard = targetInfo.type === "player" ? getTopZoneCard(targetInfo.owner, "attacker") : null;
     function readCardStat(card, key) {
       if (!card) return 0;
       if (key === "atk") {
@@ -479,7 +533,16 @@
         const bonus = Number(card.dataset.attackBonus || 0);
         return Math.max(0, base + bonus);
       }
+      if (key === "hp") return Math.max(0, Number(card.dataset.hp || 0));
+      if (key === "shield") return Math.max(0, Number(card.dataset.shield || 0));
       return 0;
+    }
+    if (ownerType === "player" || ownerType === "self_player" || ownerType === "self" || ownerType === "source_player") {
+      // 明示的にプレイヤー追跡値を使う
+    } else if (ownerType === "card" || ownerType === "source_card") {
+      return readCardStat(sourceCard, stat);
+    } else if (ownerType === "target_card") {
+      return readCardStat(targetCard, stat);
     }
     if (ownerType === "attacker_card") return readCardStat(attackerCard, stat);
     if (ownerType === "used_skill_card") return readCardStat(skillCard, stat);
@@ -512,35 +575,35 @@
     return read("lastAfter");
   }
 
-  function evaluateRuntimeCondition(cond, context) {
-    if (!cond || typeof cond !== "object") return true;
+  function evaluateRuntimeConditionDetailed(cond, context) {
+    if (!cond || typeof cond !== "object") return { ok: true, reason: "no-condition" };
     if (Object.prototype.hasOwnProperty.call(cond, "whileOnField") && cond.whileOnField === true) {
-      if (!isCardOnField(context.sourceCard)) return false;
+      if (!isCardOnField(context.sourceCard)) return { ok: false, reason: "whileOnField=false" };
     }
     const thisTurnOnly = Object.prototype.hasOwnProperty.call(cond, "thisTurn") && cond.thisTurn === true;
     if (cond.directAttackEnabled === true) {
       const expected = cond.directAttackValue === true;
-      if (Boolean(context.event?.didDirectAttack) !== expected) return false;
+      if (Boolean(context.event?.didDirectAttack) !== expected) return { ok: false, reason: "directAttackValue-mismatch" };
     } else {
       const directAttackMode = String(cond.directAttack || "any");
-      if (directAttackMode === "did" && context.event?.didDirectAttack !== true) return false;
-      if (directAttackMode === "not" && context.event?.didDirectAttack !== false) return false;
+      if (directAttackMode === "did" && context.event?.didDirectAttack !== true) return { ok: false, reason: "directAttack-required" };
+      if (directAttackMode === "not" && context.event?.didDirectAttack !== false) return { ok: false, reason: "directAttack-forbidden" };
     }
     if (cond.byAttackerEffect === true) {
       const isAttacker = (context.sourceProfile?.cardKind === "attacker")
         || (context.sourceCard?.dataset?.zoneType === "attacker");
-      if (!isAttacker) return false;
+      if (!isAttacker) return { ok: false, reason: "attacker-effect-required" };
       const t = String(cond.attackerTriggerT || "onAttack");
-      if (String(context.event?.name || "") !== t) return false;
+      if (String(context.event?.name || "") !== t) return { ok: false, reason: "attacker-trigger-mismatch" };
     }
     if (cond.bySkillEffect === true) {
       const isSkill = (context.sourceProfile?.cardKind === "skill")
         || (context.sourceCard?.dataset?.zoneType === "skill");
-      if (!isSkill) return false;
+      if (!isSkill) return { ok: false, reason: "skill-effect-required" };
     }
     if (cond.inSameChain === true) {
       const chain = context.event?.__chain;
-      if (!chain || !Array.isArray(chain.executedOrders) || chain.executedOrders.length === 0) return false;
+      if (!chain || !Array.isArray(chain.executedOrders) || chain.executedOrders.length === 0) return { ok: false, reason: "chain-required" };
     }
     if (Array.isArray(cond.requiredExecutedOrder) && cond.requiredExecutedOrder.length > 0) {
       const chain = context.event?.__chain;
@@ -548,53 +611,63 @@
       const mode = String(cond.requiredExecutedOrderMode || "any");
       if (mode === "all") {
         const allMatched = cond.requiredExecutedOrder.every((n) => done.has(Number(n)));
-        if (!allMatched) return false;
+        if (!allMatched) return { ok: false, reason: "requiredExecutedOrder-all-mismatch" };
       } else {
         const anyMatched = cond.requiredExecutedOrder.some((n) => done.has(Number(n)));
-        if (!anyMatched) return false;
+        if (!anyMatched) return { ok: false, reason: "requiredExecutedOrder-any-mismatch" };
       }
     }
     if (cond.trackerCheck && typeof cond.trackerCheck === "object") {
       const left = getTrackerValueForCondition(cond.trackerCheck, context, thisTurnOnly);
       const mode = String(cond.trackerCheck.mode || "current_gte");
       const right = Number(cond.trackerCheck.value || 0);
-      if (mode === "current_eq" && !compareByOp(left, "eq", right)) return false;
-      if (mode === "current_gte" && !compareByOp(left, "gte", right)) return false;
-      if (mode === "current_lte" && !compareByOp(left, "lte", right)) return false;
-      if (mode === "inc_n" && !compareByOp(left, "gte", right)) return false;
-      if (mode === "dec_n" && !compareByOp(left, "gte", right)) return false;
-      if (mode === "both_n" && !compareByOp(left, "gte", right)) return false;
+      if (mode === "current_eq" && !compareByOp(left, "eq", right)) return { ok: false, reason: `trackerCheck-fail:${left}!=${right}` };
+      if (mode === "current_gte" && !compareByOp(left, "gte", right)) return { ok: false, reason: `trackerCheck-fail:${left}<${right}` };
+      if (mode === "current_lte" && !compareByOp(left, "lte", right)) return { ok: false, reason: `trackerCheck-fail:${left}>${right}` };
+      if (mode === "inc_n" && !compareByOp(left, "gte", right)) return { ok: false, reason: `trackerCheck-inc-fail:${left}<${right}` };
+      if (mode === "dec_n" && !compareByOp(left, "gte", right)) return { ok: false, reason: `trackerCheck-dec-fail:${left}<${right}` };
+      if (mode === "both_n" && !compareByOp(left, "gte", right)) return { ok: false, reason: `trackerCheck-both-fail:${left}<${right}` };
     }
-    return true;
+    return { ok: true, reason: "passed" };
+  }
+
+  function evaluateRuntimeCondition(cond, context) {
+    return evaluateRuntimeConditionDetailed(cond, context).ok;
   }
 
   function evaluateEffectCondition(effect, context) {
-    return evaluateRuntimeCondition(effect?.condition, context);
+    if (effect?.useCondition !== true) return { ok: true, reason: "useCondition=false" };
+    return evaluateRuntimeConditionDetailed(effect?.condition, context);
   }
 
   const EffectExecutor = {
     executeEffect(effect, context, vars) {
       const type = String(effect?.type || "UNKNOWN");
       const amount = Number(VariableResolver.resolveValue(effect.amount ?? 1, context, vars) || 0);
-      if (!evaluateEffectCondition(effect, context)) {
-        return { applied: false, type, skippedByCondition: true };
+      const condResult = evaluateEffectCondition(effect, context);
+      if (!condResult.ok) {
+        return { applied: false, type, skippedByCondition: true, skippedReason: condResult.reason };
       }
-      const targetOwners = resolveTargetOwners(effect, context);
+      const playerTarget = resolvePlayerTargetOwners(effect, context);
+      const targetOwners = playerTarget.owners;
 
       if (type === "DRAW") {
-        if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true };
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
         targetOwners.forEach((targetOwner) => {
           if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
         });
         return { applied: true, type };
       }
       if (type === "HEAL") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           if (typeof window.addVal === "function") window.addVal(targetOwner, "hp", Math.max(0, amount));
         });
         return { applied: true, type };
       }
       if (type === "DAMAGE") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           if (typeof window.applyCalculatedDamage === "function") {
             const damageType = String(effect.damageType || "damage");
@@ -605,12 +678,14 @@
         return { applied: true, type };
       }
       if (type === "RECOVER_PP") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           if (typeof window.addVal === "function") window.addVal(targetOwner, "pp", Math.max(0, amount));
         });
         return { applied: true, type };
       }
       if (type === "SET_PP_MIN") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           const s = getPlayer(targetOwner);
           if (s) {
@@ -622,6 +697,7 @@
         return { applied: true, type };
       }
       if (type === "ADD_SHIELD") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           if (typeof window.addVal === "function") window.addVal(targetOwner, "shield", Math.max(0, amount));
         });
@@ -651,6 +727,7 @@
       }
       if (type === "MOVE_SOURCE_TO_GRAVE") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
@@ -659,11 +736,13 @@
       }
       if (type === "MOVE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => moveCardToHand(card, card.dataset.owner || context.owner));
         return { applied: true, type, flowBreak: true };
       }
       if (type === "MOVE_SOURCE_TO_DECK") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
           if (typeof window.clearZoneMarker === "function") window.clearZoneMarker(card);
@@ -676,6 +755,7 @@
       }
       if (type === "DUPLICATE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           if (typeof window.duplicateCard === "function") {
             const dup = window.duplicateCard(card);
@@ -686,6 +766,7 @@
       }
       if (type === "REVEAL_CARD") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         if (typeof window.addGameLog === "function") {
           cards.forEach((card) => window.addGameLog(`[REVEAL] ${card.dataset.id || "unknown"}`));
         }
@@ -693,6 +774,7 @@
       }
       if (type === "FETCH_CARD" || type === "PLAY_SOURCE_TO_FIELD") {
         const cards = resolveCardTargets(effect, context);
+        if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         const toZone = String(effect.toZone || (type === "PLAY_SOURCE_TO_FIELD" ? "attacker" : "hand"));
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
@@ -708,6 +790,7 @@
         return { applied: true, type };
       }
       if (type === "GRANT_EFFECT_BUNDLE") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         targetOwners.forEach((targetOwner) => {
           registerGrantedEffect(effect, context, targetOwner);
         });
@@ -740,17 +823,53 @@
     return currentZone !== originZoneType;
   }
 
+  function notifyDebug(context, payload) {
+    const reporter = context?.debugReporter;
+    if (typeof reporter === "function") {
+      try {
+        reporter(payload);
+      } catch (_) {}
+    }
+  }
+
   function execute(cardDsl, context) {
-    if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [] };
+    if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [], triggerReports: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
-    if (matched.length === 0) return { handled: true, effects: [] };
+    if (matched.length === 0) return { handled: true, effects: [], triggerReports: [] };
 
     const resultEffects = [];
+    const triggerReports = [];
     const originZoneType = String(context?.event?.zoneType || context?.sourceCard?.dataset?.zoneType || "");
     for (const trigger of matched) {
+      const triggerReport = {
+        on: String(trigger?.on || ""),
+        triggerConditionPassed: true,
+        bundleConditionPassed: true,
+        triggerConditionReason: "",
+        bundleConditionReason: "",
+        effects: []
+      };
       const vars = evaluateVariables(trigger.variables, context);
-      if (!ConditionEvaluator.evaluateCondition(trigger.condition, context, vars)) continue;
-      if (!evaluateRuntimeCondition(trigger.bundleCondition, context)) continue;
+      if (trigger.useCondition === true) {
+        const triggerConditionOk = ConditionEvaluator.evaluateCondition(trigger.condition, context, vars);
+        triggerReport.triggerConditionPassed = triggerConditionOk;
+        if (!triggerConditionOk) {
+          triggerReport.triggerConditionReason = "trigger-condition-failed";
+          triggerReports.push(triggerReport);
+          notifyDebug(context, { type: "trigger", report: triggerReport });
+          continue;
+        }
+      }
+      if (trigger.useCondition === true) {
+        const bundleCondition = evaluateRuntimeConditionDetailed(trigger.bundleCondition, context);
+        triggerReport.bundleConditionPassed = bundleCondition.ok;
+        triggerReport.bundleConditionReason = bundleCondition.reason;
+        if (!bundleCondition.ok) {
+          triggerReports.push(triggerReport);
+          notifyDebug(context, { type: "trigger", report: triggerReport });
+          continue;
+        }
+      }
       const chain = { executedOrders: [] };
       const effects = trigger.effects || [];
       for (let idx = 0; idx < effects.length; idx += 1) {
@@ -764,15 +883,46 @@
             __effectOrder: order
           }
         };
-        const r = EffectExecutor.executeEffect(effect, localContext, vars);
+        let r = null;
+        try {
+          r = EffectExecutor.executeEffect(effect, localContext, vars);
+        } catch (error) {
+          r = {
+            applied: false,
+            type: String(effect?.type || "UNKNOWN"),
+            error: {
+              message: String(error?.message || error || "unknown-error"),
+              stack: String(error?.stack || "")
+            }
+          };
+        }
         if (r && r.applied) chain.executedOrders.push(order);
         resultEffects.push(r);
+        triggerReport.effects.push({
+          order,
+          type: String(effect?.type || "UNKNOWN"),
+          applied: r?.applied === true,
+          skippedByCondition: r?.skippedByCondition === true,
+          skippedByInvalidTarget: r?.skippedByInvalidTarget === true,
+          skippedReason: String(r?.skippedReason || ""),
+          error: r?.error || null
+        });
+        notifyDebug(context, {
+          type: "effect",
+          trigger: String(trigger?.on || ""),
+          order,
+          result: triggerReport.effects[triggerReport.effects.length - 1]
+        });
         if (r?.flowBreak || shouldBreakBySourceZone(localContext, originZoneType)) {
-          return { handled: true, effects: resultEffects, flowBreak: true };
+          triggerReports.push(triggerReport);
+          notifyDebug(context, { type: "trigger", report: triggerReport });
+          return { handled: true, effects: resultEffects, flowBreak: true, triggerReports };
         }
       }
+      triggerReports.push(triggerReport);
+      notifyDebug(context, { type: "trigger", report: triggerReport });
     }
-    return { handled: true, effects: resultEffects };
+    return { handled: true, effects: resultEffects, triggerReports };
   }
 
   function triggerZoneCardEffects(owner, zoneType, eventName, extraEvent) {

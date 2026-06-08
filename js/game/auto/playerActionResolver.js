@@ -75,8 +75,14 @@
 
   function getCardByElement(cardEl) {
     const cardId = cardEl?.dataset?.id;
-    if (!cardId || typeof window.getCardData !== "function") return null;
-    return window.getCardData(cardId);
+    if (cardId && typeof window.getCardData === "function") {
+      const row = window.getCardData(cardId);
+      if (row) return row;
+    }
+    if (cardEl && typeof cardEl === "object") {
+      return cardEl._debugCardData || cardEl.profile || null;
+    }
+    return null;
   }
 
   function buildResolvedProfile(cardEl, card) {
@@ -84,6 +90,15 @@
       ? window.CardCombatData.getResolvedCardData(card.id)
       : card;
     const profile = { ...base };
+    if (!profile.cardKind) {
+      const t = String(profile.type || "");
+      if (t === "サポート") profile.cardKind = "support";
+      else if (t === "スキル") profile.cardKind = "skill";
+      else profile.cardKind = "attacker";
+    }
+    if (!Number.isFinite(Number(profile.cost))) {
+      profile.cost = String(profile.cardKind || "attacker") === "support" ? 0 : 1;
+    }
     if (cardEl?.dataset?.debugCardKind) {
       profile.cardKind = String(cardEl.dataset.debugCardKind);
     }

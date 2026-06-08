@@ -39,6 +39,7 @@
       name: cardData.name || cardData.id,
       // インスタンス単位で調整できるよう浅いコピーを持つ
       profile: { ...resolved, effectDsl: dsl },
+      _debugCardData: { ...resolved, effectDsl: dsl },
       dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0", instanceId: `dbg-${Date.now()}-${debugInstanceSeq++}` },
       style: {}
     };

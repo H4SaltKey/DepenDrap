@@ -5712,3 +5712,29 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - 実行された効果 / スキップされた効果
     - 実行エラー（カード/トリガー/効果単位）
   - 例外は `console.error` と画面の両方に表示し、握り潰さない構成へ変更。
+
+## Round 2026-06-08 — カードデバッグでPP消費/登場時効果が走らない件のフォロー
+
+### 原因
+
+- `PlayerActionResolver.getCardByElement` が `window.getCardData` 前提だったため、
+  開発画面のデバッグカード（`cardDebug.js` が独自生成するオブジェクト）ではカード取得に失敗し、
+  `resolveCardOnPlay` が早期 return。
+- その結果、`spendCardCost` も `onSummon` 系効果解決も実行されないケースが発生。
+
+### 修正
+
+- `js/game/auto/playerActionResolver.js`
+  - `getCardByElement` にフォールバックを追加:
+    - `window.getCardData(id)` が取れない場合でも `cardEl._debugCardData` / `cardEl.profile` を参照。
+  - `buildResolvedProfile` を強化:
+    - `cardKind` 未設定時は `type` から推定（`サポート/スキル/アタッカー`）。
+    - `cost` 未設定時は `support=0`、それ以外 `1` を既定値として補完。
+
+- `js/dev/cardDebug.js`
+  - 生成カードに `_debugCardData` を保持し、resolver側フォールバックで利用可能化。
+
+### 期待結果
+
+- カードデバッグでカード使用時に PP が減少する。
+- 併せて、登場時（`onSummon`）などの効果解決が実行される。

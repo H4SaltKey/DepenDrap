@@ -764,10 +764,30 @@
           const owner = card.dataset.owner || context.owner;
           const prevZoneType = String(card?.dataset?.zoneType || "");
           const isFromBattleField = (prevZoneType === "attacker" || prevZoneType === "skill");
-          if (isFromBattleField && window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardOnLeave === "function") {
-            window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType, force: true });
-            // placeCardInZone フック側の二重 onLeave を抑止
-            card.dataset.skipAutoOnLeave = "1";
+          if (isFromBattleField) {
+            if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardOnLeave === "function") {
+              window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType, force: true });
+              // placeCardInZone フック側の二重 onLeave を抑止
+              card.dataset.skipAutoOnLeave = "1";
+            } else {
+              const profile = window.CardCombatData?.getResolvedCardData?.(card.dataset?.id, owner) || null;
+              const dsl = profile?.effectDsl;
+              if (dsl && dsl.format === DSL_FORMAT && Array.isArray(dsl.triggers) && dsl.triggers.some((t) => String(t?.on || "") === "onLeave")) {
+                execute(dsl, {
+                  game: window.state,
+                  sourceCard: card,
+                  sourceProfile: profile,
+                  owner,
+                  opponent: opponentOf(owner),
+                  target: opponentOf(owner),
+                  event: {
+                    name: "onLeave",
+                    zoneType: prevZoneType || "grave",
+                    didDirectAttack: card.dataset?.didDirectAttack === "1"
+                  }
+                });
+              }
+            }
           }
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });

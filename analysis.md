@@ -5868,3 +5868,5 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `MOVE_SOURCE_TO_GRAVE` 実行時、対象カードが `attacker/skill` にいる場合は
     `PlayerActionResolver.resolveCardOnLeave(card, { zoneType, force: true })` を先行実行。
   - その後 `card.dataset.skipAutoOnLeave = "1"` を付与して `placeCardInZone` 側の二重発火を抑止。
+  - さらに resolver が未初期化/未定義のケースに備え、
+    同条件で `onLeave` を `EffectEngine.execute(...)` で直接評価するフォールバックを追加。

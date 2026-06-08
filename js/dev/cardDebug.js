@@ -760,9 +760,9 @@
 
     function renderDebuggerMain() {
       root.innerHTML = `
-        <div style="display:grid;grid-template-columns:280px 1fr 340px;gap:10px;min-height:0;height:100%;position:relative;">
+        <div style="display:grid;grid-template-columns:320px 1fr 340px;gap:10px;min-height:0;height:100%;position:relative;">
           <button id="dbgCloseTop" style="position:absolute;top:2px;right:2px;padding:6px 10px;background:#7f1d1d;color:#fff;border:0;border-radius:6px;cursor:pointer;z-index:2;">閉じる</button>
-          <section style="display:flex;flex-direction:column;gap:8px;min-height:0;">
+          <section style="display:grid;grid-template-rows:auto auto auto auto auto auto 1fr;gap:8px;min-height:0;">
             <h3 style="margin:0;font-size:16px;">カードデバッグ</h3>
             <div style="display:flex;gap:6px;"><button id="dbgClose" style="flex:1;padding:8px;background:#374151;color:#fff;border:0;border-radius:6px;cursor:pointer;">閉じる</button><button id="dbgReset" style="flex:1;padding:8px;background:#0f766e;color:#fff;border:0;border-radius:6px;cursor:pointer;">デッキ再選択</button></div>
             <div style="display:flex;gap:6px;"><button id="dbgDraw" style="flex:1;padding:8px;background:#1d4ed8;color:#fff;border:0;border-radius:6px;cursor:pointer;">1枚ドロー</button><button id="dbgShuffle" style="flex:1;padding:8px;background:#6d28d9;color:#fff;border:0;border-radius:6px;cursor:pointer;">山札シャッフル</button></div>
@@ -772,6 +772,7 @@
             <select id="dbgCardSelect" style="padding:8px;border-radius:6px;background:#0b1220;color:#fff;border:1px solid #334155;"></select>
             <button id="dbgAddHand" style="padding:8px;background:#2563eb;color:#fff;border:0;border-radius:6px;cursor:pointer;">手札に追加</button>
             <div style="font-size:12px;color:#94a3b8;">デバッグ専用ローカル実行です。</div>
+            <div id="dbgTrackerGrid" style="overflow:auto;min-height:0;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div>
           </section>
           <section style="display:grid;grid-template-rows:auto 1fr auto auto;gap:8px;min-height:0;">
             <div id="dbgDirectField" style="height:56px;border:1px dashed #ef4444;background:rgba(239,68,68,0.14);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fecaca;">直接攻撃フィールド</div>
@@ -805,7 +806,7 @@
               <div id="dbgEffectQueuePanel" style="overflow:auto;max-height:96px;border:1px solid #0f766e;border-radius:8px;padding:6px;background:#0b1f1e;"></div>
               <pre id="dbgContextPanel" style="overflow:auto;max-height:120px;border:1px solid #334155;border-radius:8px;padding:6px;background:#111827;font-size:10px;line-height:1.35;color:#cbd5e1;white-space:pre-wrap;"></pre>
             </div>
-            <div style="display:grid;grid-template-rows:220px 1fr;gap:8px;min-height:0;"><div id="dbgTrackerGrid" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div><div id="dbgLog" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;font-size:12px;line-height:1.5;"></div></div>
+            <div style="min-height:0;"><div id="dbgLog" style="height:100%;overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;font-size:12px;line-height:1.5;"></div></div>
             <div style="display:flex;gap:6px;"><input id="dbgChatInput" type="text" placeholder="メモ/チャット" style="flex:1;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;"><button id="dbgChatSend" style="padding:8px 12px;background:#2563eb;color:#fff;border:0;border-radius:6px;cursor:pointer;">送信</button></div>
           </section>
         </div>

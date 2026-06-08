@@ -212,8 +212,12 @@ function renderEffectBlocksEditor() {
       <div class="blockRow" data-role="timingConditionArea">
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingWhileOnField"> これが場にある間</label>
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingThisTurn"> このターン中</label>
-        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackWrap"><input type="checkbox" data-role="timingDirectAttackEnabled"> 直接攻撃したかで判定</label>
-        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackWrap"><input type="checkbox" data-role="timingDirectAttackValue"> 直接攻撃した(True) / 未チェック=False</label>
+        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackEnabledWrap"><input type="checkbox" data-role="timingDirectAttackEnabled"> 直接攻撃したかで判定</label>
+        <span style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackValueWrap">
+          直接攻撃:
+          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueTrue" value="true"> True</label>
+          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueFalse" value="false"> False</label>
+        </span>
       </div>
       <div class="blockRow" data-role="timingConditionArea" style="align-items:flex-end;">
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingUseTrackerCheck"> 記録条件を使う</label>
@@ -239,9 +243,11 @@ function renderEffectBlocksEditor() {
     const timingUseCondition = timingEl.querySelector('[data-role="timingUseCondition"]');
     const timingWhileOnField = timingEl.querySelector('[data-role="timingWhileOnField"]');
     const timingThisTurn = timingEl.querySelector('[data-role="timingThisTurn"]');
+    const timingDirectAttackEnabledWrap = timingEl.querySelector('[data-role="timingDirectAttackEnabledWrap"]');
+    const timingDirectAttackValueWrap = timingEl.querySelector('[data-role="timingDirectAttackValueWrap"]');
     const timingDirectAttackEnabled = timingEl.querySelector('[data-role="timingDirectAttackEnabled"]');
-    const timingDirectAttackValue = timingEl.querySelector('[data-role="timingDirectAttackValue"]');
-    const timingDirectAttackWraps = timingEl.querySelectorAll('[data-role="timingDirectAttackWrap"]');
+    const timingDirectAttackValueTrue = timingEl.querySelector('[data-role="timingDirectAttackValueTrue"]');
+    const timingDirectAttackValueFalse = timingEl.querySelector('[data-role="timingDirectAttackValueFalse"]');
     const timingUseTrackerCheck = timingEl.querySelector('[data-role="timingUseTrackerCheck"]');
     const timingTrackerRow = timingEl.querySelector('[data-role="timingTrackerRow"]');
     const timingTrackerOwner = timingEl.querySelector('[data-role="timingTrackerOwner"]');
@@ -258,7 +264,8 @@ function renderEffectBlocksEditor() {
     if (typeof timing.condition.useTrackerCheck !== "boolean") timing.condition.useTrackerCheck = true;
     timingUseTrackerCheck.checked = timing.condition.useTrackerCheck === true;
     timingDirectAttackEnabled.checked = timing.condition.directAttackEnabled === true;
-    timingDirectAttackValue.checked = timing.condition.directAttackValue !== false;
+    timingDirectAttackValueTrue.checked = timing.condition.directAttackValue !== false;
+    timingDirectAttackValueFalse.checked = timing.condition.directAttackValue === false;
     const timingOwnerValue = timing.condition.trackerCheck.owner || "self";
     timingTrackerOwner.innerHTML = `
       <option value="self" ${timingOwnerValue === "self" ? "selected" : ""}>自身</option>
@@ -277,8 +284,11 @@ function renderEffectBlocksEditor() {
       if (timingTrackerRow) {
         timingTrackerRow.style.display = (timing.useCondition && timing.condition.useTrackerCheck === true) ? "" : "none";
       }
-      const show = (timing.useCondition && timing.timing === "onLeave");
-      timingDirectAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
+      const showEnabled = (timing.useCondition && timing.timing === "onLeave");
+      if (timingDirectAttackEnabledWrap) timingDirectAttackEnabledWrap.style.display = showEnabled ? "" : "none";
+      if (timingDirectAttackValueWrap) {
+        timingDirectAttackValueWrap.style.display = (showEnabled && timing.condition.directAttackEnabled === true) ? "" : "none";
+      }
     }
     refreshTimingConditionVisible();
     timingUseCondition.addEventListener("change", () => {
@@ -287,8 +297,16 @@ function renderEffectBlocksEditor() {
     });
     timingWhileOnField.addEventListener("change", () => { timing.condition.whileOnField = timingWhileOnField.checked; });
     timingThisTurn.addEventListener("change", () => { timing.condition.thisTurn = timingThisTurn.checked; });
-    timingDirectAttackEnabled.addEventListener("change", () => { timing.condition.directAttackEnabled = timingDirectAttackEnabled.checked; });
-    timingDirectAttackValue.addEventListener("change", () => { timing.condition.directAttackValue = timingDirectAttackValue.checked; });
+    timingDirectAttackEnabled.addEventListener("change", () => {
+      timing.condition.directAttackEnabled = timingDirectAttackEnabled.checked;
+      refreshTimingConditionVisible();
+    });
+    timingDirectAttackValueTrue.addEventListener("change", () => {
+      if (timingDirectAttackValueTrue.checked) timing.condition.directAttackValue = true;
+    });
+    timingDirectAttackValueFalse.addEventListener("change", () => {
+      if (timingDirectAttackValueFalse.checked) timing.condition.directAttackValue = false;
+    });
     timingUseTrackerCheck.addEventListener("change", () => {
       timing.condition.useTrackerCheck = timingUseTrackerCheck.checked;
       refreshTimingConditionVisible();
@@ -383,8 +401,12 @@ function renderEffectBlocksEditor() {
         <div class="blockRow" data-role="conditionArea" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="whileOnField"> これが場にある間</label>
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="thisTurn"> このターン中</label>
-          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackWrap"><input type="checkbox" data-role="directAttackEnabled"> 直接攻撃したかで判定</label>
-          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackWrap"><input type="checkbox" data-role="directAttackValue"> 直接攻撃した(True) / 未チェック=False</label>
+          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackEnabledWrap"><input type="checkbox" data-role="directAttackEnabled"> 直接攻撃したかで判定</label>
+          <span style="font-size:12px;color:#666;display:none;" data-role="directAttackValueWrap">
+            直接攻撃:
+            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueTrue" value="true"> True</label>
+            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueFalse" value="false"> False</label>
+          </span>
         </div>
         <div class="blockRow" data-role="conditionArea">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="byAttackerEffect"> アタッカー場のカードのT効果によって</label>
@@ -436,9 +458,11 @@ function renderEffectBlocksEditor() {
       const useConditionInput = effectEl.querySelector('[data-role="useCondition"]');
       const whileOnFieldInput = effectEl.querySelector('[data-role="whileOnField"]');
       const thisTurnInput = effectEl.querySelector('[data-role="thisTurn"]');
+      const directAttackEnabledWrap = effectEl.querySelector('[data-role="directAttackEnabledWrap"]');
+      const directAttackValueWrap = effectEl.querySelector('[data-role="directAttackValueWrap"]');
       const directAttackEnabledInput = effectEl.querySelector('[data-role="directAttackEnabled"]');
-      const directAttackValueInput = effectEl.querySelector('[data-role="directAttackValue"]');
-      const directAttackWraps = effectEl.querySelectorAll('[data-role="directAttackWrap"]');
+      const directAttackValueTrueInput = effectEl.querySelector('[data-role="directAttackValueTrue"]');
+      const directAttackValueFalseInput = effectEl.querySelector('[data-role="directAttackValueFalse"]');
       const byAttackerEffectInput = effectEl.querySelector('[data-role="byAttackerEffect"]');
       const attackerTriggerTInput = effectEl.querySelector('[data-role="attackerTriggerT"]');
       const bySkillEffectInput = effectEl.querySelector('[data-role="bySkillEffect"]');
@@ -515,7 +539,8 @@ function renderEffectBlocksEditor() {
         .map((x) => `<option value="${x.value}" ${x.value === (effect.condition.attackerTriggerT || "onAttack") ? "selected" : ""}>${x.label}</option>`)
         .join("");
       directAttackEnabledInput.checked = effect.condition.directAttackEnabled === true;
-      directAttackValueInput.checked = effect.condition.directAttackValue !== false;
+      directAttackValueTrueInput.checked = effect.condition.directAttackValue !== false;
+      directAttackValueFalseInput.checked = effect.condition.directAttackValue === false;
       useConditionInput.checked = effect.useCondition === true;
       byAttackerEffectInput.checked = effect.condition.byAttackerEffect === true;
       bySkillEffectInput.checked = effect.condition.bySkillEffect === true;
@@ -641,8 +666,11 @@ function renderEffectBlocksEditor() {
         if (trackerConditionRow) {
           trackerConditionRow.style.display = (effect.useCondition === true && effect.condition.useTrackerCheck === true) ? "" : "none";
         }
-        const show = (effect.useCondition === true && timing.timing === "onLeave");
-        directAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
+        const showEnabled = (effect.useCondition === true && timing.timing === "onLeave");
+        if (directAttackEnabledWrap) directAttackEnabledWrap.style.display = showEnabled ? "" : "none";
+        if (directAttackValueWrap) {
+          directAttackValueWrap.style.display = (showEnabled && effect.condition.directAttackEnabled === true) ? "" : "none";
+        }
         attackerTriggerTInput.style.display = (effect.useCondition === true && byAttackerEffectInput.checked) ? "" : "none";
       }
 
@@ -743,9 +771,13 @@ function renderEffectBlocksEditor() {
       });
       directAttackEnabledInput.addEventListener("change", () => {
         effect.condition.directAttackEnabled = directAttackEnabledInput.checked;
+        refreshConditionVisible();
       });
-      directAttackValueInput.addEventListener("change", () => {
-        effect.condition.directAttackValue = directAttackValueInput.checked;
+      directAttackValueTrueInput.addEventListener("change", () => {
+        if (directAttackValueTrueInput.checked) effect.condition.directAttackValue = true;
+      });
+      directAttackValueFalseInput.addEventListener("change", () => {
+        if (directAttackValueFalseInput.checked) effect.condition.directAttackValue = false;
       });
       byAttackerEffectInput.addEventListener("change", () => {
         effect.condition.byAttackerEffect = byAttackerEffectInput.checked;

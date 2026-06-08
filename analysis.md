@@ -5801,3 +5801,15 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `js/game/effects/effectEngine.js`
   - runtime条件評価で `cond.useTrackerCheck === false` の場合は `trackerCheck` 判定をスキップするように変更。
+
+## Round 2026-06-08 — 直接攻撃TF入力UI改善（表示条件 + ラジオ化）
+
+### 変更
+
+- `js/dev/dev.js`
+  - タイミング条件・効果条件の両方で、`直接攻撃したかで判定` が ON のときのみ TF入力を表示するように変更。
+  - TF入力をチェックボックスから横並びラジオボタン（`True / False`）へ変更。
+  - 表示条件:
+    - `条件を使う` が ON
+    - 対象タイミングが `onLeave`
+    - かつ `直接攻撃したかで判定` が ON のときに TFラジオを表示

@@ -271,7 +271,27 @@
           moveCard(c, "hand");
         }
       };
-      window.placeCardInZone = (card, owner, zoneType) => { card.dataset.owner = owner; moveCard(card, zoneType); };
+      window.placeCardInZone = (card, owner, zoneType) => {
+        if (!card) return;
+        const prevZoneType = String(card.dataset.zoneType || "");
+        const isFromBattleField = (prevZoneType === "attacker" || prevZoneType === "skill");
+        const isToBattleField = (zoneType === "attacker" || zoneType === "skill");
+        const isLeavingBattleField = isFromBattleField && !isToBattleField;
+        card.dataset.owner = owner || card.dataset.owner || debug.owner;
+
+        if (isLeavingBattleField && window.PlayerActionResolver?.resolveCardOnLeave) {
+          window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType });
+          // onLeave 中に移動先が変わった場合はその結果を優先
+          const changed = String(card.dataset.zoneType || "") !== prevZoneType;
+          if (changed) return;
+        }
+
+        moveCard(card, zoneType);
+
+        if (!isFromBattleField && isToBattleField && window.PlayerActionResolver?.resolveCardOnPlay) {
+          window.PlayerActionResolver.resolveCardOnPlay(card, zoneType);
+        }
+      };
       window.clearZoneMarker = (card) => { card.dataset.zoneType = ""; };
       window.organizeHands = () => {};
       window.organizeBattleZones = () => {};

@@ -5823,3 +5823,19 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - 旧: `attacker/skill -> grave` のときのみ `onLeave`
   - 新: `attacker/skill -> (attacker/skill 以外)` のときに `onLeave`
     - つまり移動先が `grave/hand/deck/...` でも、場を離れるなら発火。
+
+## Round 2026-06-08 — 効果割り込み実行（対象カード効果の先行処理 → 元フロー復帰）
+
+### 変更
+
+- `js/game/effects/effectEngine.js`
+  - `MOVE_SOURCE_TO_GRAVE / MOVE_SOURCE_TO_HAND / MOVE_SOURCE_TO_DECK` の固定 `flowBreak` を撤去。
+  - これにより、対象カードの移動で発生する効果（`onLeave` 等）を同期処理したあと、元の効果列の次効果へ復帰可能。
+  - なお、効果元カード自身が場を離れた場合は既存の `shouldBreakBySourceZone` によりフロー停止を維持。
+
+- `js/dev/cardDebug.js`
+  - デバッグ用 `placeCardInZone` を強化。
+    - `attacker/skill` から離れる移動時は `PlayerActionResolver.resolveCardOnLeave` を同期実行。
+    - `onLeave` 中に移動結果が変わった場合はその結果を優先。
+    - 非戦場→戦場移動時は `resolveCardOnPlay` を同期実行。
+  - 本編と同じく「対象カード効果が割り込み、完了後に元フローへ戻る」挙動をデバッグで再現。

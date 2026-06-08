@@ -764,13 +764,13 @@
           const owner = card.dataset.owner || context.owner;
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });
-        return { applied: true, type, flowBreak: true };
+        return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => moveCardToHand(card, card.dataset.owner || context.owner));
-        return { applied: true, type, flowBreak: true };
+        return { applied: true, type };
       }
       if (type === "MOVE_SOURCE_TO_DECK") {
         const cards = resolveCardTargets(effect, context);
@@ -783,7 +783,7 @@
           card.dataset.y = String(Number(window.HAND_ZONE_Y_MIN || 1460) + 20);
           if (typeof window.organizeHands === "function") window.organizeHands();
         });
-        return { applied: true, type, flowBreak: true };
+        return { applied: true, type };
       }
       if (type === "DUPLICATE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);

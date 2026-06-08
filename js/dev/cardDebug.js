@@ -280,7 +280,7 @@
         card.dataset.owner = owner || card.dataset.owner || debug.owner;
 
         if (isLeavingBattleField && window.PlayerActionResolver?.resolveCardOnLeave) {
-          window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType });
+          window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType, force: true });
           // onLeave 中に移動先が変わった場合はその結果を優先
           const changed = String(card.dataset.zoneType || "") !== prevZoneType;
           if (changed) return;

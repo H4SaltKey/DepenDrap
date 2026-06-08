@@ -391,7 +391,7 @@
     if (!runtime.enabled || !cardEl) return;
     const owner = cardEl.dataset.owner || getMyRoleSafe();
     const me = getMyRoleSafe();
-    if (owner !== me) return;
+    if (owner !== me && options.force !== true) return;
     const card = getCardByElement(cardEl);
     if (!card) return;
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
@@ -494,7 +494,7 @@
         if (cardEl.dataset.skipAutoOnLeave === "1" || cardEl.dataset.onLeaveResolving === "1") {
           delete cardEl.dataset.skipAutoOnLeave;
         } else {
-          resolveCardOnLeave(cardEl, { zoneType: prevZoneType });
+          resolveCardOnLeave(cardEl, { zoneType: prevZoneType, force: true });
           const movedByLeaveEffect = (cardEl.dataset.zoneType || "") !== prevZoneType;
           if (movedByLeaveEffect) {
             return cardEl;

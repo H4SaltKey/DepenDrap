@@ -5839,3 +5839,19 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - `onLeave` 中に移動結果が変わった場合はその結果を優先。
     - 非戦場→戦場移動時は `resolveCardOnPlay` を同期実行。
   - 本編と同じく「対象カード効果が割り込み、完了後に元フローへ戻る」挙動をデバッグで再現。
+
+## Round 2026-06-08 — 墓地送り時の退場時効果が発動しない件の修正
+
+### 原因
+
+- `resolveCardOnLeave` が `owner === me` 条件で早期 return しており、
+  対象カード（相手カード含む）を効果で墓地へ送ったケースで `onLeave` が評価されない経路があった。
+
+### 修正
+
+- `js/game/auto/playerActionResolver.js`
+  - `resolveCardOnLeave(cardEl, options)` に `options.force` を導入。
+  - `placeCardInZone` フック由来の退場処理は `force: true` で呼び、所有者ガードを回避して `onLeave` を評価。
+
+- `js/dev/cardDebug.js`
+  - デバッグ側 `placeCardInZone` でも `resolveCardOnLeave(..., { force: true })` を使用し、本編と一致。

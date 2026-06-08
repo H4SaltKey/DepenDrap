@@ -147,6 +147,7 @@ function createDefaultCondition() {
   return {
     whileOnField: false,
     thisTurn: true,
+    useTrackerCheck: true,
     directAttack: "any",
     directAttackEnabled: false,
     directAttackValue: true,
@@ -215,6 +216,9 @@ function renderEffectBlocksEditor() {
         <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackWrap"><input type="checkbox" data-role="timingDirectAttackValue"> 直接攻撃した(True) / 未チェック=False</label>
       </div>
       <div class="blockRow" data-role="timingConditionArea" style="align-items:flex-end;">
+        <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingUseTrackerCheck"> 記録条件を使う</label>
+      </div>
+      <div class="blockRow" data-role="timingTrackerRow" data-cond-area="1" style="align-items:flex-end;">
         <span style="font-size:12px;color:#666;">記録条件</span>
         <select data-role="timingTrackerOwner"></select>
         <select data-role="timingTrackerStat"></select>
@@ -238,17 +242,21 @@ function renderEffectBlocksEditor() {
     const timingDirectAttackEnabled = timingEl.querySelector('[data-role="timingDirectAttackEnabled"]');
     const timingDirectAttackValue = timingEl.querySelector('[data-role="timingDirectAttackValue"]');
     const timingDirectAttackWraps = timingEl.querySelectorAll('[data-role="timingDirectAttackWrap"]');
+    const timingUseTrackerCheck = timingEl.querySelector('[data-role="timingUseTrackerCheck"]');
+    const timingTrackerRow = timingEl.querySelector('[data-role="timingTrackerRow"]');
     const timingTrackerOwner = timingEl.querySelector('[data-role="timingTrackerOwner"]');
     const timingTrackerStat = timingEl.querySelector('[data-role="timingTrackerStat"]');
     const timingTrackerMode = timingEl.querySelector('[data-role="timingTrackerMode"]');
     const timingTrackerValue = timingEl.querySelector('[data-role="timingTrackerValue"]');
-    const timingConditionAreas = timingEl.querySelectorAll('[data-role="timingConditionArea"]');
+    const timingConditionAreas = timingEl.querySelectorAll('[data-role="timingConditionArea"], [data-cond-area="1"]');
     if (!timing.condition.trackerCheck || typeof timing.condition.trackerCheck !== "object") {
       timing.condition.trackerCheck = createDefaultCondition().trackerCheck;
     }
     timingUseCondition.checked = timing.useCondition === true;
     timingWhileOnField.checked = timing.condition.whileOnField === true;
     timingThisTurn.checked = timing.condition.thisTurn !== false;
+    if (typeof timing.condition.useTrackerCheck !== "boolean") timing.condition.useTrackerCheck = true;
+    timingUseTrackerCheck.checked = timing.condition.useTrackerCheck === true;
     timingDirectAttackEnabled.checked = timing.condition.directAttackEnabled === true;
     timingDirectAttackValue.checked = timing.condition.directAttackValue !== false;
     const timingOwnerValue = timing.condition.trackerCheck.owner || "self";
@@ -266,6 +274,9 @@ function renderEffectBlocksEditor() {
       timingConditionAreas.forEach((el) => {
         el.style.display = timing.useCondition ? "" : "none";
       });
+      if (timingTrackerRow) {
+        timingTrackerRow.style.display = (timing.useCondition && timing.condition.useTrackerCheck === true) ? "" : "none";
+      }
       const show = (timing.useCondition && timing.timing === "onLeave");
       timingDirectAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
     }
@@ -278,6 +289,10 @@ function renderEffectBlocksEditor() {
     timingThisTurn.addEventListener("change", () => { timing.condition.thisTurn = timingThisTurn.checked; });
     timingDirectAttackEnabled.addEventListener("change", () => { timing.condition.directAttackEnabled = timingDirectAttackEnabled.checked; });
     timingDirectAttackValue.addEventListener("change", () => { timing.condition.directAttackValue = timingDirectAttackValue.checked; });
+    timingUseTrackerCheck.addEventListener("change", () => {
+      timing.condition.useTrackerCheck = timingUseTrackerCheck.checked;
+      refreshTimingConditionVisible();
+    });
     timingTrackerOwner.addEventListener("change", () => { timing.condition.trackerCheck.owner = timingTrackerOwner.value || "self"; });
     timingTrackerStat.addEventListener("change", () => { timing.condition.trackerCheck.stat = timingTrackerStat.value || "hp"; });
     timingTrackerMode.addEventListener("change", () => { timing.condition.trackerCheck.mode = timingTrackerMode.value || "current_gte"; });
@@ -385,7 +400,10 @@ function renderEffectBlocksEditor() {
           </select>
           <div data-role="requiredOrderBox" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
         </div>
-        <div class="blockRow" data-role="conditionArea" style="align-items:flex-end;">
+        <div class="blockRow" data-role="conditionArea">
+          <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="useTrackerCheck"> 記録条件を使う</label>
+        </div>
+        <div class="blockRow" data-role="trackerConditionRow" data-cond-area="1" style="align-items:flex-end;">
           <span style="font-size:12px;color:#666;">記録条件</span>
           <select data-role="trackerOwner"></select>
           <select data-role="trackerStat"></select>
@@ -427,11 +445,13 @@ function renderEffectBlocksEditor() {
       const inSameChainInput = effectEl.querySelector('[data-role="inSameChain"]');
       const requiredOrderModeInput = effectEl.querySelector('[data-role="requiredOrderMode"]');
       const requiredOrderBox = effectEl.querySelector('[data-role="requiredOrderBox"]');
+      const useTrackerCheckInput = effectEl.querySelector('[data-role="useTrackerCheck"]');
+      const trackerConditionRow = effectEl.querySelector('[data-role="trackerConditionRow"]');
       const trackerOwnerInput = effectEl.querySelector('[data-role="trackerOwner"]');
       const trackerStatInput = effectEl.querySelector('[data-role="trackerStat"]');
       const trackerModeInput = effectEl.querySelector('[data-role="trackerMode"]');
       const trackerValueInput = effectEl.querySelector('[data-role="trackerValue"]');
-      const conditionAreas = effectEl.querySelectorAll('[data-role="conditionArea"]');
+      const conditionAreas = effectEl.querySelectorAll('[data-role="conditionArea"], [data-cond-area="1"]');
 
       if (!effect.condition || typeof effect.condition !== "object") {
         effect.condition = createDefaultCondition();
@@ -501,6 +521,8 @@ function renderEffectBlocksEditor() {
       bySkillEffectInput.checked = effect.condition.bySkillEffect === true;
       inSameChainInput.checked = effect.condition.inSameChain === true;
       requiredOrderModeInput.value = effect.condition.requiredExecutedOrderMode || "any";
+      if (typeof effect.condition.useTrackerCheck !== "boolean") effect.condition.useTrackerCheck = true;
+      useTrackerCheckInput.checked = effect.condition.useTrackerCheck === true;
 
       requiredOrderBox.innerHTML = "";
       (timing.effects || []).forEach((_, idx) => {
@@ -616,6 +638,9 @@ function renderEffectBlocksEditor() {
         conditionAreas.forEach((el) => {
           el.style.display = effect.useCondition === true ? "" : "none";
         });
+        if (trackerConditionRow) {
+          trackerConditionRow.style.display = (effect.useCondition === true && effect.condition.useTrackerCheck === true) ? "" : "none";
+        }
         const show = (effect.useCondition === true && timing.timing === "onLeave");
         directAttackWraps.forEach((w) => { w.style.display = show ? "" : "none"; });
         attackerTriggerTInput.style.display = (effect.useCondition === true && byAttackerEffectInput.checked) ? "" : "none";
@@ -737,6 +762,10 @@ function renderEffectBlocksEditor() {
       });
       requiredOrderModeInput.addEventListener("change", () => {
         effect.condition.requiredExecutedOrderMode = requiredOrderModeInput.value || "any";
+      });
+      useTrackerCheckInput.addEventListener("change", () => {
+        effect.condition.useTrackerCheck = useTrackerCheckInput.checked;
+        refreshConditionVisible();
       });
       trackerOwnerInput.addEventListener("change", () => {
         effect.condition.trackerCheck.owner = trackerOwnerInput.value || "self";

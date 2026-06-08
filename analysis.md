@@ -5787,3 +5787,17 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `js/game/auto/playerActionResolver.js`
   - 互換用に `ADD_HAND` / `DRAW_CARD` を `KNOWN_EFFECT_TYPES` と `applyKnownEffect` に追加。
+
+## Round 2026-06-08 — 効果ブロック条件UI改善（記録条件ON/OFF）
+
+### 変更
+
+- `js/dev/dev.js`
+  - タイミング条件（bundleCondition）に「記録条件を使う」チェックを追加。
+    - OFF時は記録条件の `owner/stat/mode/value` 入力欄を非表示。
+  - 効果条件（effect.condition）にも同様のチェックを追加。
+    - OFF時は記録条件入力欄を非表示。
+  - `createDefaultCondition()` に `useTrackerCheck: true` を追加し、既存カードとの互換を維持。
+
+- `js/game/effects/effectEngine.js`
+  - runtime条件評価で `cond.useTrackerCheck === false` の場合は `trackerCheck` 判定をスキップするように変更。

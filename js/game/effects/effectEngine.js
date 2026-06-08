@@ -625,7 +625,7 @@
         if (!anyMatched) return { ok: false, reason: "requiredExecutedOrder-any-mismatch" };
       }
     }
-    if (cond.trackerCheck && typeof cond.trackerCheck === "object") {
+    if (cond.useTrackerCheck !== false && cond.trackerCheck && typeof cond.trackerCheck === "object") {
       const left = getTrackerValueForCondition(cond.trackerCheck, context, thisTurnOnly);
       const mode = String(cond.trackerCheck.mode || "current_gte");
       const right = Number(cond.trackerCheck.value || 0);

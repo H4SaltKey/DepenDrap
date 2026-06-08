@@ -762,6 +762,13 @@
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
+          const prevZoneType = String(card?.dataset?.zoneType || "");
+          const isFromBattleField = (prevZoneType === "attacker" || prevZoneType === "skill");
+          if (isFromBattleField && window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardOnLeave === "function") {
+            window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType, force: true });
+            // placeCardInZone フック側の二重 onLeave を抑止
+            card.dataset.skipAutoOnLeave = "1";
+          }
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });
         return { applied: true, type };

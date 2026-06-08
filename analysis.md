@@ -5855,3 +5855,16 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `js/dev/cardDebug.js`
   - デバッグ側 `placeCardInZone` でも `resolveCardOnLeave(..., { force: true })` を使用し、本編と一致。
+
+## Round 2026-06-08 — 補強: MOVE_SOURCE_TO_GRAVE で onLeave 明示先行実行
+
+### 背景
+
+- `placeCardInZone` フック状態や上書き順に依存すると、まれに墓地送り時の `onLeave` が取りこぼされる経路がある。
+
+### 変更
+
+- `js/game/effects/effectEngine.js`
+  - `MOVE_SOURCE_TO_GRAVE` 実行時、対象カードが `attacker/skill` にいる場合は
+    `PlayerActionResolver.resolveCardOnLeave(card, { zoneType, force: true })` を先行実行。
+  - その後 `card.dataset.skipAutoOnLeave = "1"` を付与して `placeCardInZone` 側の二重発火を抑止。

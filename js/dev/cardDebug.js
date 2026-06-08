@@ -179,7 +179,12 @@
       tracker: { player1: createTrackerNode(), player2: createTrackerNode() },
       logs: [],
       lastExecution: null,
-      errors: []
+      errors: [],
+      runtime: {
+        eventQueue: [],
+        effectQueue: [],
+        context: null
+      }
     };
 
     function log(msg) {
@@ -190,6 +195,13 @@
         box.innerHTML = debug.logs.map((x) => `<div>${x}</div>`).join("");
         box.scrollTop = box.scrollHeight;
       }
+    }
+
+    function pushQueue(queueName, row) {
+      const key = queueName === "effect" ? "effectQueue" : "eventQueue";
+      const q = debug.runtime[key];
+      q.push(row);
+      if (q.length > 60) q.splice(0, q.length - 60);
     }
 
     function bumpTracker(owner, stat, before, after) {
@@ -327,9 +339,18 @@
             ...extra
           }
         };
+        debug.runtime.context = deepClone({
+          cardId: card.id,
+          trigger: eventName,
+          owner: context.owner,
+          opponent: context.opponent,
+          event: context.event
+        });
         const debugEvents = [];
         context.debugReporter = (payload) => {
           debugEvents.push(payload);
+          if (payload?.type === "trigger") pushQueue("event", payload);
+          if (payload?.type === "effect") pushQueue("effect", payload);
         };
         let res = null;
         let caught = null;
@@ -372,6 +393,8 @@
         // 逐次イベントは execute の戻り値にも入るため、ここでは保持のみ
         if (!Array.isArray(card._debugEvents)) card._debugEvents = [];
         card._debugEvents.push(payload);
+        if (payload?.type === "trigger") pushQueue("event", payload);
+        if (payload?.type === "effect") pushQueue("effect", payload);
       };
       card._debugOnEngineResult = (payload) => {
         const row = {
@@ -439,9 +462,31 @@
       runCardEvent(card, "onSkillAfterAttackEffect");
     }
 
+    function applyDebugCostBeforePlay(card, zoneType) {
+      const profile = card.profile || {};
+      const policy = String(profile.cardCostPolicy || "normal");
+      const isSkillUse = zoneType === "skill";
+      const isCardSkillLike = String(profile.cardKind || "attacker") === "skill" || isSkillUse;
+      const defaultCost = isCardSkillLike ? 1 : (String(profile.cardKind || "attacker") === "support" ? 0 : 1);
+      const cost = Math.max(0, Number(profile.cost ?? defaultCost));
+      const before = Number(debug.state.player1.pp || 0);
+      if (card.dataset.ppCostHandled === "1") return;
+      if (policy === "normal" && cost > 0) {
+        const after = Math.max(0, before - cost);
+        if (after !== before) {
+          debug.state.player1.pp = after;
+          bumpTracker("player1", "pp", before, after);
+          log(`[PP] デバッグ前払い: -${cost} (${before} -> ${after})`);
+        }
+      }
+      card.dataset.ppCostHandled = "1";
+      card.dataset.ppCostValue = String(cost);
+    }
+
     function runPlayWithResolverFallback(card, zoneType) {
       const beforePp = Number(debug.state?.player1?.pp || 0);
       const prevExec = debug.lastExecution;
+      applyDebugCostBeforePlay(card, zoneType);
       withPatchedRuntime(() => {
         if (window.PlayerActionResolver?.resolveCardOnPlay) {
           window.PlayerActionResolver.resolveCardOnPlay(card, zoneType);
@@ -474,6 +519,13 @@
       log(`[FLOW] resolver fallback executed for ${card.name} zone=${zoneType}`);
     }
 
+    function summarizeDsl(card) {
+      const dsl = resolveCardDslForDebug(card?.profile || card || {});
+      const triggers = Array.isArray(dsl?.triggers) ? dsl.triggers : [];
+      if (triggers.length === 0) return "DSL未実装";
+      return triggers.map((t) => `${String(t.on || "?")}(${Array.isArray(t.effects) ? t.effects.length : 0})`).join(" / ");
+    }
+
     function esc(v) {
       return String(v == null ? "" : v)
         .replaceAll("&", "&amp;")
@@ -485,6 +537,9 @@
     function renderExecutionSummary() {
       const execEl = root.querySelector("#dbgExecPanel");
       const errEl = root.querySelector("#dbgErrorPanel");
+      const qEventEl = root.querySelector("#dbgEventQueuePanel");
+      const qEffectEl = root.querySelector("#dbgEffectQueuePanel");
+      const qCtxEl = root.querySelector("#dbgContextPanel");
       if (!execEl || !errEl) return;
       const row = debug.lastExecution;
       if (!row) {
@@ -528,25 +583,52 @@
           </div>
         `).join("");
       }
+
+      if (qEventEl) {
+        const rows = debug.runtime.eventQueue.slice(-10).reverse();
+        qEventEl.innerHTML = rows.length > 0
+          ? rows.map((r) => `<div style="font-size:11px;color:#cbd5e1;">trigger=${esc(r?.report?.on || r?.trigger || "?")} cond=${esc(String(r?.report?.bundleConditionReason || ""))}</div>`).join("")
+          : '<div style="font-size:11px;color:#94a3b8;">イベントキューは空</div>';
+      }
+      if (qEffectEl) {
+        const rows = debug.runtime.effectQueue.slice(-12).reverse();
+        qEffectEl.innerHTML = rows.length > 0
+          ? rows.map((r) => `<div style="font-size:11px;color:#cbd5e1;">${esc(r?.trigger || "?")} #${esc(r?.order || "?")} ${esc(r?.result?.type || "?")} ${r?.result?.applied ? "実行" : "待機/スキップ"}</div>`).join("")
+          : '<div style="font-size:11px;color:#94a3b8;">効果キューは空</div>';
+      }
+      if (qCtxEl) {
+        qCtxEl.textContent = JSON.stringify(debug.runtime.context || {}, null, 2);
+      }
     }
 
     function renderTrackerGrid() {
       const box = root.querySelector("#dbgTrackerGrid");
       if (!box) return;
-      const keys = [
-        "turn.custom.use.attacker", "turn.custom.use.skill", "game.custom.use.attacker", "game.custom.use.skill",
-        "turn.hp.lastAfter", "turn.hp.incAmount", "turn.hp.decAmount", "turn.pp.lastAfter", "turn.shield.lastAfter", "turn.atk.lastAfter"
+      const metrics = [
+        { path: "turn.custom.use.attacker", label: "このターンのアタッカー使用回数" },
+        { path: "turn.custom.use.skill", label: "このターンのスキル使用回数" },
+        { path: "game.custom.use.attacker", label: "この試合のアタッカー使用回数" },
+        { path: "game.custom.use.skill", label: "この試合のスキル使用回数" },
+        { path: "turn.hp.lastAfter", label: "このターンのHP現在値" },
+        { path: "turn.hp.incAmount", label: "このターンのHP増加量" },
+        { path: "turn.hp.decAmount", label: "このターンのHP減少量" },
+        { path: "turn.pp.lastAfter", label: "このターンのPP現在値" },
+        { path: "turn.shield.lastAfter", label: "このターンのシールド現在値" },
+        { path: "turn.atk.lastAfter", label: "このターンの攻撃力現在値" }
       ];
       box.innerHTML = `
-        <div style="font-size:11px;color:#93c5fd;margin-bottom:6px;">効果条件で使う記録値（手動編集）</div>
+        <div style="font-size:11px;color:#93c5fd;margin-bottom:6px;">効果条件で使う記録値（何を指すか明記 / 手動編集）</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
-          <thead><tr><th style="text-align:left;padding:4px;border-bottom:1px solid #334155;">Path</th><th style="padding:4px;border-bottom:1px solid #334155;">You</th><th style="padding:4px;border-bottom:1px solid #334155;">Enemy</th></tr></thead>
+          <thead><tr><th style="text-align:left;padding:4px;border-bottom:1px solid #334155;">項目</th><th style="padding:4px;border-bottom:1px solid #334155;">You</th><th style="padding:4px;border-bottom:1px solid #334155;">Enemy</th></tr></thead>
           <tbody>
-            ${keys.map((k) => `
+            ${metrics.map((m) => `
               <tr>
-                <td style="padding:4px;border-bottom:1px solid #1e293b;">${k}</td>
-                <td style="padding:4px;border-bottom:1px solid #1e293b;"><input data-owner="player1" data-path="${k}" type="number" value="${Number(getByPath(debug.tracker.player1, k) || 0)}" style="width:100%;padding:4px;background:#111827;color:#fff;border:1px solid #334155;border-radius:4px;"></td>
-                <td style="padding:4px;border-bottom:1px solid #1e293b;"><input data-owner="player2" data-path="${k}" type="number" value="${Number(getByPath(debug.tracker.player2, k) || 0)}" style="width:100%;padding:4px;background:#111827;color:#fff;border:1px solid #334155;border-radius:4px;"></td>
+                <td style="padding:4px;border-bottom:1px solid #1e293b;">
+                  <div>${m.label}</div>
+                  <div style="font-size:10px;color:#64748b;">${m.path}</div>
+                </td>
+                <td style="padding:4px;border-bottom:1px solid #1e293b;"><input data-owner="player1" data-path="${m.path}" type="number" value="${Number(getByPath(debug.tracker.player1, m.path) || 0)}" style="width:100%;padding:4px;background:#111827;color:#fff;border:1px solid #334155;border-radius:4px;"></td>
+                <td style="padding:4px;border-bottom:1px solid #1e293b;"><input data-owner="player2" data-path="${m.path}" type="number" value="${Number(getByPath(debug.tracker.player2, m.path) || 0)}" style="width:100%;padding:4px;background:#111827;color:#fff;border:1px solid #334155;border-radius:4px;"></td>
               </tr>
             `).join("")}
           </tbody>
@@ -575,6 +657,7 @@
       el.innerHTML = `
         <div style="font-size:12px;font-weight:700;color:#f8fafc;">${card.name}</div>
         <div style="font-size:11px;color:#94a3b8;">${card.id}</div>
+        <div style="font-size:10px;color:#93c5fd;line-height:1.35;margin-top:2px;">DSL: ${esc(summarizeDsl(card))}</div>
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">${controls.map(([act, label]) => `<button data-act="${act}" style="padding:3px 6px;font-size:11px;background:#334155;color:#fff;border:0;border-radius:4px;cursor:pointer;">${label}</button>`).join("")}</div>
       `;
       el.querySelectorAll("button").forEach((btn) => {
@@ -677,7 +760,8 @@
 
     function renderDebuggerMain() {
       root.innerHTML = `
-        <div style="display:grid;grid-template-columns:280px 1fr 340px;gap:10px;min-height:0;height:100%;">
+        <div style="display:grid;grid-template-columns:280px 1fr 340px;gap:10px;min-height:0;height:100%;position:relative;">
+          <button id="dbgCloseTop" style="position:absolute;top:2px;right:2px;padding:6px 10px;background:#7f1d1d;color:#fff;border:0;border-radius:6px;cursor:pointer;z-index:2;">閉じる</button>
           <section style="display:flex;flex-direction:column;gap:8px;min-height:0;">
             <h3 style="margin:0;font-size:16px;">カードデバッグ</h3>
             <div style="display:flex;gap:6px;"><button id="dbgClose" style="flex:1;padding:8px;background:#374151;color:#fff;border:0;border-radius:6px;cursor:pointer;">閉じる</button><button id="dbgReset" style="flex:1;padding:8px;background:#0f766e;color:#fff;border:0;border-radius:6px;cursor:pointer;">デッキ再選択</button></div>
@@ -710,11 +794,16 @@
             </div>
             <button id="dbgApplyStats" style="padding:8px;background:#0ea5e9;color:#082f49;border:0;border-radius:6px;font-weight:700;cursor:pointer;">ステータス適用</button>
           </section>
-          <section style="display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;min-height:0;">
+          <section style="display:grid;grid-template-rows:auto auto auto 1fr auto;gap:8px;min-height:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;"><h4 style="margin:0;font-size:14px;">記録データ / フローチャット</h4><button id="dbgClearLog" style="padding:6px 10px;background:#334155;color:#fff;border:0;border-radius:6px;cursor:pointer;">クリア</button></div>
             <div style="display:grid;grid-template-rows:auto auto;gap:8px;">
               <div id="dbgExecPanel" style="overflow:auto;max-height:200px;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div>
               <div id="dbgErrorPanel" style="overflow:auto;max-height:120px;border:1px solid #7f1d1d;border-radius:8px;padding:8px;background:#1f1116;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr;gap:6px;">
+              <div id="dbgEventQueuePanel" style="overflow:auto;max-height:84px;border:1px solid #1e3a8a;border-radius:8px;padding:6px;background:#0f172a;"></div>
+              <div id="dbgEffectQueuePanel" style="overflow:auto;max-height:96px;border:1px solid #0f766e;border-radius:8px;padding:6px;background:#0b1f1e;"></div>
+              <pre id="dbgContextPanel" style="overflow:auto;max-height:120px;border:1px solid #334155;border-radius:8px;padding:6px;background:#111827;font-size:10px;line-height:1.35;color:#cbd5e1;white-space:pre-wrap;"></pre>
             </div>
             <div style="display:grid;grid-template-rows:220px 1fr;gap:8px;min-height:0;"><div id="dbgTrackerGrid" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;"></div><div id="dbgLog" style="overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;font-size:12px;line-height:1.5;"></div></div>
             <div style="display:flex;gap:6px;"><input id="dbgChatInput" type="text" placeholder="メモ/チャット" style="flex:1;padding:8px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;"><button id="dbgChatSend" style="padding:8px 12px;background:#2563eb;color:#fff;border:0;border-radius:6px;cursor:pointer;">送信</button></div>
@@ -756,6 +845,7 @@
       }
 
       root.querySelector("#dbgClose").onclick = () => closeModal();
+      root.querySelector("#dbgCloseTop").onclick = () => closeModal();
       root.querySelector("#dbgReset").onclick = () => renderDeckBuilder();
       root.querySelector("#dbgTarget").onchange = (e) => { debug.target = e.target.value; render(); };
       root.querySelector("#dbgShuffle").onclick = () => {
@@ -796,7 +886,15 @@
         log("[STATE] ステータスを反映");
         render();
       };
-      root.querySelector("#dbgClearLog").onclick = () => { debug.logs = []; debug.errors = []; debug.lastExecution = null; render(); };
+      root.querySelector("#dbgClearLog").onclick = () => {
+        debug.logs = [];
+        debug.errors = [];
+        debug.lastExecution = null;
+        debug.runtime.eventQueue = [];
+        debug.runtime.effectQueue = [];
+        debug.runtime.context = null;
+        render();
+      };
       root.querySelector("#dbgChatSend").onclick = () => {
         const input = root.querySelector("#dbgChatInput");
         const text = String(input.value || "").trim();
@@ -822,15 +920,20 @@
             || String(c.effectText || "").toLowerCase().includes(q);
         });
         return list.map((c) => {
-          const count = Number(selection[c.id] || 0);
+          const count = Math.min(3, Math.max(0, Number(selection[c.id] || 0)));
+          selection[c.id] = count;
           return `
-            <div style="display:grid;grid-template-columns:130px 1fr 124px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f2937;">
+            <div style="display:grid;grid-template-columns:130px 1fr 180px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1f2937;">
               <div style="font-size:11px;color:#93c5fd;">${c.id}</div>
-              <div style="font-size:12px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name || "(名前なし)"}</div>
-              <div style="display:grid;grid-template-columns:30px 1fr 30px;gap:4px;align-items:center;">
+              <div>
+                <div style="font-size:12px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name || "(名前なし)"}</div>
+                <div style="font-size:10px;color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(summarizeDsl({ profile: c }))}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:30px 1fr 30px 44px;gap:4px;align-items:center;">
                 <button type="button" data-card-minus="${c.id}" style="height:30px;border:1px solid #334155;border-radius:6px;background:#1f2937;color:#fff;cursor:pointer;">-</button>
                 <input data-card-id="${c.id}" type="number" min="0" step="1" value="${count}" style="width:100%;padding:6px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;text-align:center;">
                 <button type="button" data-card-plus="${c.id}" style="height:30px;border:1px solid #334155;border-radius:6px;background:#1f2937;color:#fff;cursor:pointer;">+</button>
+                <button type="button" data-card-max3="${c.id}" style="height:30px;border:1px solid #0ea5e9;border-radius:6px;background:#082f49;color:#bae6fd;cursor:pointer;">3枚</button>
               </div>
             </div>
           `;
@@ -856,7 +959,7 @@
       `;
 
       function syncTotal() {
-        const total = Object.values(selection).reduce((a, b) => a + Number(b || 0), 0);
+        const total = Object.values(selection).reduce((a, b) => a + Math.min(3, Math.max(0, Number(b || 0))), 0);
         const el = root.querySelector("#dbgSetupTotal");
         if (el) el.textContent = String(total);
       }
@@ -865,8 +968,9 @@
         root.querySelectorAll("input[data-card-id]").forEach((inp) => {
           inp.addEventListener("input", () => {
             const id = inp.dataset.cardId;
-            const v = Math.max(0, Number(inp.value || 0));
+            const v = Math.min(3, Math.max(0, Number(inp.value || 0)));
             selection[id] = v;
+            inp.value = String(v);
             syncTotal();
           });
         });
@@ -883,7 +987,18 @@
         root.querySelectorAll("button[data-card-plus]").forEach((btn) => {
           btn.addEventListener("click", () => {
             const id = btn.dataset.cardPlus;
-            const next = Math.max(0, Number(selection[id] || 0) + 1);
+            const next = Math.min(3, Math.max(0, Number(selection[id] || 0) + 1));
+            selection[id] = next;
+            const input = root.querySelector(`input[data-card-id="${id}"]`);
+            if (input) input.value = String(next);
+            syncTotal();
+          });
+        });
+        root.querySelectorAll("button[data-card-max3]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.dataset.cardMax3;
+            const cur = Math.max(0, Number(selection[id] || 0));
+            const next = cur >= 3 ? cur : 3;
             selection[id] = next;
             const input = root.querySelector(`input[data-card-id="${id}"]`);
             if (input) input.value = String(next);
@@ -911,7 +1026,7 @@
       root.querySelector("#dbgSetupStart").onclick = () => {
         const deckRows = [];
         cardSource.forEach((row) => {
-          const count = Math.max(0, Number(selection[row.id] || 0));
+          const count = Math.min(3, Math.max(0, Number(selection[row.id] || 0)));
           for (let i = 0; i < count; i += 1) deckRows.push(row);
         });
         if (deckRows.length === 0) {
@@ -925,6 +1040,7 @@
         debug.logs = [];
         debug.lastExecution = null;
         debug.errors = [];
+        debug.runtime = { eventQueue: [], effectQueue: [], context: null };
 
         debug.zones.deck = deckRows.map((row) => {
           const card = createCardObj(row, "player1");

@@ -244,6 +244,14 @@
     if (typeof window.organizeHands === "function") window.organizeHands();
   }
 
+  function recoverPpByDraw(owner, amount) {
+    const s = getPlayer(owner);
+    if (!s) return;
+    const max = Number(s.ppMax || 2);
+    s.pp = Math.max(0, Math.min(max, Number(s.pp || 0) + Math.max(0, Number(amount || 0))));
+    if (typeof window.pushMyStateDebounced === "function" && owner === meRole()) window.pushMyStateDebounced();
+  }
+
   function addCardAttack(cardEl, delta) {
     if (!cardEl) return;
     const prev = Number(cardEl.dataset.attackBonus || 0);
@@ -651,11 +659,35 @@
       const playerTarget = resolvePlayerTargetOwners(effect, context);
       const targetOwners = playerTarget.owners;
 
-      if (type === "DRAW") {
+      if (type === "DRAW" || type === "ADD_HAND") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
         targetOwners.forEach((targetOwner) => {
           if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
+        });
+        return { applied: true, type };
+      }
+      if (type === "DRAW_CARD") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
+        targetOwners.forEach((targetOwner) => {
+          if (targetOwner === meRole() && typeof window.drawToHand === "function") {
+            const n = Math.max(0, amount || 1);
+            window.drawToHand(n);
+            recoverPpByDraw(targetOwner, n);
+          }
+        });
+        return { applied: true, type };
+      }
+      if (type === "ADD_HAND_TO_MIN") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
+        targetOwners.forEach((targetOwner) => {
+          if (targetOwner !== meRole()) return;
+          if (typeof window.drawToHand !== "function") return;
+          const current = Number(getHandCardsOfOwner(targetOwner)?.length || 0);
+          const need = Math.max(0, Math.max(0, amount || 0) - current);
+          if (need > 0) window.drawToHand(need);
         });
         return { applied: true, type };
       }

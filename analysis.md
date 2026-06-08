@@ -5753,3 +5753,37 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - `attacker`: `onSummon`
     - `skill`: `onSkillBeforeAttackEffect` / `onSkillAfterAttackEffect`
   - これにより、resolver導線が失敗してもデバッグ実行が無反応にならないようにした。
+
+## Round 2026-06-08 — カードデバッグ運用改善（PP/記録値表示/DSL可視化/3枚ボタン/Queue表示）
+
+### 変更
+
+- `js/dev/cardDebug.js`
+  - 使用時PP変動の安定化:
+    - `runPlayWithResolverFallback` 前に `applyDebugCostBeforePlay` を実行し、デバッグ側で前払い処理を実施。
+    - `ppCostHandled` マーカーを付与し、resolver側の二重消費を防止。
+  - 記録値テーブル:
+    - `turn.custom.use.attacker` のようなパス名だけでなく、「このターンのアタッカー使用回数」等の具体ラベルを併記。
+  - カードごとのDSL可視化:
+    - カードチップ・デッキ設定一覧に、手動設定DSL（`effectBlocks -> effectDsl`）のトリガー要約を表示。
+  - UI改善:
+    - デバッグ本体に右上 `閉じる` ボタンを追加（既存ボタンは維持）。
+    - デッキ設定で `3枚` ボタンを追加。押下時にそのカード枚数を最大3枚へ補正。
+    - 枚数入力/`+` も 3 枚上限に統一。
+  - Queue/Context可視化:
+    - `eventQueue` / `effectQueue` / `context` をデバッグ状態に追加。
+    - 右ペインに「イベントキュー」「効果キュー」「コンテキスト(JSON)」を表示。
+
+- `js/dev/cardEffectBlockCompiler.js`
+  - `draw_card` を `DRAW_CARD`、
+    `add_hand` を `ADD_HAND`、
+    `add_hand_to_n` を `ADD_HAND_TO_MIN` に分離コンパイル。
+
+- `js/game/effects/effectEngine.js`
+  - `ADD_HAND`（手札追加）と `DRAW_CARD`（カードを引く）を分離実装。
+    - `ADD_HAND`: 既存 `drawToHand` のみ（PP増加なし）
+    - `DRAW_CARD`: `drawToHand` 後に `pp` を回復（`ppMax` で上限制御）
+  - `ADD_HAND_TO_MIN` を追加。
+
+- `js/game/auto/playerActionResolver.js`
+  - 互換用に `ADD_HAND` / `DRAW_CARD` を `KNOWN_EFFECT_TYPES` と `applyKnownEffect` に追加。

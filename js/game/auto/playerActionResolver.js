@@ -1,6 +1,8 @@
 (function() {
   const KNOWN_EFFECT_TYPES = new Set([
     "DRAW",
+    "ADD_HAND",
+    "DRAW_CARD",
     "DAMAGE",
     "HEAL",
     "DESTROY",
@@ -170,8 +172,13 @@
 
     if (!KNOWN_EFFECT_TYPES.has(type)) return;
 
-    if (type === "DRAW") {
+    if (type === "DRAW" || type === "ADD_HAND") {
       if (typeof window.drawToHand === "function") window.drawToHand(amount || 1);
+      return;
+    }
+    if (type === "DRAW_CARD") {
+      if (typeof window.drawToHand === "function") window.drawToHand(amount || 1);
+      if (typeof window.addVal === "function") window.addVal(owner, "pp", amount || 1);
       return;
     }
     if (type === "HEAL") {

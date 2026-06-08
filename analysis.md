@@ -5813,3 +5813,13 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - `条件を使う` が ON
     - 対象タイミングが `onLeave`
     - かつ `直接攻撃したかで判定` が ON のときに TFラジオを表示
+
+## Round 2026-06-08 — 退場時効果の発火条件を「場を離れる時」に修正
+
+### 変更
+
+- `js/game/auto/playerActionResolver.js`
+  - `placeCardInZone` フック内の `onLeave` 判定を修正。
+  - 旧: `attacker/skill -> grave` のときのみ `onLeave`
+  - 新: `attacker/skill -> (attacker/skill 以外)` のときに `onLeave`
+    - つまり移動先が `grave/hand/deck/...` でも、場を離れるなら発火。

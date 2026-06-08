@@ -486,7 +486,9 @@
     const wrapped = function(cardEl, owner, zoneType) {
       const prevZoneType = cardEl?.dataset?.zoneType || "";
       const prevDidDirectAttack = cardEl?.dataset?.didDirectAttack || "0";
-      const isBattleFieldLeave = (zoneType === "grave" && (prevZoneType === "attacker" || prevZoneType === "skill"));
+      const isFromBattleField = (prevZoneType === "attacker" || prevZoneType === "skill");
+      const isToBattleField = (zoneType === "attacker" || zoneType === "skill");
+      const isBattleFieldLeave = (isFromBattleField && !isToBattleField);
       if (isBattleFieldLeave && cardEl) {
         cardEl.dataset.didDirectAttack = prevDidDirectAttack;
         if (cardEl.dataset.skipAutoOnLeave === "1" || cardEl.dataset.onLeaveResolving === "1") {

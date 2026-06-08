@@ -5738,3 +5738,18 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - カードデバッグでカード使用時に PP が減少する。
 - 併せて、登場時（`onSummon`）などの効果解決が実行される。
+
+## Round 2026-06-08 — 追加フォロー（左下ランチャー撤去 + resolver不発時フォールバック）
+
+### 修正
+
+- `js/dev/cardDebug.js`
+  - 左下フローティング起動ボタン（`#cardDebugLaunchBtn`）を廃止。
+  - 起動時に既存フローティングボタンが残っていた場合は `uninstallFloatingLauncherButton()` で削除。
+  - 以後は dev レイアウト内ボタン（`#cardDebugLaunchInlineBtn`）のみを使用。
+  - `runPlayWithResolverFallback(card, zoneType)` を追加し、
+    `PlayerActionResolver.resolveCardOnPlay` が不発だった場合にデバッグ内でフォールバック実行。
+    - PP消費（通常コスト時のみ）を補正
+    - `attacker`: `onSummon`
+    - `skill`: `onSkillBeforeAttackEffect` / `onSkillAfterAttackEffect`
+  - これにより、resolver導線が失敗してもデバッグ実行が無反応にならないようにした。

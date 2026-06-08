@@ -111,15 +111,12 @@
   }
 
   function installLauncherButton() {
-    const devEnabled = (window.devMode === true) || (localStorage.getItem("dev") === "true");
-    if (!devEnabled) return;
-    if (document.getElementById("cardDebugLaunchBtn")) return;
-    const btn = document.createElement("button");
-    btn.id = "cardDebugLaunchBtn";
-    btn.textContent = "カードデバッグ";
-    btn.style.cssText = "position:fixed;left:20px;bottom:138px;z-index:1100;padding:10px 14px;border:1px solid #475569;border-radius:10px;background:#0b1220;color:#e2e8f0;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.35);";
-    btn.addEventListener("click", () => openCardDebugModal());
-    document.body.appendChild(btn);
+    // フローティング起動ボタンは廃止（dev画面内導線のみ使用）
+  }
+
+  function uninstallFloatingLauncherButton() {
+    const btn = document.getElementById("cardDebugLaunchBtn");
+    if (btn) btn.remove();
   }
 
   function installInlineLauncherButton() {
@@ -437,6 +434,46 @@
       log(`[ERROR] card=${row.cardId} trigger=${row.trigger} effect=${row.error.effectType} ${row.error.message}`);
     }
 
+    function runSkillEffectFallback(card) {
+      runCardEvent(card, "onSkillBeforeAttackEffect");
+      runCardEvent(card, "onSkillAfterAttackEffect");
+    }
+
+    function runPlayWithResolverFallback(card, zoneType) {
+      const beforePp = Number(debug.state?.player1?.pp || 0);
+      const prevExec = debug.lastExecution;
+      withPatchedRuntime(() => {
+        if (window.PlayerActionResolver?.resolveCardOnPlay) {
+          window.PlayerActionResolver.resolveCardOnPlay(card, zoneType);
+        } else if (zoneType === "skill") {
+          runSkillEffectFallback(card);
+        } else {
+          runCardEvent(card, "onSummon");
+        }
+      });
+
+      const afterPp = Number(debug.state?.player1?.pp || 0);
+      const hasEngineReport = debug.lastExecution !== prevExec
+        && debug.lastExecution
+        && debug.lastExecution.cardId === card.id;
+      if (hasEngineReport) return;
+
+      // resolver側が不発だった場合のデバッグフォールバック
+      const profile = card.profile || {};
+      const cost = Math.max(0, Number(profile.cost || (String(profile.cardKind || "attacker") === "support" ? 0 : 1)));
+      const policy = String(profile.cardCostPolicy || "normal");
+      if (afterPp === beforePp && policy === "normal" && cost > 0) {
+        debug.state.player1.pp = Math.max(0, beforePp - cost);
+        log(`[PP] resolver fallback: -${cost} (${beforePp} -> ${debug.state.player1.pp})`);
+      }
+      if (zoneType === "skill") {
+        runSkillEffectFallback(card);
+      } else {
+        runCardEvent(card, "onSummon");
+      }
+      log(`[FLOW] resolver fallback executed for ${card.name} zone=${zoneType}`);
+    }
+
     function esc(v) {
       return String(v == null ? "" : v)
         .replaceAll("&", "&amp;")
@@ -550,13 +587,7 @@
               moveCard(card, "attacker");
               debug.tracker.player1.turn.custom.use.attacker += 1;
               debug.tracker.player1.game.custom.use.attacker += 1;
-              withPatchedRuntime(() => {
-                if (window.PlayerActionResolver?.resolveCardOnPlay) {
-                  window.PlayerActionResolver.resolveCardOnPlay(card, "attacker");
-                } else {
-                  runCardEvent(card, "onSummon");
-                }
-              });
+              runPlayWithResolverFallback(card, "attacker");
             } else if (act === "toSkill") {
               const attackerCount = debug.zones.attacker.filter((c) => String(c.profile?.cardKind || "attacker") === "attacker").length;
               const activatorExists = debug.zones.attacker.some((c) => {
@@ -574,13 +605,7 @@
               // カード種別に依存せず、スキルとして処理する
               card.dataset.debugCardKind = "skill";
               if (kind === "support") card.dataset.debugCostOverride = "1";
-              withPatchedRuntime(() => {
-                if (window.PlayerActionResolver?.resolveCardOnPlay) {
-                  window.PlayerActionResolver.resolveCardOnPlay(card, "skill");
-                } else {
-                  runCardEvent(card, "onSummon");
-                }
-              });
+              runPlayWithResolverFallback(card, "skill");
               delete card.dataset.debugCardKind;
               delete card.dataset.debugCostOverride;
 
@@ -933,15 +958,14 @@
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
+      uninstallFloatingLauncherButton();
       installLauncherButton();
       installInlineLauncherButton();
     });
   } else {
+    uninstallFloatingLauncherButton();
     installLauncherButton();
     installInlineLauncherButton();
-  }
-  if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installLauncherButton)) {
-    window._afterUpdateHooks.push(installLauncherButton);
   }
   if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installInlineLauncherButton)) {
     window._afterUpdateHooks.push(installInlineLauncherButton);

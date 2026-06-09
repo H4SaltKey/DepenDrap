@@ -372,46 +372,35 @@
     root.className = "cardIde";
     root.innerHTML = `
       <div class="cardIdeMain">
-        <div class="leftStack">
-          <section class="idePanel">
-            <div class="idePanelHeader">
-              <span>Card List</span>
-              <div style="display:flex;gap:6px;">
-                <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
-                <button class="ideSmallBtn" id="saveCardsTopBtn">保存</button>
-                <button class="ideSmallBtn" id="openCardPickerBtn">カード選択</button>
-                <button class="ideSmallBtn" id="ideAddCardBtn">追加</button>
-                <button class="ideSmallBtn danger" id="ideDeleteCardBtn">削除</button>
-              </div>
-            </div>
-            <div class="idePanelBody">
-              <div class="cardListTools">
-                <input id="ideSearch" placeholder="検索: name/tag/effect">
-                <div class="formRow2">
-                  <select id="ideTypeFilter">
-                    <option value="all">種別: すべて</option>
-                    <option value="アタッカー">アタッカー</option>
-                    <option value="スキル">スキル</option>
-                    <option value="サポート">サポート</option>
-                  </select>
-                  <select id="ideAttrFilter">
-                    <option value="all">属性: すべて</option>
-                    <option value="近接">近接</option>
-                    <option value="遠隔">遠隔</option>
-                    <option value="魔法">魔法</option>
-                  </select>
+        <section class="idePanel cardVisualPanel">
+          <div class="idePanelHeader">
+            <span>Card Preview</span>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
+              <div class="cardMenuWrap">
+                <button class="ideSmallBtn" id="openCardMenuBtn">カードメニュー</button>
+                <div class="cardMenuPopup" id="cardMenuPopup" style="display:none;">
+                  <button class="ideSmallBtn" id="saveCardsTopBtn">保存</button>
+                  <button class="ideSmallBtn" id="openCardPickerBtn">カード選択</button>
+                  <button class="ideSmallBtn" id="ideAddCardBtn">追加</button>
+                  <button class="ideSmallBtn danger" id="ideDeleteCardBtn">削除</button>
                 </div>
               </div>
-              <div id="ideCardList" class="cardList"></div>
             </div>
-          </section>
-          <section class="idePanel">
-            <div class="idePanelHeader"><span>Node Library</span><input id="nodeLibSearch" style="width:130px" placeholder="検索"></div>
-            <div class="idePanelBody">
-              <div id="nodeLibList" class="nodeLib"></div>
+          </div>
+          <div class="idePanelBody">
+            <div class="cardVisualCanvas" id="cardVisualCanvas">
+              <div class="cardVisualFrame cardHotspot" data-card-field="frame" data-hover-label="カード外枠">
+                <div class="cardVisualType cardHotspot" data-card-field="type" data-hover-label="種別"></div>
+                <div class="cardVisualAttack cardHotspot" data-card-field="attack" data-hover-label="攻撃力"></div>
+                <div class="cardVisualAttr cardHotspot" data-card-field="attribute" data-hover-label="属性(アイコン)"></div>
+                <div class="cardVisualName cardHotspot" data-card-field="name" data-hover-label="カード名"></div>
+                <div class="cardVisualArt cardHotspot" data-card-field="image" data-hover-label="カード画像"></div>
+                <div class="cardVisualText cardHotspot" data-card-field="effectText" data-hover-label="効果テキスト"></div>
+              </div>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
 
         <section class="idePanel">
           <div class="idePanelHeader">
@@ -458,41 +447,12 @@
           <section class="idePanel">
             <div class="idePanelHeader">
               <span>Inspector</span>
-              <button class="ideSmallBtn" id="legacyToggleBtn">旧ブロック表示</button>
             </div>
             <div class="idePanelBody">
-              <div class="cardInfoForm" id="cardInfoForm"></div>
-              <hr style="border-color:#243a5d; margin:10px 0;">
               <div class="inspectorForm" id="nodeInspector"></div>
-              <div class="legacyBlockBox" id="legacyBlockBox" style="display:none; margin-top:10px;">
-                <textarea id="legacyBlocksText" rows="8" placeholder="effectBlocks JSON"></textarea>
-                <div class="simActionRow" style="margin-top:6px;">
-                  <button id="legacyImportBtn" class="ideSmallBtn">Legacy JSON 読込</button>
-                  <button id="legacyMigrateBtn" class="ideSmallBtn">Legacy -> Node/DSL</button>
-                </div>
-              </div>
             </div>
           </section>
         </div>
-      </div>
-
-      <div class="logGrid">
-        <section class="idePanel">
-          <div class="idePanelHeader"><span>Event Engine Viewer</span><button class="ideSmallBtn" id="emitOnPlayBtn">OnPlay発火</button></div>
-          <div class="idePanelBody"><div class="logList" id="eventEngineViewer"></div></div>
-        </section>
-        <section class="idePanel">
-          <div class="idePanelHeader"><span>Runtime Inspector</span><button class="ideSmallBtn" id="refreshRuntimeBtn">Refresh</button></div>
-          <div class="idePanelBody"><div class="logList" id="runtimeInspectorView"></div></div>
-        </section>
-        <section class="idePanel">
-          <div class="idePanelHeader"><span>Replay Debugger</span><div style="display:flex;gap:6px;"><button class="ideSmallBtn" id="replayPrevBtn">◀</button><button class="ideSmallBtn" id="replayNextBtn">▶</button></div></div>
-          <div class="idePanelBody"><div class="logList" id="replayView"></div></div>
-        </section>
-        <section class="idePanel">
-          <div class="idePanelHeader"><span>Log Viewer</span><button class="ideSmallBtn" id="clearLogBtn">Clear</button></div>
-          <div class="idePanelBody"><pre id="ideLogViewer" style="margin:0; white-space:pre-wrap; font-size:11px;"></pre></div>
-        </section>
       </div>
 
       <div class="logGridBottom">
@@ -516,13 +476,42 @@
             </div>
           </div>
         </section>
-        <section class="idePanel">
-          <div class="idePanelHeader"><span>Output Preview</span><button class="ideSmallBtn" id="rebuildOutputBtn">再生成</button></div>
+      </div>
+
+      <div class="ideDrawerRail">
+        <button class="drawerTab" data-drawer-target="eventEngine">Event Engine</button>
+        <button class="drawerTab" data-drawer-target="runtimeInspector">Runtime Inspector</button>
+        <button class="drawerTab" data-drawer-target="replayDebugger">Replay Debugger</button>
+        <button class="drawerTab" data-drawer-target="logViewer">Log Viewer</button>
+        <button class="drawerTab" data-drawer-target="outputPreview">Output Preview</button>
+      </div>
+      <div id="utilityDrawerModal" style="display:none;position:fixed;inset:0;z-index:76;background:rgba(3,9,18,0.82);align-items:center;justify-content:flex-end;padding:14px;">
+        <section class="idePanel utilityDrawerPanel">
+          <div class="idePanelHeader">
+            <span id="utilityDrawerTitle">Viewer</span>
+            <button class="ideSmallBtn" id="closeUtilityDrawerBtn">閉じる</button>
+          </div>
           <div class="idePanelBody">
-            <details id="outputPreviewDetails">
-              <summary style="cursor:pointer;color:#9fc0ec;font-size:12px;">出力テキスト（クリックで展開）</summary>
+            <div id="drawer-eventEngine" class="drawerPane" style="display:none;">
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="emitOnPlayBtn">OnPlay発火</button></div>
+              <div class="logList" id="eventEngineViewer"></div>
+            </div>
+            <div id="drawer-runtimeInspector" class="drawerPane" style="display:none;">
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="refreshRuntimeBtn">Refresh</button></div>
+              <div class="logList" id="runtimeInspectorView"></div>
+            </div>
+            <div id="drawer-replayDebugger" class="drawerPane" style="display:none;">
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="replayPrevBtn">◀</button><button class="ideSmallBtn" id="replayNextBtn">▶</button></div>
+              <div class="logList" id="replayView"></div>
+            </div>
+            <div id="drawer-logViewer" class="drawerPane" style="display:none;">
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="clearLogBtn">Clear</button></div>
+              <pre id="ideLogViewer" style="margin:0; white-space:pre-wrap; font-size:11px;"></pre>
+            </div>
+            <div id="drawer-outputPreview" class="drawerPane" style="display:none;">
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="rebuildOutputBtn">再生成</button></div>
               <div class="logList" id="outputPreview"></div>
-            </details>
+            </div>
           </div>
         </section>
       </div>
@@ -553,10 +542,26 @@
           </div>
         </div>
       </div>
+
+      <div id="cardFieldModal" style="display:none;position:fixed;inset:0;z-index:74;background:rgba(2,9,20,0.86);align-items:center;justify-content:center;padding:20px;">
+        <div style="width:min(520px, 100%);max-height:82vh;overflow:auto;background:#10223b;border:1px solid #3f6492;border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div id="cardFieldTitle" style="font-weight:700;">カード設定</div>
+            <button class="ideSmallBtn" id="closeCardFieldBtn">閉じる</button>
+          </div>
+          <div id="cardFieldForm" class="inspectorForm" style="margin-top:10px;"></div>
+          <div class="simActionRow" style="margin-top:12px;">
+            <button class="ideSmallBtn" id="saveCardFieldBtn">保存</button>
+            <button class="ideSmallBtn danger" id="cancelCardFieldBtn">キャンセル</button>
+          </div>
+        </div>
+      </div>
     `;
 
     let raf = 0;
     let nodeConfigCtx = null;
+    let cardFieldCtx = null;
+    let activeDrawer = "";
 
     const TRIGGER_EVENT_OPTIONS = [
       { value: "OnPlay", label: "登場時" },
@@ -731,6 +736,142 @@
       renderDsl();
       requestRenderGraph();
       closeNodeConfigModal();
+    }
+
+    function patchCardValues(card, map) {
+      if (!card || !map) return;
+      const has = (k) => Object.prototype.hasOwnProperty.call(map, k);
+      if (has("name")) card.name = String(map.name || "");
+      if (has("type")) card.type = String(map.type || "アタッカー");
+      if (has("attribute")) card.attribute = String(map.attribute || "近接");
+      if (has("attack")) card.attack = Math.max(0, Math.floor(Number(map.attack || 0)));
+      if (has("cost")) card.cost = Math.max(0, Number(map.cost || 0));
+      if (has("causalRate")) card.causalRate = Number(map.causalRate || 0);
+      if (has("tags")) {
+        card.tags = String(map.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean);
+      }
+      if (has("image")) card.image = String(map.image || "");
+      if (has("effectText")) card.effectText = String(map.effectText || "");
+    }
+
+    function renderCardVisual() {
+      const card = selectedCard();
+      const badge = root.querySelector("#currentCardBadge");
+      if (badge) badge.textContent = card ? `${card.id} ${card.name || ""}`.trim() : "未選択";
+      const frame = root.querySelector(".cardVisualFrame");
+      if (!frame || !card) return;
+      const type = root.querySelector(".cardVisualType");
+      const atk = root.querySelector(".cardVisualAttack");
+      const attr = root.querySelector(".cardVisualAttr");
+      const name = root.querySelector(".cardVisualName");
+      const art = root.querySelector(".cardVisualArt");
+      const text = root.querySelector(".cardVisualText");
+      if (type) type.textContent = String(card.type || "アタッカー");
+      if (atk) atk.textContent = `ATK ${Number(card.attack || 0)}`;
+      if (attr) attr.textContent = String(card.attribute || "-");
+      if (name) name.textContent = String(card.name || card.id || "No Name");
+      if (text) text.textContent = String(card.effectText || "効果テキスト未設定");
+      if (art) {
+        const src = String(card.image || "").trim();
+        art.style.backgroundImage = src ? `url("${src}")` : "none";
+        art.style.backgroundSize = "cover";
+        art.style.backgroundPosition = "center";
+      }
+      frame.dataset.frameStyle = card.type || "アタッカー";
+    }
+
+    function openCardFieldModal(field) {
+      const card = selectedCard();
+      const modal = root.querySelector("#cardFieldModal");
+      const title = root.querySelector("#cardFieldTitle");
+      const form = root.querySelector("#cardFieldForm");
+      if (!card || !modal || !form) return;
+      cardFieldCtx = { field };
+      const labels = {
+        type: "種別",
+        frame: "カード外枠",
+        image: "カード画像",
+        attribute: "属性(アイコン)",
+        name: "カード名",
+        attack: "攻撃力",
+        effectText: "効果テキスト"
+      };
+      if (title) title.textContent = `${labels[field] || field} の設定`;
+      if (field === "type" || field === "frame") {
+        form.innerHTML = `
+          <select data-k="type">
+            <option ${card.type === "アタッカー" ? "selected" : ""}>アタッカー</option>
+            <option ${card.type === "スキル" ? "selected" : ""}>スキル</option>
+            <option ${card.type === "サポート" ? "selected" : ""}>サポート</option>
+          </select>
+        `;
+      } else if (field === "attribute") {
+        form.innerHTML = `
+          <select data-k="attribute">
+            <option ${card.attribute === "近接" ? "selected" : ""}>近接</option>
+            <option ${card.attribute === "遠隔" ? "selected" : ""}>遠隔</option>
+            <option ${card.attribute === "魔法" ? "selected" : ""}>魔法</option>
+          </select>
+        `;
+      } else if (field === "attack") {
+        form.innerHTML = `<input data-k="attack" type="number" value="${Number(card.attack || 0)}" placeholder="攻撃力">`;
+      } else if (field === "name") {
+        form.innerHTML = `<input data-k="name" value="${htmlEscape(card.name || "")}" placeholder="カード名">`;
+      } else if (field === "image") {
+        form.innerHTML = `<input data-k="image" value="${htmlEscape(card.image || "")}" placeholder="カード画像URL or パス">`;
+      } else if (field === "effectText") {
+        form.innerHTML = `<textarea data-k="effectText" rows="5" placeholder="効果テキスト">${htmlEscape(card.effectText || "")}</textarea>`;
+      } else {
+        form.innerHTML = `<div style="font-size:12px;color:#9db7dc;">未対応の項目です。</div>`;
+      }
+      modal.style.display = "flex";
+    }
+
+    function closeCardFieldModal() {
+      const modal = root.querySelector("#cardFieldModal");
+      if (modal) modal.style.display = "none";
+      cardFieldCtx = null;
+    }
+
+    function commitCardFieldModal() {
+      const card = selectedCard();
+      const form = root.querySelector("#cardFieldForm");
+      if (!card || !form || !cardFieldCtx?.field) return;
+      const inputs = form.querySelectorAll("[data-k]");
+      const map = {};
+      inputs.forEach((el) => {
+        map[el.dataset.k] = el.value;
+      });
+      patchCardValues(card, map);
+      closeCardFieldModal();
+      renderAll();
+    }
+
+    function openUtilityDrawer(target) {
+      const modal = root.querySelector("#utilityDrawerModal");
+      const title = root.querySelector("#utilityDrawerTitle");
+      if (!modal) return;
+      const map = {
+        eventEngine: "Event Engine Viewer",
+        runtimeInspector: "Runtime Inspector",
+        replayDebugger: "Replay Debugger",
+        logViewer: "Log Viewer",
+        outputPreview: "Output Preview"
+      };
+      activeDrawer = target;
+      if (title) title.textContent = map[target] || "Viewer";
+      root.querySelectorAll(".drawerPane").forEach((pane) => {
+        pane.style.display = pane.id === `drawer-${target}` ? "block" : "none";
+      });
+      modal.style.display = "flex";
+      renderEventPanels();
+      if (target === "outputPreview") renderOutputPreview();
+    }
+
+    function closeUtilityDrawer() {
+      const modal = root.querySelector("#utilityDrawerModal");
+      if (modal) modal.style.display = "none";
+      activeDrawer = "";
     }
 
     function selectCardById(cardId) {
@@ -945,16 +1086,11 @@
       wrap.querySelectorAll("[data-k]").forEach((el) => {
         map[el.dataset.k] = el.value;
       });
-      card.name = String(map.name || "");
-      card.type = String(map.type || "アタッカー");
-      card.attribute = String(map.attribute || "近接");
-      card.attack = Math.max(0, Math.floor(Number(map.attack || 0)));
-      card.cost = Math.max(0, Number(map.cost || 0));
-      card.causalRate = Number(map.causalRate || 0);
-      card.tags = String(map.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean);
-      card.image = String(map.image || "");
-      card.effectText = String(map.effectText || "");
+      patchCardValues(card, map);
+      card.cost = Math.max(0, Number(map.cost || card.cost || 0));
+      card.causalRate = Number(map.causalRate || card.causalRate || 0);
       renderCardList();
+      renderCardVisual();
     }
 
     function renderInspector() {
@@ -1156,6 +1292,7 @@
     function renderAll() {
       requestRenderGraph();
       renderDsl();
+      renderCardVisual();
       renderCardList();
       renderCardInfo();
       renderNodeLibrary();
@@ -1407,19 +1544,25 @@
           renderDsl();
           requestRenderGraph();
         }});
-      } else {
-        NODE_LIBRARY.slice(0, 6).forEach((item) => {
-          actions.push({ label: `${item.label} 追加`, run: () => {
-            const world = fromScreenToWorld(x, y);
-            openNodeConfigModal("create", { item, x: world.x, y: world.y });
-          }});
-        });
       }
+      actions.push({ label: "---- Node Library ----", run: () => {} });
+      NODE_LIBRARY.forEach((item) => {
+        actions.push({ label: `[${item.category}] ${item.label} 追加`, run: () => {
+          const world = fromScreenToWorld(x, y);
+          openNodeConfigModal("create", { item, x: world.x, y: world.y });
+        }});
+      });
 
       actions.forEach((action) => {
         const btn = document.createElement("button");
         btn.textContent = action.label;
+        if (action.label.startsWith("----")) {
+          btn.disabled = true;
+          btn.style.opacity = "0.65";
+          btn.style.cursor = "default";
+        }
         btn.addEventListener("click", () => {
+          if (action.label.startsWith("----")) return;
           hideContextMenu();
           action.run();
         });
@@ -1549,39 +1692,43 @@
         requestRenderGraph();
       });
 
-      root.querySelector("#legacyToggleBtn")?.addEventListener("click", () => {
-        const box = root.querySelector("#legacyBlockBox");
-        if (!box) return;
-        box.style.display = box.style.display === "none" ? "block" : "none";
+      root.querySelectorAll(".drawerTab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = btn.dataset.drawerTarget;
+          if (!target) return;
+          openUtilityDrawer(target);
+        });
+      });
+      root.querySelector("#closeUtilityDrawerBtn")?.addEventListener("click", closeUtilityDrawer);
+      root.querySelector("#utilityDrawerModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeUtilityDrawer();
       });
 
-      root.querySelector("#legacyImportBtn")?.addEventListener("click", () => {
-        const card = selectedCard();
-        const text = root.querySelector("#legacyBlocksText")?.value || "{}";
-        try {
-          const obj = JSON.parse(text);
-          card.effectBlocks = obj;
-          log("Legacy blocks を更新しました");
-        } catch (e) {
-          state.dslError = `Legacy JSONエラー: ${String(e?.message || e)}`;
-          renderDsl();
-        }
+      root.querySelector("#openCardMenuBtn")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const menu = root.querySelector("#cardMenuPopup");
+        if (!menu) return;
+        menu.style.display = menu.style.display === "none" ? "grid" : "none";
+      });
+      root.addEventListener("click", (e) => {
+        const menu = root.querySelector("#cardMenuPopup");
+        if (!menu) return;
+        if (!e.target.closest(".cardMenuWrap")) menu.style.display = "none";
       });
 
-      root.querySelector("#legacyMigrateBtn")?.addEventListener("click", () => {
-        const card = selectedCard();
-        if (!card || !runtime()) return;
-        const migrated = runtime().migrateLegacyBlocks(card.effectBlocks || {});
-        if (!migrated?.ok) {
-          log(`Legacy移行失敗: ${migrated?.reason || "unknown"}`);
-          return;
-        }
-        pushUndo("legacy-migrate");
-        card.effectGraph = migrated.graph;
-        card.effectDslText = migrated.dslText;
-        applyCardToEditor(card);
-        renderAll();
-        log("Legacy -> Node/DSL へ移行しました");
+      root.querySelectorAll(".cardHotspot").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const field = el.dataset.cardField;
+          if (!field) return;
+          openCardFieldModal(field);
+        });
+      });
+      root.querySelector("#closeCardFieldBtn")?.addEventListener("click", closeCardFieldModal);
+      root.querySelector("#cancelCardFieldBtn")?.addEventListener("click", closeCardFieldModal);
+      root.querySelector("#saveCardFieldBtn")?.addEventListener("click", commitCardFieldModal);
+      root.querySelector("#cardFieldModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeCardFieldModal();
       });
 
       root.querySelector("#rebuildOutputBtn")?.addEventListener("click", renderOutputPreview);

@@ -199,7 +199,6 @@
     state.undoStack = [];
     state.redoStack = [];
     state.viewport = { x: 0, y: 0, scale: 1 };
-    renderAll();
   }
 
   function saveEditorToCard(card) {
@@ -526,9 +525,7 @@
           }
           state.selectedId = card.id;
           applyCardToEditor(card);
-          renderCardList();
-          renderCardInfo();
-          renderLegacyBlocks();
+          renderAll();
         });
         listEl.appendChild(btn);
       });
@@ -1252,6 +1249,7 @@
         card.effectGraph = migrated.graph;
         card.effectDslText = migrated.dslText;
         applyCardToEditor(card);
+        renderAll();
         log("Legacy -> Node/DSL へ移行しました");
       });
 

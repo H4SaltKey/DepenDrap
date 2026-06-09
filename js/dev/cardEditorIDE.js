@@ -26,25 +26,26 @@
     sim: null,
     logs: [],
     runtimeTimer: null,
-    editorApi: null
+    editorApi: null,
+    cardResizeHandler: null
   };
 
   const NODE_LIBRARY = [
-    { type: "trigger", category: "Trigger", label: "Trigger: OnPlay", data: { event: "OnPlay" } },
-    { type: "trigger", category: "Trigger", label: "Trigger: OnAttack", data: { event: "OnAttack" } },
-    { type: "trigger", category: "Trigger", label: "Trigger: OnDirectAttack", data: { event: "OnDirectAttack" } },
-    { type: "trigger", category: "Trigger", label: "Trigger: OnDamage", data: { event: "OnDamage" } },
-    { type: "trigger", category: "Trigger", label: "Trigger: OnTurnStart", data: { event: "OnTurnStart" } },
-    { type: "trigger", category: "Trigger", label: "Trigger: OnTurnEnd", data: { event: "OnTurnEnd" } },
-    { type: "condition", category: "Condition", label: "Condition", data: { expression: "event.damage > 0" } },
-    { type: "target", category: "Target", label: "Target", data: { target: "current_target" } },
-    { type: "effect", category: "Effect", label: "Effect", data: { action: "draw", args: ["1"] } },
-    { type: "modifier", category: "Modifier", label: "Modifier", data: { action: "once_per_turn", args: [] } },
-    { type: "end", category: "Flow", label: "End", data: {} },
-    { type: "variable", category: "Variable", label: "Variable", data: { name: "x", value: "0" } },
-    { type: "history", category: "History", label: "History", data: { expression: "history.event.OnDraw.count >= 1" } },
-    { type: "math", category: "Math", label: "Math", data: { expression: "add 1 2" } },
-    { type: "custom", category: "Custom", label: "Custom", data: { note: "" } }
+    { type: "trigger", category: "トリガー", label: "トリガー：登場時", data: { event: "OnPlay" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：攻撃時", data: { event: "OnAttack" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：直接攻撃時", data: { event: "OnDirectAttack" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：ダメージ時", data: { event: "OnDamage" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：ターン開始時", data: { event: "OnTurnStart" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：ターン終了時", data: { event: "OnTurnEnd" } },
+    { type: "condition", category: "条件", label: "条件分岐", data: { left: "event.damage", op: ">", right: "0", expression: "event.damage > 0" } },
+    { type: "target", category: "対象", label: "対象指定", data: { target: "current_target" } },
+    { type: "effect", category: "効果", label: "効果実行", data: { action: "draw", args: ["1"] } },
+    { type: "modifier", category: "修飾", label: "効果修飾", data: { action: "once_per_turn", args: [] } },
+    { type: "end", category: "フロー", label: "終了", data: {} },
+    { type: "variable", category: "変数", label: "変数", data: { name: "x", value: "0" } },
+    { type: "history", category: "履歴", label: "履歴参照", data: { expression: "history.event.OnDraw.count >= 1" } },
+    { type: "math", category: "計算", label: "数式", data: { expression: "add 1 2" } },
+    { type: "custom", category: "カスタム", label: "カスタム", data: { note: "" } }
   ];
 
   const DSL_KEYWORDS = [
@@ -376,7 +377,6 @@
           <div class="idePanelHeader">
             <span>Card Preview</span>
             <div style="display:flex;gap:6px;align-items:center;">
-              <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
               <div class="cardMenuWrap">
                 <button class="ideSmallBtn" id="openCardMenuBtn">カードメニュー</button>
                 <div class="cardMenuPopup" id="cardMenuPopup" style="display:none;">
@@ -390,12 +390,16 @@
           </div>
           <div class="idePanelBody">
             <div class="cardVisualCanvas" id="cardVisualCanvas">
-              <div class="cardVisualFrame cardHotspot" data-card-field="frame" data-hover-label="カード外枠">
+              <div id="currentCardBadge" class="cardMetaBadge">未選択</div>
+              <div class="cardVisualFrame">
+                <div class="cardVisualImage cardHotspot" data-card-field="image" data-hover-label="カード画像">
+                  <img id="cardArtImage" alt="card art">
+                </div>
+                <div class="cardVisualBorder cardHotspot" data-card-field="frame" data-hover-label="カード外枠"></div>
                 <div class="cardVisualType cardHotspot" data-card-field="type" data-hover-label="種別"></div>
                 <div class="cardVisualAttack cardHotspot" data-card-field="attack" data-hover-label="攻撃力"></div>
-                <div class="cardVisualAttr cardHotspot" data-card-field="attribute" data-hover-label="属性(アイコン)"></div>
+                <div class="cardVisualAttr cardHotspot" data-card-field="attribute" data-hover-label="属性(アイコン)"><img id="cardAttrIcon" alt="attribute"></div>
                 <div class="cardVisualName cardHotspot" data-card-field="name" data-hover-label="カード名"></div>
-                <div class="cardVisualArt cardHotspot" data-card-field="image" data-hover-label="カード画像"></div>
                 <div class="cardVisualText cardHotspot" data-card-field="effectText" data-hover-label="効果テキスト"></div>
               </div>
             </div>
@@ -595,6 +599,50 @@
       { value: "custom", label: "custom" }
     ];
 
+    const ACTION_LABEL_MAP = {
+      draw: "ドロー",
+      damage: "ダメージ",
+      heal: "回復",
+      add_pp: "PP回復",
+      add_status: "状態付与",
+      set_flag: "フラグON",
+      clear_flag: "フラグOFF",
+      once_per_turn: "1ターン1回",
+      custom: "カスタム"
+    };
+
+    const TYPE_LABEL_MAP = {
+      trigger: "トリガー",
+      condition: "条件",
+      target: "対象",
+      effect: "効果",
+      modifier: "修飾",
+      end: "終了",
+      variable: "変数",
+      history: "履歴",
+      math: "計算",
+      custom: "カスタム"
+    };
+
+    const TRIGGER_LABEL_MAP = TRIGGER_EVENT_OPTIONS.reduce((acc, x) => {
+      acc[x.value] = x.label;
+      return acc;
+    }, {});
+
+    const TARGET_LABEL_MAP = TARGET_OPTIONS.reduce((acc, x) => {
+      acc[x.value] = x.label;
+      return acc;
+    }, {});
+
+    const CONDITION_LEFT_OPTIONS = [
+      { value: "event.damage", label: "今回のダメージ" },
+      { value: "event.penetrateDamage", label: "今回の貫通ダメージ" },
+      { value: "history.event.OnDraw.count", label: "このターンのドロー回数" },
+      { value: "history.event.OnAttack.count", label: "この試合の攻撃回数" },
+      { value: "history.lastEvent", label: "直前イベント名" },
+      { value: "custom", label: "自由入力" }
+    ];
+
     function createDraftNode(item, x, y) {
       return {
         id: `node-${Date.now()}-${Math.floor(Math.random() * 1e5)}`,
@@ -639,13 +687,13 @@
       const d = nodeConfigCtx.draft;
 
       const triggerOptionsHtml = TRIGGER_EVENT_OPTIONS.map((opt) => (
-        `<option value="${opt.value}" ${String(d.data?.event || "OnPlay") === opt.value ? "selected" : ""}>${opt.label} (${opt.value})</option>`
+        `<option value="${opt.value}" ${String(d.data?.event || "OnPlay") === opt.value ? "selected" : ""}>${opt.label}</option>`
       )).join("");
       const targetOptionsHtml = TARGET_OPTIONS.map((opt) => (
         `<option value="${opt.value}" ${String(d.data?.target || "current_target") === opt.value ? "selected" : ""}>${opt.label}</option>`
       )).join("");
       const effectOptionsHtml = EFFECT_ACTION_OPTIONS.map((opt) => (
-        `<option value="${opt.value}" ${String(d.data?.action || "draw") === opt.value ? "selected" : ""}>${opt.label}</option>`
+        `<option value="${opt.value}" ${String(d.data?.action || "draw") === opt.value ? "selected" : ""}>${ACTION_LABEL_MAP[opt.value] || opt.label}</option>`
       )).join("");
 
       let typeSpecific = `<div style="font-size:12px;color:#9db7dc;">このノードタイプは追加設定がありません</div>`;
@@ -659,7 +707,26 @@
           <select data-k="action">${effectOptionsHtml}</select>
           <input data-k="args" value="${htmlEscape(argsText)}" placeholder="${d.data?.action === "damage" ? "damage量などを自由入力 (例: 3 or x*2)" : "引数を自由入力（スペース区切り）"}">
         `;
-      } else if (d.type === "condition" || d.type === "history" || d.type === "math") {
+      } else if (d.type === "condition") {
+        const leftVal = String(d.data?.left || "event.damage");
+        const leftPreset = CONDITION_LEFT_OPTIONS.some((x) => x.value === leftVal) ? leftVal : "custom";
+        const condLeftOptions = CONDITION_LEFT_OPTIONS.map((opt) => (
+          `<option value="${opt.value}" ${leftPreset === opt.value ? "selected" : ""}>${opt.label}</option>`
+        )).join("");
+        const opVal = String(d.data?.op || ">");
+        const opOptions = [">", ">=", "==", "!=", "<=", "<"].map((op) => (
+          `<option value="${op}" ${opVal === op ? "selected" : ""}>${op}</option>`
+        )).join("");
+        typeSpecific = `
+          <label style="font-size:11px;color:#9ab7de;">条件左辺</label>
+          <select data-k="condLeftPreset">${condLeftOptions}</select>
+          <input data-k="condLeftCustom" value="${htmlEscape(leftPreset === "custom" ? leftVal : "")}" placeholder="自由入力の左辺式" ${leftPreset === "custom" ? "" : "disabled"}>
+          <label style="font-size:11px;color:#9ab7de;">比較演算子</label>
+          <select data-k="condOp">${opOptions}</select>
+          <label style="font-size:11px;color:#9ab7de;">条件右辺</label>
+          <input data-k="condRight" value="${htmlEscape(String(d.data?.right || "0"))}" placeholder="0">
+        `;
+      } else if (d.type === "history" || d.type === "math") {
         typeSpecific = `<input data-k="expression" value="${htmlEscape(String(d.data?.expression || ""))}" placeholder="条件式 / 履歴参照式">`;
       } else if (d.type === "variable") {
         typeSpecific = `
@@ -672,7 +739,7 @@
 
       form.innerHTML = `
         <input data-k="label" value="${htmlEscape(String(d.label || ""))}" placeholder="ノード名">
-        <input data-k="type" value="${htmlEscape(String(d.type || ""))}" readonly>
+        <input data-k="type" value="${htmlEscape(TYPE_LABEL_MAP[d.type] || String(d.type || ""))}" readonly>
         <div class="formRow2">
           <input data-k="x" type="number" value="${Number(d.x || 0)}" placeholder="x">
           <input data-k="y" type="number" value="${Number(d.y || 0)}" placeholder="y">
@@ -703,7 +770,19 @@
       } else if (d.type === "effect" || d.type === "modifier") {
         d.data.action = String(val("action") || "draw");
         d.data.args = String(val("args") || "").split(/\s+/).filter(Boolean);
-      } else if (d.type === "condition" || d.type === "history" || d.type === "math") {
+      } else if (d.type === "condition") {
+        const preset = String(val("condLeftPreset") || "event.damage");
+        const custom = String(val("condLeftCustom") || "");
+        const leftInput = form.querySelector('[data-k="condLeftCustom"]');
+        if (leftInput) leftInput.disabled = preset !== "custom";
+        const left = preset === "custom" ? (custom || "event.damage") : preset;
+        const op = String(val("condOp") || ">");
+        const right = String(val("condRight") || "0");
+        d.data.left = left;
+        d.data.op = op;
+        d.data.right = right;
+        d.data.expression = `${left} ${op} ${right}`;
+      } else if (d.type === "history" || d.type === "math") {
         d.data.expression = String(val("expression") || "");
       } else if (d.type === "variable") {
         d.data.name = String(val("varName") || "");
@@ -763,19 +842,29 @@
       const type = root.querySelector(".cardVisualType");
       const atk = root.querySelector(".cardVisualAttack");
       const attr = root.querySelector(".cardVisualAttr");
+      const attrIcon = root.querySelector("#cardAttrIcon");
       const name = root.querySelector(".cardVisualName");
-      const art = root.querySelector(".cardVisualArt");
+      const art = root.querySelector("#cardArtImage");
       const text = root.querySelector(".cardVisualText");
+      const sizeBase = Math.max(220, frame.getBoundingClientRect().width || 300);
+      const scale = Math.max(0.78, Math.min(1.35, sizeBase / 300));
+      frame.style.setProperty("--card-scale", String(scale));
       if (type) type.textContent = String(card.type || "アタッカー");
-      if (atk) atk.textContent = `ATK ${Number(card.attack || 0)}`;
-      if (attr) attr.textContent = String(card.attribute || "-");
+      if (atk) atk.textContent = `${Number(card.attack || 0)}`;
+      if (attr) attr.title = String(card.attribute || "-");
+      if (attrIcon) {
+        const iconMap = {
+          "魔法": "assets/System/cdtIcon_0.png",
+          "近接": "assets/System/cdtIcon_1.png",
+          "遠隔": "assets/System/cdtIcon_2.png"
+        };
+        attrIcon.src = iconMap[String(card.attribute || "")] || iconMap["近接"];
+      }
       if (name) name.textContent = String(card.name || card.id || "No Name");
       if (text) text.textContent = String(card.effectText || "効果テキスト未設定");
       if (art) {
         const src = String(card.image || "").trim();
-        art.style.backgroundImage = src ? `url("${src}")` : "none";
-        art.style.backgroundSize = "cover";
-        art.style.backgroundPosition = "center";
+        art.src = src || "assets/System/404.png";
       }
       frame.dataset.frameStyle = card.type || "アタッカー";
     }
@@ -950,7 +1039,7 @@
         el.innerHTML = `
           <div class="nodeHead" data-drag-handle="1">
             <span>${htmlEscape(node.label || node.type)}</span>
-            <span class="nodeCategory">${htmlEscape(node.type)}</span>
+            <span class="nodeCategory">${htmlEscape(TYPE_LABEL_MAP[node.type] || node.type)}</span>
           </div>
           <div class="nodeBody">${htmlEscape(compactNodeData(node))}</div>
         `;
@@ -964,11 +1053,11 @@
     function compactNodeData(node) {
       if (!node || typeof node !== "object") return "";
       const d = node.data || {};
-      if (node.type === "trigger") return String(d.event || "OnPlay");
-      if (node.type === "condition") return String(d.expression || "");
-      if (node.type === "target") return String(d.target || "self");
-      if (node.type === "effect") return `${d.action || "effect"} ${(d.args || []).join(" ")}`.trim();
-      if (node.type === "modifier") return `${d.action || "modifier"} ${(d.args || []).join(" ")}`.trim();
+      if (node.type === "trigger") return `トリガー：${TRIGGER_LABEL_MAP[d.event] || d.event || "登場時"}`;
+      if (node.type === "condition") return `条件：${String(d.expression || "")}`;
+      if (node.type === "target") return `対象：${TARGET_LABEL_MAP[d.target] || d.target || "自分"}`;
+      if (node.type === "effect") return `効果：${ACTION_LABEL_MAP[d.action] || d.action || "効果"} ${(d.args || []).join(" ")}`.trim();
+      if (node.type === "modifier") return `修飾：${ACTION_LABEL_MAP[d.action] || d.action || "修飾"} ${(d.args || []).join(" ")}`.trim();
       return JSON.stringify(d);
     }
 
@@ -1118,52 +1207,20 @@
 
       const node = nodeById(ids[0]);
       if (!node) return;
-
-      const eventValue = String(node.data?.event || "OnPlay");
-      const actionValue = String(node.data?.action || "draw");
-      const targetValue = String(node.data?.target || "current_target");
-      const expressionValue = String(node.data?.expression || "");
-      const argsText = Array.isArray(node.data?.args) ? node.data.args.join(" ") : "";
       wrap.innerHTML = `
-        <input data-k="label" value="${htmlEscape(node.label || "")}" placeholder="ノード名">
-        <input data-k="type" value="${htmlEscape(node.type || "")}" readonly>
-        <input data-k="x" type="number" value="${Number(node.x || 0)}" placeholder="x">
-        <input data-k="y" type="number" value="${Number(node.y || 0)}" placeholder="y">
-        <select data-k="event" ${node.type === "trigger" ? "" : "disabled"}>
-          ${["OnPlay","OnAttack","OnDirectAttack","OnDraw","OnDiscard","OnLeaveField","OnReturnHand","OnDamage","OnPenetrateDamage","OnTurnStart","OnTurnEnd","OnEffectAdded","OnEffectRemoved"]
-            .map((e) => `<option value="${e}" ${eventValue === e ? "selected" : ""}>${e}</option>`).join("")}
-        </select>
-        <input data-k="expression" value="${htmlEscape(expressionValue)}" placeholder="条件/履歴参照" ${node.type === "condition" || node.type === "history" || node.type === "math" ? "" : "disabled"}>
-        <select data-k="target" ${node.type === "target" ? "" : "disabled"}>
-          ${["self","current_target","self_and_current_target"].map((v) => `<option value="${v}" ${targetValue === v ? "selected" : ""}>${v}</option>`).join("")}
-        </select>
-        <select data-k="action" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
-          ${["draw","damage","heal","add_pp","add_status","once_per_turn","set_flag","clear_flag"].map((v) => `<option value="${v}" ${actionValue === v ? "selected" : ""}>${v}</option>`).join("")}
-        </select>
-        <input data-k="args" value="${htmlEscape(argsText)}" placeholder="引数（スペース区切り）" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
+        <div style="font-size:12px;color:#d7e6ff;">ノード名: ${htmlEscape(node.label || "")}</div>
+        <div style="font-size:12px;color:#9ec0ec;">種類: ${htmlEscape(TYPE_LABEL_MAP[node.type] || node.type)}</div>
+        <div style="font-size:12px;color:#9ec0ec;">内容: ${htmlEscape(compactNodeData(node))}</div>
+        <div style="font-size:12px;color:#89a8d3;">位置: (${Number(node.x || 0)}, ${Number(node.y || 0)})</div>
         <div class="simActionRow">
+          <button class="ideSmallBtn" id="editNodeBtn">ノード設定を開く</button>
           <button class="ideSmallBtn" id="dupNodeBtn">複製</button>
           <button class="ideSmallBtn danger" id="delNodeBtn">削除</button>
         </div>
       `;
 
-      wrap.querySelectorAll("input[data-k], select[data-k]").forEach((input) => {
-        input.addEventListener("input", () => {
-          pushUndo("node-edit");
-          node.label = wrap.querySelector('[data-k="label"]').value;
-          node.x = Number(wrap.querySelector('[data-k="x"]').value || 0);
-          node.y = Number(wrap.querySelector('[data-k="y"]').value || 0);
-          if (node.type === "trigger") node.data.event = wrap.querySelector('[data-k="event"]').value;
-          if (node.type === "condition" || node.type === "history" || node.type === "math") node.data.expression = wrap.querySelector('[data-k="expression"]').value;
-          if (node.type === "target") node.data.target = wrap.querySelector('[data-k="target"]').value;
-          if (node.type === "effect" || node.type === "modifier") {
-            node.data.action = wrap.querySelector('[data-k="action"]').value;
-            node.data.args = String(wrap.querySelector('[data-k="args"]').value || "").split(/\s+/).filter(Boolean);
-          }
-          syncDslFromGraph();
-          renderDsl();
-          requestRenderGraph();
-        });
+      wrap.querySelector("#editNodeBtn")?.addEventListener("click", () => {
+        openNodeConfigModal("edit", { nodeId: node.id });
       });
 
       wrap.querySelector("#dupNodeBtn")?.addEventListener("click", () => {
@@ -1545,7 +1602,7 @@
           requestRenderGraph();
         }});
       }
-      actions.push({ label: "---- Node Library ----", run: () => {} });
+      actions.push({ label: "---- ノードライブラリ ----", run: () => {} });
       NODE_LIBRARY.forEach((item) => {
         actions.push({ label: `[${item.category}] ${item.label} 追加`, run: () => {
           const world = fromScreenToWorld(x, y);
@@ -1892,6 +1949,9 @@
       bindDslEditor();
       bindToolbarActions();
       bindSimulator();
+      const onResize = () => renderCardVisual();
+      window.addEventListener("resize", onResize);
+      state.cardResizeHandler = onResize;
       state.editorApi = { undo, redo, hideContextMenu };
       renderAll();
       state.runtimeTimer = setInterval(renderEventPanels, 1200);
@@ -1908,6 +1968,10 @@
       if (state.runtimeTimer) {
         clearInterval(state.runtimeTimer);
         state.runtimeTimer = null;
+      }
+      if (state.cardResizeHandler) {
+        window.removeEventListener("resize", state.cardResizeHandler);
+        state.cardResizeHandler = null;
       }
     }
 

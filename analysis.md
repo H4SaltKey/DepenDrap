@@ -6152,3 +6152,55 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 - 本リポジトリは静的HTML/JS構成で専用ビルドコマンドがないため、リビルド相当として構文検証を実施。
 
+
+---
+
+## Round 2026-06-10 — Card Preview微調整 + ノード設定UI実用化
+
+### Card Preview調整
+
+- カードメニューの前面表示を修正。
+  - `cardVisualPanel` を `overflow: visible` に変更。
+  - `cardMenuWrap/cardMenuPopup` の `z-index` を引き上げ、展開メニューが隠れないようにした。
+
+- `ID カード名` バッジをタイトル欄からカード表示領域へ移動。
+  - カード外・フィールド左上に `cardMetaBadge` として配置。
+
+- 攻撃力表示を `ATK 10` から `10` のみへ変更。
+
+- 属性をアイコン表示へ変更。
+  - `assets/System/cdtIcon_0.png` = 魔法
+  - `assets/System/cdtIcon_1.png` = 近接
+  - `assets/System/cdtIcon_2.png` = 遠隔
+
+- カード画像レイヤーを再構成。
+  - 下層: カード画像（全体表示・`object-fit: contain`）
+  - 中層: カード外枠
+  - 上層: 種別/攻撃力/属性/カード名/効果テキスト（クリック編集ホットスポット）
+
+- テキストのカードサイズ追従。
+  - カード幅から `--card-scale` を算出し、攻撃力/カード名/効果テキストのフォント・余白をスケール。
+  - 長文効果テキストの可読性向上のため `white-space: pre-wrap` と `word-break` を適用。
+
+### ノード編集UI調整
+
+- ノードライブラリ名・カテゴリを日本語化（例: `トリガー：登場時`）。
+- ノード表示の種別・内容を日本語化。
+  - `trigger onplay` のような内部語を直接出さず、`トリガー：登場時` の形式で表示。
+
+- 条件分岐（if）をモーダルで構築可能に拡張。
+  - 左辺（プリセット/自由入力）
+  - 比較演算子
+  - 右辺
+  から `expression` を自動構築。
+
+- Inspectorは内部コード直接編集ではなく、
+  - ノード概要表示
+  - `ノード設定を開く`（モーダル編集）
+  中心に変更。
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+- 静的構成のため、リビルド相当としてJS構文検証を実施。
+

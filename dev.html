@@ -162,15 +162,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+}
+.cardVisualPanel {
+  overflow: visible;
 }
 .cardMenuWrap {
   position: relative;
+  z-index: 120;
 }
 .cardMenuPopup {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 20;
+  z-index: 130;
   width: 160px;
   display: grid;
   gap: 6px;
@@ -187,93 +192,133 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+.cardMetaBadge {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 12px;
+  color: #c7ddff;
+  background: rgba(12, 22, 36, 0.72);
+  border: 1px solid rgba(106, 146, 202, 0.5);
+  border-radius: 8px;
+  padding: 3px 8px;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .cardVisualFrame {
   width: min(100%, 300px);
   aspect-ratio: 3 / 4.2;
+  --card-scale: 1;
   position: relative;
-  border: 2px solid #4c87d0;
   border-radius: 16px;
-  background: linear-gradient(180deg, #274368, #182b45);
+  background: linear-gradient(180deg, #1f3659, #172842);
   box-shadow: 0 12px 24px rgba(0,0,0,0.45);
   overflow: hidden;
 }
+.cardVisualImage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cardVisualImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.cardVisualBorder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 2px solid #4c87d0;
+  border-radius: 16px;
+  pointer-events: auto;
+}
 .cardVisualType {
   position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 11px;
+  z-index: 3;
+  top: calc(6px * var(--card-scale));
+  right: calc(8px * var(--card-scale));
+  font-size: clamp(10px, calc(11px * var(--card-scale)), 15px);
   color: #e4f0ff;
-  padding: 2px 8px;
+  padding: calc(2px * var(--card-scale)) calc(8px * var(--card-scale));
   border-radius: 999px;
   border: 1px solid rgba(194,218,255,0.5);
   background: rgba(10,20,35,0.62);
 }
 .cardVisualAttack {
   position: absolute;
-  top: 26px;
-  left: 8px;
-  font-size: 14px;
+  z-index: 3;
+  top: calc(26px * var(--card-scale));
+  left: calc(8px * var(--card-scale));
+  font-size: clamp(13px, calc(16px * var(--card-scale)), 24px);
   font-weight: 700;
   color: #fff4c7;
   text-shadow: 0 1px 4px rgba(0,0,0,0.7);
 }
 .cardVisualAttr {
   position: absolute;
-  top: 56px;
-  left: 8px;
-  font-size: 11px;
-  color: #d9e9ff;
-  border-radius: 999px;
-  border: 1px solid rgba(183,209,244,0.48);
-  padding: 1px 7px;
-  background: rgba(13,27,45,0.62);
+  z-index: 3;
+  top: calc(58px * var(--card-scale));
+  left: calc(8px * var(--card-scale));
+  width: clamp(18px, calc(24px * var(--card-scale)), 34px);
+  height: clamp(18px, calc(24px * var(--card-scale)), 34px);
+  border-radius: 50%;
+  border: 1px solid rgba(183,209,244,0.58);
+  background: rgba(13,27,45,0.66);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cardVisualAttr img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
 }
 .cardVisualName {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 24px;
+  z-index: 3;
+  left: calc(10px * var(--card-scale));
+  right: calc(10px * var(--card-scale));
+  top: calc(24px * var(--card-scale));
   text-align: center;
   font-weight: 700;
+  font-size: clamp(12px, calc(16px * var(--card-scale)), 23px);
   color: #f2f8ff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cardVisualArt {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 84px;
-  height: 160px;
-  border: 1px solid rgba(183,210,248,0.4);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(107,151,213,0.48), rgba(59,83,122,0.4));
-}
 .cardVisualText {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  min-height: 96px;
-  max-height: 132px;
+  z-index: 3;
+  left: calc(12px * var(--card-scale));
+  right: calc(12px * var(--card-scale));
+  bottom: calc(12px * var(--card-scale));
+  min-height: calc(82px * var(--card-scale));
+  max-height: calc(148px * var(--card-scale));
   overflow: auto;
   border: 1px solid rgba(178,206,244,0.42);
-  border-radius: 10px;
+  border-radius: calc(10px * var(--card-scale));
   background: rgba(11,21,36,0.72);
   color: #d9e9ff;
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1.45;
+  padding: calc(8px * var(--card-scale));
+  font-size: clamp(11px, calc(13px * var(--card-scale)), 18px);
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 .cardHotspot {
   cursor: pointer;
   position: absolute;
-}
-.cardVisualFrame.cardHotspot {
-  position: relative;
 }
 .cardHotspot::after {
   content: attr(data-hover-label);

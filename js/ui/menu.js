@@ -22,16 +22,17 @@
   };
 
   const html = `
-    <div id="menuButton">☰</div>
-
-    <div id="menuPanel" class="hidden">
-      <div class="menuItem" id="closeMenuBtn">閉じる</div>
-      <div class="menuItem" id="backBtn">タイトルへ戻る</div>
-      <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
-      <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
-      <!-- deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更 -->
-      <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
-      <div class="menuItem" id="optBtn">オプション</div>
+    <div id="menuDock">
+      <div id="menuPanel" class="hidden" aria-hidden="true">
+        <div class="menuItem" id="closeMenuBtn">閉じる</div>
+        <div class="menuItem" id="backBtn">タイトルへ戻る</div>
+        <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
+        <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
+        <!-- deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更 -->
+        <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
+        <div class="menuItem" id="optBtn">オプション</div>
+      </div>
+      <div id="menuButton" role="button" tabindex="0" aria-label="メインメニュー">☰</div>
     </div>
 
     <div id="optionsModal" class="hidden">
@@ -77,35 +78,78 @@
 
   const style = document.createElement("style");
   style.innerHTML = `
-    #menuButton{
+    #menuDock{
       position:fixed;
-      top:15px;
-      right:15px;
-      width:50px;
-      height:50px;
-      border-radius:50%;
-      background:#333;
-      color:white;
-      text-align:center;
-      line-height:50px;
-      cursor:pointer;
+      top:18%;
+      right:0;
+      display:flex;
+      align-items:stretch;
       z-index:9999999 !important;
+      pointer-events:auto;
+    }
+
+    #menuButton{
+      width:12px;
+      min-width:12px;
+      height:132px;
+      border-radius:10px 0 0 10px;
+      background:linear-gradient(180deg, #3b597f 0%, #1d304b 100%);
+      color:#d7ecff;
+      text-align:center;
+      line-height:132px;
+      font-size:10px;
+      cursor:pointer;
+      user-select:none;
+      border:1px solid rgba(129, 179, 255, 0.45);
+      border-right:none;
+      box-shadow:0 8px 18px rgba(0,0,0,0.45);
+      transition:filter 0.2s ease, transform 0.2s ease;
+    }
+    #menuButton:hover{
+      filter:brightness(1.1);
+      transform:translateX(-1px);
+    }
+    #menuButton:focus{
+      outline:1px solid #8dd3ff;
+      outline-offset:1px;
     }
 
     #menuPanel{
-      position:fixed;
-      top:70px;
-      right:15px;
+      width:220px;
+      max-width:70vw;
       background:#222;
+      border:1px solid #3f5a82;
+      border-right:none;
+      border-radius:10px 0 0 10px;
+      overflow:hidden;
+      box-shadow:0 14px 24px rgba(0,0,0,0.5);
+      transform:translateX(calc(100% + 2px));
+      opacity:0;
+      pointer-events:none;
+      transition:transform 0.22s ease, opacity 0.2s ease;
       z-index:9999999 !important;
     }
 
-    .menuItem{
-      padding:10px;
-      color:white;
-      cursor:pointer;
+    #menuPanel:not(.hidden){
+      transform:translateX(0);
+      opacity:1;
+      pointer-events:auto;
     }
 
+    #menuPanel.hidden{
+      display:block !important;
+    }
+
+    .menuItem{
+      padding:11px 12px;
+      color:white;
+      cursor:pointer;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      font-size:14px;
+    }
+    .menuItem:last-child{
+      border-bottom:none;
+    }
     .menuItem:hover{ background:#444; }
 
     #optionsModal,
@@ -280,6 +324,7 @@
 
   button.onclick = ()=>{
     panel.classList.toggle("hidden");
+    panel.setAttribute("aria-hidden", panel.classList.contains("hidden") ? "true" : "false");
     // ゲーム画面以外ではリセット・降参ボタンを非表示にする
     const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
     const resetBtn = document.getElementById("resetFieldBtn");
@@ -305,6 +350,7 @@
 
   document.getElementById("closeMenuBtn").onclick = ()=>{
     panel.classList.add("hidden");
+    panel.setAttribute("aria-hidden", "true");
   };
 
   document.getElementById("surrenderBtn").onclick = ()=>{
@@ -408,6 +454,7 @@
   document.addEventListener("click", (e)=>{
     if(!panel.contains(e.target) && !button.contains(e.target)){
       panel.classList.add("hidden");
+      panel.setAttribute("aria-hidden", "true");
     }
 
     if(e.target.classList.contains("menuItem") || e.target.tagName === "BUTTON"){
@@ -418,8 +465,13 @@
   document.addEventListener("keydown", (e)=>{
     if(e.key === "Escape"){
       panel.classList.add("hidden");
+      panel.setAttribute("aria-hidden", "true");
       optionsModal.classList.add("hidden");
       closeConfirm();
+    }
+    if ((e.key === "Enter" || e.key === " ") && e.target === button) {
+      e.preventDefault();
+      button.click();
     }
   });
 })();

@@ -29,7 +29,12 @@
   };
 
   const NODE_LIBRARY = [
-    { type: "trigger", category: "Trigger", label: "Trigger", data: { event: "OnPlay" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnPlay", data: { event: "OnPlay" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnAttack", data: { event: "OnAttack" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnDirectAttack", data: { event: "OnDirectAttack" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnDamage", data: { event: "OnDamage" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnTurnStart", data: { event: "OnTurnStart" } },
+    { type: "trigger", category: "Trigger", label: "Trigger: OnTurnEnd", data: { event: "OnTurnEnd" } },
     { type: "condition", category: "Condition", label: "Condition", data: { expression: "event.damage > 0" } },
     { type: "target", category: "Target", label: "Target", data: { target: "current_target" } },
     { type: "effect", category: "Effect", label: "Effect", data: { action: "draw", args: ["1"] } },
@@ -273,6 +278,7 @@
             <div class="idePanelHeader">
               <span>Card List</span>
               <div style="display:flex;gap:6px;">
+                <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
                 <button class="ideSmallBtn" id="ideAddCardBtn">追加</button>
                 <button class="ideSmallBtn danger" id="ideDeleteCardBtn">削除</button>
               </div>
@@ -502,6 +508,9 @@
 
     function renderCardList() {
       const listEl = root.querySelector("#ideCardList");
+      const badge = root.querySelector("#currentCardBadge");
+      const selected = selectedCard();
+      if (badge) badge.textContent = selected ? `${selected.id} ${selected.name || ""}`.trim() : "未選択";
       if (!listEl) return;
       const rows = filteredCards();
       listEl.innerHTML = "";
@@ -645,7 +654,11 @@
       const node = nodeById(ids[0]);
       if (!node) return;
 
-      const dataPairs = Object.entries(node.data || {});
+      const eventValue = String(node.data?.event || "OnPlay");
+      const actionValue = String(node.data?.action || "draw");
+      const targetValue = String(node.data?.target || "current_target");
+      const expressionValue = String(node.data?.expression || "");
+      const argsText = Array.isArray(node.data?.args) ? node.data.args.join(" ") : "";
       wrap.innerHTML = `
         <input data-k="label" value="${htmlEscape(node.label || "")}" placeholder="ノード名">
         <input data-k="type" value="${htmlEscape(node.type || "")}" readonly>
@@ -653,12 +666,16 @@
         <input data-k="y" type="number" value="${Number(node.y || 0)}" placeholder="y">
         <select data-k="event" ${node.type === "trigger" ? "" : "disabled"}>
           ${["OnPlay","OnAttack","OnDirectAttack","OnDraw","OnDiscard","OnLeaveField","OnReturnHand","OnDamage","OnPenetrateDamage","OnTurnStart","OnTurnEnd","OnEffectAdded","OnEffectRemoved"]
-            .map((e) => `<option value="${e}" ${(node.data?.event || "OnPlay") === e ? "selected" : ""}>${e}</option>`).join("")}
+            .map((e) => `<option value="${e}" ${eventValue === e ? "selected" : ""}>${e}</option>`).join("")}
         </select>
-        <input data-k="expression" value="${htmlEscape(node.data?.expression || "")}" placeholder="条件/履歴参照" ${node.type === "condition" || node.type === "history" || node.type === "math" ? "" : "disabled"}>
-        <input data-k="target" value="${htmlEscape(node.data?.target || "")}" placeholder="対象" ${node.type === "target" ? "" : "disabled"}>
-        <input data-k="action" value="${htmlEscape(node.data?.action || "")}" placeholder="効果/修飾アクション" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
-        <input data-k="args" value="${htmlEscape(Array.isArray(node.data?.args) ? node.data.args.join(" ") : "")}" placeholder="引数" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
+        <input data-k="expression" value="${htmlEscape(expressionValue)}" placeholder="条件/履歴参照" ${node.type === "condition" || node.type === "history" || node.type === "math" ? "" : "disabled"}>
+        <select data-k="target" ${node.type === "target" ? "" : "disabled"}>
+          ${["self","current_target","self_and_current_target"].map((v) => `<option value="${v}" ${targetValue === v ? "selected" : ""}>${v}</option>`).join("")}
+        </select>
+        <select data-k="action" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
+          ${["draw","damage","heal","add_pp","add_status","once_per_turn","set_flag","clear_flag"].map((v) => `<option value="${v}" ${actionValue === v ? "selected" : ""}>${v}</option>`).join("")}
+        </select>
+        <input data-k="args" value="${htmlEscape(argsText)}" placeholder="引数（スペース区切り）" ${node.type === "effect" || node.type === "modifier" ? "" : "disabled"}>
         <div class="simActionRow">
           <button class="ideSmallBtn" id="dupNodeBtn">複製</button>
           <button class="ideSmallBtn danger" id="delNodeBtn">削除</button>
@@ -912,6 +929,7 @@
           state.selectionRect.ex = world.x;
           state.selectionRect.ey = world.y;
           drawSelectionRect();
+          applySelectionRect(true);
         }
       });
 
@@ -923,7 +941,7 @@
         }
         state.drag = null;
         if (state.selectionRect) {
-          applySelectionRect();
+          applySelectionRect(true);
           clearSelectionRect();
         }
       });
@@ -985,7 +1003,7 @@
       state.selectionRect = null;
     }
 
-    function applySelectionRect() {
+    function applySelectionRect(livePreview) {
       if (!state.selectionRect) return;
       const sx = Math.min(state.selectionRect.sx, state.selectionRect.ex);
       const sy = Math.min(state.selectionRect.sy, state.selectionRect.ey);
@@ -1000,7 +1018,8 @@
         const hit = nx + nw >= sx && nx <= ex && ny + nh >= sy && ny <= ey;
         if (hit) picked.add(n.id);
       });
-      if (picked.size) state.selectedNodeIds = picked;
+      state.selectedNodeIds = picked;
+      if (livePreview === true) renderInspector();
       requestRenderGraph();
     }
 
@@ -1448,10 +1467,19 @@
   async function initData() {
     if (typeof window.loadCardData === "function") {
       await window.loadCardData();
-      state.cards = (window.CARD_DB || []).map((c) => ({
-        ...clone(c),
-        tags: Array.isArray(c.tags) ? clone(c.tags) : String(c.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean)
-      }));
+      if (typeof window.getCardIds === "function" && typeof window.getCardData === "function") {
+        const ids = window.getCardIds();
+        state.cards = ids.map((id) => window.getCardData(id)).filter(Boolean).map((c) => ({
+          ...clone(c),
+          tags: Array.isArray(c.tags) ? clone(c.tags) : String(c.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean)
+        }));
+      } else {
+        const fallback = Array.isArray(window.CARD_DB) ? window.CARD_DB : [];
+        state.cards = fallback.map((c) => ({
+          ...clone(c),
+          tags: Array.isArray(c.tags) ? clone(c.tags) : String(c.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean)
+        }));
+      }
     }
     if (!state.cards.length) {
       state.cards = [];

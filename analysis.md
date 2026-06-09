@@ -5969,3 +5969,40 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - メイン編集を Node/DSL に統一し、旧ブロックは互換レイヤー化。
 - カード固有 if 分岐は追加せず、変換・イベント処理は共通ランタイム経由で統一。
 
+
+---
+
+## Round 2026-06-09 — CardEditor不具合修正（UX修正4点）
+
+### 修正点
+
+1. DSLエディター欄が潰れる
+- `dev.html` のIDEレイアウトを調整。
+  - `rightStack` を `minmax(340px, 1.15fr) / minmax(260px, 0.85fr)` へ変更。
+  - `dslEditor` の行高を `minmax(200px,1fr) auto minmax(140px,0.7fr)` に変更。
+  - `#dslEditorArea` に `min-height: 200px` を付与。
+
+2. 編集対象カードが分からない / 選択できない
+- 根本原因: `window.CARD_DB` 参照依存（`CARD_DB` が window 直下でない環境で空になる）。
+- `js/dev/cardEditorIDE.js` の `initData()` を修正。
+  - `getCardIds()` + `getCardData()` 経由でカード一覧を構築。
+  - フォールバックとして `window.CARD_DB` も維持。
+- 左パネルヘッダに現在編集中カード表示 (`currentCardBadge`) を追加。
+
+3. 範囲選択の確定タイミングが遅い
+- `applySelectionRect(true)` をドラッグ中 (`mousemove`) と `mouseup` で即時実行。
+- 矩形内ノード選択を「その瞬間に確定」するよう変更。
+- 空選択時も選択セットを更新（古い選択が残らない）。
+
+4. ノード具体設定が弱い（TriggerがOnPlay固定に見える）
+- ノードライブラリに Trigger バリエーションを追加。
+  - OnPlay / OnAttack / OnDirectAttack / OnDamage / OnTurnStart / OnTurnEnd
+- Inspectorを強化。
+  - Trigger: イベント選択フォーム
+  - Target: プリセット選択 (`self/current_target/self_and_current_target`)
+  - Effect/Modifier: アクション選択 + 引数入力
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+

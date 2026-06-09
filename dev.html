@@ -140,7 +140,7 @@ body {
 .rightStack {
   min-height: 0;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: minmax(340px, 1.15fr) minmax(260px, 0.85fr);
   gap: 8px;
 }
 
@@ -272,12 +272,14 @@ body {
 .dslEditor {
   height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto 1fr;
+  grid-template-rows: minmax(200px, 1fr) auto minmax(140px, 0.7fr);
   gap: 6px;
 }
 .dslEditor textarea {
   resize: none;
   min-height: 0;
+  height: 100%;
+  min-height: 200px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   line-height: 1.45;
 }

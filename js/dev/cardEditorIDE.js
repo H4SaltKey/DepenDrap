@@ -227,17 +227,24 @@
     }).sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: "base" }));
   }
 
-  function selectCardById(cardId) {
-    const card = state.cards.find((c) => c.id === cardId);
-    if (!card) return;
-    const prev = selectedCard();
-    if (prev && prev.id !== card.id) {
-      saveFormToCard(prev);
-      saveEditorToCard(prev);
-    }
-    state.selectedId = card.id;
-    applyCardToEditor(card);
-    renderAll();
+  function createNewCardRow() {
+    const next = generateCardId(state.cards);
+    return {
+      id: next,
+      image: "",
+      name: "",
+      attribute: "近接",
+      type: "アタッカー",
+      attack: 0,
+      cost: 0,
+      causalRate: 0,
+      effectText: "",
+      effectDslText: "",
+      effectGraph: { format: runtime()?.GRAPH_FORMAT || "dependrap.effectgraph.v2", nodes: [], edges: [] },
+      effectDsl: { format: "dependrap.dsl.v1", triggers: [] },
+      effectBlocks: null,
+      tags: []
+    };
   }
 
   function buildHomeView() {
@@ -258,9 +265,88 @@
         <h3>運用メモ</h3>
         <p>旧ブロックシステムは互換レイヤーとして保持。メイン導線はNode/DSL編集です。</p>
       </section>
+      <div id="cardEditorEntryModal" style="display:none;position:fixed;inset:0;background:rgba(1,6,14,0.84);z-index:80;align-items:center;justify-content:center;padding:20px;">
+        <div style="width:min(920px, 100%);max-height:88vh;overflow:auto;background:#102038;border:1px solid #355985;border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="font-weight:700;">カードエディタ開始</div>
+            <button class="ideSmallBtn" id="closeCardEditorEntryBtn">閉じる</button>
+          </div>
+          <div class="actionRow" style="margin-top:10px;">
+            <button id="entryCreateNewBtn">新規作成</button>
+            <button id="entryEditExistingBtn">編集</button>
+          </div>
+          <div id="entryEditArea" style="display:none;margin-top:12px;">
+            <input id="entryEditSearch" placeholder="編集するカードを検索: ID / 名前 / タグ / 効果">
+            <div id="entryEditList" class="cardList" style="margin-top:8px;max-height:58vh;overflow:auto;"></div>
+          </div>
+        </div>
+      </div>
     `;
 
-    root.querySelector("#openCardEditorBtn")?.addEventListener("click", () => mountView("cardEditor"));
+    function renderEntryEditList(keyword) {
+      const list = root.querySelector("#entryEditList");
+      if (!list) return;
+      const q = String(keyword || "").trim().toLowerCase();
+      const rows = state.cards.filter((card) => {
+        if (!q) return true;
+        const text = [
+          card.id, card.name, card.type, card.attribute,
+          Array.isArray(card.tags) ? card.tags.join(" ") : card.tags,
+          card.effectText
+        ].map((x) => String(x || "").toLowerCase()).join(" ");
+        return text.includes(q);
+      }).sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: "base" }));
+      list.innerHTML = "";
+      if (!rows.length) {
+        list.innerHTML = `<div style="color:#9cb7dc;font-size:12px;padding:8px 2px;">一致するカードがありません</div>`;
+        return;
+      }
+      rows.forEach((card) => {
+        const btn = document.createElement("button");
+        btn.className = "cardRowBtn";
+        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${Number(card.attack || 0)}</div>`;
+        btn.addEventListener("click", () => {
+          state.selectedId = card.id;
+          const modal = root.querySelector("#cardEditorEntryModal");
+          if (modal) modal.style.display = "none";
+          mountView("cardEditor");
+        });
+        list.appendChild(btn);
+      });
+    }
+
+    root.querySelector("#openCardEditorBtn")?.addEventListener("click", () => {
+      const modal = root.querySelector("#cardEditorEntryModal");
+      const editArea = root.querySelector("#entryEditArea");
+      const search = root.querySelector("#entryEditSearch");
+      if (!modal) return;
+      modal.style.display = "flex";
+      if (editArea) editArea.style.display = "none";
+      if (search) search.value = "";
+    });
+    root.querySelector("#closeCardEditorEntryBtn")?.addEventListener("click", () => {
+      const modal = root.querySelector("#cardEditorEntryModal");
+      if (modal) modal.style.display = "none";
+    });
+    root.querySelector("#cardEditorEntryModal")?.addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.style.display = "none";
+    });
+    root.querySelector("#entryCreateNewBtn")?.addEventListener("click", () => {
+      const card = createNewCardRow();
+      state.cards.push(card);
+      state.selectedId = card.id;
+      const modal = root.querySelector("#cardEditorEntryModal");
+      if (modal) modal.style.display = "none";
+      mountView("cardEditor");
+    });
+    root.querySelector("#entryEditExistingBtn")?.addEventListener("click", () => {
+      const editArea = root.querySelector("#entryEditArea");
+      if (editArea) editArea.style.display = "block";
+      renderEntryEditList("");
+    });
+    root.querySelector("#entryEditSearch")?.addEventListener("input", (e) => {
+      renderEntryEditList(e.target.value || "");
+    });
     root.querySelector("#openBatchBtn")?.addEventListener("click", () => {
       if (typeof window.openCardBatchUploader === "function") window.openCardBatchUploader();
       else log("openCardBatchUploader が未ロードです");
@@ -292,6 +378,7 @@
               <span>Card List</span>
               <div style="display:flex;gap:6px;">
                 <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
+                <button class="ideSmallBtn" id="saveCardsTopBtn">保存</button>
                 <button class="ideSmallBtn" id="openCardPickerBtn">カード選択</button>
                 <button class="ideSmallBtn" id="ideAddCardBtn">追加</button>
                 <button class="ideSmallBtn danger" id="ideDeleteCardBtn">削除</button>
@@ -455,6 +542,19 @@
     `;
 
     let raf = 0;
+
+    function selectCardById(cardId) {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return;
+      const prev = selectedCard();
+      if (prev && prev.id !== card.id) {
+        saveFormToCard(prev);
+        saveEditorToCard(prev);
+      }
+      state.selectedId = card.id;
+      applyCardToEditor(card);
+      renderAll();
+    }
 
     function requestRenderGraph() {
       if (raf) return;
@@ -1347,23 +1447,7 @@
       });
 
       root.querySelector("#ideAddCardBtn")?.addEventListener("click", () => {
-        const next = generateCardId(state.cards);
-        const card = {
-          id: next,
-          image: "",
-          name: "",
-          attribute: "近接",
-          type: "アタッカー",
-          attack: 0,
-          cost: 0,
-          causalRate: 0,
-          effectText: "",
-          effectDslText: "",
-          effectGraph: { format: runtime()?.GRAPH_FORMAT || "dependrap.effectgraph.v2", nodes: [], edges: [] },
-          effectDsl: { format: "dependrap.dsl.v1", triggers: [] },
-          effectBlocks: null,
-          tags: []
-        };
+        const card = createNewCardRow();
         state.cards.push(card);
         state.selectedId = card.id;
         applyCardToEditor(card);
@@ -1383,6 +1467,14 @@
       });
 
       root.querySelector("#saveCardsBtn")?.addEventListener("click", () => {
+        const card = selectedCard();
+        if (card) {
+          saveFormToCard(card);
+          saveEditorToCard(card);
+        }
+        downloadCardsJson();
+      });
+      root.querySelector("#saveCardsTopBtn")?.addEventListener("click", () => {
         const card = selectedCard();
         if (card) {
           saveFormToCard(card);
@@ -1576,13 +1668,6 @@
     await initData();
     mountView("home");
     goHomeBtn?.addEventListener("click", () => {
-      if (state.view === "cardEditor") {
-        const card = selectedCard();
-        if (card) {
-          saveFormToCard(card);
-          saveEditorToCard(card);
-        }
-      }
       mountView("home");
     });
     closeDevModeBtn?.addEventListener("click", () => {

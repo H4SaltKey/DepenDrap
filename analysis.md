@@ -6037,3 +6037,34 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 
+
+---
+
+## Round 2026-06-09 — CardEditor導線修正（新規/編集選択）+ 保存ボタン追加 + ReferenceError修正
+
+### 不具合修正
+
+- `saveFormToCard is not defined` を修正。
+  - 原因: `init()` 内のトップバー `Developer Home` ハンドラが、CardEditorローカル関数 `saveFormToCard` を直接参照していた。
+  - 対応: 該当参照を除去し、ビュー遷移に統一。
+
+### 仕様追加
+
+- カードエディタ遷移前に `新規作成 / 編集` を選択するフローを追加。
+  - Developer Home の「カードエディタを開く」押下で開始モーダル表示。
+  - `新規作成`: 新規カードを作成し、CardEditorへ遷移。
+  - `編集`: 既存カード一覧（検索付き）から選択してCardEditorへ遷移。
+
+- 編集画面の明示保存ボタンを追加。
+  - 左上ヘッダに `保存` ボタン (`saveCardsTopBtn`) を追加。
+  - 既存の `cards.json保存` と同等処理（現状態を取り込み、JSON書き出し/DL）。
+
+### 構造改善
+
+- グローバルに置かれていた `selectCardById` を CardEditorローカルへ移動し、
+  ローカル関数（`saveFormToCard` / `saveEditorToCard`）への参照不整合を解消。
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+

@@ -5870,3 +5870,5 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - その後 `card.dataset.skipAutoOnLeave = "1"` を付与して `placeCardInZone` 側の二重発火を抑止。
   - さらに resolver が未初期化/未定義のケースに備え、
     同条件で `onLeave` を `EffectEngine.execute(...)` で直接評価するフォールバックを追加。
+  - `onLeave` 実行で対象カードの移動先が変わった場合（例: 手札へ戻る）は、
+    元の `MOVE_SOURCE_TO_GRAVE` による墓地送りを中断して、`onLeave` 側の移動結果を優先。

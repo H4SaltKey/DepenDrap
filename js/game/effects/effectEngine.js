@@ -764,11 +764,13 @@
           const owner = card.dataset.owner || context.owner;
           const prevZoneType = String(card?.dataset?.zoneType || "");
           const isFromBattleField = (prevZoneType === "attacker" || prevZoneType === "skill");
+          let movedByOnLeave = false;
           if (isFromBattleField) {
             if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardOnLeave === "function") {
               window.PlayerActionResolver.resolveCardOnLeave(card, { zoneType: prevZoneType, force: true });
               // placeCardInZone フック側の二重 onLeave を抑止
               card.dataset.skipAutoOnLeave = "1";
+              movedByOnLeave = String(card.dataset?.zoneType || "") !== prevZoneType;
             } else {
               const profile = window.CardCombatData?.getResolvedCardData?.(card.dataset?.id, owner) || null;
               const dsl = profile?.effectDsl;
@@ -786,9 +788,11 @@
                     didDirectAttack: card.dataset?.didDirectAttack === "1"
                   }
                 });
+                movedByOnLeave = String(card.dataset?.zoneType || "") !== prevZoneType;
               }
             }
           }
+          if (movedByOnLeave) return;
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });
         return { applied: true, type };

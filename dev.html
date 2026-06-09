@@ -90,16 +90,17 @@ body {
 }
 
 .cardIde {
-  height: calc(100vh - 54px);
+  height: calc(100dvh - 54px);
+  min-height: 740px;
   padding: 10px;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 210px 190px;
+  grid-template-rows: minmax(420px, 1fr) minmax(180px, 0.4fr) minmax(170px, 0.35fr);
   gap: 8px;
 }
 .cardIdeMain {
   min-height: 0;
   display: grid;
-  grid-template-columns: 290px minmax(520px, 1fr) 360px;
+  grid-template-columns: minmax(260px, 300px) minmax(420px, 1fr) minmax(320px, 380px);
   gap: 8px;
 }
 .idePanel {
@@ -117,11 +118,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 0 10px;
   background: rgba(11, 19, 33, 0.95);
   border-bottom: 1px solid var(--ide-border-soft);
   font-size: 12px;
   color: #b9ceef;
+  overflow: hidden;
+}
+.idePanelHeader > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .idePanelBody {
   min-height: 0;
@@ -274,6 +285,7 @@ body {
   display: grid;
   grid-template-rows: minmax(200px, 1fr) auto minmax(140px, 0.7fr);
   gap: 6px;
+  min-height: 0;
 }
 .dslEditor textarea {
   resize: none;
@@ -384,10 +396,49 @@ body {
 
 @media (max-width: 1380px) {
   .cardIde {
-    grid-template-rows: minmax(0, 1fr) 260px 220px;
+    grid-template-rows: minmax(380px, 1fr) minmax(170px, 0.4fr) minmax(170px, 0.35fr);
   }
   .cardIdeMain {
-    grid-template-columns: 260px minmax(0, 1fr) 320px;
+    grid-template-columns: 240px minmax(0, 1fr) 310px;
+  }
+}
+@media (max-width: 1180px) {
+  .cardIde {
+    height: auto;
+    min-height: calc(100dvh - 54px);
+    grid-template-rows: auto auto auto;
+  }
+  .cardIdeMain {
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(320px, auto);
+  }
+  .leftStack {
+    grid-template-rows: minmax(260px, auto) minmax(200px, auto);
+  }
+  .rightStack {
+    grid-template-rows: minmax(280px, auto) minmax(260px, auto);
+  }
+  .logGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .logGridBottom {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .ideTopBar {
+    padding: 0 8px;
+  }
+  .ideTopBar .btn {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+  .cardIde {
+    padding: 6px;
+    gap: 6px;
+  }
+  .logGrid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -2,476 +2,412 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>DepenDrap</title>
+<title>DepenDrap Developer IDE</title>
 <link rel="icon" href="assets/System/favicon.png">
 <link rel="stylesheet" href="css/style.css">
 <script src="js/ui/responsiveScale.js"></script>
 <style>
-  body {
-    overflow: auto;
-    background: #f4f4f4;
-  }
+:root {
+  --ide-bg: #0a0f19;
+  --ide-bg-soft: #111a2a;
+  --ide-bg-panel: #131f33;
+  --ide-bg-panel-2: #182742;
+  --ide-border: #2d4368;
+  --ide-border-soft: #20314d;
+  --ide-text: #d9e6ff;
+  --ide-text-dim: #8ea3c6;
+  --ide-accent: #49b3ff;
+  --ide-accent-2: #3de6b8;
+  --ide-danger: #ff6f91;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at -10% -10%, #214272 0%, transparent 60%),
+    radial-gradient(1000px 500px at 110% 120%, #18335c 0%, transparent 62%),
+    linear-gradient(180deg, #08101d 0%, #0a0f19 100%);
+  color: var(--ide-text);
+  font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+}
+.ideTopBar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  background: rgba(6, 11, 20, 0.92);
+  border-bottom: 1px solid var(--ide-border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  backdrop-filter: blur(8px);
+}
+.ideBrand {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.ideTopBar .btn {
+  border: 1px solid var(--ide-border);
+  background: var(--ide-bg-panel);
+  color: var(--ide-text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+#appRoot {
+  min-height: calc(100vh - 54px);
+}
+.devHome {
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+.devCard {
+  background: rgba(19, 31, 51, 0.9);
+  border: 1px solid var(--ide-border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.devCard h2, .devCard h3 { margin: 0 0 8px; }
+.devCard p { margin: 0; color: var(--ide-text-dim); }
+.actionRow {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.actionRow button {
+  border: 1px solid var(--ide-border);
+  background: linear-gradient(180deg, #1f3f69, #173355);
+  color: #ecf4ff;
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
 
-  .devLayout {
-    min-height: 100vh;
-    box-sizing: border-box;
-    padding: 14px 20px 100px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
+.cardIde {
+  height: calc(100vh - 54px);
+  padding: 10px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 210px 190px;
+  gap: 8px;
+}
+.cardIdeMain {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 290px minmax(520px, 1fr) 360px;
+  gap: 8px;
+}
+.idePanel {
+  min-height: 0;
+  background: linear-gradient(180deg, rgba(18,31,51,0.96), rgba(14,24,40,0.96));
+  border: 1px solid var(--ide-border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.idePanelHeader {
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  background: rgba(11, 19, 33, 0.95);
+  border-bottom: 1px solid var(--ide-border-soft);
+  font-size: 12px;
+  color: #b9ceef;
+}
+.idePanelBody {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+.idePanelBody.tight { padding: 0; }
 
-  .devLayout h2 {
-    margin: 0;
-  }
+.leftStack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr 230px;
+  gap: 8px;
+}
+.rightStack {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+}
 
-  .devCardGrid {
-    background: rgba(18, 18, 28, 0.98);
-    border-radius: 12px;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-    display:flex;
-    flex-direction:column;
-    gap:1px;
-    flex:1 1 0;
-    min-height:260px;
-    min-width:0;
-    padding:4px;
-  }
+.cardListTools {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cardListTools input,
+.cardListTools select,
+.cardInfoForm input,
+.cardInfoForm select,
+.cardInfoForm textarea,
+.inspectorForm input,
+.inspectorForm select,
+.simForm input,
+.simForm select,
+.dslEditor textarea,
+.legacyBlockBox textarea {
+  width: 100%;
+  border: 1px solid #2e4a73;
+  background: #0f1b2f;
+  color: var(--ide-text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.cardList {
+  display: grid;
+  gap: 6px;
+}
+.cardRowBtn {
+  border: 1px solid #2b4367;
+  background: #0e1a2b;
+  color: var(--ide-text);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.cardRowBtn.active {
+  border-color: #56b7ff;
+  background: #17335a;
+}
 
-  .devCardGrid header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+.nodeCanvasWrap {
+  position: relative;
+  height: 100%;
+  background:
+    linear-gradient(90deg, rgba(102, 142, 206, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(102, 142, 206, 0.12) 1px, transparent 1px),
+    radial-gradient(circle at 35% 20%, rgba(69, 124, 196, 0.35), transparent 46%),
+    #0b1423;
+  background-size: 24px 24px, 24px 24px, auto, auto;
+  user-select: none;
+  overflow: hidden;
+}
+.nodeViewport {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+}
+.edgeLayer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.nodeLayer {
+  position: absolute;
+  inset: 0;
+}
+.graphNode {
+  position: absolute;
+  min-width: 150px;
+  border: 1px solid #2e4b76;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #192d4a, #13233a);
+  box-shadow: 0 8px 18px rgba(2,8,16,0.5);
+  color: #e5f0ff;
+}
+.graphNode.selected {
+  border-color: var(--ide-accent);
+  box-shadow: 0 0 0 2px rgba(73,179,255,0.4), 0 8px 18px rgba(2,8,16,0.5);
+}
+.graphNode .nodeHead {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 11px;
+  border-bottom: 1px solid #274062;
+  cursor: move;
+}
+.graphNode .nodeBody {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #cbe0ff;
+  word-break: break-word;
+}
+.nodeCategory {
+  color: #94b4e2;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.selectionRect {
+  position: absolute;
+  border: 1px dashed #58b9ff;
+  background: rgba(68, 162, 255, 0.16);
+  pointer-events: none;
+}
 
-  .devCardGrid header h3 {
-    margin: 0;
-    font-size:18px;
-    font-weight:700;
-    color:#f4f1d6;
-    white-space:nowrap;
-  }
+.nodeLib {
+  display: grid;
+  gap: 6px;
+}
+.nodeLib button {
+  border: 1px solid #355684;
+  background: #14263f;
+  color: #deecff;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 6px;
+  text-align: left;
+  cursor: pointer;
+}
 
-  .pagedRow {
-    display:flex;
-    align-items:stretch;
-    justify-content:space-between;
-    gap:10px;
-    min-height:0;
-    width:100%;
-    min-width:0;
-    flex:1 1 0;
-  }
+.dslEditor {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto 1fr;
+  gap: 6px;
+}
+.dslEditor textarea {
+  resize: none;
+  min-height: 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  line-height: 1.45;
+}
+.dslMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  border: 1px solid #365987;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #b9d0f2;
+}
+.dslPreview {
+  border: 1px solid #2a446b;
+  border-radius: 8px;
+  padding: 8px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  background: #0d182a;
+  color: #bad8ff;
+}
+.dslError {
+  color: #ff8ba6;
+  font-size: 11px;
+}
 
-  .cardListViewport{
-    display:flex;
-    flex-direction:column;
-    flex:1 1 0;
-    min-height:0;
-    min-width:0;
-    overflow:hidden;
-    background: rgba(8, 8, 14, 0.95);
-    border-radius: 12px;
-    padding: 10px;
-    border: 1px solid rgba(255,255,255,0.12);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
-  }
+.logGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.logGridBottom {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.logList {
+  font-size: 11px;
+  white-space: pre-wrap;
+  color: #b8cff2;
+  display: grid;
+  gap: 3px;
+}
+.inspectorForm, .cardInfoForm, .simForm {
+  display: grid;
+  gap: 6px;
+}
+.formRow2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.simActionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.simActionRow button,
+.ideSmallBtn,
+.cardActionBtn {
+  border: 1px solid #345680;
+  background: #17325a;
+  color: #e8f2ff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ideSmallBtn.danger,
+.cardActionBtn.danger {
+  border-color: #7b3452;
+  background: #4a1f33;
+}
+.contextMenu {
+  position: fixed;
+  z-index: 50;
+  min-width: 180px;
+  border: 1px solid #355986;
+  background: #12253f;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  padding: 6px;
+}
+.contextMenu button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #d6e7ff;
+  text-align: left;
+  border-radius: 8px;
+  padding: 7px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.contextMenu button:hover { background: #1d3960; }
 
-  .cardListScroll{
-    display:flex;
-    flex:1 1 0;
-    height:100%;
-    min-height:400px;
-    min-width:0;
-    overflow-x:auto;
-    overflow-y:hidden;
-    padding:12px 0 20px;
-    align-items:flex-start;
-    box-sizing: border-box;
+@media (max-width: 1380px) {
+  .cardIde {
+    grid-template-rows: minmax(0, 1fr) 260px 220px;
   }
-
-  #cards.cardRow {
-    display:grid;
-    grid-auto-flow:column;
-    grid-auto-columns:97px;
-    grid-auto-rows: 188px;
-    grid-template-rows: repeat(4, 188px);
-    gap:8px;
-    padding:8px 10px 14px;
-    scroll-behavior:smooth;
-    min-height:100%;
-    min-width:0;
-    width:max-content;
-    align-content:start;
+  .cardIdeMain {
+    grid-template-columns: 260px minmax(0, 1fr) 320px;
   }
-
-  /* 編集パネル */
-  .devEditPanel {
-    background: white;
-    border: 1px solid #aaa;
-    padding: 20px;
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    min-width: 0;
-    flex-shrink: 0;
-  }
-
-  .devEditPanel.hidden {
-    display: none !important;
-  }
-
-  .devPreview {
-    width: 100px;
-    aspect-ratio: 210 / 297;
-    border: 1px solid #333;
-    background: #eee;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-
-  .devPreview img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  .devEditFields {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1 1 360px;
-    min-width: 0;
-  }
-
-  .devEditFields label {
-    font-size: 13px;
-    color: #555;
-  }
-  .blockEditor {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    background: #fafafa;
-  }
-  .blockRow {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 8px;
-  }
-  .timingCard {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #fff;
-    padding: 10px;
-    margin-top: 10px;
-  }
-  .effectRow {
-    border: 1px dashed #ccc;
-    border-radius: 6px;
-    padding: 8px;
-    margin-top: 8px;
-  }
-
-  .devEditFields input[type="text"] {
-    width: 100%;
-    font-size: 14px;
-    padding: 4px 6px;
-    box-sizing: border-box;
-    border: 1px solid #aaa;
-  }
-
-  .devEditFields input[type="text"]:read-only {
-    background: #f0f0f0;
-    color: #888;
-  }
-
-  .selectImageBtn {
-    padding: 6px 14px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-
-  .devEditMessage {
-    font-size: 12px;
-    color: #c00;
-    min-height: 16px;
-  }
-
-  /* 完了ボタン */
-  .devFooter {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(255,255,255,0.95);
-    border-top: 1px solid #ccc;
-    padding: 10px 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    z-index: 100;
-  }
-
-  .devFooter button {
-    padding: 8px 22px;
-    font-size: 15px;
-    cursor: pointer;
-  }
-
-  .btnDone {
-    background: #2f80ed;
-    color: white;
-    border: none;
-    border-radius: 4px;
-  }
-
-  .btnDone:hover {
-    background: #1a6fd4;
-  }
-
-  /* カード選択中のハイライト */
-  .deckCard.selected {
-    outline: 3px solid #2f80ed;
-  }
-  /* ステータス設定 */
-  .devStatTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-  }
-  .devStatTable th {
-    background: #f8f9fa;
-    color: #444;
-    font-weight: 600;
-    padding: 10px;
-    border: 1px solid #dee2e6;
-    font-size: 13px;
-  }
-  .devStatTable td {
-    border: 1px solid #dee2e6;
-    padding: 0;
-  }
-  .devStatInput {
-    width: 100%;
-    height: 40px;
-    border: none;
-    padding: 0 10px;
-    box-sizing: border-box;
-    text-align: center;
-    font-size: 15px;
-    outline: none;
-    background: transparent;
-  }
-  .devStatInput:focus {
-    background: #f0f7ff;
-    box-shadow: inset 0 0 0 2px #2f80ed;
-  }
-  .toast {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: rgba(20,18,32,0.9); color: #ff6b6b; border: 1px solid #ff3377;
-    padding: 12px 24px; border-radius: 4px; font-size: 14px; z-index: 99999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: opacity 0.5s;
-  }
-  .toast.hidden { display: none; }
-  .toast.fadeOut { opacity: 0; }
+}
 </style>
 </head>
 <body>
-<button class="back-btn" onclick="location.href='index.html'">戻る</button>
-
-<div id="toast" class="toast hidden"></div>
-
-<script src="js/network/messaging.js"></script>
-
-<script>
-if(localStorage.getItem("dev") !== "true"){
-  showErrorMessage("権限がないにゃん");
-  setTimeout(() => {
-    location.href = "index.html";
-  }, 500);
-}
-</script>
-
-<div class="devLayout">
-  <h2>開発者モード</h2>
-
-  <!-- カード一括作成プロトコル -->
-  <section style="background:white;border:1px solid #aaa;padding:20px;flex-shrink:0;">
-    <h3 style="margin:0 0 16px 0;">🎴 カード一括作成プロトコル</h3>
-    <p style="color:#666;font-size:0.9em;margin-bottom:16px;">assets/cards 内の blockXXX フォルダを選択します。そのフォルダ内の画像枚数分、新しいカードを自動生成します。</p>
-    <div style="display:flex;gap:12px;">
-      <button id="openCardBatchUploader" style="padding:10px 24px;background:#27ae60;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">📁 blockフォルダを選択</button>
-    </div>
-  </section>
-
-  <!-- カード一覧 -->
-  <section class="deckSection cardCatalog" style="min-height:850px;">
-    <div class="cardCatalogMain">
-      <header class="cardListHeader">
-        <div class="cardListTitleRow">
-          <h3>カード一覧</h3>
-          <button id="addCardBtn">＋ カード追加</button>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-          <input type="text" id="cardSearchInput" placeholder="検索: 名前/タグ/効果テキスト" style="min-width:260px;flex:1 1 280px;padding:8px;border:1px solid #666;border-radius:6px;background:#111;color:#f7f3de;">
-          <select id="cardSortSelect" style="padding:8px;border:1px solid #666;border-radius:6px;background:#111;color:#f7f3de;">
-            <option value="idAsc">ID順</option>
-            <option value="nameAsc">名前順</option>
-            <option value="attackDesc">攻撃力が高い順</option>
-            <option value="attackAsc">攻撃力が低い順</option>
-          </select>
-        </div>
-      </header>
-      <div class="pagedRow cardListControls">
-        <button class="pageButton" id="cardsPrev" type="button">‹</button>
-        <div class="cardListViewport">
-          <div class="cardListScroll">
-            <div id="cards" class="cardRow"></div>
-          </div>
-        </div>
-        <button class="pageButton" id="cardsNext" type="button">›</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 編集パネル -->
-  <section class="devEditPanel hidden" id="editPanel">
-    <div class="devPreview" id="previewBox">
-      <span id="previewPlaceholder" style="font-size:12px;color:#aaa;">画像なし</span>
-      <img id="previewImg" style="display:none;" alt="プレビュー">
-    </div>
-    <div class="devEditFields">
-      <div>
-        <label>カードID</label><br>
-        <input type="text" id="editId" readonly>
-      </div>
-      <div>
-        <label>カード名（検索・名前順ソート用）</label><br>
-        <input type="text" id="editName" placeholder="カード名を入力">
-      </div>
-      <div>
-        <label>カード攻撃力（基礎攻撃力に加算）</label><br>
-        <input type="number" id="editAttack" min="0" step="1" placeholder="0">
-      </div>
-      <div>
-        <label>画像ファイル名</label><br>
-        <input type="text" id="editImageName" readonly placeholder="画像を選択してください">
-      </div>
-      <div>
-        <label>属性</label><br>
-        <label style="margin-right:10px;"><input type="radio" name="editAttribute" id="editAttribute_近接" value="近接"> 近接</label>
-        <label style="margin-right:10px;"><input type="radio" name="editAttribute" id="editAttribute_遠隔" value="遠隔"> 遠隔</label>
-        <label><input type="radio" name="editAttribute" id="editAttribute_魔法" value="魔法"> 魔法</label>
-      </div>
-      <div>
-        <label>種類</label><br>
-        <label style="margin-right:10px;"><input type="radio" name="editCardType" id="editCardType_アタッカー" value="アタッカー"> アタッカー</label>
-        <label style="margin-right:10px;"><input type="radio" name="editCardType" id="editCardType_スキル" value="スキル"> スキル</label>
-        <label><input type="radio" name="editCardType" id="editCardType_サポート" value="サポート"> サポート</label>
-      </div>
-      <div>
-        <label>検索用タグ</label><br>
-        <input type="text" id="editTags" placeholder="例: 火力, 範囲, 支援">
-      </div>
-      <div>
-        <label>効果テキスト（表示/検索用メモ）</label><br>
-        <textarea id="editEffectText" rows="5" style="width:100%;font-size:14px;padding:6px;border:1px solid #aaa;box-sizing:border-box;resize:vertical;" placeholder="例: 登場時：カードを1枚引く"></textarea>
-      </div>
-      <div class="blockEditor">
-        <div style="font-weight:700;margin-bottom:6px;">Card Effect Studio v2（Node + DSL）</div>
-        <p style="margin:0 0 8px;font-size:12px;color:#666;">
-          新基盤は <code>effectGraph</code> と <code>effectDslText</code> を正とし、保存時に <code>effectDsl</code> へコンパイルされます。旧 <code>effectBlocks</code> は自動移行対象として保持されます。
-        </p>
-        <div class="blockRow">
-          <button type="button" id="syncDslToVisualBtn">DSL -> Visual同期</button>
-          <button type="button" id="syncVisualToDslBtn">Visual -> DSL同期</button>
-          <span id="effectEditorStatus" style="font-size:12px;color:#666;">未同期</span>
-        </div>
-        <div class="blockRow" style="align-items:stretch;gap:12px;">
-          <div style="flex:1;min-width:240px;">
-            <label style="font-size:12px;color:#333;">Visual Node JSON</label>
-            <textarea id="effectGraphEditor" rows="10" style="width:100%;font-family:monospace;font-size:12px;"></textarea>
-          </div>
-          <div style="flex:1;min-width:240px;">
-            <label style="font-size:12px;color:#333;">DSL Text</label>
-            <textarea id="effectDslEditor" rows="10" style="width:100%;font-family:monospace;font-size:12px;" placeholder="trigger OnAttack&#10;if event.damage > 0&#10;target current_target&#10;effect draw 1&#10;end"></textarea>
-          </div>
-        </div>
-        <div style="margin-top:8px;">
-          <label style="font-size:12px;color:#333;">発動経路プレビュー</label>
-          <pre id="effectPathPreview" style="margin:4px 0 0;padding:8px;background:#fafafa;border:1px solid #ddd;min-height:48px;white-space:pre-wrap;font-size:12px;"></pre>
-        </div>
-      </div>
-
-      <details style="margin-top:10px;">
-        <summary style="cursor:pointer;color:#666;">旧ブロック編集（移行専用）</summary>
-        <div style="margin-top:8px;">
-          <label><input type="checkbox" id="useEffectBlocks"> ブロック編集を使う（旧 `effectBlocks`）</label>
-          <div class="blockRow">
-            <select id="timingContextSelect">
-              <option value="attacker">アタッカー使用時</option>
-              <option value="skill">スキル使用時</option>
-            </select>
-            <select id="newTimingSelect"></select>
-            <button type="button" id="addTimingBtn">発動タイミングを追加</button>
-            <span id="effectBlocksSummary" style="font-size:12px;color:#666;"></span>
-          </div>
-          <div id="effectBlocksContainer"></div>
-        </div>
-      </details>
-      <button class="selectImageBtn" id="selectImageBtn">📁 画像を選択（PNG）</button>
-      <input type="file" id="imageFileInput" accept="image/png" style="display:none;">
-      <div class="devEditMessage" id="editMessage"></div>
-      
-      <div style="margin-top:10px; border-top:1px solid #eee; padding-top:10px;">
-        <button class="btnDone" id="doneBtn" style="width:100%;">✓ カード情報の保存 (cards.json)</button>
-        <button id="deleteSelectedCardBtn" style="width:100%;margin-top:10px;padding:8px;background:#d9534f;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">🗑️ このカードを削除</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- レベル別ステータス編集 -->
-  <section style="background:white; border:1px solid #aaa; padding:20px; flex-shrink:0;">
-    <h3 style="margin:0 0 16px; border-bottom:2px solid #2f80ed; display:inline-block; padding-bottom:4px;">レベル別ステータス設定</h3>
-    <p style="font-size:12px; color:#666; margin-bottom:12px;">※ 各レベルごとの基礎ステータスを編集できます。保存するとサーバーの levelStats.json が更新されます。</p>
-    <table id="levelStatsTable" class="devStatTable">
-      <thead>
-        <tr>
-          <th style="width:80px;">レベル</th>
-          <th>基礎攻撃力 (ATK)</th>
-          <th>基礎防御力 (DEF)</th>
-          <th>瞬間防御力 (IDEF)</th>
-        </tr>
-      </thead>
-      <tbody id="levelStatsBody"></tbody>
-    </table>
-    <div style="margin-top:16px;display:flex;gap:12px;">
-      <button id="saveLevelStats" style="padding:10px 24px;background:#2f80ed;color:white;border:none;border-radius:4px;cursor:pointer;font-size:14px;font-weight:bold;">✓ ステータスを保存 (levelStats.json)</button>
-      <button id="resetLevelStats" style="padding:10px 24px;background:#f8f9fa;border:1px solid #ccc;border-radius:4px;cursor:pointer;font-size:14px;">デフォルトに戻す</button>
-      <span id="levelStatsMsg" style="font-size:14px;color:#2f80ed;align-self:center;font-weight:bold;"></span>
-    </div>
-  </section>
-</div>
-
-<div id="devContextMenu" class="contextMenu hidden"></div>
-<div id="cardZoomModal" class="cardZoomModal hidden" onclick="if(event.target === this) hideCardZoom();">
-  <div class="cardZoomContent">
-    <div id="cardZoomCard" class="cardZoomCardWrap"></div>
-    <div class="cardZoomInfo" id="cardZoomInfo"></div>
-    <button class="cardZoomClose" type="button" onclick="hideCardZoom()">閉じる</button>
+<div class="ideTopBar">
+  <div class="ideBrand">DepenDrap Developer IDE</div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn" id="goHomeBtn">Developer Home</button>
+    <button class="btn" onclick="location.href='index.html'">戻る</button>
   </div>
 </div>
 
-<!-- フッター（完了ボタン削除済み） -->
-<div class="devFooter" style="display:none;"></div>
+<div id="appRoot"></div>
 
+<script src="js/network/messaging.js"></script>
+<script>
+if (localStorage.getItem("dev") !== "true") {
+  showErrorMessage("権限がないにゃん");
+  setTimeout(() => { location.href = "index.html"; }, 500);
+}
+</script>
 <script src="js/dev/cardEffectBlockCatalog.js?v=1"></script>
 <script src="js/dev/cardEffectBlockCompiler.js?v=1"></script>
 <script src="js/game/effects/effectRuntimeV2.js?v=1"></script>
@@ -484,23 +420,12 @@ if(localStorage.getItem("dev") !== "true"){
 <script src="js/card/cardCombatData.js?v=1"></script>
 <script src="js/game/effects/effectEngine.js?v=1"></script>
 <script src="js/dev/cardDebug.js?v=1"></script>
-<script src="js/dev/dev.js"></script>
-<script src="js/dev/cardEffectNodeEditor.js?v=1"></script>
 <script src="js/dev/devTools.js"></script>
 <script src="js/ui/menu.js?v=5"></script>
 <script src="js/statusBlocks/statusBlockPresets.js"></script>
 <script src="js/statusBlocks/statusBlockPresetStorage.js"></script>
 <script src="js/patchNotes/patchNotesLoader.js"></script>
 <script src="js/patchNotes/patchNotesEditor.js"></script>
-
-<div style="position:fixed; bottom:20px; left:20px; z-index:1000; display:flex; flex-direction:column; gap:10px;">
-  <button onclick="if(window.openPatchNotesEditor) window.openPatchNotesEditor();" style="padding:10px 20px; background:#2980b9; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-    📝 パッチノート管理
-  </button>
-  <button onclick="if(window.openPresetStorageUI) window.openPresetStorageUI();" style="padding:10px 20px; background:#8e44ad; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-    ⚙️ ステータスプリセット管理
-  </button>
-</div>
-
+<script src="js/dev/cardEditorIDE.js?v=1"></script>
 </body>
 </html>

@@ -5912,3 +5912,60 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - Runtime Inspector / Replay Debugger / Simulator はAPI基盤のみで、専用UI統合は次段。
 - `OnAttack` / `OnDamage` 等の全イベント送出は resolver/game 側の追加フックが必要。
 
+
+---
+
+## Round 2026-06-09 — カード設定UI全面刷新（IDE型SPA）
+
+### 実装前調査（依存洗い出し）
+
+- Visual Node(JSON):
+  - 既存は `dev.html` + `js/dev/cardEffectNodeEditor.js` の JSON textarea ベース。
+- DSL:
+  - `effectDslText` と `effectDsl` を `CardEffectRuntimeV2` / `CardEffectBlockCompiler` で相互変換。
+- 旧ブロック:
+  - `effectBlocks` は `CardEffectBlockCompiler.compileProgramToDsl()` で実行DSLへ変換。
+- カードデバッグ:
+  - `js/dev/cardDebug.js` が `resolveCardDsl` を通して効果実行。
+- ゲーム画面:
+  - `js/game/auto/playerActionResolver.js` が OnPlay/OnLeave/OnDirectAttack を起点に効果処理。
+- デッキ編集/選択:
+  - `js/card/cardData.js` を経由してカード効果データをロード。
+- 開発者モード:
+  - 既存 `dev.html` はカード編集/レベル編集/各種管理UIが混在。
+- 保存処理:
+  - 旧 `dev.js` は `cards.json` ダウンロード出力。
+- ロード処理:
+  - `loadCardData()` が `effectGraph/effectDslText/effectBlocks/effectDsl` を解決。
+- イベント/効果/状態/履歴管理:
+  - `effectRuntimeV2` に eventBus/history/effectInstances/runtimeInspector/replayDebugger 基盤あり。
+
+### 実施内容
+
+- `dev.html` を IDE 型レイアウトに再構成し、従来カード設定DOMを廃止。
+- `js/dev/cardEditorIDE.js` を新規追加し、SPA構成を実装。
+  - `ViewManager` 相当で `DeveloperHome` / `CardEditor` を生成・破棄。
+  - DeveloperHome -> ボタンで CardEditor 遷移。
+- CardEditor の画面構成を実装。
+  - 左: Card List / Search / Filter / Card Info / Node Library
+  - 中央: Visual Node Editor（ドラッグ、ズーム、矩形選択、複数選択、右クリック、接続、Undo/Redo）
+  - 右: DSL Editor + Inspector（フォーム編集）
+  - 下段: Event Engine Viewer / Runtime Inspector / Replay Debugger / Log Viewer
+  - 最下段: Card Simulator / Output Preview
+- Visual Node <-> DSL の常時同期。
+  - Graph更新時: `graphToAst -> toDslText`
+  - DSL更新時: `parseDslText -> astToGraph`
+- DSL編集支援を追加。
+  - キーワード補完（Ctrl+Space）
+  - シンタックスハイライト表示
+  - エラー表示
+- 旧ブロック互換をメインUI外へ退避。
+  - 「旧ブロック表示」ボタンで展開
+  - Legacy JSON読込 / Legacy -> Node+DSL 移行機能を配置
+- cards.json 保存導線をIDE内へ統合。
+
+### 仕様上の意図
+
+- メイン編集を Node/DSL に統一し、旧ブロックは互換レイヤー化。
+- カード固有 if 分岐は追加せず、変換・イベント処理は共通ランタイム経由で統一。
+

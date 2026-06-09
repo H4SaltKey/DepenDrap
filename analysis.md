@@ -6006,3 +6006,34 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 
+
+---
+
+## Round 2026-06-09 — CardEditorレイアウト再調整 / カード切替導線 / 右上ボタン挙動修正
+
+### 変更点
+
+- レイアウト再調整
+  - DSL/Output のテキスト系を `details` 折りたたみ表示に変更。
+  - 「必要時クリックで展開」導線を追加。
+- カード切替導線の追加
+  - 左上ヘッダに `カード選択` ボタンを追加。
+  - 一覧型モーダル (`cardPickerModal`) で検索しながら編集対象カードを変更可能に。
+  - 現在編集中カードを `currentCardBadge` に表示。
+- 右上ボタン挙動
+  - `Developer Home`: CardEditor 作業内容を保持したまま開発者ホーム（同ページのHomeビュー）へ戻る。
+  - `戻る`: 「開発者モードを閉じる」確認ダイアログ後、`index.html` へ遷移。
+
+### 実装ファイル
+
+- `dev.html`
+  - 右上戻るボタンを `id="closeDevModeBtn"` 化。
+- `js/dev/cardEditorIDE.js`
+  - カード選択モーダル実装
+  - 折りたたみテキスト表示
+  - 右上ボタンの挙動を明確化
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+

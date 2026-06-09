@@ -2,6 +2,7 @@
   const runtime = () => window.CardEffectRuntimeV2;
   const appRoot = document.getElementById("appRoot");
   const goHomeBtn = document.getElementById("goHomeBtn");
+  const closeDevModeBtn = document.getElementById("closeDevModeBtn");
 
   const state = {
     view: "home",
@@ -226,6 +227,19 @@
     }).sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: "base" }));
   }
 
+  function selectCardById(cardId) {
+    const card = state.cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const prev = selectedCard();
+    if (prev && prev.id !== card.id) {
+      saveFormToCard(prev);
+      saveEditorToCard(prev);
+    }
+    state.selectedId = card.id;
+    applyCardToEditor(card);
+    renderAll();
+  }
+
   function buildHomeView() {
     const root = document.createElement("div");
     root.className = "devHome";
@@ -278,6 +292,7 @@
               <span>Card List</span>
               <div style="display:flex;gap:6px;">
                 <span id="currentCardBadge" class="chip" style="align-self:center;">未選択</span>
+                <button class="ideSmallBtn" id="openCardPickerBtn">カード選択</button>
                 <button class="ideSmallBtn" id="ideAddCardBtn">追加</button>
                 <button class="ideSmallBtn danger" id="ideDeleteCardBtn">削除</button>
               </div>
@@ -345,7 +360,10 @@
                   <span class="chip" id="dslTokenInfo">tokens:0</span>
                   <span class="dslError" id="dslError"></span>
                 </div>
-                <div class="dslPreview" id="dslHighlight"></div>
+                <details id="dslPreviewDetails">
+                  <summary style="cursor:pointer;color:#9fc0ec;font-size:12px;">DSLテキストプレビュー（クリックで展開）</summary>
+                  <div class="dslPreview" id="dslHighlight"></div>
+                </details>
               </div>
               <div id="dslSuggestBox" style="display:none; margin-top:6px; border:1px solid #355a88; border-radius:8px; padding:6px; background:#0d1a2f;"></div>
             </div>
@@ -413,8 +431,26 @@
         </section>
         <section class="idePanel">
           <div class="idePanelHeader"><span>Output Preview</span><button class="ideSmallBtn" id="rebuildOutputBtn">再生成</button></div>
-          <div class="idePanelBody"><div class="logList" id="outputPreview"></div></div>
+          <div class="idePanelBody">
+            <details id="outputPreviewDetails">
+              <summary style="cursor:pointer;color:#9fc0ec;font-size:12px;">出力テキスト（クリックで展開）</summary>
+              <div class="logList" id="outputPreview"></div>
+            </details>
+          </div>
         </section>
+      </div>
+
+      <div id="cardPickerModal" style="display:none;position:fixed;inset:0;z-index:70;background:rgba(2,7,15,0.86);align-items:center;justify-content:center;padding:20px;">
+        <div style="width:min(920px, 100%);max-height:88vh;overflow:auto;background:#111f34;border:1px solid #32517d;border-radius:12px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="font-weight:700;">編集カードを選択</div>
+            <button class="ideSmallBtn" id="closeCardPickerBtn">閉じる</button>
+          </div>
+          <div style="margin-top:10px;">
+            <input id="cardPickerSearch" placeholder="検索: ID / 名前 / タグ / 効果">
+          </div>
+          <div id="cardPickerList" class="cardList" style="margin-top:10px;max-height:62vh;overflow:auto;"></div>
+        </div>
       </div>
     `;
 
@@ -517,17 +553,38 @@
         const btn = document.createElement("button");
         btn.className = `cardRowBtn ${card.id === state.selectedId ? "active" : ""}`;
         btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)}</div><div>${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")}</div>`;
-        btn.addEventListener("click", () => {
-          const prev = selectedCard();
-          if (prev) {
-            saveFormToCard(prev);
-            saveEditorToCard(prev);
-          }
-          state.selectedId = card.id;
-          applyCardToEditor(card);
-          renderAll();
-        });
+        btn.addEventListener("click", () => selectCardById(card.id));
         listEl.appendChild(btn);
+      });
+    }
+
+    function renderCardPickerList(keyword) {
+      const pickerList = root.querySelector("#cardPickerList");
+      if (!pickerList) return;
+      const q = String(keyword || "").trim().toLowerCase();
+      const rows = filteredCards().filter((card) => {
+        if (!q) return true;
+        const text = [
+          card.id,
+          card.name,
+          card.type,
+          card.attribute,
+          Array.isArray(card.tags) ? card.tags.join(" ") : card.tags,
+          card.effectText
+        ].map((x) => String(x || "").toLowerCase()).join(" ");
+        return text.includes(q);
+      });
+      pickerList.innerHTML = "";
+      rows.forEach((card) => {
+        const btn = document.createElement("button");
+        btn.className = `cardRowBtn ${card.id === state.selectedId ? "active" : ""}`;
+        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${Number(card.attack || 0)}</div>`;
+        btn.addEventListener("click", () => {
+          selectCardById(card.id);
+          const modal = root.querySelector("#cardPickerModal");
+          if (modal) modal.style.display = "none";
+        });
+        pickerList.appendChild(btn);
       });
     }
 
@@ -830,6 +887,11 @@
       renderLegacyBlocks();
       renderEventPanels();
       renderOutputPreview();
+      const modal = root.querySelector("#cardPickerModal");
+      if (modal && modal.style.display === "flex") {
+        const kw = root.querySelector("#cardPickerSearch")?.value || "";
+        renderCardPickerList(kw);
+      }
     }
 
     function addEdge(fromId, toId) {
@@ -1342,6 +1404,25 @@
         renderCardList();
       });
       root.querySelector("#nodeLibSearch")?.addEventListener("input", renderNodeLibrary);
+
+      root.querySelector("#openCardPickerBtn")?.addEventListener("click", () => {
+        const modal = root.querySelector("#cardPickerModal");
+        const input = root.querySelector("#cardPickerSearch");
+        if (!modal) return;
+        modal.style.display = "flex";
+        if (input) input.value = "";
+        renderCardPickerList("");
+      });
+      root.querySelector("#closeCardPickerBtn")?.addEventListener("click", () => {
+        const modal = root.querySelector("#cardPickerModal");
+        if (modal) modal.style.display = "none";
+      });
+      root.querySelector("#cardPickerModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.style.display = "none";
+      });
+      root.querySelector("#cardPickerSearch")?.addEventListener("input", (e) => {
+        renderCardPickerList(e.target.value || "");
+      });
     }
 
     function bindSimulator() {
@@ -1494,7 +1575,21 @@
   async function init() {
     await initData();
     mountView("home");
-    goHomeBtn?.addEventListener("click", () => mountView("home"));
+    goHomeBtn?.addEventListener("click", () => {
+      if (state.view === "cardEditor") {
+        const card = selectedCard();
+        if (card) {
+          saveFormToCard(card);
+          saveEditorToCard(card);
+        }
+      }
+      mountView("home");
+    });
+    closeDevModeBtn?.addEventListener("click", () => {
+      const ok = confirm("開発者モードを閉じてタイトルへ戻りますか？");
+      if (!ok) return;
+      location.href = "index.html";
+    });
     window.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         if (state.view === "cardEditor") {

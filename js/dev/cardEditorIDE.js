@@ -539,9 +539,199 @@
           <div id="cardPickerList" class="cardList" style="margin-top:10px;max-height:62vh;overflow:auto;"></div>
         </div>
       </div>
+
+      <div id="nodeConfigModal" style="display:none;position:fixed;inset:0;z-index:72;background:rgba(1,8,18,0.86);align-items:center;justify-content:center;padding:20px;">
+        <div style="width:min(560px, 100%);max-height:86vh;overflow:auto;background:#0f2037;border:1px solid #37608f;border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div id="nodeConfigTitle" style="font-weight:700;">ノード設定</div>
+            <button class="ideSmallBtn" id="closeNodeConfigBtn">閉じる</button>
+          </div>
+          <div id="nodeConfigForm" class="inspectorForm" style="margin-top:10px;"></div>
+          <div class="simActionRow" style="margin-top:12px;">
+            <button class="ideSmallBtn" id="saveNodeConfigBtn">確定</button>
+            <button class="ideSmallBtn danger" id="cancelNodeConfigBtn">キャンセル</button>
+          </div>
+        </div>
+      </div>
     `;
 
     let raf = 0;
+    let nodeConfigCtx = null;
+
+    const TRIGGER_EVENT_OPTIONS = [
+      { value: "OnPlay", label: "登場時" },
+      { value: "OnAttack", label: "攻撃時" },
+      { value: "OnDirectAttack", label: "直接攻撃時" },
+      { value: "OnDamage", label: "ダメージ時" },
+      { value: "OnDraw", label: "ドロー時" },
+      { value: "OnDiscard", label: "手札破棄時" },
+      { value: "OnLeaveField", label: "退場時" },
+      { value: "OnTurnStart", label: "ターン開始時" },
+      { value: "OnTurnEnd", label: "ターン終了時" },
+      { value: "OnEffectAdded", label: "効果付与時" },
+      { value: "OnEffectRemoved", label: "効果除去時" }
+    ];
+
+    const TARGET_OPTIONS = [
+      { value: "self", label: "自分" },
+      { value: "current_target", label: "現在のターゲット" },
+      { value: "opponent", label: "相手プレイヤー" },
+      { value: "self_and_current_target", label: "自分と現在ターゲット" }
+    ];
+
+    const EFFECT_ACTION_OPTIONS = [
+      { value: "draw", label: "draw" },
+      { value: "damage", label: "damage" },
+      { value: "heal", label: "heal" },
+      { value: "add_pp", label: "add_pp" },
+      { value: "add_status", label: "add_status" },
+      { value: "set_flag", label: "set_flag" },
+      { value: "clear_flag", label: "clear_flag" },
+      { value: "custom", label: "custom" }
+    ];
+
+    function createDraftNode(item, x, y) {
+      return {
+        id: `node-${Date.now()}-${Math.floor(Math.random() * 1e5)}`,
+        type: item.type,
+        label: item.label || item.type,
+        data: clone(item.data || {}),
+        x: Math.round(Number(x || 0)),
+        y: Math.round(Number(y || 0))
+      };
+    }
+
+    function openNodeConfigModal(mode, payload) {
+      const modal = root.querySelector("#nodeConfigModal");
+      const title = root.querySelector("#nodeConfigTitle");
+      if (!modal) return;
+
+      if (mode === "create") {
+        const item = payload.item;
+        const x = Number(payload.x || 0);
+        const y = Number(payload.y || 0);
+        nodeConfigCtx = { mode: "create", draft: createDraftNode(item, x, y), nodeId: "" };
+      } else {
+        const node = nodeById(payload.nodeId);
+        if (!node) return;
+        nodeConfigCtx = { mode: "edit", draft: clone(node), nodeId: node.id };
+      }
+
+      if (title) title.textContent = nodeConfigCtx.mode === "create" ? "ノード追加設定" : "ノード設定変更";
+      renderNodeConfigForm();
+      modal.style.display = "flex";
+    }
+
+    function closeNodeConfigModal() {
+      const modal = root.querySelector("#nodeConfigModal");
+      if (modal) modal.style.display = "none";
+      nodeConfigCtx = null;
+    }
+
+    function renderNodeConfigForm() {
+      const form = root.querySelector("#nodeConfigForm");
+      if (!form || !nodeConfigCtx?.draft) return;
+      const d = nodeConfigCtx.draft;
+
+      const triggerOptionsHtml = TRIGGER_EVENT_OPTIONS.map((opt) => (
+        `<option value="${opt.value}" ${String(d.data?.event || "OnPlay") === opt.value ? "selected" : ""}>${opt.label} (${opt.value})</option>`
+      )).join("");
+      const targetOptionsHtml = TARGET_OPTIONS.map((opt) => (
+        `<option value="${opt.value}" ${String(d.data?.target || "current_target") === opt.value ? "selected" : ""}>${opt.label}</option>`
+      )).join("");
+      const effectOptionsHtml = EFFECT_ACTION_OPTIONS.map((opt) => (
+        `<option value="${opt.value}" ${String(d.data?.action || "draw") === opt.value ? "selected" : ""}>${opt.label}</option>`
+      )).join("");
+
+      let typeSpecific = `<div style="font-size:12px;color:#9db7dc;">このノードタイプは追加設定がありません</div>`;
+      if (d.type === "trigger") {
+        typeSpecific = `<select data-k="event">${triggerOptionsHtml}</select>`;
+      } else if (d.type === "target") {
+        typeSpecific = `<select data-k="target">${targetOptionsHtml}</select>`;
+      } else if (d.type === "effect" || d.type === "modifier") {
+        const argsText = Array.isArray(d.data?.args) ? d.data.args.join(" ") : "";
+        typeSpecific = `
+          <select data-k="action">${effectOptionsHtml}</select>
+          <input data-k="args" value="${htmlEscape(argsText)}" placeholder="${d.data?.action === "damage" ? "damage量などを自由入力 (例: 3 or x*2)" : "引数を自由入力（スペース区切り）"}">
+        `;
+      } else if (d.type === "condition" || d.type === "history" || d.type === "math") {
+        typeSpecific = `<input data-k="expression" value="${htmlEscape(String(d.data?.expression || ""))}" placeholder="条件式 / 履歴参照式">`;
+      } else if (d.type === "variable") {
+        typeSpecific = `
+          <input data-k="varName" value="${htmlEscape(String(d.data?.name || ""))}" placeholder="変数名">
+          <input data-k="varValue" value="${htmlEscape(String(d.data?.value || ""))}" placeholder="値">
+        `;
+      } else if (d.type === "custom") {
+        typeSpecific = `<textarea data-k="customJson" rows="5" placeholder="JSON">${htmlEscape(JSON.stringify(d.data || {}, null, 2))}</textarea>`;
+      }
+
+      form.innerHTML = `
+        <input data-k="label" value="${htmlEscape(String(d.label || ""))}" placeholder="ノード名">
+        <input data-k="type" value="${htmlEscape(String(d.type || ""))}" readonly>
+        <div class="formRow2">
+          <input data-k="x" type="number" value="${Number(d.x || 0)}" placeholder="x">
+          <input data-k="y" type="number" value="${Number(d.y || 0)}" placeholder="y">
+        </div>
+        ${typeSpecific}
+      `;
+
+      form.querySelectorAll("[data-k]").forEach((el) => {
+        el.addEventListener("input", updateDraftFromNodeConfigForm);
+        el.addEventListener("change", updateDraftFromNodeConfigForm);
+      });
+    }
+
+    function updateDraftFromNodeConfigForm() {
+      const form = root.querySelector("#nodeConfigForm");
+      const d = nodeConfigCtx?.draft;
+      if (!form || !d) return;
+      const val = (k) => form.querySelector(`[data-k="${k}"]`)?.value;
+
+      d.label = String(val("label") || d.label || d.type);
+      d.x = Number(val("x") || d.x || 0);
+      d.y = Number(val("y") || d.y || 0);
+
+      if (d.type === "trigger") {
+        d.data.event = String(val("event") || "OnPlay");
+      } else if (d.type === "target") {
+        d.data.target = String(val("target") || "current_target");
+      } else if (d.type === "effect" || d.type === "modifier") {
+        d.data.action = String(val("action") || "draw");
+        d.data.args = String(val("args") || "").split(/\s+/).filter(Boolean);
+      } else if (d.type === "condition" || d.type === "history" || d.type === "math") {
+        d.data.expression = String(val("expression") || "");
+      } else if (d.type === "variable") {
+        d.data.name = String(val("varName") || "");
+        d.data.value = String(val("varValue") || "");
+      } else if (d.type === "custom") {
+        try {
+          d.data = JSON.parse(String(val("customJson") || "{}"));
+        } catch (_) {}
+      }
+    }
+
+    function commitNodeConfig() {
+      if (!nodeConfigCtx?.draft) return;
+      updateDraftFromNodeConfigForm();
+      if (nodeConfigCtx.mode === "create") {
+        pushUndo("add-node-config");
+        state.graph.nodes.push(clone(nodeConfigCtx.draft));
+        state.selectedNodeIds = new Set([nodeConfigCtx.draft.id]);
+      } else {
+        const target = nodeById(nodeConfigCtx.nodeId);
+        if (!target) return;
+        pushUndo("edit-node-config");
+        target.label = nodeConfigCtx.draft.label;
+        target.x = nodeConfigCtx.draft.x;
+        target.y = nodeConfigCtx.draft.y;
+        target.data = clone(nodeConfigCtx.draft.data || {});
+        state.selectedNodeIds = new Set([target.id]);
+      }
+      syncDslFromGraph();
+      renderDsl();
+      requestRenderGraph();
+      closeNodeConfigModal();
+    }
 
     function selectCardById(cardId) {
       const card = state.cards.find((c) => c.id === cardId);
@@ -700,23 +890,8 @@
         const btn = document.createElement("button");
         btn.innerHTML = `<div style="font-size:10px;color:#8eb0dd;">${htmlEscape(item.category)}</div><div style="font-weight:700;">${htmlEscape(item.label)}</div>`;
         btn.addEventListener("click", () => {
-          pushUndo("add-node");
           const center = fromScreenToWorld(window.innerWidth * 0.5, window.innerHeight * 0.35);
-          const id = `node-${Date.now()}-${Math.floor(Math.random() * 1e5)}`;
-          const node = {
-            id,
-            type: item.type,
-            label: item.label,
-            data: clone(item.data || {}),
-            x: Math.round(center.x),
-            y: Math.round(center.y)
-          };
-          state.graph.nodes.push(node);
-          state.selectedNodeIds = new Set([id]);
-          syncDslFromGraph();
-          renderDsl();
-          requestRenderGraph();
-          log(`ノード追加: ${item.label}`);
+          openNodeConfigModal("create", { item, x: center.x, y: center.y });
         });
         listEl.appendChild(btn);
       });
@@ -1195,6 +1370,9 @@
 
       const actions = [];
       if (nodeId) {
+        actions.push({ label: "ノード設定...", run: () => {
+          openNodeConfigModal("edit", { nodeId });
+        }});
         actions.push({ label: "ノード複製", run: () => {
           const node = nodeById(nodeId);
           if (!node) return;
@@ -1232,21 +1410,8 @@
       } else {
         NODE_LIBRARY.slice(0, 6).forEach((item) => {
           actions.push({ label: `${item.label} 追加`, run: () => {
-            pushUndo("add-node-context");
             const world = fromScreenToWorld(x, y);
-            const node = {
-              id: `node-${Date.now()}-${Math.floor(Math.random() * 1e5)}`,
-              type: item.type,
-              label: item.label,
-              data: clone(item.data || {}),
-              x: Math.round(world.x),
-              y: Math.round(world.y)
-            };
-            state.graph.nodes.push(node);
-            state.selectedNodeIds = new Set([node.id]);
-            syncDslFromGraph();
-            renderDsl();
-            requestRenderGraph();
+            openNodeConfigModal("create", { item, x: world.x, y: world.y });
           }});
         });
       }
@@ -1514,6 +1679,13 @@
       });
       root.querySelector("#cardPickerSearch")?.addEventListener("input", (e) => {
         renderCardPickerList(e.target.value || "");
+      });
+
+      root.querySelector("#closeNodeConfigBtn")?.addEventListener("click", closeNodeConfigModal);
+      root.querySelector("#cancelNodeConfigBtn")?.addEventListener("click", closeNodeConfigModal);
+      root.querySelector("#saveNodeConfigBtn")?.addEventListener("click", commitNodeConfig);
+      root.querySelector("#nodeConfigModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeNodeConfigModal();
       });
     }
 

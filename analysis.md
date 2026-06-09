@@ -6068,3 +6068,43 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 
+
+---
+
+## Round 2026-06-09 — ノード追加/右クリック共通の設定モーダル実装
+
+### 要件
+
+- ノード追加時にモーダルを開き、ノード種別ごとに対象設定を可能にする。
+- 同じモーダルをノード右クリック時の設定変更にも利用する。
+- 例: `damage` は自由記入、`trigger` はイベント選択、`target` は対象選択。
+
+### 変更内容
+
+- `js/dev/cardEditorIDE.js`
+  - `#nodeConfigModal` / `#nodeConfigForm` を追加。
+  - ノード設定コンテキスト (`nodeConfigCtx`) と、作成/編集を共通化した以下関数を追加。
+    - `openNodeConfigModal(mode, payload)`
+    - `renderNodeConfigForm()`
+    - `updateDraftFromNodeConfigForm()`
+    - `commitNodeConfig()`
+    - `closeNodeConfigModal()`
+  - ノードタイプ別フォームを実装。
+    - `trigger`: `OnPlay / OnAttack / OnDirectAttack / OnDamage / OnDraw / OnDiscard / OnLeaveField / OnTurnStart / OnTurnEnd / OnEffectAdded / OnEffectRemoved`
+    - `target`: `self / current_target / opponent / self_and_current_target`
+    - `effect/modifier`: action選択 + args自由入力（`damage`想定プレースホルダ）
+    - `condition/history/math`: 式入力
+    - `variable`: 変数名/値
+    - `custom`: JSON入力
+  - ノードライブラリ追加時の挙動を「即追加」から「モーダル経由」に変更。
+  - 右クリックメニューに `ノード設定...` を追加し、同モーダルで編集可能にした。
+  - 空白右クリックでのノード追加もモーダル経由に変更。
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+
+### 補足
+
+- 本リポジトリは静的HTML/JS構成で、専用ビルドコマンドは確認できなかったため、今回の「作業後リビルド」はJS構文チェックと画面反映可能状態の確認を実施。
+

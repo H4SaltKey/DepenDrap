@@ -866,10 +866,14 @@
 
         if (!nodeEl) {
           if (e.button !== 0) return;
-          const { x, y } = fromScreenToWorld(e.clientX, e.clientY);
-          if (!e.ctrlKey && !e.metaKey && !e.shiftKey) state.selectedNodeIds = new Set();
-          state.selectionRect = { sx: x, sy: y, ex: x, ey: y };
-          requestRenderGraph();
+          if (e.shiftKey) {
+            const { x, y } = fromScreenToWorld(e.clientX, e.clientY);
+            if (!e.ctrlKey && !e.metaKey) state.selectedNodeIds = new Set();
+            state.selectionRect = { sx: x, sy: y, ex: x, ey: y };
+            requestRenderGraph();
+          } else {
+            state.drag = { type: "pan", startX: e.clientX, startY: e.clientY, baseX: state.viewport.x, baseY: state.viewport.y };
+          }
           return;
         }
 

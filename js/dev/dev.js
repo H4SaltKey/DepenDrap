@@ -839,6 +839,8 @@ async function initDev() {
       attack: Number.isFinite(Number(c.attack)) ? Number(c.attack) : 0,
       effectText: String(c.effectText || ""),
       effectDsl: c.effectDsl || null,
+      effectDslText: String(c.effectDslText || ""),
+      effectGraph: c.effectGraph || null,
       effectBlocks: c.effectBlocks || null,
       attribute: c.attribute || "近接",
       type: c.type || "アタッカー",
@@ -901,6 +903,8 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
     attack: 0,
     effectText: "",
     effectDsl: null,
+    effectDslText: "",
+    effectGraph: null,
     effectBlocks: null,
     attribute: "近接",
     type: "アタッカー",
@@ -978,6 +982,9 @@ function selectCard(id) {
     renderTimingSelectOptions();
   }
   renderEffectBlocksEditor();
+  if (window.CardEffectNodeEditor && typeof window.CardEffectNodeEditor.bindCard === "function") {
+    window.CardEffectNodeEditor.bindCard(card);
+  }
   renderDevCards();
 }
 
@@ -1300,10 +1307,15 @@ document.getElementById("doneBtn").addEventListener("click", () => {
 
   const output = devCards.map(c => {
     const effectText = String(c.effectText || "").trim();
+    const studioPayload = (window.CardEffectNodeEditor && typeof window.CardEffectNodeEditor.collectCardPayload === "function" && c.id === selectedId)
+      ? window.CardEffectNodeEditor.collectCardPayload(c)
+      : null;
+    const effectiveDslText = String(studioPayload?.effectDslText || c.effectDslText || "").trim();
+    const effectiveGraph = studioPayload?.effectGraph || c.effectGraph || null;
     const fromBlocks = (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function")
       ? window.CardEffectBlockCompiler.compileProgramToDsl(c.effectBlocks)
       : null;
-    const compiledDsl = fromBlocks || {
+    const compiledDsl = studioPayload?.effectDsl || fromBlocks || {
       format: (window.CardEffectBlockCompiler && window.CardEffectBlockCompiler.DSL_FORMAT) || "dependrap.dsl.v1",
       triggers: []
     };
@@ -1316,6 +1328,8 @@ document.getElementById("doneBtn").addEventListener("click", () => {
       attack: Math.max(0, Math.floor(Number(c.attack) || 0)),
       effectText,
       effectDsl: compiledDsl,
+      effectDslText: effectiveDslText,
+      effectGraph: effectiveGraph,
       tags: normalizeTags(c.tags)
     };
     if (c.effectBlocks && Array.isArray(c.effectBlocks.timings)) {

@@ -15,6 +15,8 @@ async function loadCardData(){
     attack: normalizeCardAttack(card.attack),
     effectText: String(card.effectText || "").trim(),
     effectDsl: resolveCardEffectDsl(card),
+    effectDslText: normalizeCardEffectDslText(card.effectDslText),
+    effectGraph: normalizeCardEffectGraph(card.effectGraph),
     tags: normalizeCardTags(card.tags),
     image: normalizeCardImagePath(card.image || "")
   }));
@@ -57,6 +59,23 @@ function createEmptyEffectDsl() {
   };
 }
 
+function normalizeCardEffectDslText(effectDslText) {
+  return String(effectDslText || "").trim();
+}
+
+function normalizeCardEffectGraph(effectGraph) {
+  if (
+    effectGraph
+    && typeof effectGraph === "object"
+    && String(effectGraph.format || "") === "dependrap.effectgraph.v2"
+    && Array.isArray(effectGraph.nodes)
+    && Array.isArray(effectGraph.edges)
+  ) {
+    return effectGraph;
+  }
+  return null;
+}
+
 function normalizeCardEffectDsl(effectDsl) {
   if (
     effectDsl
@@ -70,6 +89,16 @@ function normalizeCardEffectDsl(effectDsl) {
 }
 
 function resolveCardEffectDsl(card) {
+  if (
+    window.CardEffectRuntimeV2
+    && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
+  ) {
+    const resolved = window.CardEffectRuntimeV2.resolveCardDsl(card);
+    if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
+      return resolved;
+    }
+  }
+
   const rawBlocks = card?.effectBlocks;
   if (
     rawBlocks

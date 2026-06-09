@@ -51,6 +51,15 @@
 
   function resolveCardDslForDebug(cardLike) {
     if (
+      window.CardEffectRuntimeV2
+      && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
+    ) {
+      const resolved = window.CardEffectRuntimeV2.resolveCardDsl(cardLike || {});
+      if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
+        return resolved;
+      }
+    }
+    if (
       cardLike?.effectBlocks
       && Array.isArray(cardLike.effectBlocks.timings)
       && window.CardEffectBlockCompiler

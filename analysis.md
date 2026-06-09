@@ -5872,3 +5872,43 @@ grep 結果: game.js に window.startSoloGame が定義されている
     同条件で `onLeave` を `EffectEngine.execute(...)` で直接評価するフォールバックを追加。
   - `onLeave` 実行で対象カードの移動先が変わった場合（例: 手札へ戻る）は、
     元の `MOVE_SOURCE_TO_GRAVE` による墓地送りを中断して、`onLeave` 側の移動結果を優先。
+
+---
+
+## Round 2026-06-09 — カード効果基盤V2再設計（段階移行対応）
+
+### 実施内容
+
+- `js/game/effects/effectRuntimeV2.js` を新規追加。
+  - Event Bus (`OnPlay` 等の統一イベント)
+  - History Store（game/turn/lastカウンタ）
+  - Effect Instance Store（追加/削除/継承/複製/追記/上書き）
+  - DSL Text <-> Graph 相互変換
+  - 旧 `effectBlocks` からの自動移行
+  - Runtime Inspector / Replay Debugger / Card Simulator の基盤API
+- `js/card/cardData.js` を更新。
+  - `effectGraph` / `effectDslText` / `effectBlocks` / `effectDsl` の順にDSL解決
+  - `effectDslText`, `effectGraph` の正規化を追加
+- `js/game/auto/playerActionResolver.js` を更新。
+  - `OnPlay`, `OnLeaveField`, `OnDirectAttack` を V2 Event Engine へ送出
+  - DSL解決時に V2ランタイムを優先
+- `dev.html` に Card Effect Studio v2 を追加。
+  - Node JSON と DSL テキストの双方向同期ボタン
+  - 発動経路プレビュー
+  - 旧ブロックUIは `<details>` 配下に移し移行専用扱い
+- `js/dev/cardEffectNodeEditor.js` を新規追加。
+  - 選択カードの `effectGraph/effectDslText` バインド
+  - 旧 `effectBlocks` 自動移行
+  - 保存用 payload 生成
+- `js/dev/dev.js` を更新。
+  - `effectGraph/effectDslText` の読み書き対応
+  - 保存時に Studio v2 の内容を `effectDsl` へコンパイルして同梱
+- `game.html`, `deck.html`, `deckSelect.html`, `dev.html` に `effectRuntimeV2.js` 読み込み追加。
+- 設計ドキュメント `docs/card-effect-system-v2.md` を新規作成。
+
+### 残課題（次フェーズ）
+
+- 現在の実行エンジン本体は `dependrap.dsl.v1` 互換運用で、`effectDsl.v2` 直接実行は未着手。
+- Runtime Inspector / Replay Debugger / Simulator はAPI基盤のみで、専用UI統合は次段。
+- `OnAttack` / `OnDamage` 等の全イベント送出は resolver/game 側の追加フックが必要。
+

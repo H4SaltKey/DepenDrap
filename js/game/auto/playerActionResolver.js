@@ -68,6 +68,17 @@
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
   }
 
+  function emitV2Event(name, payload) {
+    if (!window.CardEffectRuntimeV2 || typeof window.CardEffectRuntimeV2.emitGameEvent !== "function") return;
+    try {
+      window.CardEffectRuntimeV2.emitGameEvent(name, payload || {}, {
+        owner: payload?.owner || getMyRoleSafe()
+      });
+    } catch (error) {
+      console.warn("[PlayerActionResolver] v2 event emit failed:", error);
+    }
+  }
+
   function normalizeTrigger(trigger) {
     const t = String(trigger || "manual");
     if (t === "onSummon" || t === "onAttack" || t === "onDirectAttack" || t === "onSkillBeforeAttackEffect" || t === "onSkillAfterAttackEffect") return t;
@@ -111,6 +122,15 @@
   }
 
   function resolveEffectiveDsl(profile) {
+    if (
+      window.CardEffectRuntimeV2
+      && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
+    ) {
+      const resolved = window.CardEffectRuntimeV2.resolveCardDsl(profile);
+      if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
+        return resolved;
+      }
+    }
     if (
       profile?.effectBlocks
       && Array.isArray(profile.effectBlocks.timings)
@@ -281,6 +301,11 @@
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const flowId = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
     const triggerName = normalizeTrigger("onSummon");
+    emitV2Event("OnPlay", {
+      owner,
+      sourceCardId: cardId,
+      zoneType
+    });
 
     logFlow(`START ${flowId} ${cardName} owner=${owner} zone=${zoneType}`);
     bumpFlowCounter("turn", owner, "flow.start.count", 1);
@@ -399,6 +424,12 @@
       : card;
     if (cardEl.dataset.onLeaveResolving === "1") return;
     const triggerName = "onLeave";
+    emitV2Event("OnLeaveField", {
+      owner,
+      sourceCardId: profile.id || cardEl.dataset.id || "unknown",
+      zoneType: options.zoneType || "grave",
+      didDirectAttack: cardEl.dataset.didDirectAttack === "1"
+    });
     const dsl = resolveEffectiveDsl(profile);
     const engine = window.EffectEngine;
     const context = {
@@ -455,6 +486,11 @@
       : card;
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const triggerName = "onDirectAttack";
+    emitV2Event("OnDirectAttack", {
+      owner: owner || me,
+      sourceCardId: cardId,
+      targetInfo: targetInfo || {}
+    });
 
     const dsl = resolveEffectiveDsl(profile);
     const engineResult = resolveWithEffectEngine(profile, cardEl, owner || me, "attacker", triggerName);

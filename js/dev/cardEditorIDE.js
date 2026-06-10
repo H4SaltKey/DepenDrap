@@ -448,14 +448,6 @@
               <div id="dslSuggestBox" style="display:none; margin-top:6px; border:1px solid #355a88; border-radius:8px; padding:6px; background:#0d1a2f;"></div>
             </div>
           </section>
-          <section class="idePanel">
-            <div class="idePanelHeader">
-              <span>Inspector</span>
-            </div>
-            <div class="idePanelBody">
-              <div class="inspectorForm" id="nodeInspector"></div>
-            </div>
-          </section>
         </div>
       </div>
 
@@ -478,6 +470,14 @@
                 <button id="saveCardsBtn" class="cardActionBtn">cards.json保存</button>
               </div>
             </div>
+          </div>
+        </section>
+        <section class="idePanel">
+          <div class="idePanelHeader">
+            <span>Inspector</span>
+          </div>
+          <div class="idePanelBody">
+            <div class="inspectorForm" id="nodeInspector"></div>
           </div>
         </section>
       </div>

@@ -155,7 +155,7 @@ body {
 .rightStack {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(340px, 1fr) minmax(240px, 0.85fr);
+  grid-template-rows: 1fr;
   gap: 8px;
 }
 .cardVisualPanel .idePanelBody {
@@ -544,7 +544,7 @@ body {
 .logGridBottom {
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
   gap: 8px;
 }
 .logList {
@@ -628,7 +628,10 @@ body {
     grid-auto-rows: minmax(260px, auto);
   }
   .rightStack {
-    grid-template-rows: minmax(240px, auto) minmax(220px, auto);
+    grid-template-rows: minmax(240px, auto);
+  }
+  .logGridBottom {
+    grid-template-columns: 1fr;
   }
   .utilityDrawerPanel { margin-right: 0; width: min(640px, 96vw); }
 }

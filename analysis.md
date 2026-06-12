@@ -6266,3 +6266,34 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 - 静的構成のため、リビルド相当としてJS構文検証を実施。
 
+
+---
+
+## Round 2026-06-12 — 右クリックメニューの幅/表示位置調整
+
+### 修正内容
+
+- `contextMenu` の横幅を固定最小幅から内容追従へ変更。
+  - `min-width: 0; width: max-content;`
+  - `max-width` を画面幅基準で制限。
+- 画面外にはみ出した場合の視認性確保。
+  - `max-height` + `overflow: auto` により、項目が多い場合でもスクロールで全体確認可能。
+- 表示位置の補正を追加。
+  - 右クリック座標からメニュー表示後に `getBoundingClientRect()` で実サイズを取得し、
+    ビューポート内に収まるよう `left/top` をクランプ。
+
+### 期待される挙動
+
+- 無駄な右側余白が減少。
+- カーソル付近に出しつつ、画面端では自動で内側に寄る。
+- 項目が多いケースでもメニュー内スクロールで全選択肢へアクセス可能。
+
+### 対象ファイル
+
+- `dev.html`
+- `js/dev/cardEditorIDE.js`
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+

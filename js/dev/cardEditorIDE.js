@@ -1767,8 +1767,8 @@
       hideContextMenu();
       const menu = document.createElement("div");
       menu.className = "contextMenu";
-      menu.style.left = `${x}px`;
-      menu.style.top = `${y}px`;
+      menu.style.left = `${Math.max(8, x)}px`;
+      menu.style.top = `${Math.max(8, y)}px`;
 
       const actions = [];
       if (nodeId) {
@@ -1858,6 +1858,15 @@
       });
 
       document.body.appendChild(menu);
+      // Keep the full menu visible in viewport; fallback is internal scroll via CSS max-height.
+      const rect = menu.getBoundingClientRect();
+      const margin = 8;
+      const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+      const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+      const clampedLeft = Math.min(Math.max(margin, x), maxLeft);
+      const clampedTop = Math.min(Math.max(margin, y), maxTop);
+      menu.style.left = `${Math.round(clampedLeft)}px`;
+      menu.style.top = `${Math.round(clampedTop)}px`;
       state.contextMenuEl = menu;
     }
 

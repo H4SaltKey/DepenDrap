@@ -589,7 +589,12 @@ body {
 .contextMenu {
   position: fixed;
   z-index: 50;
-  min-width: 180px;
+  min-width: 0;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 16px));
+  max-height: min(72vh, calc(100vh - 16px));
+  overflow: auto;
+  box-sizing: border-box;
   border: 1px solid #355986;
   background: #12253f;
   border-radius: 10px;
@@ -597,7 +602,9 @@ body {
   padding: 6px;
 }
 .contextMenu button {
-  width: 100%;
+  width: auto;
+  min-width: 100%;
+  box-sizing: border-box;
   border: 0;
   background: transparent;
   color: #d6e7ff;

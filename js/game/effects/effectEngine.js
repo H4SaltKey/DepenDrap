@@ -895,10 +895,28 @@
     }
   }
 
+  function logTriggerTrace(context, report, status) {
+    if (typeof window.addGameLog !== "function") return;
+    const cardId = String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || "unknown");
+    const cardName = String(context?.sourceProfile?.name || cardId);
+    const trigger = String(report?.on || context?.event?.name || "unknown");
+    const applied = Array.isArray(report?.effects) ? report.effects.filter((e) => e.applied).length : 0;
+    const total = Array.isArray(report?.effects) ? report.effects.length : 0;
+    const detail = report?.triggerConditionReason || report?.bundleConditionReason || "";
+    const suffix = detail ? ` reason=${detail}` : "";
+    window.addGameLog(`[DSL] ${cardName}(${cardId}) trigger=${trigger} status=${status} effects=${applied}/${total}${suffix}`);
+  }
+
   function execute(cardDsl, context) {
     if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [], triggerReports: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
-    if (matched.length === 0) return { handled: true, effects: [], triggerReports: [] };
+    if (matched.length === 0) {
+      const ev = String(context?.event?.name || "");
+      if (ev === "onSummon" || ev === "onPlay" || ev === "OnPlay") {
+        logTriggerTrace(context, { on: ev, effects: [] }, "NO_MATCH");
+      }
+      return { handled: true, effects: [], triggerReports: [] };
+    }
 
     const resultEffects = [];
     const triggerReports = [];
@@ -919,6 +937,7 @@
         if (!triggerConditionOk) {
           triggerReport.triggerConditionReason = "trigger-condition-failed";
           triggerReports.push(triggerReport);
+          logTriggerTrace(context, triggerReport, "SKIP_TRIGGER_CONDITION");
           notifyDebug(context, { type: "trigger", report: triggerReport });
           continue;
         }
@@ -929,6 +948,7 @@
         triggerReport.bundleConditionReason = bundleCondition.reason;
         if (!bundleCondition.ok) {
           triggerReports.push(triggerReport);
+          logTriggerTrace(context, triggerReport, "SKIP_BUNDLE_CONDITION");
           notifyDebug(context, { type: "trigger", report: triggerReport });
           continue;
         }
@@ -978,11 +998,13 @@
         });
         if (r?.flowBreak || shouldBreakBySourceZone(localContext, originZoneType)) {
           triggerReports.push(triggerReport);
+          logTriggerTrace(context, triggerReport, "FLOW_BREAK");
           notifyDebug(context, { type: "trigger", report: triggerReport });
           return { handled: true, effects: resultEffects, flowBreak: true, triggerReports };
         }
       }
       triggerReports.push(triggerReport);
+      logTriggerTrace(context, triggerReport, "FIRED");
       notifyDebug(context, { type: "trigger", report: triggerReport });
     }
     return { handled: true, effects: resultEffects, triggerReports };

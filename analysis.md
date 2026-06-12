@@ -6509,3 +6509,19 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### Note
 - No build system detected (`package.json` not present), so rebuild step is N/A in this repository state.
+
+## 2026-06-12 trigger trace logging (game runtime)
+- Updated `js/game/effects/effectEngine.js` to record DSL trigger trace into game log.
+- Added `logTriggerTrace(context, report, status)` and hooked it into execute flow.
+- Logged statuses:
+  - `FIRED`
+  - `FLOW_BREAK`
+  - `SKIP_TRIGGER_CONDITION`
+  - `SKIP_BUNDLE_CONDITION`
+  - `NO_MATCH` (for summon/play-like trigger checks)
+- Log format:
+  - `[DSL] <cardName>(<cardId>) trigger=<trigger> status=<status> effects=<applied>/<total> reason=<optional>`
+- Validation:
+  - `effectEngine.js` syntax OK.
+- Note:
+  - Repo has no `package.json`; rebuild step not available in current workspace state.

@@ -6525,3 +6525,21 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `effectEngine.js` syntax OK.
 - Note:
   - Repo has no `package.json`; rebuild step not available in current workspace state.
+
+## 2026-06-12 test play verification (runtime path)
+- Executed integration-style runtime tests with mocked game environment (Node VM) for real files:
+  - `js/game/effects/effectRuntimeV2.js`
+  - `js/game/effects/effectEngine.js`
+  - `js/game/auto/playerActionResolver.js`
+- Scenario A (`cd001-001` on play):
+  - `PlayerActionResolver.resolveCardOnPlay(..., "attacker")`
+  - Confirmed game log includes:
+    - `[DSL] ... trigger=onSummon status=FIRED ...`
+- Scenario B (`cd001-001` on leave):
+  - `resolveCardOnLeave(...didDirectAttack=false)`
+  - Confirmed game log includes:
+    - `[DSL] ... trigger=onLeave status=FIRED ...`
+- Scenario C (`cd001-002` skill play):
+  - Confirmed summon-time trigger path emits DSL trace for the skill card as well.
+- Note:
+  - In this environment, direct GUI browser automation tool was unavailable; validation done by executing the same runtime modules used by game screen.

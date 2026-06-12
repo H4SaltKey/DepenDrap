@@ -6451,3 +6451,17 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `data/cards.json` parse OK
   - `js/dev/cardEditorIDE.js` syntax OK
   - No rebuild pipeline found (`package.json` absent)
+
+## 2026-06-12 UI/condition follow-up
+- Card Preview menu overlay fix:
+  - Updated `dev.html` styles so Card Preview header area no longer clips popup.
+  - `.cardVisualPanel .idePanelHeader` and child action row now `overflow: visible`.
+  - Raised stacking order (`z-index`) for Card Preview header/menu wrapper/popup to ensure frontmost display when expanded.
+- Direct-attack condition visibility/semantics (`cd001-001` question):
+  - Updated `js/game/effects/effectRuntimeV2.js` condition parser.
+  - `parseConditionText()` now maps Japanese condition text containing `直接攻撃` to runtime condition object:
+    - `{ directAttackEnabled: true, directAttackValue: false }` for phrases like `直接攻撃していない`.
+  - `stringifyCondition()` now emits human-readable `if 直接攻撃していない` / `if 直接攻撃した`.
+  - Verified compile result for `cd001-001` leave trigger now uses direct-attack boolean condition object (instead of fallback ref comparison).
+- Validation:
+  - `effectRuntimeV2.js` / `cardEditorIDE.js` syntax OK

@@ -167,15 +167,23 @@ body {
 .cardVisualPanel {
   overflow: visible;
 }
+.cardVisualPanel .idePanelHeader {
+  overflow: visible;
+  position: relative;
+  z-index: 20000;
+}
+.cardVisualPanel .idePanelHeader > div {
+  overflow: visible;
+}
 .cardMenuWrap {
   position: relative;
-  z-index: 120;
+  z-index: 21000;
 }
 .cardMenuPopup {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 130;
+  z-index: 22000;
   width: 160px;
   display: grid;
   gap: 6px;

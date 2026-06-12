@@ -598,6 +598,13 @@
   function parseConditionText(text) {
     const raw = String(text || "").trim();
     if (!raw) return null;
+    if (raw.includes("直接攻撃")) {
+      const negative = /(していない|してない|しない|未|not)/i.test(raw);
+      return {
+        directAttackEnabled: true,
+        directAttackValue: !negative
+      };
+    }
     const opMap = [
       [">=", "gte"],
       ["<=", "lte"],
@@ -768,6 +775,9 @@
 
   function stringifyCondition(cond) {
     if (!cond || typeof cond !== "object") return "";
+    if (cond.directAttackEnabled === true) {
+      return cond.directAttackValue === false ? "直接攻撃していない" : "直接攻撃した";
+    }
     if (cond.left && Object.prototype.hasOwnProperty.call(cond, "gt")) return `${cond.left.ref || "value"} > ${cond.gt}`;
     if (cond.left && Object.prototype.hasOwnProperty.call(cond, "gte")) return `${cond.left.ref || "value"} >= ${cond.gte}`;
     if (cond.left && Object.prototype.hasOwnProperty.call(cond, "lt")) return `${cond.left.ref || "value"} < ${cond.lt}`;

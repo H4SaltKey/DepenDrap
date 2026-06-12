@@ -6394,3 +6394,60 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `data/cards.json` の JSON パース成功。
 - 代表カード（`cd002-001`, `cd002-003`, `cd002-006`, `cd002-012`, `cd002-017`）で反映確認。
 
+
+## 2026-06-12 card import continuation (block004)
+- Source: `assets/cards/block004/スライド1..26.png`
+- Reflected: `data/cards.json` `cd004-001` 〜 `cd004-026`
+- Updated fields per card:
+  - `name`
+  - `attack`
+  - `effectText`
+  - `effectDslText` (mirrored from `effectText`)
+  - `effectGraph = null`
+  - `effectDsl = { format: "dependrap.dsl.v1", triggers: [] }`
+- Validation:
+  - `cards.json` parse OK
+  - Remaining unnamed cards: `cd005` (22), `cd006` (12)
+- Note:
+  - `cd004-019` bottom sentence in source image is visually clipped; stored with best-effort reconstruction, user confirmation requested for exact wording.
+
+## 2026-06-12 card import continuation (block005/block006)
+- Source:
+  - `assets/cards/block005/スライド1..22.png`
+  - `assets/cards/block006/スライド1..12.png`
+- Reflected ranges:
+  - `cd005-001` 〜 `cd005-022`
+  - `cd006-001` 〜 `cd006-012`
+- Normalized fields per card:
+  - `name`
+  - `attack`
+  - `effectText`
+  - `effectDslText` (same content)
+  - `effectGraph = null`
+  - `effectDsl = { format: "dependrap.dsl.v1", triggers: [] }`
+- Validation:
+  - `data/cards.json` parse OK
+  - unnamed cards: 0
+- Pending wording confirmations requested from user:
+  - `cd004-019`: source image lower lines are clipped; chain-lock sentence post-"99の貫通ダメージ" is best-effort reconstruction.
+  - `cd005-010`: attack value rendering appears as "一/ー" in image; stored as attack=1 (needs confirmation).
+
+## 2026-06-12 follow-up fixes (support attack semantics + wording)
+- User-provided correction reflected:
+  - `cd004-019` (`ドレッドノート ウルニガトロア`) chain-lock sentence fixed to:
+    - `...99の貫通ダメージを受ける(1回)』と言う効果を持つ。`
+- Support-card attack semantics unified:
+  - Rule: support cards are non-attacker and displayed as `ー` in editor UI.
+  - Data safety: internal `attack` remains numeric (`0`) for engine compatibility.
+  - `cd005-010` corrected from `attack=1` to `attack=0`.
+  - Enforced all support cards to `attack=0` in `data/cards.json`.
+- UI update in `js/dev/cardEditorIDE.js`:
+  - Added support-aware attack formatting helper (`attackDisplay` => `ー` for support).
+  - Card selection/picker/info lines now show `ATK:ー` for support.
+  - Card visual preview attack label now shows `ー` for support.
+  - Attack edit modal for support shows fixed-message instead of numeric input.
+  - `patchCardValues` now forces `attack=0` when `type=サポート`.
+- Validation:
+  - `data/cards.json` parse OK
+  - `js/dev/cardEditorIDE.js` syntax OK
+  - No rebuild pipeline found (`package.json` absent)

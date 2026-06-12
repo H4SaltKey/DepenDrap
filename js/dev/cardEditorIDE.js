@@ -86,6 +86,21 @@
       .replaceAll(">", "&gt;");
   }
 
+  function isSupportCard(card) {
+    return String(card?.type || "").trim() === "サポート";
+  }
+
+  function attackDisplay(card) {
+    if (isSupportCard(card)) return "ー";
+    const n = Math.max(0, Math.floor(Number(card?.attack || 0)));
+    return String(Number.isFinite(n) ? n : 0);
+  }
+
+  function attackInputValue(card) {
+    const n = Math.max(0, Math.floor(Number(card?.attack || 0)));
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function clone(v) {
     return JSON.parse(JSON.stringify(v));
   }
@@ -325,7 +340,7 @@
       rows.forEach((card) => {
         const btn = document.createElement("button");
         btn.className = "cardRowBtn";
-        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${Number(card.attack || 0)}</div>`;
+        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${attackDisplay(card)}</div>`;
         btn.addEventListener("click", () => {
           state.selectedId = card.id;
           const modal = root.querySelector("#cardEditorEntryModal");
@@ -927,6 +942,7 @@
       if (has("type")) card.type = String(map.type || "アタッカー");
       if (has("attribute")) card.attribute = String(map.attribute || "近接");
       if (has("attack")) card.attack = Math.max(0, Math.floor(Number(map.attack || 0)));
+      if (String(card.type || "") === "サポート") card.attack = 0;
       if (has("cost")) card.cost = Math.max(0, Number(map.cost || 0));
       if (has("causalRate")) card.causalRate = Number(map.causalRate || 0);
       if (has("tags")) {
@@ -953,7 +969,7 @@
       const scale = Math.max(0.78, Math.min(1.35, sizeBase / 300));
       frame.style.setProperty("--card-scale", String(scale));
       if (type) type.textContent = String(card.type || "アタッカー");
-      if (atk) atk.textContent = `${Number(card.attack || 0)}`;
+      if (atk) atk.textContent = attackDisplay(card);
       if (attr) attr.title = String(card.attribute || "-");
       if (attrIcon) {
         const iconMap = {
@@ -1006,7 +1022,11 @@
           </select>
         `;
       } else if (field === "attack") {
-        form.innerHTML = `<input data-k="attack" type="number" value="${Number(card.attack || 0)}" placeholder="攻撃力">`;
+        if (isSupportCard(card)) {
+          form.innerHTML = `<div style="font-size:12px;color:#9db7dc;">サポートカードの攻撃力表示は「ー」です。内部値は0固定で扱います。</div>`;
+        } else {
+          form.innerHTML = `<input data-k="attack" type="number" value="${attackInputValue(card)}" placeholder="攻撃力">`;
+        }
       } else if (field === "name") {
         form.innerHTML = `<input data-k="name" value="${htmlEscape(card.name || "")}" placeholder="カード名">`;
       } else if (field === "image") {
@@ -1215,7 +1235,7 @@
       rows.forEach((card) => {
         const btn = document.createElement("button");
         btn.className = `cardRowBtn ${card.id === state.selectedId ? "active" : ""}`;
-        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${Number(card.attack || 0)}</div>`;
+        btn.innerHTML = `<div style="font-weight:700;">${htmlEscape(card.id)} - ${htmlEscape(card.name || "(no name)")}</div><div style="font-size:11px;color:#96b3dd;">${htmlEscape(card.type || "-")} / ${htmlEscape(card.attribute || "-")} / ATK:${attackDisplay(card)}</div>`;
         btn.addEventListener("click", () => {
           selectCardById(card.id);
           const modal = root.querySelector("#cardPickerModal");
@@ -1269,7 +1289,7 @@
           </select>
         </div>
         <div class="formRow2">
-          <input data-k="attack" type="number" value="${Number(card.attack || 0)}" placeholder="攻撃力">
+          <input data-k="attack" type="number" value="${attackInputValue(card)}" placeholder="攻撃力（サポートは内部0）">
           <input data-k="cost" type="number" value="${Number(card.cost || 0)}" placeholder="コスト">
         </div>
         <div class="formRow2">
@@ -1490,7 +1510,7 @@
       out.textContent = [
         `表示名: ${card.name || card.id}`,
         `タイプ: ${card.type || "-"} / 属性: ${card.attribute || "-"}`,
-        `ATK:${Number(card.attack || 0)} COST:${Number(card.cost || 0)} 因果率:${Number(card.causalRate || 0)}`,
+        `ATK:${attackDisplay(card)} COST:${Number(card.cost || 0)} 因果率:${Number(card.causalRate || 0)}`,
         `タグ: ${Array.isArray(card.tags) ? card.tags.join(", ") : String(card.tags || "-")}`,
         "---",
         "生成テキスト:",

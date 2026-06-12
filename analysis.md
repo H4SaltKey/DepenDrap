@@ -6204,3 +6204,65 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 - 静的構成のため、リビルド相当としてJS構文検証を実施。
 
+
+---
+
+## Round 2026-06-12 — 接続線選択対応 + 効果作成環境の拡張
+
+### 1) ノード接続線を選択可能に変更
+
+- 接続線に `edgeId` を付与し、可視線とは別にヒット判定用パス（太い透明ストローク）を追加。
+- クリックで接続線を選択、`Ctrl/Cmd+クリック` で複数選択。
+- 右クリックで接続線コンテキストメニューを表示。
+- Inspector で接続線情報（接続元/接続先/種別）を表示。
+- 接続線の削除（単体/複数）に対応。
+- `Delete/Backspace` で選択中のノード/接続線を削除可能に。
+
+### 2) 効果作成環境の機能拡張（送付カード群を作りやすくするための基盤）
+
+- トリガー拡張
+  - `OnBeforeAttackEffect` / `OnAfterAttackEffect` / `OnPenetrateDamage` / `OnHeal` / `OnSkillUsed` / `OnBeforeLeaveField` / `OnReturnHand` などを追加。
+  - `カスタムイベント` を追加し、自由入力イベント名を指定可能。
+
+- ターゲット拡張
+  - `field_card` / `hand_random` / `deck_top` を追加。
+  - `自由指定` で custom target 指定可能。
+
+- 効果アクション拡張
+  - ダメージ系: `penetrate_damage`, `extra_damage`, `extra_penetrate_damage`
+  - リソース/状態: `set_pp`, `remove_status`
+  - 移動: `move_to_grave`, `return_to_hand`, `return_to_deck`
+  - 効果操作: `add_effect`, `remove_effect`, `append_effect`, `override_effect`, `invoke_effect`, `invoke_trigger`
+  - 変数/制御: `set_var`, `add_var`, `copy_last_value`, `choose_one`, `repeat`
+  - 修飾: `once_while_on_field`, `non_stackable`
+
+- 条件ノードの実用化
+  - 左辺（履歴/イベント値プリセット+自由入力）
+  - 比較演算子
+  - 右辺
+  をフォームで構築し `expression` へ自動反映。
+
+- ノードライブラリを拡張
+  - 条件（回数/フラグ）テンプレ
+  - 効果（トリガー再発動/効果付与/追記/選択式）テンプレ
+  - 修飾（場にいる間1回/重複不可）テンプレ
+  - 変数加算テンプレ
+
+- 用語の日本語化
+  - ノードカテゴリ・表示ラベル・要約表示を日本語中心に統一（例: `トリガー：登場時`）。
+
+### 追加仕様（今回増やした部分）
+
+- 接続線選択状態は `selectedEdgeIds` で管理。
+- Inspector はノード優先、ノード未選択時に接続線詳細を表示。
+- 右クリックメニュー:
+  - ノード: 既存操作 + ノードライブラリ追加
+  - 接続線: 削除 / 反転
+- トリガー/ターゲットは `preset + custom` の2段入力。
+- `effect/modifier` はアクションごとに引数プレースホルダを変更。
+
+### 検証
+
+- `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
+- 静的構成のため、リビルド相当としてJS構文検証を実施。
+

@@ -15,6 +15,7 @@
     dslText: "",
     dslError: "",
     selectedNodeIds: new Set(),
+    selectedEdgeIds: new Set(),
     undoStack: [],
     redoStack: [],
     viewport: { x: 0, y: 0, scale: 1 },
@@ -38,11 +39,20 @@
     { type: "trigger", category: "トリガー", label: "トリガー：ターン開始時", data: { event: "OnTurnStart" } },
     { type: "trigger", category: "トリガー", label: "トリガー：ターン終了時", data: { event: "OnTurnEnd" } },
     { type: "condition", category: "条件", label: "条件分岐", data: { left: "event.damage", op: ">", right: "0", expression: "event.damage > 0" } },
+    { type: "condition", category: "条件", label: "条件分岐：このターン中の回数", data: { left: "history.event.OnAttack.count", op: ">=", right: "1", expression: "history.event.OnAttack.count >= 1" } },
+    { type: "condition", category: "条件", label: "条件分岐：発動済みフラグ", data: { left: "flag.used_on_attack", op: "==", right: "1", expression: "flag.used_on_attack == 1" } },
     { type: "target", category: "対象", label: "対象指定", data: { target: "current_target" } },
     { type: "effect", category: "効果", label: "効果実行", data: { action: "draw", args: ["1"] } },
+    { type: "effect", category: "効果", label: "効果実行：トリガー再発動", data: { action: "invoke_trigger", args: ["OnAttack", "1"] } },
+    { type: "effect", category: "効果", label: "効果実行：効果を付与", data: { action: "add_effect", args: ["trigger=OnTurnStart;effect=draw", "1"] } },
+    { type: "effect", category: "効果", label: "効果実行：効果を追記", data: { action: "append_effect", args: ["trigger=OnAttack;effect=damage", "1"] } },
+    { type: "effect", category: "効果", label: "効果実行：選択式", data: { action: "choose_one", args: ["effect=heal", "1|effect=damage", "1"] } },
     { type: "modifier", category: "修飾", label: "効果修飾", data: { action: "once_per_turn", args: [] } },
+    { type: "modifier", category: "修飾", label: "効果修飾：場にいる間1回", data: { action: "once_while_on_field", args: [] } },
+    { type: "modifier", category: "修飾", label: "効果修飾：重複不可", data: { action: "non_stackable", args: [] } },
     { type: "end", category: "フロー", label: "終了", data: {} },
     { type: "variable", category: "変数", label: "変数", data: { name: "x", value: "0" } },
+    { type: "variable", category: "変数", label: "変数：加算", data: { name: "x", value: "x+1" } },
     { type: "history", category: "履歴", label: "履歴参照", data: { expression: "history.event.OnDraw.count >= 1" } },
     { type: "math", category: "計算", label: "数式", data: { expression: "add 1 2" } },
     { type: "custom", category: "カスタム", label: "カスタム", data: { note: "" } }
@@ -50,8 +60,12 @@
 
   const DSL_KEYWORDS = [
     "trigger", "if", "target", "effect", "modifier", "end",
-    "OnPlay", "OnAttack", "OnDirectAttack", "OnTurnStart", "OnTurnEnd", "OnLeaveField",
-    "draw", "damage", "heal", "add_pp", "add_status", "current_target", "self", "self_and_current_target"
+    "OnPlay", "OnAttack", "OnDirectAttack", "OnBeforeAttackEffect", "OnAfterAttackEffect",
+    "OnTurnStart", "OnTurnEnd", "OnLeaveField", "OnReturnHand", "OnPenetrateDamage", "OnSkillUsed",
+    "draw", "damage", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "add_pp", "set_pp",
+    "add_status", "remove_status", "add_effect", "append_effect", "invoke_effect", "invoke_trigger", "choose_one",
+    "repeat", "once_per_turn", "once_while_on_field", "non_stackable",
+    "current_target", "self", "opponent", "field_card", "self_and_current_target"
   ];
 
   function log(msg) {
@@ -122,6 +136,7 @@
       graph: clone(state.graph),
       dslText: state.dslText,
       selectedNodeIds: Array.from(state.selectedNodeIds),
+      selectedEdgeIds: Array.from(state.selectedEdgeIds),
       viewport: clone(state.viewport)
     });
     if (state.undoStack.length > 200) state.undoStack.splice(0, state.undoStack.length - 200);
@@ -132,6 +147,7 @@
     state.graph = clone(snapshot.graph);
     state.dslText = snapshot.dslText;
     state.selectedNodeIds = new Set(snapshot.selectedNodeIds || []);
+    state.selectedEdgeIds = new Set(snapshot.selectedEdgeIds || []);
     state.viewport = clone(snapshot.viewport || { x: 0, y: 0, scale: 1 });
     renderAll();
   }
@@ -142,6 +158,7 @@
       graph: clone(state.graph),
       dslText: state.dslText,
       selectedNodeIds: Array.from(state.selectedNodeIds),
+      selectedEdgeIds: Array.from(state.selectedEdgeIds),
       viewport: clone(state.viewport)
     };
     const snap = state.undoStack.pop();
@@ -156,6 +173,7 @@
       graph: clone(state.graph),
       dslText: state.dslText,
       selectedNodeIds: Array.from(state.selectedNodeIds),
+      selectedEdgeIds: Array.from(state.selectedEdgeIds),
       viewport: clone(state.viewport)
     };
     const snap = state.redoStack.pop();
@@ -185,6 +203,7 @@
       state.graph = next;
       state.dslError = "";
       state.selectedNodeIds = new Set();
+      state.selectedEdgeIds = new Set();
       const c = selectedCard();
       if (c) c.effectGraph = clone(next);
     } catch (e) {
@@ -198,6 +217,7 @@
     state.graph = clone(card.effectGraph);
     state.dslText = String(card.effectDslText || "");
     state.selectedNodeIds = new Set();
+    state.selectedEdgeIds = new Set();
     state.undoStack = [];
     state.redoStack = [];
     state.viewport = { x: 0, y: 0, scale: 1 };
@@ -571,43 +591,97 @@
       { value: "OnPlay", label: "登場時" },
       { value: "OnAttack", label: "攻撃時" },
       { value: "OnDirectAttack", label: "直接攻撃時" },
+      { value: "OnBeforeAttackEffect", label: "攻撃時効果の発動前" },
+      { value: "OnAfterAttackEffect", label: "攻撃時効果の発動後" },
       { value: "OnDamage", label: "ダメージ時" },
+      { value: "OnPenetrateDamage", label: "貫通ダメージ時" },
+      { value: "OnHeal", label: "回復時" },
       { value: "OnDraw", label: "ドロー時" },
       { value: "OnDiscard", label: "手札破棄時" },
+      { value: "OnSkillUsed", label: "スキル使用時" },
+      { value: "OnBeforeLeaveField", label: "退場直前" },
       { value: "OnLeaveField", label: "退場時" },
+      { value: "OnReturnHand", label: "手札へ戻る時" },
       { value: "OnTurnStart", label: "ターン開始時" },
       { value: "OnTurnEnd", label: "ターン終了時" },
       { value: "OnEffectAdded", label: "効果付与時" },
-      { value: "OnEffectRemoved", label: "効果除去時" }
+      { value: "OnEffectRemoved", label: "効果除去時" },
+      { value: "custom", label: "カスタムイベント" }
     ];
 
     const TARGET_OPTIONS = [
       { value: "self", label: "自分" },
       { value: "current_target", label: "現在のターゲット" },
       { value: "opponent", label: "相手プレイヤー" },
-      { value: "self_and_current_target", label: "自分と現在ターゲット" }
+      { value: "field_card", label: "場のカード" },
+      { value: "hand_random", label: "手札ランダム1枚" },
+      { value: "deck_top", label: "山札の上" },
+      { value: "self_and_current_target", label: "自分と現在ターゲット" },
+      { value: "custom", label: "自由指定" }
     ];
 
     const EFFECT_ACTION_OPTIONS = [
       { value: "draw", label: "draw" },
       { value: "damage", label: "damage" },
+      { value: "penetrate_damage", label: "penetrate_damage" },
+      { value: "extra_damage", label: "extra_damage" },
+      { value: "extra_penetrate_damage", label: "extra_penetrate_damage" },
       { value: "heal", label: "heal" },
       { value: "add_pp", label: "add_pp" },
+      { value: "set_pp", label: "set_pp" },
       { value: "add_status", label: "add_status" },
+      { value: "remove_status", label: "remove_status" },
       { value: "set_flag", label: "set_flag" },
       { value: "clear_flag", label: "clear_flag" },
+      { value: "move_to_grave", label: "move_to_grave" },
+      { value: "return_to_hand", label: "return_to_hand" },
+      { value: "return_to_deck", label: "return_to_deck" },
+      { value: "add_effect", label: "add_effect" },
+      { value: "remove_effect", label: "remove_effect" },
+      { value: "append_effect", label: "append_effect" },
+      { value: "override_effect", label: "override_effect" },
+      { value: "invoke_effect", label: "invoke_effect" },
+      { value: "invoke_trigger", label: "invoke_trigger" },
+      { value: "set_var", label: "set_var" },
+      { value: "add_var", label: "add_var" },
+      { value: "copy_last_value", label: "copy_last_value" },
+      { value: "choose_one", label: "choose_one" },
+      { value: "repeat", label: "repeat" },
+      { value: "once_while_on_field", label: "once_while_on_field" },
+      { value: "non_stackable", label: "non_stackable" },
       { value: "custom", label: "custom" }
     ];
 
     const ACTION_LABEL_MAP = {
       draw: "ドロー",
       damage: "ダメージ",
+      penetrate_damage: "貫通ダメージ",
+      extra_damage: "追加ダメージ",
+      extra_penetrate_damage: "追加貫通ダメージ",
       heal: "回復",
       add_pp: "PP回復",
+      set_pp: "PPを指定値にする",
       add_status: "状態付与",
+      remove_status: "状態削除",
       set_flag: "フラグON",
       clear_flag: "フラグOFF",
+      move_to_grave: "墓地へ送る",
+      return_to_hand: "手札へ戻す",
+      return_to_deck: "山札へ戻す",
+      add_effect: "効果を付与",
+      remove_effect: "効果を削除",
+      append_effect: "効果を追記",
+      override_effect: "効果を上書き",
+      invoke_effect: "効果を再発動",
+      invoke_trigger: "トリガー再発動",
+      set_var: "変数代入",
+      add_var: "変数加算",
+      copy_last_value: "直前値をコピー",
+      choose_one: "効果を選択",
+      repeat: "繰り返し",
       once_per_turn: "1ターン1回",
+      once_while_on_field: "場にいる間1回",
+      non_stackable: "重複不可",
       custom: "カスタム"
     };
 
@@ -686,11 +760,15 @@
       if (!form || !nodeConfigCtx?.draft) return;
       const d = nodeConfigCtx.draft;
 
+      const eventValue = String(d.data?.event || "OnPlay");
+      const eventPreset = TRIGGER_EVENT_OPTIONS.some((x) => x.value === eventValue) ? eventValue : "custom";
       const triggerOptionsHtml = TRIGGER_EVENT_OPTIONS.map((opt) => (
-        `<option value="${opt.value}" ${String(d.data?.event || "OnPlay") === opt.value ? "selected" : ""}>${opt.label}</option>`
+        `<option value="${opt.value}" ${eventPreset === opt.value ? "selected" : ""}>${opt.label}</option>`
       )).join("");
+      const targetValue = String(d.data?.target || "current_target");
+      const targetPreset = TARGET_OPTIONS.some((x) => x.value === targetValue) ? targetValue : "custom";
       const targetOptionsHtml = TARGET_OPTIONS.map((opt) => (
-        `<option value="${opt.value}" ${String(d.data?.target || "current_target") === opt.value ? "selected" : ""}>${opt.label}</option>`
+        `<option value="${opt.value}" ${targetPreset === opt.value ? "selected" : ""}>${opt.label}</option>`
       )).join("");
       const effectOptionsHtml = EFFECT_ACTION_OPTIONS.map((opt) => (
         `<option value="${opt.value}" ${String(d.data?.action || "draw") === opt.value ? "selected" : ""}>${ACTION_LABEL_MAP[opt.value] || opt.label}</option>`
@@ -698,14 +776,29 @@
 
       let typeSpecific = `<div style="font-size:12px;color:#9db7dc;">このノードタイプは追加設定がありません</div>`;
       if (d.type === "trigger") {
-        typeSpecific = `<select data-k="event">${triggerOptionsHtml}</select>`;
+        const useCustom = eventPreset === "custom";
+        typeSpecific = `
+          <select data-k="eventPreset">${triggerOptionsHtml}</select>
+          <input data-k="eventCustom" value="${htmlEscape(useCustom ? eventValue : "")}" placeholder="カスタムイベント名" ${useCustom ? "" : "disabled"}>
+        `;
       } else if (d.type === "target") {
-        typeSpecific = `<select data-k="target">${targetOptionsHtml}</select>`;
+        const useCustom = targetPreset === "custom";
+        typeSpecific = `
+          <select data-k="targetPreset">${targetOptionsHtml}</select>
+          <input data-k="targetCustom" value="${htmlEscape(useCustom ? targetValue : "")}" placeholder="自由指定ターゲット" ${useCustom ? "" : "disabled"}>
+        `;
       } else if (d.type === "effect" || d.type === "modifier") {
         const argsText = Array.isArray(d.data?.args) ? d.data.args.join(" ") : "";
+        const help = {
+          add_effect: "例: trigger=OnTurnStart;effect=draw 1",
+          append_effect: "例: trigger=OnAttack;effect=damage 1;stackable=true",
+          invoke_trigger: "例: OnAttack 1",
+          choose_one: "例: effect=heal 1|effect=damage 1",
+          repeat: "例: count=2;effect=damage 1"
+        };
         typeSpecific = `
           <select data-k="action">${effectOptionsHtml}</select>
-          <input data-k="args" value="${htmlEscape(argsText)}" placeholder="${d.data?.action === "damage" ? "damage量などを自由入力 (例: 3 or x*2)" : "引数を自由入力（スペース区切り）"}">
+          <input data-k="args" value="${htmlEscape(argsText)}" placeholder="${help[d.data?.action] || (d.data?.action === "damage" ? "damage量などを自由入力 (例: 3 or x*2)" : "引数を自由入力（スペース区切り）")}">
         `;
       } else if (d.type === "condition") {
         const leftVal = String(d.data?.left || "event.damage");
@@ -764,9 +857,17 @@
       d.y = Number(val("y") || d.y || 0);
 
       if (d.type === "trigger") {
-        d.data.event = String(val("event") || "OnPlay");
+        const preset = String(val("eventPreset") || "OnPlay");
+        const custom = String(val("eventCustom") || "").trim();
+        const customInput = form.querySelector('[data-k="eventCustom"]');
+        if (customInput) customInput.disabled = preset !== "custom";
+        d.data.event = preset === "custom" ? (custom || "CustomEvent") : preset;
       } else if (d.type === "target") {
-        d.data.target = String(val("target") || "current_target");
+        const preset = String(val("targetPreset") || "current_target");
+        const custom = String(val("targetCustom") || "").trim();
+        const customInput = form.querySelector('[data-k="targetCustom"]');
+        if (customInput) customInput.disabled = preset !== "custom";
+        d.data.target = preset === "custom" ? (custom || "custom_target") : preset;
       } else if (d.type === "effect" || d.type === "modifier") {
         d.data.action = String(val("action") || "draw");
         d.data.args = String(val("args") || "").split(/\s+/).filter(Boolean);
@@ -801,6 +902,7 @@
         pushUndo("add-node-config");
         state.graph.nodes.push(clone(nodeConfigCtx.draft));
         state.selectedNodeIds = new Set([nodeConfigCtx.draft.id]);
+        state.selectedEdgeIds = new Set();
       } else {
         const target = nodeById(nodeConfigCtx.nodeId);
         if (!target) return;
@@ -810,6 +912,7 @@
         target.y = nodeConfigCtx.draft.y;
         target.data = clone(nodeConfigCtx.draft.data || {});
         state.selectedNodeIds = new Set([target.id]);
+        state.selectedEdgeIds = new Set();
       }
       syncDslFromGraph();
       renderDsl();
@@ -1021,13 +1124,27 @@
         const a = nodeCenter(from);
         const b = nodeCenter(to);
         const dx = Math.max(60, Math.abs(b.x - a.x) * 0.4);
+        const d = `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+        const isSelected = state.selectedEdgeIds.has(edge.id);
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`);
+        path.setAttribute("d", d);
         path.setAttribute("fill", "none");
-        path.setAttribute("stroke", "#67c7ff");
-        path.setAttribute("stroke-width", "2");
-        path.setAttribute("opacity", "0.88");
+        path.setAttribute("stroke", isSelected ? "#ffd56a" : "#67c7ff");
+        path.setAttribute("stroke-width", isSelected ? "3.4" : "2");
+        path.setAttribute("opacity", isSelected ? "1" : "0.88");
+        path.setAttribute("class", "edgePath");
+        path.dataset.edgeId = edge.id;
         edgeLayer.appendChild(path);
+
+        const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hit.setAttribute("d", d);
+        hit.setAttribute("fill", "none");
+        hit.setAttribute("stroke", "rgba(0,0,0,0)");
+        hit.setAttribute("stroke-width", "14");
+        hit.setAttribute("class", "edgeHitTarget");
+        hit.dataset.edgeId = edge.id;
+        hit.style.pointerEvents = "stroke";
+        edgeLayer.appendChild(hit);
       });
 
       (state.graph.nodes || []).forEach((node) => {
@@ -1185,9 +1302,45 @@
     function renderInspector() {
       const wrap = root.querySelector("#nodeInspector");
       const ids = Array.from(state.selectedNodeIds);
+      const edgeIds = Array.from(state.selectedEdgeIds);
       if (!wrap) return;
-      if (!ids.length) {
+      if (!ids.length && !edgeIds.length) {
         wrap.innerHTML = `<div style="color:#89a4cc;font-size:12px;">ノード未選択</div>`;
+        return;
+      }
+      if (!ids.length && edgeIds.length > 1) {
+        wrap.innerHTML = `<div style="font-size:12px;color:#b2caec;">${edgeIds.length} 接続線選択中</div><button class="ideSmallBtn danger" id="deleteSelectedEdgesBtn">選択接続線削除</button>`;
+        wrap.querySelector("#deleteSelectedEdgesBtn")?.addEventListener("click", () => {
+          pushUndo("delete-selected-edges");
+          const del = new Set(edgeIds);
+          state.graph.edges = state.graph.edges.filter((e) => !del.has(e.id));
+          state.selectedEdgeIds = new Set();
+          syncDslFromGraph();
+          renderDsl();
+          requestRenderGraph();
+        });
+        return;
+      }
+      if (!ids.length && edgeIds.length === 1) {
+        const edge = edgeById(edgeIds[0]);
+        if (!edge) return;
+        wrap.innerHTML = `
+          <div style="font-size:12px;color:#d7e6ff;">接続線: ${htmlEscape(edge.id || "-")}</div>
+          <div style="font-size:12px;color:#9ec0ec;">接続元: ${htmlEscape(edge.from || "-")}</div>
+          <div style="font-size:12px;color:#9ec0ec;">接続先: ${htmlEscape(edge.to || "-")}</div>
+          <div style="font-size:12px;color:#89a8d3;">種別: ${htmlEscape(edge.kind || "flow")}</div>
+          <div class="simActionRow">
+            <button class="ideSmallBtn danger" id="delEdgeBtn">接続線を削除</button>
+          </div>
+        `;
+        wrap.querySelector("#delEdgeBtn")?.addEventListener("click", () => {
+          pushUndo("delete-edge");
+          state.graph.edges = state.graph.edges.filter((e) => e.id !== edge.id);
+          state.selectedEdgeIds = new Set();
+          syncDslFromGraph();
+          renderDsl();
+          requestRenderGraph();
+        });
         return;
       }
       if (ids.length > 1) {
@@ -1198,6 +1351,7 @@
           state.graph.nodes = state.graph.nodes.filter((n) => !del.has(n.id));
           state.graph.edges = state.graph.edges.filter((e) => !del.has(e.from) && !del.has(e.to));
           state.selectedNodeIds = new Set();
+          state.selectedEdgeIds = new Set();
           syncDslFromGraph();
           renderDsl();
           requestRenderGraph();
@@ -1242,6 +1396,7 @@
         state.graph.nodes = state.graph.nodes.filter((n) => n.id !== node.id);
         state.graph.edges = state.graph.edges.filter((e) => e.from !== node.id && e.to !== node.id);
         state.selectedNodeIds = new Set();
+        state.selectedEdgeIds = new Set();
         syncDslFromGraph();
         renderDsl();
         requestRenderGraph();
@@ -1370,6 +1525,28 @@
       state.graph.edges.push({ id: `edge-${Date.now()}-${Math.floor(Math.random() * 1e5)}`, from: fromId, to: toId, kind: "flow" });
     }
 
+    function deleteSelectedGraphElements() {
+      const nodeIds = Array.from(state.selectedNodeIds || []);
+      const edgeIds = Array.from(state.selectedEdgeIds || []);
+      if (!nodeIds.length && !edgeIds.length) return false;
+      pushUndo("delete-selection-shortcut");
+      if (nodeIds.length) {
+        const delNodes = new Set(nodeIds);
+        state.graph.nodes = state.graph.nodes.filter((n) => !delNodes.has(n.id));
+        state.graph.edges = state.graph.edges.filter((e) => !delNodes.has(e.from) && !delNodes.has(e.to));
+      }
+      if (edgeIds.length) {
+        const delEdges = new Set(edgeIds);
+        state.graph.edges = state.graph.edges.filter((e) => !delEdges.has(e.id));
+      }
+      state.selectedNodeIds = new Set();
+      state.selectedEdgeIds = new Set();
+      syncDslFromGraph();
+      renderDsl();
+      requestRenderGraph();
+      return true;
+    }
+
     function bindGraphInteractions() {
       const wrap = root.querySelector("#nodeCanvasWrap");
       const nodeLayer = root.querySelector("#nodeLayer");
@@ -1389,9 +1566,32 @@
       wrap.addEventListener("mousedown", (e) => {
         hideContextMenu();
         const nodeEl = e.target.closest(".graphNode");
+        const edgeEl = e.target.closest(".edgeHitTarget, .edgePath");
 
         if (e.button === 1) {
           state.drag = { type: "pan", startX: e.clientX, startY: e.clientY, baseX: state.viewport.x, baseY: state.viewport.y };
+          return;
+        }
+
+        if (edgeEl) {
+          const edgeId = edgeEl.dataset.edgeId;
+          if (!edgeId) return;
+          if (e.button === 2) {
+            if (!state.selectedEdgeIds.has(edgeId)) state.selectedEdgeIds = new Set([edgeId]);
+            if (!e.ctrlKey && !e.metaKey) state.selectedNodeIds = new Set();
+            requestRenderGraph();
+            openContextMenu(e.clientX, e.clientY, "", edgeId);
+            return;
+          }
+          if (e.button !== 0) return;
+          if (e.ctrlKey || e.metaKey) {
+            if (state.selectedEdgeIds.has(edgeId)) state.selectedEdgeIds.delete(edgeId);
+            else state.selectedEdgeIds.add(edgeId);
+          } else {
+            state.selectedEdgeIds = new Set([edgeId]);
+            state.selectedNodeIds = new Set();
+          }
+          requestRenderGraph();
           return;
         }
 
@@ -1400,9 +1600,11 @@
           if (e.shiftKey) {
             const { x, y } = fromScreenToWorld(e.clientX, e.clientY);
             if (!e.ctrlKey && !e.metaKey) state.selectedNodeIds = new Set();
+            if (!e.ctrlKey && !e.metaKey) state.selectedEdgeIds = new Set();
             state.selectionRect = { sx: x, sy: y, ex: x, ey: y };
             requestRenderGraph();
           } else {
+            if (!e.ctrlKey && !e.metaKey) state.selectedEdgeIds = new Set();
             state.drag = { type: "pan", startX: e.clientX, startY: e.clientY, baseX: state.viewport.x, baseY: state.viewport.y };
           }
           return;
@@ -1411,8 +1613,9 @@
         const nodeId = nodeEl.dataset.nodeId;
         if (e.button === 2) {
           if (!state.selectedNodeIds.has(nodeId)) state.selectedNodeIds = new Set([nodeId]);
+          if (!e.ctrlKey && !e.metaKey) state.selectedEdgeIds = new Set();
           requestRenderGraph();
-          openContextMenu(e.clientX, e.clientY, nodeId);
+          openContextMenu(e.clientX, e.clientY, nodeId, "");
           return;
         }
 
@@ -1423,6 +1626,7 @@
         } else if (!state.selectedNodeIds.has(nodeId)) {
           state.selectedNodeIds = new Set([nodeId]);
         }
+        if (!e.ctrlKey && !e.metaKey) state.selectedEdgeIds = new Set();
 
         const world = fromScreenToWorld(e.clientX, e.clientY);
         const targets = Array.from(state.selectedNodeIds)
@@ -1481,10 +1685,13 @@
       wrap.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         const nodeEl = e.target.closest(".graphNode");
+        const edgeEl = e.target.closest(".edgeHitTarget, .edgePath");
         if (nodeEl) {
-          openContextMenu(e.clientX, e.clientY, nodeEl.dataset.nodeId);
+          openContextMenu(e.clientX, e.clientY, nodeEl.dataset.nodeId, "");
+        } else if (edgeEl?.dataset?.edgeId) {
+          openContextMenu(e.clientX, e.clientY, "", edgeEl.dataset.edgeId);
         } else {
-          openContextMenu(e.clientX, e.clientY, "");
+          openContextMenu(e.clientX, e.clientY, "", "");
         }
       });
 
@@ -1551,11 +1758,12 @@
         if (hit) picked.add(n.id);
       });
       state.selectedNodeIds = picked;
+      state.selectedEdgeIds = new Set();
       if (livePreview === true) renderInspector();
       requestRenderGraph();
     }
 
-    function openContextMenu(x, y, nodeId) {
+    function openContextMenu(x, y, nodeId, edgeId) {
       hideContextMenu();
       const menu = document.createElement("div");
       menu.className = "contextMenu";
@@ -1601,14 +1809,37 @@
           renderDsl();
           requestRenderGraph();
         }});
-      }
-      actions.push({ label: "---- ノードライブラリ ----", run: () => {} });
-      NODE_LIBRARY.forEach((item) => {
-        actions.push({ label: `[${item.category}] ${item.label} 追加`, run: () => {
-          const world = fromScreenToWorld(x, y);
-          openNodeConfigModal("create", { item, x: world.x, y: world.y });
+      } else if (edgeId) {
+        actions.push({ label: "接続線を削除", run: () => {
+          pushUndo("delete-edge-context");
+          state.graph.edges = state.graph.edges.filter((e) => e.id !== edgeId);
+          state.selectedEdgeIds = new Set();
+          syncDslFromGraph();
+          renderDsl();
+          requestRenderGraph();
         }});
-      });
+        const edge = edgeById(edgeId);
+        if (edge) {
+          actions.push({ label: "接続線を反転", run: () => {
+            pushUndo("flip-edge-context");
+            const from = edge.from;
+            edge.from = edge.to;
+            edge.to = from;
+            syncDslFromGraph();
+            renderDsl();
+            requestRenderGraph();
+          }});
+        }
+      }
+      if (!edgeId) {
+        actions.push({ label: "---- ノードライブラリ ----", run: () => {} });
+        NODE_LIBRARY.forEach((item) => {
+          actions.push({ label: `[${item.category}] ${item.label} 追加`, run: () => {
+            const world = fromScreenToWorld(x, y);
+            openNodeConfigModal("create", { item, x: world.x, y: world.y });
+          }});
+        });
+      }
 
       actions.forEach((action) => {
         const btn = document.createElement("button");
@@ -1952,7 +2183,7 @@
       const onResize = () => renderCardVisual();
       window.addEventListener("resize", onResize);
       state.cardResizeHandler = onResize;
-      state.editorApi = { undo, redo, hideContextMenu };
+      state.editorApi = { undo, redo, hideContextMenu, deleteSelectedGraphElements };
       renderAll();
       state.runtimeTimer = setInterval(renderEventPanels, 1200);
     }
@@ -2073,6 +2304,12 @@
       }
       if (e.key === "Escape") {
         state.editorApi?.hideContextMenu?.();
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && state.view === "cardEditor") {
+        const hasSelection = (state.selectedNodeIds?.size || 0) + (state.selectedEdgeIds?.size || 0) > 0;
+        if (!hasSelection) return;
+        e.preventDefault();
+        state.editorApi?.deleteSelectedGraphElements?.();
       }
     });
     log("CardEditor IDE initialized");

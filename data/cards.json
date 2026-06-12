@@ -9,66 +9,7 @@
     "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のPPを1まで回復する。\n②：このターン中、自身のHPが1回以上減少していたなら、自身のHPを1減らす。\n直接攻撃時：このターン中、自身のHPが2回以上減少したなら、これの攻撃力を+1する。\n退場時：“直接攻撃”していないなら、後述の効果を上から順に全て発動する。\n①：自身のHPを1減らす。\n②：自身のPPを1まで回復する。\n③：手札へ戻る。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
-      "triggers": [
-        {
-          "on": "onSummon",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "target": "self_player",
-              "raw": "set_pp_min 1"
-            },
-            {
-              "type": "DAMAGE",
-              "target": "self_player",
-              "targetType": "player",
-              "amount": 1,
-              "damageType": "damage",
-              "subType": "none"
-            }
-          ]
-        },
-        {
-          "on": "onDirectAttack",
-          "effects": [
-            {
-              "type": "UNKNOWN",
-              "target": "self_player",
-              "raw": "add_atk 1"
-            }
-          ]
-        },
-        {
-          "on": "onLeave",
-          "effects": [
-            {
-              "type": "DAMAGE",
-              "target": "self_player",
-              "targetType": "player",
-              "amount": 1,
-              "damageType": "damage",
-              "subType": "none"
-            },
-            {
-              "type": "UNKNOWN",
-              "target": "self_player",
-              "raw": "set_pp_min 1"
-            },
-            {
-              "type": "UNKNOWN",
-              "target": "self_player",
-              "raw": "move_source_to_hand"
-            }
-          ],
-          "useCondition": true,
-          "condition": {
-            "left": {
-              "ref": "history.lastEvent"
-            },
-            "neq": "OnDirectAttack"
-          }
-        }
-      ]
+      "triggers": []
     },
     "tags": [
       "neko",
@@ -311,265 +252,8 @@
         }
       ]
     },
-    "effectDslText": "trigger OnPlay\ntarget self_player\neffect set_pp_min 1\neffect damage 1\nend\n\ntrigger OnDirectAttack\ntarget self_player\neffect add_atk 1\nend\n\ntrigger OnLeaveField\nif history.lastEvent != OnDirectAttack\ntarget self_player\neffect damage 1\neffect set_pp_min 1\neffect move_source_to_hand\nend",
-    "effectGraph": {
-      "format": "dependrap.effectgraph.v2",
-      "nodes": [
-        {
-          "id": "node-22",
-          "type": "trigger",
-          "label": "OnPlay",
-          "data": {
-            "event": "OnPlay"
-          },
-          "x": 40,
-          "y": 100
-        },
-        {
-          "id": "node-23",
-          "type": "target",
-          "label": "self_player",
-          "data": {
-            "target": "self_player"
-          },
-          "x": 520,
-          "y": 100
-        },
-        {
-          "id": "node-24",
-          "type": "effect",
-          "label": "set_pp_min 1",
-          "data": {
-            "action": "set_pp_min",
-            "args": [
-              "1"
-            ]
-          },
-          "x": 760,
-          "y": 100
-        },
-        {
-          "id": "node-25",
-          "type": "effect",
-          "label": "damage 1",
-          "data": {
-            "action": "damage",
-            "args": [
-              "1"
-            ]
-          },
-          "x": 940,
-          "y": 100
-        },
-        {
-          "id": "node-26",
-          "type": "end",
-          "label": "end",
-          "data": {},
-          "x": 1320,
-          "y": 100
-        },
-        {
-          "id": "node-27",
-          "type": "trigger",
-          "label": "OnDirectAttack",
-          "data": {
-            "event": "OnDirectAttack"
-          },
-          "x": 40,
-          "y": 340
-        },
-        {
-          "id": "node-28",
-          "type": "target",
-          "label": "self_player",
-          "data": {
-            "target": "self_player"
-          },
-          "x": 520,
-          "y": 340
-        },
-        {
-          "id": "node-29",
-          "type": "effect",
-          "label": "add_atk 1",
-          "data": {
-            "action": "add_atk",
-            "args": [
-              "1"
-            ]
-          },
-          "x": 760,
-          "y": 340
-        },
-        {
-          "id": "node-30",
-          "type": "end",
-          "label": "end",
-          "data": {},
-          "x": 1320,
-          "y": 340
-        },
-        {
-          "id": "node-31",
-          "type": "trigger",
-          "label": "OnLeaveField",
-          "data": {
-            "event": "OnLeaveField"
-          },
-          "x": 40,
-          "y": 580
-        },
-        {
-          "id": "node-32",
-          "type": "target",
-          "label": "self_player",
-          "data": {
-            "target": "self_player"
-          },
-          "x": 520,
-          "y": 580
-        },
-        {
-          "id": "node-33",
-          "type": "effect",
-          "label": "damage 1",
-          "data": {
-            "action": "damage",
-            "args": [
-              "1"
-            ]
-          },
-          "x": 760,
-          "y": 580
-        },
-        {
-          "id": "node-34",
-          "type": "effect",
-          "label": "set_pp_min 1",
-          "data": {
-            "action": "set_pp_min",
-            "args": [
-              "1"
-            ]
-          },
-          "x": 940,
-          "y": 580
-        },
-        {
-          "id": "node-35",
-          "type": "effect",
-          "label": "move_source_to_hand",
-          "data": {
-            "action": "move_source_to_hand",
-            "args": []
-          },
-          "x": 1120,
-          "y": 580
-        },
-        {
-          "id": "node-36",
-          "type": "end",
-          "label": "end",
-          "data": {},
-          "x": 1320,
-          "y": 580
-        },
-        {
-          "id": "node-1781236488695-6369",
-          "type": "condition",
-          "label": "条件分岐",
-          "data": {
-            "left": "history.lastEvent",
-            "op": "!=",
-            "right": "OnDirectAttack",
-            "expression": "history.lastEvent != OnDirectAttack"
-          },
-          "x": 223,
-          "y": 567
-        }
-      ],
-      "edges": [
-        {
-          "id": "edge-18",
-          "from": "node-22",
-          "to": "node-23",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-19",
-          "from": "node-23",
-          "to": "node-24",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-20",
-          "from": "node-24",
-          "to": "node-25",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-21",
-          "from": "node-25",
-          "to": "node-26",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-22",
-          "from": "node-27",
-          "to": "node-28",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-23",
-          "from": "node-28",
-          "to": "node-29",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-24",
-          "from": "node-29",
-          "to": "node-30",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-26",
-          "from": "node-32",
-          "to": "node-33",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-27",
-          "from": "node-33",
-          "to": "node-34",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-28",
-          "from": "node-34",
-          "to": "node-35",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-29",
-          "from": "node-35",
-          "to": "node-36",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-1781236524062-73521",
-          "from": "node-31",
-          "to": "node-1781236488695-6369",
-          "kind": "flow"
-        },
-        {
-          "id": "edge-1781236527410-67688",
-          "from": "node-1781236488695-6369",
-          "to": "node-32",
-          "kind": "flow"
-        }
-      ]
-    },
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect set_pp 1\nif このターン中自身のHPが1回以上減少していた\neffect damage 1\nend\n\ntrigger OnDirectAttack\ntarget self\nif このターン中自身のHPが2回以上減少した\neffect add_var atk 1\nend\n\ntrigger OnLeaveField\ntarget self\nif “直接攻撃”していない\neffect custom 後述の効果を上から順に全て発動する\neffect damage 1\neffect set_pp 1\neffect return_to_hand source\nend",
+    "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
     "cost": 1,
@@ -744,7 +428,7 @@
         }
       ]
     },
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 魔法の場合\neffect custom 後述の効果を上から順に全て発動する\neffect move_to_grave field_card\neffect damage 1\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -768,13 +452,13 @@
     "attribute": "魔法",
     "type": "アタッカー",
     "attack": 1,
-    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のHPが15以上なら、手札を1枚増やす。\n②：自身[のHPが20以上、がシールドを持つ]のいずれかなら、自身のPPを1回復する。\u000b攻撃時：自身のHPを1回復し、自身に1のシールドを付与する。\n自身のターン開始時：後述の効果を上から順に全て発動する。\n①：自身がシールドを持つなら、相手のHPをx減らす。\n②：自身がシールドを持たないなら、自身に2のシールドを付与する。\n③：これを墓地へ送る。\n直接攻撃時：“攻撃時”効果を1回発動する。\nx=（自身のシールド層数）+2。",
+    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のHPが15以上なら、手札を1枚増やす。\n②：自身[のHPが20以上、がシールドを持つ]のいずれかなら、自身のPPを1回復する。\n攻撃時：自身のHPを1回復し、自身に1のシールドを付与する。\n自身のターン開始時：後述の効果を上から順に全て発動する。\n①：自身がシールドを持つなら、相手のHPをx減らす。\n②：自身がシールドを持たないなら、自身に2のシールドを付与する。\n③：これを墓地へ送る。\n直接攻撃時：“攻撃時”効果を1回発動する。\nx=（自身のシールド層数）+2。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが15以上\neffect draw 1\nif 自身のHPが20以上がシールドを持つのいずれか\neffect add_pp 1\nend\n\ntrigger OnAttack\ntarget self\neffect heal 1\neffect add_status Shield 1\nend\n\ntrigger OnTurnStart\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身がシールドを持つ\neffect custom 相手のHPをx減らす\nif 自身がシールドを持たない\neffect add_status Shield 2\neffect move_to_grave source\nend\n\ntrigger OnDirectAttack\ntarget self\neffect custom “攻撃時”効果を1回発動する\neffect custom x=自身のシールド層数+2\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -803,7 +487,7 @@
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 【これの攻撃力は増加しない】\neffect custom 魔法の場合\neffect custom 後述の効果を上から順に全て発動する\neffect invoke_trigger OnAttack 1\nif ”攻撃時“効果で自身のHPを回復した\neffect invoke_trigger OnAttack 1\nif ”攻撃時“効果で自身にシールドを付与した\neffect invoke_trigger OnAttack 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -827,7 +511,7 @@
     "attribute": "魔法",
     "type": "アタッカー",
     "attack": 1,
-    "effectText": "継続：自身がHPを回復する度、相手のHPを1回復する。\u000b攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPを2回復する（場にいる間1回）。\n②：“①”を発動していないなら、自身のHPを1回復する。\n退場時：”直接攻撃”をしていないなら、自身のHPを3回復。",
+    "effectText": "継続：自身がHPを回復する度、相手のHPを1回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPを2回復する（場にいる間1回）。\n②：“①”を発動していないなら、自身のHPを1回復する。\n退場時：”直接攻撃”をしていないなら、自身のHPを3回復。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
@@ -836,7 +520,7 @@
       "baka",
       "aho"
     ],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect heal 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect heal 2\nif “①”を発動していない\neffect heal 1\nend\n\ntrigger OnLeaveField\ntarget self\nif ”直接攻撃”をしていない\neffect heal 3\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -859,13 +543,13 @@
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "魔法の場合、\u000b”攻撃時“効果で自身のHPを回復したなら、後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る 。\n②：自身のHPを1回復する。\n③：自身のHPが相手より多いなら、相手のHPをx減らす。\n\u000b差が1~3なら、x=1。\u000b差が4~5なら、x=2。\n差が6~7なら、x=3。\u000b差が8~なら、x=4。",
+    "effectText": "魔法の場合、\n”攻撃時“効果で自身のHPを回復したなら、後述の効果を上から順に全て発動する。\n①：場のカードを墓地へ送る。\n②：自身のHPを1回復する。\n③：自身のHPが相手より多いなら、相手のHPをx減らす。\n差が1~3なら、x=1。\n差が4~5なら、x=2。\n差が6~7なら、x=3。\n差が8~なら、x=4。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 魔法の場合\nif ”攻撃時“効果で自身のHPを回復した\neffect custom 後述の効果を上から順に全て発動する\neffect move_to_grave field_card\neffect heal 1\nif 自身のHPが相手より多い\neffect custom 相手のHPをx減らす\neffect custom 差が1~3ならx=1\neffect custom 差が4~5ならx=2\neffect custom 差が6~7ならx=3\neffect custom 差が8~ならx=4\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -889,13 +573,13 @@
     "attribute": "魔法",
     "type": "アタッカー",
     "attack": 1,
-    "effectText": "継続：自身のHPを回復する時、その回復量を記録し、合計回復量yとして次のターン開始時まで保持する。代わりに、自身のターン中、自身のHPは増加しなくなる。\n登場時：自身のHPが11以上なら、自身のPPを1回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPが11以上なら、自身のHPを1減らす。\n②：攻撃力を+xする。\n自身のHPが10~6なら、x=1\n自身のHPが5~2なら、  x=2\n自身のHPが1なら、  x=3\n相手のターン開始時：自身のHPをy回復する。",
+    "effectText": "継続：自身のHPを回復する時、その回復量を記録し、合計回復量yとして次のターン開始時まで保持する。代わりに、自身のターン中、自身のHPは増加しなくなる。\n登場時：自身のHPが11以上なら、自身のPPを1回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPが11以上なら、自身のHPを1減らす。\n②：攻撃力を+xする。\n自身のHPが10~6なら、x=1\n自身のHPが5~2なら、x=2\n自身のHPが1なら、x=3\n相手のターン開始時：自身のHPをy回復する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect custom 自身のHPを回復する時その回復量を記録し合計回復量yとして次のターン開始時まで保持する代わりに自身のターン中自身のHPは増加しなくなる\nend\n\ntrigger OnPlay\ntarget self\nif 自身のHPが11以上\neffect add_pp 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが11以上\neffect damage 1\neffect add_var atk var\nif 自身のHPが10~6\neffect custom x=1\nif 自身のHPが5~2\neffect custom x=2\nif 自身のHPが1\neffect custom x=3\nend\n\ntrigger OnTurnStart\ntarget self\neffect custom 自身のHPをy回復する\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -918,13 +602,13 @@
     "attribute": "魔法",
     "type": "スキル",
     "attack": 1,
-    "effectText": "魔法の場合、\n【自身のHPが10以下なら、 これはジョーカーを持つ（1ターンの間これと同様の効果は1回まで発動できる。） 。】\n\u000bこれの使用時と、この“ターン終了時” 、自身のHPをx回復する。\nx=（これの攻撃力）",
+    "effectText": "魔法の場合、\n【自身のHPが10以下なら、これはジョーカーを持つ（1ターンの間これと同様の効果は1回まで発動できる。）。】\nこれの使用時と、この“ターン終了時”、自身のHPをx回復する。\nx=（これの攻撃力）",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 魔法の場合\nif 【自身のHPが10以下\neffect custom これはジョーカーを持つ1ターンの間これと同様の効果は1回まで発動できる】\neffect custom これの使用時とこの“ターン終了時”自身のHPをx回復する\neffect custom x=これの攻撃力\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -944,17 +628,17 @@
   {
     "id": "cd001-009",
     "image": "assets/cards/block001/スライド9.png",
-    "name": "",
+    "name": "悪魔契約者",
     "attribute": "魔法",
     "type": "アタッカー",
     "attack": 0,
-    "effectText": "自身のHPを1回復。",
+    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身のHPが9以下なら、自身のHPを1回復する。\n②：自身のHPが11以上なら、自身のHPを1減らす。\n③：自身のHPが10なら、相手のHPを1減らす。\n④：[”①”、”②”]のいずれかを発動したなら、自身のPPを1まで回復する。\n攻撃時：これの“登場時”効果を1回発動する。\n直接攻撃時：これの“登場時“効果を1回発動する。\n退場時：これが“直接攻撃”していないなら、これの“登場時“効果を2回発動した後、手札へ戻る。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが9以下\neffect heal 1\nif 自身のHPが11以上\neffect damage 1\nif 自身のHPが10\neffect damage 1\nif ”①””②”のいずれかを発動した\neffect set_pp 1\nend\n\ntrigger OnAttack\ntarget self\neffect invoke_trigger OnPlay 1\nend\n\ntrigger OnDirectAttack\ntarget self\neffect invoke_trigger OnPlay 1\nend\n\ntrigger OnLeaveField\ntarget self\nif これが“直接攻撃”していない\neffect invoke_trigger OnPlay 1\neffect return_to_hand source\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -973,17 +657,17 @@
   {
     "id": "cd001-010",
     "image": "assets/cards/block001/スライド10.png",
-    "name": "",
+    "name": "悪魔信仰",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "effectText": "魔法の場合、\n後述の効果を上から順に全て発動する。\n①：自身のHPが10なら、カードを1枚引く。\n②：”①”を発動していないなら、場のカードを墓地へ送った後、後述のいずれかの効果を選択して発動する。その後、自身のPPを1回復する。\n①：自身のHPを1回復する。\n②：自身のHPを1減らす。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 魔法の場合\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが10\neffect draw 1\nif ”①”を発動していない\neffect add_pp 1\neffect move_to_grave field_card\neffect choose_one optionA optionB\neffect heal 1\neffect damage 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1003,17 +687,17 @@
   {
     "id": "cd001-011",
     "image": "assets/cards/block001/スライド11.png",
-    "name": "",
+    "name": "スタルト=ホワイト",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 1,
+    "effectText": "継続：追加ダメージを与える度、手札を1枚増やす。\n攻撃時：後述の効果を上から順に全て発動する。\n①：使用したスキルカードの攻撃力が0以下なら、自身のPPを1まで回復する。\n②：相手に1の追加ダメージを与える（場にいる間1回）。\n直接攻撃時：これが場にある間、このターン中に使用されたスキルカードの枚数が5枚以上なら、相手に1層の「籠絡」を付与し、手札を1枚増やす。\n「籠絡」は重複し、『即効（次に自身のPPが回復する時）：その回復量を-1する（1回）。』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect draw 1\neffect extra_damage 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 使用したスキルカードの攻撃力が0以下\neffect set_pp 1\neffect extra_damage 1\nend\n\ntrigger OnDirectAttack\ntarget self\nif これが場にある間このターン中に使用されたスキルカードの枚数が5枚以上\neffect draw 1\neffect custom 籠絡は重複し即効次に自身のPPが回復する時その回復量を-1する1回という効果を持つ\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1032,17 +716,17 @@
   {
     "id": "cd001-012",
     "image": "assets/cards/block001/スライド12.png",
-    "name": "",
+    "name": "タクティカルグローブ",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "近接の場合、\n後述の効果を上から順に全て発動する。\n①：”攻撃時”効果によって、自身のPPが回復したなら、相手に1の追加ダメージを1回与える。\n②：”攻撃時”効果によって、相手に追加ダメージを与えたなら、相手に1の追加貫通ダメージを1回与える。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\neffect custom 後述の効果を上から順に全て発動する\nif ”攻撃時”効果によって自身のPPが回復した\neffect extra_damage 1\nif ”攻撃時”効果によって相手に追加ダメージを与えた\neffect extra_penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1066,17 +750,17 @@
   {
     "id": "cd001-013",
     "image": "assets/cards/block001/スライド13.png",
-    "name": "",
+    "name": "軍師",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 1,
+    "effectText": "登場時：手札を1枚選択し、それに「ショットコール」を付与する。「ショットコール」は、『これをスキルカードとして使用する時、これの攻撃力を+1する。』という効果を持つ。\n攻撃時：使用したスキルカードが、『これの攻撃力を+〇〇』に該当する効果を持ち、かつ、それを発動できるなら、自身のPPを1回復する。\n退場時：カードを1枚引く。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect add_var atk 1\nend\n\ntrigger OnAttack\ntarget self\nif 使用したスキルカードがこれの攻撃力を+〇〇に該当する効果を持ちかつそれを発動できる\neffect add_pp 1\nend\n\ntrigger OnLeaveField\ntarget self\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1095,17 +779,17 @@
   {
     "id": "cd001-014",
     "image": "assets/cards/block001/スライド14.png",
-    "name": "",
+    "name": "必勝の陣形",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "近接の場合、\n後述の効果を上から順に全て発動する。\n①：これの攻撃力を+1する。\n②：このターン中に使用されたスキルカードが2枚以上（これを含めず）なら、カードを1枚引き、引いたカードに「ショットコール」を付与する。\n「ショットコール」は、『これをスキルカードとして使用したなら、これの攻撃力を+1する（1回）。』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\neffect custom 後述の効果を上から順に全て発動する\neffect add_var atk 1\nif このターン中に使用されたスキルカードが2枚以上これを含めず\neffect draw 1\nif ショットコールはこれをスキルカードとして使用した\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1129,17 +813,17 @@
   {
     "id": "cd001-015",
     "image": "assets/cards/block001/スライド15.png",
-    "name": "",
+    "name": "アウトローライダー ジェイク",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 1,
+    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：追加攻撃力(x)を0にする。\n②：カードを1枚引く。\n攻撃時：使用したスキルカードが『これの攻撃力を+〇〇』に該当する効果を持ち、かつ、それを発動できるなら、追加で攻撃力を+xする。\n自身のターン開始時：後述の効果を上から順に全て発動する。\n①：x+=1する。\n②：これの攻撃力を0にする。\n③：これに『自身のターン終了時：これを墓地へ送る（1回）。』を付与する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect custom 追加攻撃力xを0にする\neffect draw 1\nend\n\ntrigger OnAttack\ntarget self\nif 使用したスキルカードがこれの攻撃力を+〇〇に該当する効果を持ちかつそれを発動できる\neffect add_var atk var\nend\n\ntrigger OnTurnStart\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect custom x+=1する\neffect custom これの攻撃力を0にする\neffect move_to_grave source\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1158,17 +842,17 @@
   {
     "id": "cd001-016",
     "image": "assets/cards/block001/スライド16.png",
-    "name": "",
+    "name": "キャバレリアル",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "近接の場合、\n後述の効果を上から順に全て発動する。\n①：これの攻撃力を+1する。\n②：場のカードがこのターン中に出されたものではないなら、これの攻撃力を+1する。\n③：これの攻撃力が3以上なら、手札を1枚選択して、それに「ショットコール」を付与する。\n「ショットコール」は重複せず、『【これをスキルカードとして使用する時：これの攻撃力を+1する（1回）。】』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\neffect custom 後述の効果を上から順に全て発動する\neffect add_var atk 1\nif 場のカードがこのターン中に出されたものではない\neffect add_var atk 1\nif これの攻撃力が3以上\neffect custom 手札を1枚選択してそれにショットコールを付与する\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1192,17 +876,17 @@
   {
     "id": "cd001-017",
     "image": "assets/cards/block001/スライド17.png",
-    "name": "",
+    "name": "常闇の暗殺者",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 2,
+    "effectText": "継続：これが与える[“直接攻撃”、“直接攻撃時“効果]によるダメージ以外は全て0になる。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のPPを1回復する。\n②：これに重複しない効果、『退場時：山札へ戻る（1回）。』を追記する。\n直接攻撃時：自身に重複可能な効果、『自身のターン開始時：手札を1枚増やす（1回）。』を付与する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect damage 0\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect add_pp 1\neffect return_to_deck source\nend\n\ntrigger OnDirectAttack\ntarget self\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1221,17 +905,17 @@
   {
     "id": "cd001-018",
     "image": "assets/cards/block001/スライド18.png",
-    "name": "",
+    "name": "黒霧の加護",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "【場にいずれかのカードがあるなら、これはジョーカーを持つ。】\n\n近接の場合、\n場のカードを”直接攻撃”させる。その後、自身に重複可能な効果、『自身のターン開始時：手札を1枚増やす（1回）。』を付与する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\nif 【場にいずれかのカードがある\neffect custom これはジョーカーを持つ】\neffect custom 近接の場合\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1255,17 +939,17 @@
   {
     "id": "cd001-019",
     "image": "assets/cards/block001/スライド19.png",
-    "name": "",
+    "name": "シールだー",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 2,
+    "effectText": "継続：これが場にある間、自身のシールドが5以上なら、受けたダメージ量に関わらず、次のシールド減少量は1になる。\n登場時：自身に2のシールドを付与する。\n攻撃時：自身に1のシールドを付与する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\nif これが場にある間自身のシールドが5以上\neffect damage 1\nend\n\ntrigger OnPlay\ntarget self\neffect add_status Shield 2\nend\n\ntrigger OnAttack\ntarget self\neffect add_status Shield 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1284,17 +968,17 @@
   {
     "id": "cd001-020",
     "image": "assets/cards/block001/スライド20.png",
-    "name": "",
+    "name": "シールドバッシュ",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "近接の場合、\n後述の効果を上から順に全て発動する。\n①：”攻撃時”効果によってシールドが付与されたなら、追加で自身に1のシールドを付与する。\n②：自身にゲーム終了まで継続する「フルカウンター」を付与する。\n「フルカウンター」は、重複せず、『被攻撃時：相手のHPをx減らす。』\nx=（シールドが代わりに受けたダメージ）",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\neffect custom 後述の効果を上から順に全て発動する\nif ”攻撃時”効果によってシールドが付与された\neffect add_status Shield 1\neffect custom 自身にゲーム終了まで継続するフルカウンターを付与する\neffect custom フルカウンターは重複せず被攻撃時相手のHPをx減らす\neffect custom x=シールドが代わりに受けたダメージ\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1318,17 +1002,17 @@
   {
     "id": "cd001-021",
     "image": "assets/cards/block001/スライド21.png",
-    "name": "",
+    "name": "村長",
     "attribute": "近接",
     "type": "アタッカー",
     "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：これの”攻撃時”効果の発動回数(x)を0にする。\n②：カードを1枚引く。\n攻撃時：x+=1。\n自身のターン終了時：後述するいずれかの効果を発動する。\n①：x=0なら、カードを1枚引く。\n②：x>=1なら、最大3枚まで手札をx枚増やし、これに『相手のターン開始時：これを墓地へ送る（1回）。』を付与する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect custom これの”攻撃時”効果の発動回数xを0にする\neffect draw 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom x+=1\nend\n\ntrigger OnTurnEnd\ntarget self\neffect custom 後述するいずれかの効果を発動する\neffect custom x=0ならカードを1枚引く\nif x=1\neffect move_to_grave source\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1347,17 +1031,17 @@
   {
     "id": "cd001-022",
     "image": "assets/cards/block001/スライド22.png",
-    "name": "",
+    "name": "先人の知恵",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "ターン開始時、PPを1回復。",
+    "effectText": "近接の場合、\n<<<”攻撃時“効果発動前に、場のカードに“自身のターン終了時”効果があるなら、それを即座に1回発動する。>>>",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\nif ”攻撃時“効果発動前に場のカードに“自身のターン終了時”効果がある\neffect custom それを即座に1回発動する\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -1376,17 +1060,17 @@
   {
     "id": "cd001-023",
     "image": "assets/cards/block001/スライド23.png",
-    "name": "",
+    "name": "百牙の猟獣",
     "attribute": "近接",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "手札を1枚増やす。",
+    "attack": 1,
+    "effectText": "登場時：後述の効果を上から順に全て発動する。\n①：自身に1のシールドを付与する。\n②：山札からカードを2枚を取り出し、それらのうち1枚選択し手札に加え、それ以外を山札へ戻す。\n③：自身のPPを1回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：相手に「出血」を1層付与する。（場にいる間1回）\n②：相手に「出血」を1層付与する。\n「出血」は重複し、『自身のターン終了時：これが2層以上あるなら、2層消費し、自身に1の貫通ダメージを与える。』という効果を持つ。\n直接攻撃時：相手が「出血」を6層以上持っているなら、相手の出血を6層消費して、後述する効果を上から順に全て発動する。\n①：相手に1の貫通ダメージを与えた後、自身のHPを2回復する。\n②：これの“登場時”効果を1回再発動する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect add_status Shield 1\neffect return_to_deck source\neffect add_pp 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect add_status Bleed 1\neffect add_status Bleed 1\nif 出血は重複し自身のターン終了時これが2層以上ある\neffect penetrate_damage 2\nend\n\ntrigger OnDirectAttack\ntarget self\nif 相手が出血を6層以上持っている\neffect custom 相手の出血を6層消費して後述する効果を上から順に全て発動する\neffect heal 1\neffect penetrate_damage 1\neffect invoke_trigger OnPlay 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1405,17 +1089,17 @@
   {
     "id": "cd001-024",
     "image": "assets/cards/block001/スライド24.png",
-    "name": "",
+    "name": "群の同胞",
     "attribute": "近接",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "attack": 1,
+    "effectText": "近接の場合、\n後述の効果を上から順に全て発動する。\n①：”攻撃時”効果によって、一度に2層以上の「出血」を相手に付与したなら、場のカードに「獰猛なる狼牙」を付与する。\n「獰猛なる狼牙」は重複せず、『攻撃時：相手に「出血」を1層付与して、手札を1枚増やす（1回）。』という効果を持つ。\n②：“①”を発動したなら、自身のPPを1回復する。\n③：相手に「出血」を1層付与する。\n「出血」は重複し、『自身のターン終了時：これが2層以上あるなら、2層消費し、自身に1の貫通ダメージを与える。』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 近接の場合\neffect custom 後述の効果を上から順に全て発動する\nif ”攻撃時”効果によって一度に2層以上の出血を相手に付与した\neffect custom 場のカードに獰猛なる狼牙を付与する\neffect draw 1\neffect add_status Bleed 1\nif “①”を発動した\neffect add_pp 1\neffect add_status Bleed 1\nif 出血は重複し自身のターン終了時これが2層以上ある\neffect penetrate_damage 2\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1439,17 +1123,17 @@
   {
     "id": "cd001-025",
     "image": "assets/cards/block001/スライド25.png",
-    "name": "",
+    "name": "召雷弓の使い手",
     "attribute": "遠隔",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "attack": 1,
+    "effectText": "登場時：これの“攻撃時”効果の発動回数(x)を0にする。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のPPが1以上なら、1の追加ダメージを与える。\n②：1の追加ダメージを与える。\n③：x+=1する。\n④：“①”を発動したなら、追加でx+=1する。\n直接攻撃時：x>=4なら、相手に1の貫通ダメージを与える。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom これの“攻撃時”効果の発動回数xを0にする\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身のPPが1以上\neffect extra_damage 1\neffect extra_damage 1\neffect custom x+=1する\nif “①”を発動した\neffect custom 追加でx+=1する\nend\n\ntrigger OnDirectAttack\ntarget self\nif x=4\neffect penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1470,17 +1154,17 @@
   {
     "id": "cd001-026",
     "image": "assets/cards/block001/スライド26.png",
-    "name": "",
+    "name": "召雷の矢",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "遠隔の場合、\n<<<”攻撃時“効果発動前に、自身のPPを1まで回復する。>>>\n\n”攻撃時“効果によって、追加ダメージが2回以上与えられた(※)なら、これの攻撃力を+1する。\n\n※：”追加ダメージ”と”追加貫通ダメージ”との混合でも可。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\neffect set_pp 1\nif ”攻撃時“効果によって追加ダメージが2回以上与えられた※\neffect add_var atk 1\neffect custom ※”追加ダメージ”と”追加貫通ダメージ”との混合でも可\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1500,17 +1184,17 @@
   {
     "id": "cd001-027",
     "image": "assets/cards/block001/スライド27.png",
-    "name": "",
+    "name": "鉄槍の狩人",
     "attribute": "遠隔",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "attack": 1,
+    "effectText": "継続：これが場にある間、自身のPPは1を超えない。\n登場時：後述の効果を上から順に全て発動する。\n①：これの“攻撃時”効果の発動回数(x)を0にする。\n②：自身のPPが0以下なら、1まで回復する。\n③：“②”を発動していないなら、手札を1枚増やす。\n攻撃時：後述の効果を上から順に全て発動する。\n①：攻撃力を+yする。\n②：x+=1する。\n③：直前と同名のカードを使用したなら、自身のPPを1まで回復する。\ny=（xが2毎に1）\n自身のターン終了時：x=0。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect custom これが場にある間自身のPPは1を超えない\nend\n\ntrigger OnPlay\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect custom これの“攻撃時”効果の発動回数xを0にする\nif 自身のPPが0以下\neffect custom 1まで回復する\nif “②”を発動していない\neffect draw 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect add_var atk var\neffect custom x+=1する\nif 直前と同名のカードを使用した\neffect set_pp 1\neffect custom y=xが2毎に1\nend\n\ntrigger OnTurnEnd\ntarget self\neffect custom x=0\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1531,17 +1215,17 @@
   {
     "id": "cd001-028",
     "image": "assets/cards/block001/スライド28.png",
-    "name": "",
+    "name": "ハンティング",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "遠隔の場合、\n自身のPPを1回復する。\nまた、場のカードがこのターン中に出されたものなら、何の効果も持たない同名スキルカード（ハンティング）を手札に1枚加える。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\neffect add_pp 1\nif また場のカードがこのターン中に出されたもの\neffect custom 何の効果も持たない同名スキルカードハンティングを手札に1枚加える\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1561,17 +1245,17 @@
   {
     "id": "cd001-029",
     "image": "assets/cards/block001/スライド29.png",
-    "name": "",
+    "name": "ジャイアントスレイヤー",
     "attribute": "遠隔",
     "type": "アタッカー",
     "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "effectText": "攻撃時：後述の効果を上から順に全て発動する。\n①：相手のHPが15以上なら、攻撃力を+1する。\n②：[相手のHPが18以上、相手がシールドを持つ]のいずれかなら、攻撃力を+1する。\n直接攻撃時：相手のHPが10以上なら、これの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 相手のHPが15以上\neffect add_var atk 1\nif 相手のHPが18以上相手がシールドを持つのいずれか\neffect add_var atk 1\nend\n\ntrigger OnDirectAttack\ntarget self\nif 相手のHPが10以上\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1592,17 +1276,17 @@
   {
     "id": "cd001-030",
     "image": "assets/cards/block001/スライド30.png",
-    "name": "",
+    "name": "ファントムバレット",
     "attribute": "遠隔",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "attack": 1,
+    "effectText": "遠隔の場合、\n<<<“攻撃時”効果の発動前に、このターン終了時まで、相手に『消滅する時、自身のHPを1減らす。』を持つ特殊なシールドを1つ付与する。>>>",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\neffect damage 1\neffect add_status Shield 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1622,17 +1306,17 @@
   {
     "id": "cd001-031",
     "image": "assets/cards/block001/スライド31.png",
-    "name": "",
+    "name": "ハートブレイカー",
     "attribute": "遠隔",
     "type": "アタッカー",
     "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "effectText": "継続：カードを引く度、これに重複可能な効果『攻撃時：1の追加貫通ダメージを与える（1回）』を追記する。\n登場時：カードを1枚引く。\n自身のターン終了時：これを墓地へ送る。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnEffectAdded\ntarget self\neffect extra_penetrate_damage 1\nend\n\ntrigger OnPlay\ntarget self\neffect draw 1\nend\n\ntrigger OnTurnEnd\ntarget self\neffect move_to_grave source\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1653,17 +1337,17 @@
   {
     "id": "cd001-032",
     "image": "assets/cards/block001/スライド32.png",
-    "name": "",
+    "name": "ミスティックエンゲージ",
     "attribute": "遠隔",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "attack": 1,
+    "effectText": "遠隔の場合、\n後述の効果を上から順に全て発動する。\n①：“攻撃時”効果によって相手に貫通ダメージを与えたなら、カードを1枚引く。\n②：”①“で与えられたダメージが追加貫通ダメージだったなら、場のカードにターン終了時まで継続する「ミスティックオーラ」を付与する。\n「ミスティックオーラ」は重複し、『攻撃時：攻撃力を0にしてカードを1枚引く（1回）。』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\neffect custom 後述の効果を上から順に全て発動する\nif “攻撃時”効果によって相手に貫通ダメージを与えた\neffect draw 1\nif ”①“で与えられたダメージが追加貫通ダメージだった\neffect custom 場のカードにターン終了時まで継続するミスティックオーラを付与する\neffect draw 0\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1683,17 +1367,17 @@
   {
     "id": "cd001-033",
     "image": "assets/cards/block001/スライド33.png",
-    "name": "",
+    "name": "アーミーシールドボウ",
     "attribute": "遠隔",
     "type": "アタッカー",
-    "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "attack": 1,
+    "effectText": "即効（自身のHPが10以下）：自身に2のシールドを付与し、自身のHPを1回復する（場にいる間1回）。\n攻撃時：後述の効果を上から順に全て発動する。\n①：自身のHPが10以下なら、攻撃力を+1する。\n②：自身のHPをx回復する。\nx=（使用したスキルカードの攻撃力）\n直接攻撃時：自身のHPが10以下なら、これの攻撃力を+1する。\n退場時：自身のPPを1回復する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect heal 2\neffect add_status Shield 2\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが10以下\neffect add_var atk 1\neffect custom 自身のHPをx回復する\neffect custom x=使用したスキルカードの攻撃力\nend\n\ntrigger OnDirectAttack\ntarget self\nif 自身のHPが10以下\neffect add_var atk 1\nend\n\ntrigger OnLeaveField\ntarget self\neffect add_pp 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1714,17 +1398,17 @@
   {
     "id": "cd001-034",
     "image": "assets/cards/block001/スライド34.png",
-    "name": "",
+    "name": "ライフラインエンチャント",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "遠隔の場合、\n場のカードに“即効”効果があるなら、後述の効果を上から順に全て発動する。\n①：場のカードが持つ“即効”効果を、条件と回数制限切れを無視して即座に1回発動する。ただし、『PPを回復する。』に該当する効果は発揮されず、また、『カードを○枚引く。』は『手札を○枚増やす。』に変換される。\n②：場のカードを手札へ戻す（※）。\n※：”退場時”効果は発動する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\nif 場のカードに“即効”効果がある\neffect custom 後述の効果を上から順に全て発動する\neffect custom 場のカードが持つ“即効”効果を条件と回数制限切れを無視して即座に1回発動するただしPPを回復するに該当する効果は発揮されずまたカードを○枚引くは手札を○枚増やすに変換される\neffect return_to_hand source\neffect custom ※”退場時”効果は発動する\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1744,17 +1428,17 @@
   {
     "id": "cd001-035",
     "image": "assets/cards/block001/スライド35.png",
-    "name": "",
+    "name": "九尾のキューちゃん",
     "attribute": "遠隔",
     "type": "アタッカー",
     "attack": 0,
-    "effectText": "追加ダメージ1。",
+    "effectText": "登場時：このターン中、これが1枚目に出されたカードなら自身のPPを1まで回復する。\n攻撃時：後述の効果を上から順に全て発動する。\n①：これの攻撃力を+1する（場にいる間1回）。\n②：相手に1の追加ダメージを与える。\n直接攻撃時：このターン中、相手に与えた追加ダメージの回数が2回以上なら、カードを1枚引く。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\nif このターン中これが1枚目に出されたカード\neffect set_pp 1\nend\n\ntrigger OnAttack\ntarget self\neffect custom 後述の効果を上から順に全て発動する\neffect add_var atk 1\neffect extra_damage 1\nend\n\ntrigger OnDirectAttack\ntarget self\nif このターン中相手に与えた追加ダメージの回数が2回以上\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "attacker",
     "resolvedRole": "アタッカー",
@@ -1775,17 +1459,17 @@
   {
     "id": "cd001-036",
     "image": "assets/cards/block001/スライド36.png",
-    "name": "",
+    "name": "ケモミミ万歳",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "相手に脆弱ダメージ1。",
+    "effectText": "遠隔の場合、\n後述する効果を上から順に全て発動する。\n①：場のカードが、このターン中、かつ、その1枚目に出されたものなら、1の追加ダメージを与える。\n②：”攻撃時”効果によって、追加ダメージを与えたなら、自身のPPを1まで回復する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 遠隔の場合\neffect custom 後述する効果を上から順に全て発動する\nif 場のカードがこのターン中かつその1枚目に出されたもの\neffect extra_damage 1\nif ”攻撃時”効果によって追加ダメージを与えた\neffect set_pp 1\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -1805,17 +1489,17 @@
   {
     "id": "cd002-001",
     "image": "assets/cards/block002/スライド1.png",
-    "name": "",
+    "name": "遠隔攻撃",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "㊨の場合、\nこれの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊨の場合\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1835,17 +1519,17 @@
   {
     "id": "cd002-002",
     "image": "assets/cards/block002/スライド2.png",
-    "name": "",
+    "name": "弱点攻撃",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "相手に脆弱ダメージ1。",
+    "effectText": "㊨の場合、\n<<<”攻撃時“効果の発動前に1の貫通ダメージを与える。>>>",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊨の場合\neffect custom on_before_attack_effect\neffect penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -1865,17 +1549,17 @@
   {
     "id": "cd002-003",
     "image": "assets/cards/block002/スライド3.png",
-    "name": "",
+    "name": "対衛星狙撃支援要請",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "㊨の場合、\n対象のアタッカーカードに重複しない効果、「対衛星狙撃支援」を付与する。\n「対衛星狙撃支援」は、次のターン開始時に発動し、『このターン終了時まで、これの“攻撃時”効果の末尾に『1の追加貫通ダメージを与える。』という効果を持つ。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊨の場合\neffect add_effect 対象のアタッカーカードに重複しない効果対衛星狙撃支援を付与する\neffect extra_penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1895,17 +1579,17 @@
   {
     "id": "cd002-004",
     "image": "assets/cards/block002/スライド4.png",
-    "name": "",
+    "name": "通常攻撃",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "㊥の場合、\nこれの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊥の場合\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1929,17 +1613,17 @@
   {
     "id": "cd002-005",
     "image": "assets/cards/block002/スライド5.png",
-    "name": "",
+    "name": "抜刀術",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "㊥の場合、\n<<<”攻撃時“効果の発動前に1の貫通ダメージを与える。>>>",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊥の場合\neffect custom on_before_attack_effect\neffect penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1963,17 +1647,17 @@
   {
     "id": "cd002-006",
     "image": "assets/cards/block002/スライド6.png",
-    "name": "",
+    "name": "閃光弾",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "㊥の場合、\n相手のPPを-1する。その後、相手のPPが1以上なら、これの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊥の場合\nif 相手のPPを-1するその後相手のPPが1以上\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -1997,17 +1681,17 @@
   {
     "id": "cd002-007",
     "image": "assets/cards/block002/スライド7.png",
-    "name": "",
+    "name": "攻撃魔術",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "effectText": "㊪の場合、\nこれの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2027,17 +1711,17 @@
   {
     "id": "cd002-008",
     "image": "assets/cards/block002/スライド8.png",
-    "name": "",
+    "name": "呪術",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "effectText": "㊪の場合、\n<<<”攻撃時“効果の発動前に1の貫通ダメージを与える。>>>",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect custom on_before_attack_effect\neffect penetrate_damage 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2057,17 +1741,17 @@
   {
     "id": "cd002-009",
     "image": "assets/cards/block002/スライド9.png",
-    "name": "",
+    "name": "精神干渉魔法",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "相手のHPを1減らす。",
+    "effectText": "㊪の場合、\n相手に重複可能な効果、『次の自身のターン終了時：自身のHPを2減らす（1回）。』",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect damage 2\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -2087,17 +1771,17 @@
   {
     "id": "cd002-010",
     "image": "assets/cards/block002/スライド10.png",
-    "name": "",
+    "name": "救急テープ",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "㊨の場合、\n自身のHPをx回復した後、これの攻撃力を0にする。\nx=（これの攻撃力）+2",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊨の場合\neffect set_var atk 0\neffect custom x=これの攻撃力+2\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2117,17 +1801,17 @@
   {
     "id": "cd002-011",
     "image": "assets/cards/block002/スライド11.png",
-    "name": "",
+    "name": "ゾーニング",
     "attribute": "遠隔",
     "type": "スキル",
     "attack": 0,
-    "effectText": "貫通ダメージ2。",
+    "effectText": "㊨の場合、\n相手にxの貫通ダメージを与える。\nx=（これの攻撃力）+1",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊨の場合\neffect penetrate_damage 1\neffect custom x=これの攻撃力+1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2147,17 +1831,17 @@
   {
     "id": "cd002-012",
     "image": "assets/cards/block002/スライド12.png",
-    "name": "",
+    "name": "工具箱",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "【これの攻撃力は増加しない。】\n\n㊥の場合、\nカードを1枚引く。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 【これの攻撃力は増加しない】\neffect custom ㊥の場合\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2181,17 +1865,17 @@
   {
     "id": "cd002-013",
     "image": "assets/cards/block002/スライド13.png",
-    "name": "",
+    "name": "縮地",
     "attribute": "近接",
     "type": "スキル",
     "attack": 0,
-    "effectText": "通常ダメージ1。自分のPPを1回復。",
+    "effectText": "【これの攻撃力は増加しない。】\n\n㊥の場合、\n自身のPPを1回復。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom 【これの攻撃力は増加しない】\neffect custom ㊥の場合\neffect add_pp 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2215,17 +1899,17 @@
   {
     "id": "cd002-014",
     "image": "assets/cards/block002/スライド14.png",
-    "name": "",
+    "name": "ポーション",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "effectText": "㊪の場合、\n後述の効果を上から順に全て発動する。\n①：自身のHPを1回復する。\n②：自身のHPが10以上なら、自身のPPを1回復する。\n③：“②”ではないなら、自身のHPを2回復する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect custom 後述の効果を上から順に全て発動する\neffect heal 1\nif 自身のHPが10以上\neffect add_pp 1\nif “②”ではない\neffect heal 2\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2245,17 +1929,17 @@
   {
     "id": "cd002-015",
     "image": "assets/cards/block002/スライド15.png",
-    "name": "",
+    "name": "断片召喚",
     "attribute": "魔法",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "attack": 1,
+    "effectText": "㊪の場合、\n自身のHPを2減らす。その後、自身のHPが5以下なら、カードを1枚引く。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\nif 自身のHPを2減らすその後自身のHPが5以下\neffect draw 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",
@@ -2275,17 +1959,17 @@
   {
     "id": "cd002-016",
     "image": "assets/cards/block002/スライド16.png",
-    "name": "",
+    "name": "魔力圧縮/放出",
     "attribute": "魔法",
     "type": "スキル",
     "attack": 0,
-    "effectText": "相手のHPを1減らす。",
+    "effectText": "㊪の場合、\n後述の効果を上から順に全て発動する。\n①：自身のHPを1減少させる。\n②：x>=5なら、これの攻撃力を+1する。\n③：x>=10なら、これの攻撃力を+1する。\n④：自身のHPを2回復する。\nx=（このターン中に自身が”自身のHPを増減させた回数”の合計値）",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect custom 後述の効果を上から順に全て発動する\neffect damage 1\nif x=5\neffect add_var atk 1\nif x=10\neffect add_var atk 1\neffect heal 2\neffect custom x=このターン中に自身が”自身のHPを増減させた回数”の合計値\nend",
     "effectGraph": null,
     "cardKind": "support",
     "resolvedRole": "サポート",
@@ -2305,17 +1989,17 @@
   {
     "id": "cd002-017",
     "image": "assets/cards/block002/スライド17.png",
-    "name": "",
+    "name": "自衛魔法（物理）",
     "attribute": "魔法",
     "type": "スキル",
-    "attack": 0,
-    "effectText": "アルカナダメージ2。",
+    "attack": 1,
+    "effectText": "㊪の場合、\n後述の効果を上から順に全て発動する。\n①：自身のHPが15以上、または、5以下なら、自身のHPを[1減らす、1回復する]のいずれかを発動する。\n②：自身のHPが10なら、これの攻撃力を+1する。",
     "effectDsl": {
       "format": "dependrap.dsl.v1",
       "triggers": []
     },
     "tags": [],
-    "effectDslText": "",
+    "effectDslText": "trigger OnPlay\ntarget self\neffect custom ㊪の場合\neffect custom 後述の効果を上から順に全て発動する\nif 自身のHPが15以上または5以下\neffect custom 自身のHPを1減らす1回復するのいずれかを発動する\nif 自身のHPが10\neffect add_var atk 1\nend",
     "effectGraph": null,
     "cardKind": "skill",
     "resolvedRole": "スキル",

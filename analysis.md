@@ -6297,3 +6297,100 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `node --check js/dev/cardEditorIDE.js` 実施（構文エラーなし）。
 
+
+---
+
+## Round 2026-06-12 — Set1カード36枚の初期ノード設定 + カード情報投入
+
+### 実施内容
+
+ユーザー送信済みの Set1 カード（全36枚）について、`data/cards.json` の先頭36件（`cd001-001`〜`cd001-036`）へ以下を反映。
+
+- カード名
+- 属性（魔法/近接/遠隔）
+- 種別（アタッカー/スキル）
+- 攻撃力
+- 効果テキスト（送信内容ベース）
+- ノード編集可能な初期 DSL（`effectDslText`）
+
+### ノード設定の方針
+
+- DSLは全カードで非空に設定（CardEditorで即ノード化可能）。
+- 効果文からトリガーを抽出してDSL化。
+  - 例: `登場時 -> OnPlay`, `攻撃時 -> OnAttack`, `直接攻撃時 -> OnDirectAttack`, `退場時 -> OnLeaveField` など。
+- 文中条件は `if ...` へ変換。
+- 効果は実行アクションへ可能な範囲でマッピング。
+  - `draw`, `heal`, `damage`, `set_pp`, `add_pp`, `move_to_grave`, `return_to_hand`, `return_to_deck`, `add_status`, `extra_damage`, `extra_penetrate_damage` など。
+- 解釈不能箇所は `effect custom ...` で保持し、後続の手動詳細化が可能な状態にした。
+
+### 補足
+
+- `effectGraph` は `null` に設定し、Editor表示時に `effectDslText` から再生成される運用とした。
+- `effectDsl` は空のv1構造に初期化。
+
+### 検証
+
+- first36 のカード名設定: 36/36
+- first36 の `effectDslText` 非空: 36/36
+- `node` で `data/cards.json` の読み込み確認（JSON整合性OK）
+
+### 対象ファイル
+
+- `data/cards.json`
+
+
+---
+
+## Round 2026-06-12 — continue対応（2枚1セット・ID順維持でDSL再整形）
+
+### 実施内容
+
+- ユーザー指定どおり、`cd001-001` から `cd001-036` までを
+  - 2枚1セット（アタッカー -> スキル）
+  - ID順
+  で維持したまま更新。
+
+- 先に投入したDSLを再整形し、以下を改善。
+  - 不要な `invoke_trigger OnAttack` 混入を抑制。
+  - 効果文のトリガー抽出を明示化（登場時/攻撃時/直接攻撃時/退場時/ターン開始終了/継続/即効）。
+  - 条件文は `if ...` へ。
+  - 判定不能部分は `effect custom ...` として保持。
+
+- 36枚すべてで `effectDslText` 非空、`effectGraph=null`（エディタで再生成）を維持。
+
+### 検証
+
+- 2枚1セット順序: OK（18セット）
+- first36 の DSL 非空: 36/36
+- `data/cards.json` JSON整合: OK
+
+### 対象
+
+- `data/cards.json`
+
+
+---
+
+## Round 2026-06-12 — continue（assets/cards 参照で block002 を反映）
+
+### 実施内容
+
+- `assets/cards/block002/スライド1..17.png` を参照し、`data/cards.json` の `cd002-001`〜`cd002-017` を更新。
+- 反映項目:
+  - `name`
+  - `attack`
+  - `effectText`
+  - `effectDslText`（ノード編集可能な初期DSL）
+  - `effectGraph = null`（エディタ側で再生成）
+  - `effectDsl = { format: "dependrap.dsl.v1", triggers: [] }`
+
+### 備考
+
+- OCR自動化（tesseract / Vision CLI）はこの実行環境で不安定のため、画像内容を直接参照して反映。
+- 属性・種別は既存 `cards.json` の block002 設定を維持。
+
+### 検証
+
+- `data/cards.json` の JSON パース成功。
+- 代表カード（`cd002-001`, `cd002-003`, `cd002-006`, `cd002-012`, `cd002-017`）で反映確認。
+

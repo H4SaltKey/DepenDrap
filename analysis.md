@@ -6465,3 +6465,47 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - Verified compile result for `cd001-001` leave trigger now uses direct-attack boolean condition object (instead of fallback ref comparison).
 - Validation:
   - `effectRuntimeV2.js` / `cardEditorIDE.js` syntax OK
+
+## 2026-06-12 DSL runtime hardening for game screen
+- Goal: ensure card DSL executes through the actual game flow (not editor-only).
+
+### Changes
+1. Runtime trigger mapping strengthened (`js/game/effects/effectRuntimeV2.js`)
+- Added event support for:
+  - `OnBeforeAttackEffect` <-> `onSkillBeforeAttackEffect`
+  - `OnAfterAttackEffect` <-> `onSkillAfterAttackEffect`
+- Updated:
+  - `EVENT_NAMES`
+  - `normalizeEventName()` map
+  - `mapTriggerToV1()`
+  - `mapTriggerFromV1()`
+- Verified roundtrip parse/compile works for both new triggers.
+
+2. Player action resolver execution path corrected (`js/game/auto/playerActionResolver.js`)
+- Removed skill-card exclusion from main DSL execution path:
+  - before: skipped `onSummon` DSL when effective kind was `skill`
+  - after: all cards run trigger-resolved DSL (`onSummon` etc.) unless explicitly prevented.
+- Added `resolveAttackerOnAttack(owner, sourceSkillCard)`:
+  - emits V2 `OnAttack`
+  - triggers attacker-zone `onAttack` effects via `EffectEngine.triggerZoneCardEffects(...)`
+- Replaced legacy first8-only attacker trigger call with unified resolver path.
+
+3. Turn event bridging in real game flow
+- `js/game/game.js` (`startTurnDraw`):
+  - emit V2 `OnTurnStart`
+  - emit V2 `OnDraw` after draw
+  - existing `EffectEngine` onTurnStart zone trigger kept
+- `js/phases/battlePhase.js` (`handleTurnEnd`):
+  - emit V2 `OnTurnEnd`
+  - execute granted effects + zone card effects for `onTurnEnd`
+
+### Validation
+- Syntax check passed:
+  - `effectRuntimeV2.js`
+  - `playerActionResolver.js`
+  - `battlePhase.js`
+  - `game.js`
+- Runtime mapping smoke test passed for Before/AfterAttackEffect roundtrip.
+
+### Note
+- No build system detected (`package.json` not present), so rebuild step is N/A in this repository state.

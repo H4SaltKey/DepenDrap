@@ -2435,6 +2435,17 @@ function startTurnDraw() {
   const m = state.matchData || {};
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
+  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+    try {
+      window.CardEffectRuntimeV2.emitGameEvent("OnTurnStart", {
+        owner: me,
+        sourceCardId: null,
+        zoneType: "turn"
+      }, { owner: me });
+    } catch (e) {
+      console.warn("[startTurnDraw] OnTurnStart emit failed:", e);
+    }
+  }
   if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
     if (typeof window.EffectEngine.executeGrantedEffects === "function") {
       window.EffectEngine.executeGrantedEffects({
@@ -2486,6 +2497,18 @@ function startTurnDraw() {
     const nextOrder = (typeof window.nextHandOrder === "function") ? window.nextHandOrder() : Date.now();
     card.dataset.handOrder = String(nextOrder);
     placeCard(field, card, { x: deckX, y: deckY });
+  }
+
+  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+    try {
+      window.CardEffectRuntimeV2.emitGameEvent("OnDraw", {
+        owner: me,
+        sourceCardId: String(rawId || ""),
+        zoneType: "hand"
+      }, { owner: me });
+    } catch (e) {
+      console.warn("[startTurnDraw] OnDraw emit failed:", e);
+    }
   }
 
   // PP +1（上限まで）

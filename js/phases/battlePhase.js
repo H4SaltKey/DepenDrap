@@ -37,6 +37,31 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     }
   }
 
+  // DSL/V2: ターン終了時イベントを統一発火
+  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+    try {
+      window.CardEffectRuntimeV2.emitGameEvent("OnTurnEnd", {
+        owner: me,
+        sourceCardId: null,
+        zoneType: "turn"
+      }, { owner: me });
+    } catch (e) {
+      console.warn("[handleTurnEnd] OnTurnEnd emit failed:", e);
+    }
+  }
+  if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+    if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+      window.EffectEngine.executeGrantedEffects({
+        game: window.state,
+        owner: me,
+        opponent: me === "player1" ? "player2" : "player1",
+        event: { name: "onTurnEnd", zoneType: "turn", targetOwner: me }
+      });
+    }
+    window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onTurnEnd", { targetOwner: me });
+    window.EffectEngine.triggerZoneCardEffects(me, "skill", "onTurnEnd", { targetOwner: me });
+  }
+
   const op          = me === "player1" ? "player2" : "player1";
 
   // calcNextTurn（gameRules.js）でターン計算（純粋関数）

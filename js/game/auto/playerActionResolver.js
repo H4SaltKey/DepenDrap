@@ -262,6 +262,25 @@
     });
   }
 
+  function resolveAttackerOnAttack(owner, sourceSkillCard) {
+    if (!window.EffectEngine || typeof window.EffectEngine.triggerZoneCardEffects !== "function") return;
+    const attackerCards = (typeof window.getZoneCards === "function")
+      ? (window.getZoneCards(owner, "attacker") || [])
+      : [];
+    const attacker = attackerCards.length > 0 ? attackerCards[attackerCards.length - 1] : null;
+    const attackerId = attacker?.dataset?.id || null;
+    emitV2Event("OnAttack", {
+      owner,
+      sourceCardId: attackerId || (sourceSkillCard?.dataset?.id || "unknown"),
+      bySkillCardId: sourceSkillCard?.dataset?.id || null,
+      zoneType: "attacker"
+    });
+    window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onAttack", {
+      targetOwner: owner === "player1" ? "player2" : "player1",
+      bySkillCardId: sourceSkillCard?.dataset?.id || null
+    });
+  }
+
   function resolveCardOnPlay(cardEl, zoneType) {
     if (!runtime.enabled) return;
     if (!cardEl || !zoneType) return;
@@ -348,7 +367,7 @@
       if (scriptResult && scriptResult.preventDefaultDsl) preventDefaultDsl = true;
     }
 
-    if (!preventDefaultDsl && effectiveKind !== "skill") {
+    if (!preventDefaultDsl) {
       const dsl = resolveEffectiveDsl(profile);
       if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
         logFlow(`EFFECT_CHECK ${flowId} dsl=empty (DSL未実装)`);
@@ -396,8 +415,8 @@
     if (effectiveKind === "skill") {
       runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillBeforeAttackEffect");
     }
-    if (effectiveKind === "skill" && window.FirstEightCardEffects && typeof window.FirstEightCardEffects.resolveAttackTriggerForAttacker === "function") {
-      window.FirstEightCardEffects.resolveAttackTriggerForAttacker(owner);
+    if (effectiveKind === "skill") {
+      resolveAttackerOnAttack(owner, cardEl);
     }
     if (effectiveKind === "skill") {
       runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillAfterAttackEffect");

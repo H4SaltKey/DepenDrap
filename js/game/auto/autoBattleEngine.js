@@ -145,7 +145,11 @@
     const amount = Math.max(1, myAtkBase + cardAtk);
     if (typeof window.applyCalculatedDamage !== "function") return false;
 
-    window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, { source: "auto" });
+    window.applyCalculatedDamage(getOp(), "direct_attack", DIRECT_ATTACK_SUBTYPE, amount, false, {
+      source: "auto",
+      sourceOwner: me,
+      sourceCardId: attacker?.dataset?.id || ""
+    });
     attacker.dataset.didDirectAttack = "1";
     if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl) {
       const context = {

@@ -71,29 +71,48 @@
   function createEventBus() {
     const byName = new Map();
 
-    function subscribe(eventName, handler) {
+    function toSubscriberMeta(meta, handler) {
+      if (!meta || typeof meta !== "object") {
+        return {
+          label: String(handler?.name || "anonymous")
+        };
+      }
+      return {
+        label: String(meta.label || handler?.name || "anonymous"),
+        owner: meta.owner != null ? String(meta.owner) : "",
+        sourceCardId: meta.sourceCardId != null ? String(meta.sourceCardId) : "",
+        instanceId: meta.instanceId != null ? String(meta.instanceId) : ""
+      };
+    }
+
+    function subscribe(eventName, handler, meta) {
       const key = normalizeEventName(eventName);
-      if (!byName.has(key)) byName.set(key, new Set());
-      byName.get(key).add(handler);
+      if (!byName.has(key)) byName.set(key, new Map());
+      byName.get(key).set(handler, toSubscriberMeta(meta, handler));
       return function unsubscribe() {
-        const set = byName.get(key);
-        if (!set) return;
-        set.delete(handler);
+        const map = byName.get(key);
+        if (!map) return;
+        map.delete(handler);
       };
     }
 
     function publish(eventName, payload, context) {
       const key = normalizeEventName(eventName);
-      const handlers = Array.from(byName.get(key) || []);
+      const handlers = Array.from((byName.get(key) || new Map()).entries());
       const rows = [];
-      handlers.forEach((fn) => {
+      handlers.forEach(([fn, meta]) => {
         try {
           const result = fn(payload || {}, context || {});
-          rows.push({ ok: true, result: result == null ? null : result });
+          rows.push({
+            ok: true,
+            result: result == null ? null : result,
+            subscriber: deepClone(meta || {})
+          });
         } catch (error) {
           rows.push({
             ok: false,
-            error: String(error?.message || error || "unknown-event-error")
+            error: String(error?.message || error || "unknown-event-error"),
+            subscriber: deepClone(meta || {})
           });
         }
       });
@@ -107,7 +126,19 @@
     function getSnapshot() {
       const out = [];
       Array.from(byName.keys()).sort().forEach((name) => {
-        out.push({ eventName: name, subscribers: (byName.get(name) || new Set()).size });
+        out.push({ eventName: name, subscribers: (byName.get(name) || new Map()).size });
+      });
+      return out;
+    }
+
+    function getDetails() {
+      const out = [];
+      Array.from(byName.keys()).sort().forEach((name) => {
+        const rows = Array.from((byName.get(name) || new Map()).values()).map((meta) => deepClone(meta));
+        out.push({
+          eventName: name,
+          subscribers: rows
+        });
       });
       return out;
     }
@@ -115,7 +146,8 @@
     return {
       subscribe,
       publish,
-      getSnapshot
+      getSnapshot,
+      getDetails
     };
   }
 
@@ -862,14 +894,28 @@
       this.lastSnapshot = deepClone(snapshot || {});
     },
     snapshot() {
+      const instances = effectInstances.list();
+      const byEvent = Object.create(null);
+      instances.forEach((row) => {
+        const key = normalizeEventName(row?.event || "OnPlay");
+        if (!byEvent[key]) byEvent[key] = [];
+        byEvent[key].push({
+          instanceId: String(row.instanceId || ""),
+          owner: String(row.owner || ""),
+          sourceCardId: String(row.sourceCardId || "")
+        });
+      });
       return {
         pendingEffects: deepClone(this.pendingEffects),
         effectStack: deepClone(this.effectStack),
         persistentEffects: deepClone(this.persistentEffects),
         temporaryEffects: deepClone(this.temporaryEffects),
         registeredEvents: eventBus.getSnapshot(),
-        activatedFlags: effectInstances.list().filter((x) => x.activated).map((x) => x.instanceId),
-        inheritedLinks: effectInstances.list().filter((x) => x.inheritedFrom).map((x) => ({
+        eventSubscriberDetails: eventBus.getDetails(),
+        effectInstances: instances,
+        effectInstancesByEvent: deepClone(byEvent),
+        activatedFlags: instances.filter((x) => x.activated).map((x) => x.instanceId),
+        inheritedLinks: instances.filter((x) => x.inheritedFrom).map((x) => ({
           instanceId: x.instanceId,
           inheritedFrom: x.inheritedFrom
         })),
@@ -954,6 +1000,211 @@
     };
   }
 
+  function createSimulationState(owner, initialState) {
+    if (initialState && typeof initialState === "object") return deepClone(initialState);
+    const me = String(owner || "player1");
+    return {
+      player1: {
+        hp: 20,
+        pp: 2,
+        ppMax: 10,
+        shield: 0,
+        defstack: 0,
+        defstackMax: 0,
+        atk: 0,
+        grantedEffects: []
+      },
+      player2: {
+        hp: 20,
+        pp: 2,
+        ppMax: 10,
+        shield: 0,
+        defstack: 0,
+        defstackMax: 0,
+        atk: 0,
+        grantedEffects: []
+      },
+      matchData: {
+        status: "playing",
+        turnPlayer: me,
+        round: 1,
+        turn: 1
+      }
+    };
+  }
+
+  function toEngineTrigger(eventName) {
+    const normalized = normalizeEventName(eventName);
+    return mapTriggerToV1(normalized);
+  }
+
+  function simulateCardExecution(cardLike, options) {
+    const card = cardLike && typeof cardLike === "object" ? deepClone(cardLike) : {};
+    const owner = String(options?.owner || "player1");
+    const opponent = owner === "player1" ? "player2" : "player1";
+    const triggerEvent = String(options?.eventName || "OnPlay");
+    const triggerName = toEngineTrigger(triggerEvent);
+    const sourceCardId = String(card?.id || options?.sourceCardId || "sim-card");
+    const dsl = resolveCardDsl(card);
+    if (!dsl || String(dsl.format || "") !== DSL_V1_FORMAT || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+      return {
+        ok: true,
+        dslUnimplemented: true,
+        triggerEvent: normalizeEventName(triggerEvent),
+        triggerName,
+        cardId: sourceCardId,
+        triggerReports: [],
+        effects: [],
+        debugEvents: [],
+        error: null
+      };
+    }
+    if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") {
+      return {
+        ok: false,
+        dslUnimplemented: false,
+        triggerEvent: normalizeEventName(triggerEvent),
+        triggerName,
+        cardId: sourceCardId,
+        triggerReports: [],
+        effects: [],
+        debugEvents: [],
+        error: { message: "EffectEngine unavailable" }
+      };
+    }
+
+    const simState = createSimulationState(owner, options?.state);
+    if (!simState[owner]) simState[owner] = { hp: 20, pp: 2, ppMax: 10, shield: 0, defstack: 0, defstackMax: 0, atk: 0, grantedEffects: [] };
+    if (!simState[opponent]) simState[opponent] = { hp: 20, pp: 2, ppMax: 10, shield: 0, defstack: 0, defstackMax: 0, atk: 0, grantedEffects: [] };
+    simState[owner].hp = toNumber(options?.hp, toNumber(simState[owner].hp, 20));
+    simState[owner].pp = toNumber(options?.pp, toNumber(simState[owner].pp, 2));
+    simState.matchData = simState.matchData && typeof simState.matchData === "object" ? simState.matchData : {};
+    simState.matchData.turn = toNumber(options?.turn, toNumber(simState.matchData.turn, 1));
+    simState.matchData.turnPlayer = owner;
+
+    const sourceCard = {
+      dataset: {
+        id: sourceCardId,
+        owner,
+        zoneType: String(options?.zoneType || "attacker"),
+        didDirectAttack: options?.didDirectAttack ? "1" : "0",
+        instanceId: String(options?.instanceId || `sim-${Date.now()}`)
+      },
+      profile: deepClone(card),
+      _debugCardData: deepClone(card)
+    };
+
+    const saved = {
+      state: window.state,
+      addVal: window.addVal,
+      applyCalculatedDamage: window.applyCalculatedDamage,
+      drawToHand: window.drawToHand,
+      pushMyStateDebounced: window.pushMyStateDebounced,
+      update: window.update,
+      getMyRole: window.getMyRole,
+      getZoneCards: window.getZoneCards,
+      getDeckCount: window.getDeckCount,
+      getFieldContent: window.getFieldContent,
+      BattleTargetSystem: window.BattleTargetSystem
+    };
+
+    const debugEvents = [];
+    let executeResult = null;
+    let caught = null;
+    const stateBefore = deepClone(simState);
+
+    window.state = simState;
+    window.getMyRole = () => owner;
+    window.addVal = (targetOwner, key, delta) => {
+      const p = simState?.[targetOwner];
+      if (!p) return;
+      const cur = toNumber(p[key], 0);
+      p[key] = Math.max(0, cur + toNumber(delta, 0));
+    };
+    window.applyCalculatedDamage = (targetOwner, type, subType, amount) => {
+      const p = simState?.[targetOwner];
+      if (!p) return;
+      if (typeof window.applyDamageByRule === "function") {
+        const next = window.applyDamageByRule({
+          hp: p.hp,
+          shield: p.shield,
+          defstack: p.defstack,
+          defstackMax: p.defstackMax
+        }, type, amount);
+        p.hp = toNumber(next.hp, p.hp);
+        p.shield = toNumber(next.shield, p.shield);
+        p.defstack = toNumber(next.defstack, p.defstack);
+        return;
+      }
+      p.hp = Math.max(0, toNumber(p.hp, 0) - Math.max(0, toNumber(amount, 0)));
+    };
+    window.drawToHand = () => {};
+    window.pushMyStateDebounced = () => {};
+    window.update = () => {};
+    window.getZoneCards = () => [];
+    window.getDeckCount = () => 0;
+    window.getFieldContent = () => ({ querySelectorAll: () => [] });
+    window.BattleTargetSystem = { getTarget() { return "player"; } };
+
+    const context = {
+      game: simState,
+      sourceCard,
+      sourceProfile: deepClone(card),
+      owner,
+      opponent,
+      target: opponent,
+      event: {
+        name: triggerName,
+        zoneType: String(options?.zoneType || "attacker"),
+        didDirectAttack: options?.didDirectAttack === true,
+        amount: toNumber(options?.damage, 0),
+        damageType: String(options?.damageType || "damage"),
+        targetOwner: String(options?.targetOwner || opponent)
+      },
+      debugReporter(payload) {
+        debugEvents.push(deepClone(payload || {}));
+      }
+    };
+
+    try {
+      if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+        window.EffectEngine.executeGrantedEffects(context);
+      }
+      executeResult = window.EffectEngine.execute(dsl, context);
+    } catch (error) {
+      caught = {
+        message: String(error?.message || error || "simulate-execute-error"),
+        stack: String(error?.stack || "")
+      };
+    } finally {
+      window.state = saved.state;
+      window.addVal = saved.addVal;
+      window.applyCalculatedDamage = saved.applyCalculatedDamage;
+      window.drawToHand = saved.drawToHand;
+      window.pushMyStateDebounced = saved.pushMyStateDebounced;
+      window.update = saved.update;
+      window.getMyRole = saved.getMyRole;
+      window.getZoneCards = saved.getZoneCards;
+      window.getDeckCount = saved.getDeckCount;
+      window.getFieldContent = saved.getFieldContent;
+      window.BattleTargetSystem = saved.BattleTargetSystem;
+    }
+
+    return {
+      ok: !caught,
+      dslUnimplemented: false,
+      triggerEvent: normalizeEventName(triggerEvent),
+      triggerName,
+      cardId: sourceCardId,
+      triggerReports: Array.isArray(executeResult?.triggerReports) ? executeResult.triggerReports : [],
+      effects: Array.isArray(executeResult?.effects) ? executeResult.effects : [],
+      debugEvents,
+      error: caught,
+      stateBefore,
+      stateAfter: deepClone(simState)
+    };
+  }
+
   window.CardEffectRuntimeV2 = {
     DSL_TEXT_FORMAT,
     DSL_JSON_FORMAT,
@@ -974,6 +1225,7 @@
     migrateLegacyBlocks,
     resolveCardDsl,
     emitGameEvent,
-    createCardSimulator
+    createCardSimulator,
+    simulateCardExecution
   };
 })();

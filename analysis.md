@@ -6543,3 +6543,64 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - Confirmed summon-time trigger path emits DSL trace for the skill card as well.
 - Note:
   - In this environment, direct GUI browser automation tool was unavailable; validation done by executing the same runtime modules used by game screen.
+
+## 2026-06-15 Runtime Inspector / OnAttack・OnDamage / Card Simulator 強化
+
+### 1) Runtime Inspector 詳細表示（`js/dev/cardEditorIDE.js` + `js/game/effects/effectRuntimeV2.js`）
+- `runtimeInspectorView` を件数サマリのみから詳細表示へ拡張。
+- 既存見た目（`logList` テキストベース表示）は維持し、以下を同一ビューへ追記表示:
+  - Event Subscriptions（購読イベント実体）
+  - Activated Flags（発動済みフラグのインスタンスID）
+  - Inherited Links（継承元リンク）
+  - Effect Instances（instanceごとの event / owner / sourceCardId / condition / target / effects / modifiers / activated / permanent / inheritedFrom）
+  - Last Event（直近イベントのpayload）
+- `effectRuntimeV2` 側を拡張:
+  - `eventBus.subscribe(event, handler, meta)` の `meta` 対応（互換維持）
+  - `eventBus.getDetails()` を追加
+  - `runtimeInspector.snapshot()` に `eventSubscriberDetails`, `effectInstances`, `effectInstancesByEvent` を追加
+
+### 2) OnAttack / OnDamage 実導線の送出実装（`js/game/auto/playerActionResolver.js` ほか）
+- 既存 `OnPlay / OnLeaveField / OnDirectAttack` に加え、実ゲーム導線へ `OnAttack / OnDamage` を接続。
+- `playerActionResolver`:
+  - `installDamageHook()` を追加し、`applyCalculatedDamage` 実行ごとに `OnDamage` を emit。
+  - `OnDamage` emit 後、被ダメージ側の `attacker` / `skill` ゾーンへ `onDamage` トリガー実行（`EffectEngine.triggerZoneCardEffects`）。
+  - 直接攻撃導線 `resolveDirectAttack(...)` でも `OnAttack` を emit（`OnDirectAttack` との整合維持）。
+  - 深い再帰時の暴走回避として `damageHookDepth` ガードを追加。
+- `applyCalculatedDamage` 呼び出し元にも `sourceOwner/sourceCardId` を付与し、履歴・Inspectorで原因追跡しやすく調整:
+  - `js/card/cardManager.js`（ドラッグ直接攻撃）
+  - `js/game/auto/autoBattleEngine.js`（Auto 直接攻撃）
+  - `js/game/effects/effectEngine.js`（DSL効果 DAMAGE）
+  - `js/game/auto/playerActionResolver.js`（known effect DAMAGE）
+
+### 3) Card Simulator で選択中カードの effectDsl 実行（`js/dev/cardEditorIDE.js` + `js/game/effects/effectRuntimeV2.js`）
+- 従来: `createCardSimulator().run()` でイベントemitのみ。
+- 変更後:
+  - `simRun` 時に選択中カードを保存同期（`saveFormToCard` + `saveEditorToCard`）
+  - `runtime().simulateCardExecution(card, options)` を実行
+  - シミュレーション結果を `#simResultView` に表示
+- 画面表示項目:
+  - 条件判定結果（trigger cond / bundle cond）
+  - 条件失敗理由（triggerReason / bundleReason）
+  - 実行された効果・スキップされた効果（effectごとの status/reason）
+  - 例外（exception message）
+- `effectRuntimeV2` に `simulateCardExecution(...)` を追加（EffectEngine実行のデバッグ補助API）。
+
+### 制約 / 注意点
+- `simulateCardExecution` は安全のため、実行中のみ `window.state` / `addVal` / `applyCalculatedDamage` 等を一時差し替えしてローカル状態で実行し、終了後に復元。
+- Runtime Inspector の購読イベント実体は、`eventBus.subscribe` 利用者が `meta` を渡すとより詳細表示される。`meta` 未指定時は `label`（関数名/anonymous）中心。
+
+### 検証結果
+- 構文チェック:
+  - `node --check js/dev/cardEditorIDE.js`
+  - `node --check js/game/effects/effectRuntimeV2.js`
+  - `node --check js/game/auto/playerActionResolver.js`
+  - `node --check js/game/effects/effectEngine.js`
+  - `node --check js/card/cardManager.js`
+  - `node --check js/game/auto/autoBattleEngine.js`
+  - すべてエラーなし
+- スモーク検証（Node VM）:
+  - `applyCalculatedDamage(...)` 実行で履歴に `OnDamage` が追加されることを確認
+  - `resolveDirectAttack(...)` 実行で履歴に `OnAttack` → `OnDirectAttack` が流れることを確認
+  - `simulateCardExecution(...)` 実行で `triggerReports/effects` が取得できることを確認
+- リビルド:
+  - `package.json` が存在しないため、リポジトリ内に実行可能な build スクリプトは未検出（`NO_BUILD_SCRIPT`）

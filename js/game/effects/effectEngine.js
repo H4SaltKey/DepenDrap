@@ -704,7 +704,11 @@
           if (typeof window.applyCalculatedDamage === "function") {
             const damageType = String(effect.damageType || "damage");
             const subType = String(effect.subType || "none");
-            window.applyCalculatedDamage(targetOwner, damageType, subType, Math.max(0, amount), false, { source: "effect_engine" });
+            window.applyCalculatedDamage(targetOwner, damageType, subType, Math.max(0, amount), false, {
+              source: "effect_engine",
+              sourceOwner: context?.owner || "",
+              sourceCardId: context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""
+            });
           }
         });
         return { applied: true, type };

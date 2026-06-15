@@ -1260,7 +1260,11 @@ function performDirectAttackByDrag(cardEl, owner) {
   if (target.type === "monster") {
     window.MonsterCombatSystem?.playerAttackMonster?.(owner, target.slotIndex, amount, "direct_attack");
   } else {
-    window.applyCalculatedDamage?.(target.owner, "direct_attack", "none", amount, false, { source: "drag_direct_attack" });
+    window.applyCalculatedDamage?.(target.owner, "direct_attack", "none", amount, false, {
+      source: "drag_direct_attack",
+      sourceOwner: owner,
+      sourceCardId: cardEl?.dataset?.id || ""
+    });
   }
 
   if (cardEl) {

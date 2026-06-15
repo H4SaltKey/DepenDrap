@@ -18,7 +18,8 @@
 
   const runtime = {
     enabled: true,
-    lastResolvedInstanceKey: ""
+    lastResolvedInstanceKey: "",
+    damageHookDepth: 0
   };
 
   function logFlow(message) {
@@ -66,6 +67,10 @@
 
   function getMyRoleSafe() {
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
+  }
+
+  function opponentOf(owner) {
+    return String(owner || "player1") === "player1" ? "player2" : "player1";
   }
 
   function emitV2Event(name, payload) {
@@ -207,7 +212,10 @@
     }
     if (type === "DAMAGE") {
       if (typeof window.applyCalculatedDamage === "function") {
-        window.applyCalculatedDamage(op, "damage", "normal", amount || 1, false, { source: "player_action" });
+        window.applyCalculatedDamage(op, "damage", "normal", amount || 1, false, {
+          source: "player_action",
+          sourceOwner: owner
+        });
       }
       return;
     }
@@ -273,12 +281,46 @@
       owner,
       sourceCardId: attackerId || (sourceSkillCard?.dataset?.id || "unknown"),
       bySkillCardId: sourceSkillCard?.dataset?.id || null,
-      zoneType: "attacker"
+      zoneType: "attacker",
+      targetOwner: opponentOf(owner),
+      attackType: "skill"
     });
     window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onAttack", {
-      targetOwner: owner === "player1" ? "player2" : "player1",
+      targetOwner: opponentOf(owner),
       bySkillCardId: sourceSkillCard?.dataset?.id || null
     });
+  }
+
+  function resolveOnDamageEvent(targetOwner, type, subType, amount, options = {}) {
+    const owner = String(targetOwner || "");
+    if (!owner) return;
+    const attackerOwner = String(options.sourceOwner || options.owner || options.attackerOwner || options.fromOwner || opponentOf(owner));
+    const sourceCardId = options.sourceCardId || options.cardId || options.byCardId || "";
+    const payload = {
+      owner,
+      sourceCardId: String(sourceCardId || "damage"),
+      attackerOwner,
+      targetOwner: owner,
+      damageType: String(type || "damage"),
+      subType: String(subType || "none"),
+      amount: Math.max(0, Number(amount || 0)),
+      source: String(options.source || ""),
+      bySkillCardId: options.bySkillCardId || null
+    };
+    emitV2Event("OnDamage", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      const extraEvent = {
+        targetOwner: owner,
+        attackerOwner,
+        damageType: payload.damageType,
+        subType: payload.subType,
+        amount: payload.amount,
+        sourceCardId: payload.sourceCardId,
+        source: payload.source
+      };
+      window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onDamage", extraEvent);
+      window.EffectEngine.triggerZoneCardEffects(owner, "skill", "onDamage", extraEvent);
+    }
   }
 
   function resolveCardOnPlay(cardEl, zoneType) {
@@ -505,6 +547,20 @@
       : card;
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const triggerName = "onDirectAttack";
+    emitV2Event("OnAttack", {
+      owner: owner || me,
+      sourceCardId: cardId,
+      targetInfo: targetInfo || {},
+      zoneType: "attacker",
+      attackType: "direct"
+    });
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      window.EffectEngine.triggerZoneCardEffects(owner || me, "attacker", "onAttack", {
+        targetOwner: opponentOf(owner || me),
+        targetInfo: targetInfo || {},
+        attackType: "direct"
+      });
+    }
     emitV2Event("OnDirectAttack", {
       owner: owner || me,
       sourceCardId: cardId,
@@ -568,10 +624,36 @@
     window.placeCardInZone = wrapped;
   }
 
+  function installDamageHook() {
+    if (typeof window.applyCalculatedDamage !== "function") return;
+    if (window.applyCalculatedDamage._playerActionResolverWrapped) return;
+
+    const original = window.applyCalculatedDamage;
+    const wrapped = function(targetOwner, type, subType, amount, isEvoDmg, options = {}) {
+      const result = original.apply(this, arguments);
+      try {
+        if (runtime.damageHookDepth > 12) return result;
+        runtime.damageHookDepth += 1;
+        resolveOnDamageEvent(targetOwner, type, subType, amount, options || {});
+      } catch (error) {
+        console.warn("[PlayerActionResolver] onDamage emit failed:", error);
+      } finally {
+        runtime.damageHookDepth = Math.max(0, runtime.damageHookDepth - 1);
+      }
+      return result;
+    };
+    wrapped._playerActionResolverWrapped = true;
+    window.applyCalculatedDamage = wrapped;
+  }
+
   function init() {
     installPlaceCardHook();
+    installDamageHook();
     if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installPlaceCardHook)) {
       window._afterUpdateHooks.push(installPlaceCardHook);
+    }
+    if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installDamageHook)) {
+      window._afterUpdateHooks.push(installDamageHook);
     }
   }
 

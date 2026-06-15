@@ -25,6 +25,7 @@
     connectFrom: "",
     replayCursor: -1,
     sim: null,
+    simLastResult: null,
     logs: [],
     runtimeTimer: null,
     editorApi: null,
@@ -84,6 +85,155 @@
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;");
+  }
+
+  function compactText(v, fallback = "-") {
+    const s = String(v == null ? "" : v).trim();
+    return s || fallback;
+  }
+
+  function summarizeOps(rows, limit = 3) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return "(none)";
+    const text = list.slice(0, limit).map((row) => {
+      const action = compactText(row?.action, "noop");
+      const args = Array.isArray(row?.args) ? row.args.map((x) => String(x)).join(" ") : "";
+      return args ? `${action} ${args}` : action;
+    });
+    if (list.length > limit) text.push(`...+${list.length - limit}`);
+    return text.join(" | ");
+  }
+
+  function formatRuntimeInspectorSnapshot(snap) {
+    const lines = [];
+    lines.push(`pending: ${(snap.pendingEffects || []).length}`);
+    lines.push(`stack: ${(snap.effectStack || []).length}`);
+    lines.push(`persistent: ${(snap.persistentEffects || []).length}`);
+    lines.push(`temporary: ${(snap.temporaryEffects || []).length}`);
+    lines.push(`events: ${(snap.registeredEvents || []).map((x) => `${x.eventName}:${x.subscribers}`).join(", ") || "none"}`);
+    lines.push(`flags: ${(snap.activatedFlags || []).length}`);
+    lines.push(`inherited: ${(snap.inheritedLinks || []).length}`);
+    lines.push("");
+
+    const subscriberDetails = Array.isArray(snap.eventSubscriberDetails) ? snap.eventSubscriberDetails : [];
+    lines.push("[Event Subscriptions]");
+    if (subscriberDetails.length) {
+      subscriberDetails.forEach((row) => {
+        const labels = (row.subscribers || []).slice(0, 3).map((s) => compactText(s?.label || s?.instanceId || s?.sourceCardId, "?"));
+        const suffix = (row.subscribers || []).length > 3 ? ` ...+${(row.subscribers || []).length - 3}` : "";
+        lines.push(`${row.eventName}: ${(row.subscribers || []).length}${labels.length ? ` [${labels.join(", ")}]${suffix}` : ""}`);
+      });
+    } else {
+      const byEvent = snap.effectInstancesByEvent && typeof snap.effectInstancesByEvent === "object" ? snap.effectInstancesByEvent : {};
+      const eventNames = Object.keys(byEvent).sort();
+      if (eventNames.length === 0) {
+        lines.push("none");
+      } else {
+        eventNames.forEach((eventName) => {
+          const rows = Array.isArray(byEvent[eventName]) ? byEvent[eventName] : [];
+          const cards = rows.slice(0, 3).map((x) => compactText(x.sourceCardId, "?"));
+          const suffix = rows.length > 3 ? ` ...+${rows.length - 3}` : "";
+          lines.push(`${eventName}: ${rows.length}${cards.length ? ` [${cards.join(", ")}]${suffix}` : ""}`);
+        });
+      }
+    }
+    lines.push("");
+
+    lines.push("[Activated Flags]");
+    if (Array.isArray(snap.activatedFlags) && snap.activatedFlags.length) {
+      lines.push(snap.activatedFlags.slice(0, 20).join(", "));
+      if (snap.activatedFlags.length > 20) lines.push(`...+${snap.activatedFlags.length - 20}`);
+    } else {
+      lines.push("none");
+    }
+    lines.push("");
+
+    lines.push("[Inherited Links]");
+    if (Array.isArray(snap.inheritedLinks) && snap.inheritedLinks.length) {
+      snap.inheritedLinks.slice(0, 20).forEach((row) => {
+        lines.push(`${compactText(row.instanceId)} <= ${compactText(row.inheritedFrom)}`);
+      });
+      if (snap.inheritedLinks.length > 20) lines.push(`...+${snap.inheritedLinks.length - 20}`);
+    } else {
+      lines.push("none");
+    }
+    lines.push("");
+
+    lines.push("[Effect Instances]");
+    const instances = Array.isArray(snap.effectInstances) ? snap.effectInstances : [];
+    if (!instances.length) {
+      lines.push("none");
+    } else {
+      instances.slice(0, 24).forEach((row, idx) => {
+        const head = `${idx + 1}. ${compactText(row.instanceId)} event=${compactText(row.event)} owner=${compactText(row.owner)} card=${compactText(row.sourceCardId)}`;
+        const flags = `activated=${row.activated ? "Y" : "N"} permanent=${row.permanent ? "Y" : "N"} inheritedFrom=${compactText(row.inheritedFrom, "-")}`;
+        lines.push(head);
+        lines.push(`   ${flags}`);
+        lines.push(`   condition: ${compactText(row.condition, "(none)")}`);
+        lines.push(`   target: ${compactText(row.target, "self")}`);
+        lines.push(`   effects: ${summarizeOps(row.effects)}`);
+        lines.push(`   modifiers: ${summarizeOps(row.modifiers)}`);
+      });
+      if (instances.length > 24) lines.push(`...+${instances.length - 24}`);
+    }
+    lines.push("");
+
+    if (snap.lastSnapshot) {
+      lines.push("[Last Event]");
+      lines.push(`event=${compactText(snap.lastSnapshot.event)}`);
+      lines.push(`payload=${JSON.stringify(snap.lastSnapshot.payload || {})}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  function formatSimulatorResult(row) {
+    if (!row) return "(no simulation yet)";
+    const lines = [];
+    lines.push(`card: ${compactText(row.cardId)}`);
+    lines.push(`event: ${compactText(row.eventName)} / historyId: ${compactText(row.historyRowId)}`);
+    const exec = row.execution || null;
+    if (!exec) {
+      lines.push("execution: unavailable");
+      return lines.join("\n");
+    }
+    if (exec.error) {
+      lines.push(`exception: ${compactText(exec.error.message || exec.error)}`);
+      return lines.join("\n");
+    }
+    if (exec.dslUnimplemented) {
+      lines.push("dsl: 未実装");
+      return lines.join("\n");
+    }
+    lines.push(`trigger: ${compactText(exec.triggerName)} (${compactText(exec.triggerEvent)})`);
+    lines.push(`matchedTriggers: ${(exec.triggerReports || []).length}`);
+
+    const triggerReports = Array.isArray(exec.triggerReports) ? exec.triggerReports : [];
+    if (!triggerReports.length) {
+      lines.push("trigger report: 一致なし");
+    } else {
+      triggerReports.forEach((t, idx) => {
+        lines.push(`- trigger#${idx + 1} ${compactText(t.on)} cond=${t.triggerConditionPassed ? "pass" : "fail"} bundle=${t.bundleConditionPassed ? "pass" : "fail"}`);
+        lines.push(`  triggerReason: ${compactText(t.triggerConditionReason, "none")}`);
+        lines.push(`  bundleReason: ${compactText(t.bundleConditionReason, "none")}`);
+        const effects = Array.isArray(t.effects) ? t.effects : [];
+        if (!effects.length) {
+          lines.push("  effects: none");
+        } else {
+          effects.forEach((e) => {
+            const status = e.error ? "error" : (e.applied ? "executed" : "skipped");
+            const reason = compactText(e.skippedReason || (e.error ? e.error.message : ""), "");
+            lines.push(`  effect#${compactText(e.order)} ${compactText(e.type)} => ${status}${reason ? ` (${reason})` : ""}`);
+          });
+        }
+      });
+    }
+
+    const flat = Array.isArray(exec.effects) ? exec.effects : [];
+    const executed = flat.filter((e) => e && e.applied === true).length;
+    const skipped = flat.filter((e) => e && e.applied !== true).length;
+    lines.push(`effects summary: executed=${executed}, skipped=${skipped}, total=${flat.length}`);
+    return lines.join("\n");
   }
 
   function isSupportCard(card) {
@@ -504,6 +654,7 @@
                 <button id="simResetBtn" class="cardActionBtn">リセット</button>
                 <button id="saveCardsBtn" class="cardActionBtn">cards.json保存</button>
               </div>
+              <div class="logList" id="simResultView" style="margin-top:8px;min-height:112px;"></div>
             </div>
           </div>
         </section>
@@ -1468,15 +1619,7 @@
       eventViewer.textContent = rows.map((r) => `${r.id} | ${r.eventName} | ${r.sourceCardId || "-"}`).join("\n") || "(no events)";
 
       const snap = runtime().runtimeInspector.snapshot();
-      runtimeView.textContent = [
-        `pending: ${snap.pendingEffects.length}`,
-        `stack: ${snap.effectStack.length}`,
-        `persistent: ${snap.persistentEffects.length}`,
-        `temporary: ${snap.temporaryEffects.length}`,
-        `events: ${(snap.registeredEvents || []).map((x) => `${x.eventName}:${x.subscribers}`).join(", ") || "none"}`,
-        `flags: ${(snap.activatedFlags || []).length}`,
-        `inherited: ${(snap.inheritedLinks || []).length}`
-      ].join("\n");
+      runtimeView.textContent = formatRuntimeInspectorSnapshot(snap);
 
       const replayRows = runtime().replayDebugger.rows();
       if (state.replayCursor < 0 && replayRows.length) state.replayCursor = replayRows.length - 1;
@@ -1484,6 +1627,12 @@
       replayView.textContent = current
         ? `cursor: ${state.replayCursor + 1}/${replayRows.length}\n${JSON.stringify(current, null, 2)}`
         : "(no replay data)";
+    }
+
+    function renderSimulatorResult() {
+      const box = root.querySelector("#simResultView");
+      if (!box) return;
+      box.textContent = formatSimulatorResult(state.simLastResult);
     }
 
     function renderOutputPreview() {
@@ -1530,6 +1679,7 @@
       renderNodeLibrary();
       renderLegacyBlocks();
       renderEventPanels();
+      renderSimulatorResult();
       renderOutputPreview();
       const modal = root.querySelector("#cardPickerModal");
       if (modal && modal.style.display === "flex") {
@@ -2166,14 +2316,54 @@
       root.querySelector("#simRunBtn")?.addEventListener("click", () => {
         const ev = root.querySelector("#simEvent")?.value || "OnPlay";
         const turn = Number(root.querySelector("#simTurn")?.value || 1);
+        const hp = Number(root.querySelector("#simHp")?.value || 20);
+        const pp = Number(root.querySelector("#simPp")?.value || 2);
         const card = selectedCard();
-        const row = state.sim.run(ev, { owner: "player1", sourceCardId: card?.id || "sim", turn });
-        log(`Simulator run: ${ev} -> ${row.historyRow.id}`);
+        if (!card) {
+          log("Simulator run skipped: カード未選択");
+          return;
+        }
+        saveFormToCard(card);
+        saveEditorToCard(card);
+        state.sim.patch({ hp, pp });
+        const row = state.sim.run(ev, {
+          owner: "player1",
+          sourceCardId: card?.id || "sim",
+          turn,
+          payload: { from: "card-simulator" }
+        });
+        let execution = null;
+        if (typeof runtime().simulateCardExecution === "function") {
+          execution = runtime().simulateCardExecution(card, {
+            owner: "player1",
+            sourceCardId: card.id,
+            eventName: ev,
+            turn,
+            hp,
+            pp,
+            zoneType: String(card.type || "") === "スキル" ? "skill" : "attacker",
+            damage: ev === "OnDamage" ? 1 : 0,
+            damageType: "damage",
+            targetOwner: "player1"
+          });
+        }
+        state.simLastResult = {
+          cardId: card.id,
+          eventName: ev,
+          historyRowId: row.historyRow?.id || "",
+          execution
+        };
+        const effectCount = Array.isArray(execution?.effects) ? execution.effects.length : 0;
+        const err = execution?.error ? ` error=${execution.error.message || execution.error}` : "";
+        log(`Simulator run: ${ev} -> ${row.historyRow.id} effects=${effectCount}${err}`);
         renderEventPanels();
+        renderSimulatorResult();
       });
       root.querySelector("#simResetBtn")?.addEventListener("click", () => {
         state.sim = runtime().createCardSimulator({ hp: 20, pp: 2, turn: 1 });
+        state.simLastResult = null;
         log("Simulator reset");
+        renderSimulatorResult();
       });
     }
 

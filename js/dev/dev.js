@@ -212,11 +212,11 @@ function renderEffectBlocksEditor() {
       <div class="blockRow" data-role="timingConditionArea">
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingWhileOnField"> これが場にある間</label>
         <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="timingThisTurn"> このターン中</label>
-        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackEnabledWrap"><input type="checkbox" data-role="timingDirectAttackEnabled"> 直接攻撃したかで判定</label>
+        <label style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackEnabledWrap"><input type="checkbox" data-role="timingDirectAttackEnabled"> 退場時修飾: この退場時効果直前に直接攻撃しているかで判定</label>
         <span style="font-size:12px;color:#666;display:none;" data-role="timingDirectAttackValueWrap">
-          直接攻撃:
-          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueTrue" value="true"> True</label>
-          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueFalse" value="false"> False</label>
+          退場時直前の直接攻撃:
+          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueTrue" value="true"> T</label>
+          <label style="margin-left:6px;"><input type="radio" name="timingDirectAttackValue_${ti}" data-role="timingDirectAttackValueFalse" value="false"> F</label>
         </span>
       </div>
       <div class="blockRow" data-role="timingConditionArea" style="align-items:flex-end;">
@@ -238,6 +238,9 @@ function renderEffectBlocksEditor() {
       .join("");
     timingSelect.addEventListener("change", (e) => {
       timing.timing = e.target.value;
+      if (timing.timing !== "onLeave") {
+        timing.condition.directAttackEnabled = false;
+      }
       renderEffectBlocksEditor();
     });
     const timingUseCondition = timingEl.querySelector('[data-role="timingUseCondition"]');
@@ -285,6 +288,7 @@ function renderEffectBlocksEditor() {
         timingTrackerRow.style.display = (timing.useCondition && timing.condition.useTrackerCheck === true) ? "" : "none";
       }
       const showEnabled = (timing.useCondition && timing.timing === "onLeave");
+      if (!showEnabled) timing.condition.directAttackEnabled = false;
       if (timingDirectAttackEnabledWrap) timingDirectAttackEnabledWrap.style.display = showEnabled ? "" : "none";
       if (timingDirectAttackValueWrap) {
         timingDirectAttackValueWrap.style.display = (showEnabled && timing.condition.directAttackEnabled === true) ? "" : "none";
@@ -401,11 +405,11 @@ function renderEffectBlocksEditor() {
         <div class="blockRow" data-role="conditionArea" style="border-top:1px solid #eee;padding-top:6px;">
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="whileOnField"> これが場にある間</label>
           <label style="font-size:12px;color:#666;"><input type="checkbox" data-role="thisTurn"> このターン中</label>
-          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackEnabledWrap"><input type="checkbox" data-role="directAttackEnabled"> 直接攻撃したかで判定</label>
+          <label style="font-size:12px;color:#666;display:none;" data-role="directAttackEnabledWrap"><input type="checkbox" data-role="directAttackEnabled"> 退場時修飾: この退場時効果直前に直接攻撃しているかで判定</label>
           <span style="font-size:12px;color:#666;display:none;" data-role="directAttackValueWrap">
-            直接攻撃:
-            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueTrue" value="true"> True</label>
-            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueFalse" value="false"> False</label>
+            退場時直前の直接攻撃:
+            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueTrue" value="true"> T</label>
+            <label style="margin-left:6px;"><input type="radio" name="directAttackValue_${ti}_${ei}" data-role="directAttackValueFalse" value="false"> F</label>
           </span>
         </div>
         <div class="blockRow" data-role="conditionArea">
@@ -667,6 +671,7 @@ function renderEffectBlocksEditor() {
           trackerConditionRow.style.display = (effect.useCondition === true && effect.condition.useTrackerCheck === true) ? "" : "none";
         }
         const showEnabled = (effect.useCondition === true && timing.timing === "onLeave");
+        if (!showEnabled) effect.condition.directAttackEnabled = false;
         if (directAttackEnabledWrap) directAttackEnabledWrap.style.display = showEnabled ? "" : "none";
         if (directAttackValueWrap) {
           directAttackValueWrap.style.display = (showEnabled && effect.condition.directAttackEnabled === true) ? "" : "none";

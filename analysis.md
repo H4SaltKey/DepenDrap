@@ -6742,3 +6742,25 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - 既存の効果実行ロジック・DSL仕様・命名は変更なし。
 - queue は観測用途のみで、ゲーム結果に影響しない。
+
+---
+
+## Round 2026-06-16 — 退場時専用条件分岐UI + カード追従パネル透明化
+
+### 実施内容
+
+- `js/dev/dev.js`
+  - 退場時(`onLeave`)専用の条件分岐として、既存 `directAttackEnabled/directAttackValue` をUI上で明示化。
+  - 表示文言を要件どおりに変更:
+    - 「退場時修飾: この退場時効果直前に直接攻撃しているかで判定」
+    - 値選択は `T/F`。
+  - `onLeave` 以外へタイミング変更した際は `directAttackEnabled=false` を自動適用し、退場時以外へ条件が残らないよう制御。
+
+- `css/style.css`
+  - ゲーム画面（`body:not(.deckPage)`）のカード追従テキストパネル背景（`cardVisualOverlay::before`）を透明化。
+  - デッキ画面は従来の見た目を維持。
+
+### 互換性
+
+- DSLフォーマット・条件キーは既存を維持（`directAttackEnabled/directAttackValue` をそのまま利用）。
+- 実行エンジン側ロジック変更なし（UI制御のみ）。

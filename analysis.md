@@ -6764,3 +6764,132 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - DSLフォーマット・条件キーは既存を維持（`directAttackEnabled/directAttackValue` をそのまま利用）。
 - 実行エンジン側ロジック変更なし（UI制御のみ）。
+
+---
+
+## Round 2026-06-16 — Event/State/History中心アーキテクチャ監査（DepenDrap方針）
+
+### 監査観点
+
+- 既存コードが「カード中心（onSummon/onAttack/onLeave）」に依存している箇所の特定
+- 既存資産（DSL/イベント/UI/デバッグ）を維持しつつ、EventLog中心へ移行できるか
+
+### カード中心設計が残っている主要箇所（実コード根拠）
+
+1) 入口がカード操作関数に集中
+- `js/game/auto/playerActionResolver.js`
+  - `resolveCardOnPlay` / `resolveCardOnLeave` / `resolveDirectAttack` が主導
+  - ここで `emitV2Event` と `EffectEngine.triggerZoneCardEffects` を都度呼び分け
+  - 参照: 同ファイル 414-566, 568-639, 641-702
+
+2) カードIDハードコード分岐が残存
+- `js/game/auto/firstEightCardEffects.js`
+  - `cd001-001` などIDごとの `if` 実装 + `preventDefaultDsl`
+  - 参照: 同ファイル 195-285
+  - これはDSL不要化方針と逆方向
+
+3) トリガー語彙がカードイベント前提
+- `js/card/cardDsl.js` の `detectTrigger` が `onSummon/onAttack/onLeave` 軸
+  - 参照: 25-36
+- `js/dev/cardEffectBlockCatalog.js` の `TIMINGS` も同軸
+  - 参照: 4-18
+
+4) カード属性→効果の静的ライブラリ依存
+- `js/card/cardCombatData.js` の `EFFECT_LIBRARY`
+  - 参照: 8-57
+  - イベントログ参照型ではなく属性/役割由来の効果注入
+
+5) 状態履歴が分散
+- `js/game/statTracker.js` は強力だが `addVal/setVal/applyCalculatedDamage` へのパッチ型
+  - 参照: 209-276
+  - すべてのドメインイベント（SkillUsed, CardSentToGraveyard など）が単一ログ化されていない
+
+### 再利用できる既存資産（移行の土台）
+
+1) EventLogの土台
+- `js/game/effects/effectRuntimeV2.js`
+  - `eventBus` と `historyStore` が既に存在
+  - 参照: 77-158, 160-243, 895-986
+
+2) デバッグ/追跡基盤
+- `js/game/effects/effectEngine.js`
+  - trigger search / condition / target / effect / chain の段階ログが既に実装
+  - 参照: 1043-1235
+
+3) 状態同期の中核
+- `js/state/gameState.js`, `js/state/syncState.js`
+  - HP/Shield/PP/ATK 等の標準変数と正規化ポイントあり
+  - 参照: `gameState.js` 7-55, `syncState.js` 18-63
+
+### DepenDrap向け移行案（優先順位どおり）
+
+#### 1. EventLogシステム（最優先）
+
+- 追加方針:
+  - `CardEffectRuntimeV2.emitGameEvent` を唯一のイベント記録入口に寄せる
+  - `PlayerActionResolver` で発火している各イベントを `emitGameEvent` へ統一送出
+- 実装最小単位:
+  - `OnPlay/OnAttack/OnDirectAttack/OnLeaveField/OnSkillUse/OnDamage/OnHeal/OnShieldGain/OnTurnStart/OnTurnEnd`
+  - 既存 `onSummon` 等は互換レイヤ（map）で維持
+- 目的:
+  - 「何が起きたか」をカード依存なく時系列で参照可能にする
+
+#### 2. 状態変数システム（GameState + StatusEffect）
+
+- 追加方針:
+  - `window.state[player]` に可変拡張領域 `statusVars` を追加（後方互換）
+  - 標準キー: `hp, shield, pp, atk, fateValue, causality`
+  - 特殊キー: `bleed, combo, fullCounter, joker` を `statusVars` で汎用管理
+- 既存互換:
+  - 既存参照（`state[player].hp` 等）はそのまま維持
+  - 新効果は `statusVars` 経由でDSLから読む/書く
+
+#### 3. 条件評価システム
+
+- 追加方針:
+  - `effectEngine` の `evaluateRuntimeConditionDetailed` に「履歴クエリ条件」を追加
+  - `GameStatTracker.resolvePath` と `historyStore.query/get` の二系統を統合的に参照
+- 対応対象:
+  - 「このターン中HP増減回数」「直接攻撃回数」「スキル使用数」「追加ダメージ回数」など
+- 互換:
+  - 既存 `trackerCheck/directAttackEnabled/directAttackValue/requiredExecutedOrder` は維持
+
+#### 4. DSL実行系
+
+- 追加方針:
+  - 内部IRを `WHEN/IF/DO` のイベント中心モデルへ寄せる
+  - ただし外部DSL形式 (`dependrap.dsl.v1` / effectBlocks) は維持し、コンパイル時にIRへ変換
+- 実装順:
+  1. `effectBlocks.timings` -> event rule IR 変換
+  2. `effectDsl.triggers` -> 同IRへ変換
+  3. 実行器はIRのみ処理
+- 効果:
+  - 新カード追加時にJS分岐を増やさず、DSLだけで対応しやすくなる
+
+#### 5. UI
+
+- 追加方針:
+  - 既存エディタ項目は維持したまま、内部ではイベント名を `On*` 正規化して保存
+  - デバッグUIに EventLogタイムライン（event -> trigger -> condition -> target -> effect）を統合表示
+
+### 「遊戯王型」残存の具体的撤去候補
+
+1) `firstEightCardEffects` の段階廃止
+- 各 `id === ...` 分岐を順次 DSL 化
+- `preventDefaultDsl` を最終的にゼロへ
+
+2) `PlayerActionResolver` の責務縮小
+- 「カード処理の本体」から「イベント生成アダプタ」へ縮小
+- 実際の誘発解決は EventLog購読側へ寄せる
+
+3) `cardCombatData.EFFECT_LIBRARY` 依存の軽減
+- 汎用初期値（atk/cost）以外はDSL/StatusEffectへ移管
+
+### リスクと緩和
+
+- リスク: 既存カード挙動の差分発生
+  - 緩和: `simulateCardExecution`（`effectRuntimeV2`）を回帰比較に利用
+- リスク: UI/DSL互換破壊
+  - 緩和: DSLフォーマット・命名は維持し、内部正規化のみ追加
+- リスク: パフォーマンス（カード500+）
+  - 緩和: EventLogをターン境界で集約し、条件評価にインデックス済みカウンタを利用

@@ -1,5 +1,39 @@
 (function() {
   const DSL_FORMAT = "dependrap.dsl.v1";
+  const RUNTIME_QUEUE_LIMIT = 200;
+  const runtimeQueues = {
+    timelineQueue: [],
+    triggerQueue: [],
+    effectQueue: [],
+    chainQueue: []
+  };
+
+  function safeClone(value) {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function pushQueueRow(queueName, row) {
+    const q = runtimeQueues[queueName];
+    if (!Array.isArray(q)) return;
+    q.push(row);
+    if (q.length > RUNTIME_QUEUE_LIMIT) q.splice(0, q.length - RUNTIME_QUEUE_LIMIT);
+  }
+
+  function recordRuntimeQueue(kind, payload) {
+    const row = {
+      at: Date.now(),
+      kind: String(kind || "unknown"),
+      ...(safeClone(payload) || {})
+    };
+    pushQueueRow("timelineQueue", row);
+    if (kind === "trigger") pushQueueRow("triggerQueue", row);
+    if (kind === "effect") pushQueueRow("effectQueue", row);
+    if (kind === "chain") pushQueueRow("chainQueue", row);
+  }
 
   function meRole() {
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
@@ -1018,6 +1052,14 @@
       matchedCount: matched.length,
       totalTriggers: Array.isArray(cardDsl?.triggers) ? cardDsl.triggers.length : 0
     });
+    recordRuntimeQueue("trigger", {
+      stage: "trigger_search",
+      eventName: String(context?.event?.name || ""),
+      sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+      owner: String(context?.owner || ""),
+      dslSource: String(context?.dslSource || ""),
+      matchedCount: matched.length
+    });
     if (matched.length === 0) {
       const ev = String(context?.event?.name || "");
       if (ev === "onSummon" || ev === "onPlay" || ev === "OnPlay") {
@@ -1055,6 +1097,14 @@
           triggerReports.push(triggerReport);
           logTriggerTrace(context, triggerReport, "SKIP_TRIGGER_CONDITION");
           notifyDebug(context, { type: "trigger", report: triggerReport });
+          recordRuntimeQueue("trigger", {
+            stage: "trigger_condition",
+            trigger: String(trigger?.on || ""),
+            sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+            owner: String(context?.owner || ""),
+            result: "skip_trigger_condition",
+            reason: "trigger-condition-failed"
+          });
           continue;
         }
       } else {
@@ -1083,6 +1133,14 @@
           triggerReports.push(triggerReport);
           logTriggerTrace(context, triggerReport, "SKIP_BUNDLE_CONDITION");
           notifyDebug(context, { type: "trigger", report: triggerReport });
+          recordRuntimeQueue("trigger", {
+            stage: "bundle_condition",
+            trigger: String(trigger?.on || ""),
+            sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+            owner: String(context?.owner || ""),
+            result: "skip_bundle_condition",
+            reason: String(bundleCondition.reason || "")
+          });
           continue;
         }
       } else {
@@ -1129,6 +1187,14 @@
           order,
           executedOrders: Array.isArray(chain.executedOrders) ? [...chain.executedOrders] : []
         });
+        recordRuntimeQueue("chain", {
+          stage: "chain_update",
+          trigger: String(trigger?.on || ""),
+          order,
+          sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+          owner: String(context?.owner || ""),
+          executedOrders: Array.isArray(chain.executedOrders) ? [...chain.executedOrders] : []
+        });
         resultEffects.push(r);
         triggerReport.effects.push({
           order,
@@ -1147,6 +1213,15 @@
           result: triggerReport.effects[triggerReport.effects.length - 1],
           changed: Array.isArray(r?.changed) ? r.changed : []
         });
+        recordRuntimeQueue("effect", {
+          stage: "effect_execute",
+          trigger: String(trigger?.on || ""),
+          order,
+          sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+          owner: String(context?.owner || ""),
+          result: triggerReport.effects[triggerReport.effects.length - 1],
+          changed: Array.isArray(r?.changed) ? r.changed : []
+        });
         notifyDebug(context, {
           type: "effect",
           trigger: String(trigger?.on || ""),
@@ -1157,12 +1232,26 @@
           triggerReports.push(triggerReport);
           logTriggerTrace(context, triggerReport, "FLOW_BREAK");
           notifyDebug(context, { type: "trigger", report: triggerReport });
+          recordRuntimeQueue("trigger", {
+            stage: "trigger_end",
+            trigger: String(trigger?.on || ""),
+            sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+            owner: String(context?.owner || ""),
+            result: "flow_break"
+          });
           return { handled: true, effects: resultEffects, flowBreak: true, triggerReports };
         }
       }
       triggerReports.push(triggerReport);
       logTriggerTrace(context, triggerReport, "FIRED");
       notifyDebug(context, { type: "trigger", report: triggerReport });
+      recordRuntimeQueue("trigger", {
+        stage: "trigger_end",
+        trigger: String(trigger?.on || ""),
+        sourceCardId: String(context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+        owner: String(context?.owner || ""),
+        result: "fired"
+      });
     }
     return { handled: true, effects: resultEffects, triggerReports };
   }
@@ -1194,6 +1283,20 @@
     VariableResolver,
     execute,
     triggerZoneCardEffects,
-    executeGrantedEffects
+    executeGrantedEffects,
+    getRuntimeQueues() {
+      return safeClone(runtimeQueues) || {
+        timelineQueue: [],
+        triggerQueue: [],
+        effectQueue: [],
+        chainQueue: []
+      };
+    },
+    clearRuntimeQueues() {
+      runtimeQueues.timelineQueue = [];
+      runtimeQueues.triggerQueue = [];
+      runtimeQueues.effectQueue = [];
+      runtimeQueues.chainQueue = [];
+    }
   };
 })();

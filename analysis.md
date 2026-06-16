@@ -6711,3 +6711,34 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - 既存イベント（`connected`/`disconnected`）とUI表示フローは維持。
 - 追加はフォールバック挙動のみで、DSLやゲームロジックには非干渉。
+
+---
+
+## Round 2026-06-16 — EffectEngine本体に軽量Queue追加（最小改修）
+
+### 目的
+
+- デバッグUIだけでなく、実エンジン側にも `Trigger Queue / Effect Queue / Chain Queue` を持たせ、
+  誘発順序や再入を後追い検証しやすくする。
+
+### 対応
+
+- `js/game/effects/effectEngine.js` に軽量ランタイムキューを追加。
+  - `timelineQueue`
+  - `triggerQueue`
+  - `effectQueue`
+  - `chainQueue`
+- 記録ポイント:
+  - trigger検索
+  - trigger/bundle 条件での skip
+  - effect 実行結果
+  - chain 更新
+  - trigger 完了（fired / flow_break）
+- 公開API追加（互換破壊なし）:
+  - `EffectEngine.getRuntimeQueues()`
+  - `EffectEngine.clearRuntimeQueues()`
+
+### 備考
+
+- 既存の効果実行ロジック・DSL仕様・命名は変更なし。
+- queue は観測用途のみで、ゲーム結果に影響しない。

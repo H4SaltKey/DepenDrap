@@ -10,6 +10,9 @@
     { id: "onTurnStart", label: "ターン開始時" },
     { id: "onTurnEnd", label: "ターン終了時" },
     { id: "onLeave", label: "退場時" },
+    { id: "onHeal", label: "回復時" },
+    { id: "onShieldGain", label: "シールド獲得時" },
+    { id: "onSkillUse", label: "スキル使用時" },
     { id: "continuous", label: "継続" },
     { id: "manual", label: "手動" }
   ];

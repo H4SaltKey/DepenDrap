@@ -203,6 +203,14 @@
     return Array.from(content.querySelectorAll(".card:not(.deckObject)"))
       .filter((el) => (el.dataset.owner || "") === owner && !el.dataset.zoneType && Number(el.dataset.y || 0) >= handYMin);
   }
+  function cardDebugName(card) {
+    if (!card) return "null";
+    const cardId = String(card?.dataset?.id || "");
+    const profile = cardId ? (window.CardCombatData?.getResolvedCardData?.(cardId, card?.dataset?.owner) || null) : null;
+    const name = String(profile?.name || card?.dataset?.name || cardId || "unknown");
+    return `${name}${cardId ? `(${cardId})` : ""}`;
+  }
+
   function resolveCardTargets(effect, context) {
     const cardToken = String(effect.cardTarget || effect.target || "this_card");
     const targetType = String(effect.targetType || "");
@@ -653,54 +661,85 @@
       const type = String(effect?.type || "UNKNOWN");
       const amount = Number(VariableResolver.resolveValue(effect.amount ?? 1, context, vars) || 0);
       const condResult = evaluateEffectCondition(effect, context);
+      notifyDebug(context, {
+        type: "condition",
+        stage: "condition_eval",
+        effectType: type,
+        condition: effect?.useCondition === true ? (effect?.condition || null) : null,
+        result: condResult.ok,
+        reason: condResult.reason
+      });
       if (!condResult.ok) {
         return { applied: false, type, skippedByCondition: true, skippedReason: condResult.reason };
       }
       const playerTarget = resolvePlayerTargetOwners(effect, context);
       const targetOwners = playerTarget.owners;
+      notifyDebug(context, {
+        type: "target",
+        stage: "resolve_target",
+        effectType: type,
+        target: String(effect?.target || ""),
+        cardTarget: String(effect?.cardTarget || ""),
+        targetType: String(effect?.targetType || ""),
+        resolvedOwners: Array.isArray(targetOwners) ? targetOwners : [],
+        invalidReason: String(playerTarget.invalidReason || "")
+      });
 
       if (type === "DRAW" || type === "ADD_HAND") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
           if (targetOwner === meRole() && typeof window.drawToHand === "function") window.drawToHand(Math.max(0, amount || 1));
+          changed.push({ owner: targetOwner, draw: Math.max(0, amount || 1) });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "DRAW_CARD") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
           if (targetOwner === meRole() && typeof window.drawToHand === "function") {
             const n = Math.max(0, amount || 1);
             window.drawToHand(n);
             recoverPpByDraw(targetOwner, n);
+            changed.push({ owner: targetOwner, draw: n, recoverPpByDraw: n });
           }
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "ADD_HAND_TO_MIN") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         if (isMonsterCurrentTargetForCardEffect(effect, context)) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "monster-target-not-player" };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
           if (targetOwner !== meRole()) return;
           if (typeof window.drawToHand !== "function") return;
           const current = Number(getHandCardsOfOwner(targetOwner)?.length || 0);
           const need = Math.max(0, Math.max(0, amount || 0) - current);
           if (need > 0) window.drawToHand(need);
+          changed.push({ owner: targetOwner, draw: need, handCurrent: current, handTargetMin: Math.max(0, amount || 0) });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "HEAL") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
+          const before = Number(getPlayer(targetOwner)?.hp || 0);
           if (typeof window.addVal === "function") window.addVal(targetOwner, "hp", Math.max(0, amount));
+          const after = Number(getPlayer(targetOwner)?.hp || before);
+          changed.push({ owner: targetOwner, stat: "hp", before, after });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "DAMAGE") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
+          const beforeHp = Number(getPlayer(targetOwner)?.hp || 0);
+          const beforeShield = Number(getPlayer(targetOwner)?.shield || 0);
           if (typeof window.applyCalculatedDamage === "function") {
             const damageType = String(effect.damageType || "damage");
             const subType = String(effect.subType || "none");
@@ -710,34 +749,48 @@
               sourceCardId: context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""
             });
           }
+          const afterHp = Number(getPlayer(targetOwner)?.hp || beforeHp);
+          const afterShield = Number(getPlayer(targetOwner)?.shield || beforeShield);
+          changed.push({ owner: targetOwner, stat: "damage", beforeHp, afterHp, beforeShield, afterShield });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "RECOVER_PP") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
+          const before = Number(getPlayer(targetOwner)?.pp || 0);
           if (typeof window.addVal === "function") window.addVal(targetOwner, "pp", Math.max(0, amount));
+          const after = Number(getPlayer(targetOwner)?.pp || before);
+          changed.push({ owner: targetOwner, stat: "pp", before, after });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "SET_PP_MIN") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
           const s = getPlayer(targetOwner);
           if (s) {
+            const before = Number(s.pp || 0);
             const max = Number(s.ppMax || 2);
             s.pp = Math.max(Number(s.pp || 0), Math.min(max, Math.max(0, amount)));
             if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+            changed.push({ owner: targetOwner, stat: "pp", before, after: Number(s.pp || 0) });
           }
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "ADD_SHIELD") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
         targetOwners.forEach((targetOwner) => {
+          const before = Number(getPlayer(targetOwner)?.shield || 0);
           if (typeof window.addVal === "function") window.addVal(targetOwner, "shield", Math.max(0, amount));
+          const after = Number(getPlayer(targetOwner)?.shield || before);
+          changed.push({ owner: targetOwner, stat: "shield", before, after });
         });
-        return { applied: true, type };
+        return { applied: true, type, changed };
       }
       if (type === "ADD_ATK") {
         const mode = String(effect.atkMode || "increase");
@@ -759,10 +812,17 @@
             }
           });
         }
-        return { applied: true, type };
+        return { applied: true, type, changed: [{ stat: "atk", amount: amountSigned, mode }] };
       }
       if (type === "MOVE_SOURCE_TO_GRAVE") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
@@ -799,16 +859,30 @@
           if (movedByOnLeave) return;
           if (typeof window.placeCardInZone === "function") window.placeCardInZone(card, owner, "grave");
         });
-        return { applied: true, type };
+        return { applied: true, type, changed: cards.map((c) => ({ card: cardDebugName(c), to: "grave" })) };
       }
       if (type === "MOVE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => moveCardToHand(card, card.dataset.owner || context.owner));
-        return { applied: true, type };
+        return { applied: true, type, changed: cards.map((c) => ({ card: cardDebugName(c), to: "hand" })) };
       }
       if (type === "MOVE_SOURCE_TO_DECK") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           const owner = card.dataset.owner || context.owner;
@@ -818,10 +892,17 @@
           card.dataset.y = String(Number(window.HAND_ZONE_Y_MIN || 1460) + 20);
           if (typeof window.organizeHands === "function") window.organizeHands();
         });
-        return { applied: true, type };
+        return { applied: true, type, changed: cards.map((c) => ({ card: cardDebugName(c), to: "deck" })) };
       }
       if (type === "DUPLICATE_SOURCE_TO_HAND") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         cards.forEach((card) => {
           if (typeof window.duplicateCard === "function") {
@@ -833,6 +914,13 @@
       }
       if (type === "REVEAL_CARD") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         if (typeof window.addGameLog === "function") {
           cards.forEach((card) => window.addGameLog(`[REVEAL] ${card.dataset.id || "unknown"}`));
@@ -841,6 +929,13 @@
       }
       if (type === "FETCH_CARD" || type === "PLAY_SOURCE_TO_FIELD") {
         const cards = resolveCardTargets(effect, context);
+        notifyDebug(context, {
+          type: "target",
+          stage: "resolve_target",
+          effectType: type,
+          cardTarget: String(effect?.cardTarget || effect?.target || "this_card"),
+          resolvedCards: cards.map((c) => cardDebugName(c))
+        });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
         const toZone = String(effect.toZone || (type === "PLAY_SOURCE_TO_FIELD" ? "attacker" : "hand"));
         cards.forEach((card) => {
@@ -914,6 +1009,15 @@
   function execute(cardDsl, context) {
     if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [], triggerReports: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
+    notifyDebug(context, {
+      type: "trigger_search",
+      stage: "trigger_search",
+      eventName: String(context?.event?.name || ""),
+      searchedFrom: "effectDsl.triggers",
+      dslSource: String(context?.dslSource || ""),
+      matchedCount: matched.length,
+      totalTriggers: Array.isArray(cardDsl?.triggers) ? cardDsl.triggers.length : 0
+    });
     if (matched.length === 0) {
       const ev = String(context?.event?.name || "");
       if (ev === "onSummon" || ev === "onPlay" || ev === "OnPlay") {
@@ -938,6 +1042,14 @@
       if (trigger.useCondition === true) {
         const triggerConditionOk = ConditionEvaluator.evaluateCondition(trigger.condition, context, vars);
         triggerReport.triggerConditionPassed = triggerConditionOk;
+        notifyDebug(context, {
+          type: "condition",
+          stage: "trigger_condition_eval",
+          trigger: String(trigger?.on || ""),
+          condition: trigger?.condition || null,
+          result: triggerConditionOk,
+          reason: triggerConditionOk ? "passed" : "trigger-condition-failed"
+        });
         if (!triggerConditionOk) {
           triggerReport.triggerConditionReason = "trigger-condition-failed";
           triggerReports.push(triggerReport);
@@ -945,17 +1057,43 @@
           notifyDebug(context, { type: "trigger", report: triggerReport });
           continue;
         }
+      } else {
+        notifyDebug(context, {
+          type: "condition",
+          stage: "trigger_condition_eval",
+          trigger: String(trigger?.on || ""),
+          condition: null,
+          result: true,
+          reason: "useCondition=false"
+        });
       }
       if (trigger.useCondition === true) {
         const bundleCondition = evaluateRuntimeConditionDetailed(trigger.bundleCondition, context);
         triggerReport.bundleConditionPassed = bundleCondition.ok;
         triggerReport.bundleConditionReason = bundleCondition.reason;
+        notifyDebug(context, {
+          type: "condition",
+          stage: "bundle_condition_eval",
+          trigger: String(trigger?.on || ""),
+          condition: trigger?.bundleCondition || null,
+          result: bundleCondition.ok,
+          reason: bundleCondition.reason
+        });
         if (!bundleCondition.ok) {
           triggerReports.push(triggerReport);
           logTriggerTrace(context, triggerReport, "SKIP_BUNDLE_CONDITION");
           notifyDebug(context, { type: "trigger", report: triggerReport });
           continue;
         }
+      } else {
+        notifyDebug(context, {
+          type: "condition",
+          stage: "bundle_condition_eval",
+          trigger: String(trigger?.on || ""),
+          condition: null,
+          result: true,
+          reason: "useCondition=false"
+        });
       }
       const chain = { executedOrders: [] };
       const effects = trigger.effects || [];
@@ -984,6 +1122,13 @@
           };
         }
         if (r && r.applied) chain.executedOrders.push(order);
+        notifyDebug(localContext, {
+          type: "chain",
+          stage: "chain_update",
+          trigger: String(trigger?.on || ""),
+          order,
+          executedOrders: Array.isArray(chain.executedOrders) ? [...chain.executedOrders] : []
+        });
         resultEffects.push(r);
         triggerReport.effects.push({
           order,
@@ -993,6 +1138,14 @@
           skippedByInvalidTarget: r?.skippedByInvalidTarget === true,
           skippedReason: String(r?.skippedReason || ""),
           error: r?.error || null
+        });
+        notifyDebug(localContext, {
+          type: "effect_result",
+          stage: "effect_execute",
+          trigger: String(trigger?.on || ""),
+          order,
+          result: triggerReport.effects[triggerReport.effects.length - 1],
+          changed: Array.isArray(r?.changed) ? r.changed : []
         });
         notifyDebug(context, {
           type: "effect",
@@ -1026,6 +1179,7 @@
         sourceProfile: profile,
         owner,
         opponent: opponentOf(owner),
+        dslSource: Array.isArray(profile?.effectBlocks?.timings) ? "effectBlocks.timings" : "effectDsl.triggers",
         event: { name: eventName, zoneType, ...(extraEvent || {}) }
       };
       execute(profile.effectDsl, context);

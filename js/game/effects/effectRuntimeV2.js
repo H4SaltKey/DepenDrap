@@ -8,6 +8,7 @@
     "OnPlay",
     "OnAttack",
     "OnDirectAttack",
+    "OnSkillUse",
     "OnBeforeAttackEffect",
     "OnAfterAttackEffect",
     "OnDraw",
@@ -15,6 +16,8 @@
     "OnLeaveField",
     "OnReturnHand",
     "OnDamage",
+    "OnHeal",
+    "OnShieldGain",
     "OnPenetrateDamage",
     "OnTurnStart",
     "OnTurnEnd",
@@ -48,6 +51,7 @@
       onSummon: "OnPlay",
       onAttack: "OnAttack",
       onDirectAttack: "OnDirectAttack",
+      onSkillUse: "OnSkillUse",
       onSkillBeforeAttackEffect: "OnBeforeAttackEffect",
       onSkillAfterAttackEffect: "OnAfterAttackEffect",
       onLeave: "OnLeaveField",
@@ -55,7 +59,9 @@
       onTurnEnd: "OnTurnEnd",
       onDraw: "OnDraw",
       onDiscard: "OnDiscard",
-      onDamage: "OnDamage"
+      onDamage: "OnDamage",
+      onHeal: "OnHeal",
+      onShieldGain: "OnShieldGain"
     };
     return map[raw] || `On${raw.charAt(0).toUpperCase()}${raw.slice(1)}`;
   }
@@ -744,6 +750,7 @@
       OnPlay: "onSummon",
       OnAttack: "onAttack",
       OnDirectAttack: "onDirectAttack",
+      OnSkillUse: "onSkillUse",
       OnBeforeAttackEffect: "onSkillBeforeAttackEffect",
       OnAfterAttackEffect: "onSkillAfterAttackEffect",
       OnLeaveField: "onLeave",
@@ -752,6 +759,8 @@
       OnDraw: "onDraw",
       OnDiscard: "onDiscard",
       OnDamage: "onDamage",
+      OnHeal: "onHeal",
+      OnShieldGain: "onShieldGain",
       OnPenetrateDamage: "onDamage"
     };
     return map[n] || "manual";
@@ -789,6 +798,7 @@
       onSummon: "OnPlay",
       onAttack: "OnAttack",
       onDirectAttack: "OnDirectAttack",
+      onSkillUse: "OnSkillUse",
       onSkillBeforeAttackEffect: "OnBeforeAttackEffect",
       onSkillAfterAttackEffect: "OnAfterAttackEffect",
       onLeave: "OnLeaveField",
@@ -796,7 +806,9 @@
       onTurnEnd: "OnTurnEnd",
       onDraw: "OnDraw",
       onDiscard: "OnDiscard",
-      onDamage: "OnDamage"
+      onDamage: "OnDamage",
+      onHeal: "OnHeal",
+      onShieldGain: "OnShieldGain"
     };
     return map[raw] || "OnPlay";
   }

@@ -6604,3 +6604,83 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `simulateCardExecution(...)` 実行で `triggerReports/effects` が取得できることを確認
 - リビルド:
   - `package.json` が存在しないため、リポジトリ内に実行可能な build スクリプトは未検出（`NO_BUILD_SCRIPT`）
+
+---
+
+## Round 2026-06-16 — 効果エンジン監査（イベント/条件/ターゲット/デバッグ可視化）
+
+### 監査で確定した問題
+
+- `onHeal` / `onShieldGain` / `onSkillUse` のイベント発火導線が主要実装に存在しなかった。
+  - `playerActionResolver.js` には `onDamage` のみフック実装があり、HP回復・シールド増加・スキル使用に対する emit が不足。
+- デバッグ表示は `trigger` / `effect` を中心とした表示で、要求された
+  - イベント発火
+  - トリガー検索
+  - 条件判定
+  - ターゲット解決
+  - 効果実行
+  - 追加イベント
+  の時系列が明示されていなかった。
+- DSLトリガー検索は実行されていたが、
+  - `effectDsl.triggers` 検索
+  - `effectBlocks.timings` 起点（コンパイル経由）
+  のどちらから来たかをランタイムログで判別しづらかった。
+
+### 実施した最小改修
+
+- `js/game/auto/playerActionResolver.js`
+  - `onHeal` / `onShieldGain` 発火を追加（`addVal` フックで増加時のみ emit）。
+  - `onSkillUse` 発火を追加（スキル使用時に emit）。
+  - 既存方式に合わせ、V2イベント emit と EffectEngine `triggerZoneCardEffects` の両方を実行。
+  - debug reporter があるカードに対して `event_fire` を通知するよう拡張。
+  - DSL解決時に `__dslSource`（`effectDsl.triggers` / `effectBlocks.timings` など）を持たせ、デバッグ追跡を補強。
+
+- `js/game/effects/effectRuntimeV2.js`
+  - `OnSkillUse` / `OnHeal` / `OnShieldGain` をイベント名と正規化マップに追加。
+  - V1トリガー変換マップ（to/from）にも `onSkillUse` / `onHeal` / `onShieldGain` を追加。
+
+- `js/game/effects/effectEngine.js`
+  - `debugReporter` 経由で以下を段階通知するよう拡張。
+    - `trigger_search`
+    - `condition`（trigger/bundle/effect）
+    - `target`（owner/card 解決）
+    - `effect_result`（実行成否・changed値）
+    - `chain`（executedOrders）
+  - `HEAL/DAMAGE/SET_PP_MIN/ADD_SHIELD` などで before/after を `changed` に格納し、値変化を追跡可能化。
+  - `triggerZoneCardEffects` 実行時に `dslSource` をコンテキストへ付与。
+
+- `js/dev/cardDebug.js`
+  - runtime queue を拡張。
+    - `timelineQueue`
+    - `triggerQueue`
+    - `effectQueue`
+    - `chainQueue`
+  - 既存UIを維持しつつ、時系列パネルで
+    - event発火
+    - trigger検索
+    - condition判定
+    - target解決
+    - effect実行
+    - chain更新
+    を表示。
+  - チェインキューパネルを追加。
+
+- `js/dev/cardEffectBlockCatalog.js` / `js/dev/dev.js`
+  - 開発UIタイミングに `onHeal` / `onShieldGain` / `onSkillUse` を追加し、DSL/UI互換を維持したまま新イベントを選択可能化。
+
+### 影響範囲と互換性
+
+- DSLフォーマットの変更なし。
+- 既存イベント名・既存関数名の破壊的変更なし。
+- 既存UIを残したままデバッグ情報のみ拡張。
+- 既存カードデータ（`effectBlocks`/`effectDsl`）はそのまま利用可能。
+
+### 未対応（意図的に据え置き）
+
+- 本番エンジンに独立した `Effect Queue / Trigger Queue / Chain Queue` 構造体を新設する大規模改修。
+  - 今回は現行構造維持を優先し、デバッグ層で可視化キューを追加。
+
+### 追加修正（カードデータ起因）
+
+- `cd001-001` の `onLeave` タイミング条件に `trackerCheck.value=999` が残っており、`directAttackEnabled` 条件を満たしても常に不成立となる構成だった。
+- 当該カードの `onLeave.condition` に `useTrackerCheck: false` を追加し、仕様文（「直接攻撃していないなら発動」）どおりに発火するよう補正。

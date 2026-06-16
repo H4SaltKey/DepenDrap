@@ -19,7 +19,8 @@
   const runtime = {
     enabled: true,
     lastResolvedInstanceKey: "",
-    damageHookDepth: 0
+    damageHookDepth: 0,
+    addValHookDepth: 0
   };
 
   function logFlow(message) {
@@ -84,6 +85,13 @@
     }
   }
 
+  function reportCardDebug(cardEl, payload) {
+    if (!cardEl || typeof cardEl._debugReporter !== "function") return;
+    try {
+      cardEl._debugReporter(payload || {});
+    } catch (_) {}
+  }
+
   function normalizeTrigger(trigger) {
     const t = String(trigger || "manual");
     if (t === "onSummon" || t === "onAttack" || t === "onDirectAttack" || t === "onSkillBeforeAttackEffect" || t === "onSkillAfterAttackEffect") return t;
@@ -127,13 +135,20 @@
   }
 
   function resolveEffectiveDsl(profile) {
+    function markSource(dsl, source) {
+      if (!dsl || dsl.format !== "dependrap.dsl.v1" || !Array.isArray(dsl.triggers)) return null;
+      if (!Object.prototype.hasOwnProperty.call(dsl, "__dslSource")) {
+        dsl.__dslSource = source;
+      }
+      return dsl;
+    }
     if (
       window.CardEffectRuntimeV2
       && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
     ) {
       const resolved = window.CardEffectRuntimeV2.resolveCardDsl(profile);
       if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
-        return resolved;
+        return markSource(resolved, "resolveCardDsl");
       }
     }
     if (
@@ -143,12 +158,12 @@
       && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
     ) {
       const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(profile.effectBlocks);
-      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) return compiled;
+      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) return markSource(compiled, "effectBlocks.timings");
     }
     if (profile?.effectDsl && profile.effectDsl.format === "dependrap.dsl.v1" && Array.isArray(profile.effectDsl.triggers)) {
-      return profile.effectDsl;
+      return markSource(profile.effectDsl, "effectDsl.triggers");
     }
-    return { format: "dependrap.dsl.v1", triggers: [] };
+    return markSource({ format: "dependrap.dsl.v1", triggers: [] }, "empty");
   }
 
   function hasOtherAttackerOnField(owner, sourceCard) {
@@ -239,12 +254,23 @@
       opponent: owner === "player1" ? "player2" : "player1",
       target: owner === "player1" ? "player2" : "player1",
       event: { name: triggerName, zoneType },
+      dslSource: "",
       debugReporter: typeof cardEl?._debugReporter === "function" ? cardEl._debugReporter : null
     };
+    reportCardDebug(cardEl, {
+      type: "event_fire",
+      eventName: triggerName,
+      payload: {
+        owner,
+        sourceCardId: profile?.id || cardEl?.dataset?.id || "unknown",
+        zoneType
+      }
+    });
     if (typeof window.EffectEngine.executeGrantedEffects === "function") {
       window.EffectEngine.executeGrantedEffects(context);
     }
     const dsl = resolveEffectiveDsl(profile);
+    context.dslSource = String(dsl?.__dslSource || "");
     if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return { handled: true, effects: [] };
     const result = window.EffectEngine.execute(dsl, context);
     if (typeof cardEl?._debugOnEngineResult === "function") {
@@ -323,6 +349,68 @@
     }
   }
 
+  function resolveOnHealEvent(owner, amount, options = {}) {
+    const targetOwner = String(owner || "");
+    if (!targetOwner) return;
+    const payload = {
+      owner: targetOwner,
+      sourceCardId: String(options.sourceCardId || options.cardId || "heal"),
+      targetOwner,
+      amount: Math.max(0, Number(amount || 0)),
+      source: String(options.source || "addVal")
+    };
+    emitV2Event("OnHeal", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      const extraEvent = {
+        targetOwner,
+        amount: payload.amount,
+        sourceCardId: payload.sourceCardId,
+        source: payload.source
+      };
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "attacker", "onHeal", extraEvent);
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "skill", "onHeal", extraEvent);
+    }
+  }
+
+  function resolveOnShieldGainEvent(owner, amount, options = {}) {
+    const targetOwner = String(owner || "");
+    if (!targetOwner) return;
+    const payload = {
+      owner: targetOwner,
+      sourceCardId: String(options.sourceCardId || options.cardId || "shield"),
+      targetOwner,
+      amount: Math.max(0, Number(amount || 0)),
+      source: String(options.source || "addVal")
+    };
+    emitV2Event("OnShieldGain", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      const extraEvent = {
+        targetOwner,
+        amount: payload.amount,
+        sourceCardId: payload.sourceCardId,
+        source: payload.source
+      };
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "attacker", "onShieldGain", extraEvent);
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "skill", "onShieldGain", extraEvent);
+    }
+  }
+
+  function resolveOnSkillUseEvent(cardEl, owner, sourceCardId, zoneType, cardKind) {
+    const me = owner || getMyRoleSafe();
+    const payload = {
+      owner: me,
+      sourceCardId: String(sourceCardId || "unknown"),
+      zoneType: String(zoneType || "skill"),
+      cardKind: String(cardKind || "skill")
+    };
+    reportCardDebug(cardEl, { type: "event_fire", eventName: "onSkillUse", payload: { ...payload } });
+    emitV2Event("OnSkillUse", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onSkillUse", payload);
+      window.EffectEngine.triggerZoneCardEffects(me, "skill", "onSkillUse", payload);
+    }
+  }
+
   function resolveCardOnPlay(cardEl, zoneType) {
     if (!runtime.enabled) return;
     if (!cardEl || !zoneType) return;
@@ -396,6 +484,10 @@
       const policy = String(profile.cardCostPolicy || "normal");
       const policyLabel = policy === "joker" ? "ジョーカー" : (policy === "all_in" ? "オールイン" : "通常");
       window.addGameLog(`[ACTION] ${cardName} を使用 (PP:${profile.cost || 0}, CostRule:${policyLabel})`);
+    }
+
+    if (effectiveKind === "skill") {
+      resolveOnSkillUseEvent(cardEl, owner, cardId, zoneType, effectiveKind);
     }
 
     let preventDefaultDsl = false;
@@ -485,6 +577,16 @@
       : card;
     if (cardEl.dataset.onLeaveResolving === "1") return;
     const triggerName = "onLeave";
+    reportCardDebug(cardEl, {
+      type: "event_fire",
+      eventName: triggerName,
+      payload: {
+        owner,
+        sourceCardId: profile.id || cardEl.dataset.id || "unknown",
+        zoneType: options.zoneType || "grave",
+        didDirectAttack: cardEl.dataset.didDirectAttack === "1"
+      }
+    });
     emitV2Event("OnLeaveField", {
       owner,
       sourceCardId: profile.id || cardEl.dataset.id || "unknown",
@@ -547,6 +649,11 @@
       : card;
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     const triggerName = "onDirectAttack";
+    reportCardDebug(cardEl, {
+      type: "event_fire",
+      eventName: "onAttack",
+      payload: { owner: owner || me, sourceCardId: cardId, targetInfo: targetInfo || {}, zoneType: "attacker", attackType: "direct" }
+    });
     emitV2Event("OnAttack", {
       owner: owner || me,
       sourceCardId: cardId,
@@ -561,6 +668,11 @@
         attackType: "direct"
       });
     }
+    reportCardDebug(cardEl, {
+      type: "event_fire",
+      eventName: triggerName,
+      payload: { owner: owner || me, sourceCardId: cardId, targetInfo: targetInfo || {} }
+    });
     emitV2Event("OnDirectAttack", {
       owner: owner || me,
       sourceCardId: cardId,
@@ -646,14 +758,47 @@
     window.applyCalculatedDamage = wrapped;
   }
 
+  function installAddValHook() {
+    if (typeof window.addVal !== "function") return;
+    if (window.addVal._playerActionResolverWrapped) return;
+
+    const original = window.addVal;
+    const wrapped = function(owner, key, delta) {
+      const before = Number(window.state?.[owner]?.[key]);
+      const result = original.apply(this, arguments);
+      try {
+        if (runtime.addValHookDepth > 12) return result;
+        runtime.addValHookDepth += 1;
+        const after = Number(window.state?.[owner]?.[key]);
+        const diff = Number.isFinite(before) && Number.isFinite(after) ? (after - before) : 0;
+        if (String(key || "") === "hp" && diff > 0) {
+          resolveOnHealEvent(owner, diff, { source: "addVal" });
+        } else if (String(key || "") === "shield" && diff > 0) {
+          resolveOnShieldGainEvent(owner, diff, { source: "addVal" });
+        }
+      } catch (error) {
+        console.warn("[PlayerActionResolver] addVal emit failed:", error);
+      } finally {
+        runtime.addValHookDepth = Math.max(0, runtime.addValHookDepth - 1);
+      }
+      return result;
+    };
+    wrapped._playerActionResolverWrapped = true;
+    window.addVal = wrapped;
+  }
+
   function init() {
     installPlaceCardHook();
     installDamageHook();
+    installAddValHook();
     if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installPlaceCardHook)) {
       window._afterUpdateHooks.push(installPlaceCardHook);
     }
     if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installDamageHook)) {
       window._afterUpdateHooks.push(installDamageHook);
+    }
+    if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installAddValHook)) {
+      window._afterUpdateHooks.push(installAddValHook);
     }
   }
 

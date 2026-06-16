@@ -190,8 +190,11 @@
       lastExecution: null,
       errors: [],
       runtime: {
+        timelineQueue: [],
         eventQueue: [],
+        triggerQueue: [],
         effectQueue: [],
+        chainQueue: [],
         context: null
       }
     };
@@ -207,10 +210,27 @@
     }
 
     function pushQueue(queueName, row) {
-      const key = queueName === "effect" ? "effectQueue" : "eventQueue";
-      const q = debug.runtime[key];
+      const q = debug.runtime[queueName];
+      if (!Array.isArray(q)) return;
       q.push(row);
       if (q.length > 60) q.splice(0, q.length - 60);
+    }
+
+    function pushDebugPayload(payload) {
+      if (!payload || typeof payload !== "object") return;
+      pushQueue("timelineQueue", payload);
+      if (payload.type === "trigger" || payload.type === "trigger_search") {
+        pushQueue("triggerQueue", payload);
+        pushQueue("eventQueue", payload);
+      } else if (payload.type === "effect" || payload.type === "effect_result") {
+        pushQueue("effectQueue", payload);
+      } else if (payload.type === "chain") {
+        pushQueue("chainQueue", payload);
+      } else if (payload.type === "event_fire") {
+        pushQueue("eventQueue", payload);
+      } else if (payload.type === "condition" || payload.type === "target") {
+        pushQueue("eventQueue", payload);
+      }
     }
 
     function bumpTracker(owner, stat, before, after) {
@@ -378,8 +398,7 @@
         const debugEvents = [];
         context.debugReporter = (payload) => {
           debugEvents.push(payload);
-          if (payload?.type === "trigger") pushQueue("event", payload);
-          if (payload?.type === "effect") pushQueue("effect", payload);
+          pushDebugPayload(payload);
         };
         let res = null;
         let caught = null;
@@ -422,8 +441,7 @@
         // 逐次イベントは execute の戻り値にも入るため、ここでは保持のみ
         if (!Array.isArray(card._debugEvents)) card._debugEvents = [];
         card._debugEvents.push(payload);
-        if (payload?.type === "trigger") pushQueue("event", payload);
-        if (payload?.type === "effect") pushQueue("effect", payload);
+        pushDebugPayload(payload);
       };
       card._debugOnEngineResult = (payload) => {
         const row = {
@@ -568,6 +586,7 @@
       const errEl = root.querySelector("#dbgErrorPanel");
       const qEventEl = root.querySelector("#dbgEventQueuePanel");
       const qEffectEl = root.querySelector("#dbgEffectQueuePanel");
+      const qChainEl = root.querySelector("#dbgChainQueuePanel");
       const qCtxEl = root.querySelector("#dbgContextPanel");
       if (!execEl || !errEl) return;
       const row = debug.lastExecution;
@@ -614,9 +633,26 @@
       }
 
       if (qEventEl) {
-        const rows = debug.runtime.eventQueue.slice(-10).reverse();
+        const rows = debug.runtime.timelineQueue.slice(-16).reverse();
         qEventEl.innerHTML = rows.length > 0
-          ? rows.map((r) => `<div style="font-size:11px;color:#cbd5e1;">trigger=${esc(r?.report?.on || r?.trigger || "?")} cond=${esc(String(r?.report?.bundleConditionReason || ""))}</div>`).join("")
+          ? rows.map((r) => {
+            if (r?.type === "event_fire") return `<div style="font-size:11px;color:#fde68a;">event発火: ${esc(r?.eventName || "?")}</div>`;
+            if (r?.type === "trigger_search") return `<div style="font-size:11px;color:#93c5fd;">trigger検索: ${esc(r?.eventName || "?")} -> ${esc(r?.matchedCount || 0)}件 (source:${esc(r?.dslSource || r?.searchedFrom || "")})</div>`;
+            if (r?.type === "condition") return `<div style="font-size:11px;color:${r?.result ? "#86efac" : "#fca5a5"};">条件判定 ${esc(r?.effectType || "?")} -> ${r?.result ? "true" : "false"} (${esc(r?.reason || "")})</div>`;
+            if (r?.type === "target") {
+              const owners = Array.isArray(r?.resolvedOwners) ? r.resolvedOwners.join(",") : "";
+              const cards = Array.isArray(r?.resolvedCards) ? r.resolvedCards.join(",") : "";
+              return `<div style="font-size:11px;color:#c4b5fd;">target解決 ${esc(r?.effectType || "?")} owners=[${esc(owners)}] cards=[${esc(cards)}]</div>`;
+            }
+            if (r?.type === "effect_result") {
+              const changed = Array.isArray(r?.changed) && r.changed.length > 0 ? ` changed=${esc(JSON.stringify(r.changed))}` : "";
+              return `<div style="font-size:11px;color:#5eead4;">効果実行 ${esc(r?.trigger || "?")} #${esc(r?.order || "?")} ${esc(r?.result?.type || "?")} ${r?.result?.applied ? "実行" : "不発"}${changed}</div>`;
+            }
+            if (r?.type === "trigger") return `<div style="font-size:11px;color:#93c5fd;">trigger=${esc(r?.report?.on || "?")} bundle=${esc(r?.report?.bundleConditionReason || "passed")}</div>`;
+            if (r?.type === "effect") return `<div style="font-size:11px;color:#5eead4;">effect=${esc(r?.result?.type || "?")} applied=${esc(String(r?.result?.applied === true))}</div>`;
+            if (r?.type === "chain") return `<div style="font-size:11px;color:#fda4af;">chain=${esc(JSON.stringify(r?.executedOrders || []))}</div>`;
+            return `<div style="font-size:11px;color:#cbd5e1;">${esc(JSON.stringify(r))}</div>`;
+          }).join("")
           : '<div style="font-size:11px;color:#94a3b8;">イベントキューは空</div>';
       }
       if (qEffectEl) {
@@ -627,6 +663,12 @@
       }
       if (qCtxEl) {
         qCtxEl.textContent = JSON.stringify(debug.runtime.context || {}, null, 2);
+      }
+      if (qChainEl) {
+        const rows = debug.runtime.chainQueue.slice(-12).reverse();
+        qChainEl.innerHTML = rows.length > 0
+          ? rows.map((r) => `<div style="font-size:11px;color:#fda4af;">trigger=${esc(r?.trigger || "?")} order=${esc(r?.order || "?")} executed=${esc(JSON.stringify(r?.executedOrders || []))}</div>`).join("")
+          : '<div style="font-size:11px;color:#94a3b8;">チェインキューは空</div>';
       }
     }
 
@@ -833,6 +875,7 @@
             <div style="display:grid;grid-template-columns:1fr;gap:6px;">
               <div id="dbgEventQueuePanel" style="overflow:auto;max-height:84px;border:1px solid #1e3a8a;border-radius:8px;padding:6px;background:#0f172a;"></div>
               <div id="dbgEffectQueuePanel" style="overflow:auto;max-height:96px;border:1px solid #0f766e;border-radius:8px;padding:6px;background:#0b1f1e;"></div>
+              <div id="dbgChainQueuePanel" style="overflow:auto;max-height:84px;border:1px solid #7c2d12;border-radius:8px;padding:6px;background:#1c1917;"></div>
               <pre id="dbgContextPanel" style="overflow:auto;max-height:120px;border:1px solid #334155;border-radius:8px;padding:6px;background:#111827;font-size:10px;line-height:1.35;color:#cbd5e1;white-space:pre-wrap;"></pre>
             </div>
             <div style="min-height:0;"><div id="dbgLog" style="height:100%;overflow:auto;border:1px solid #334155;border-radius:8px;padding:8px;background:#0b1220;font-size:12px;line-height:1.5;"></div></div>
@@ -920,8 +963,11 @@
         debug.logs = [];
         debug.errors = [];
         debug.lastExecution = null;
+        debug.runtime.timelineQueue = [];
         debug.runtime.eventQueue = [];
+        debug.runtime.triggerQueue = [];
         debug.runtime.effectQueue = [];
+        debug.runtime.chainQueue = [];
         debug.runtime.context = null;
         render();
       };
@@ -1070,7 +1116,14 @@
         debug.logs = [];
         debug.lastExecution = null;
         debug.errors = [];
-        debug.runtime = { eventQueue: [], effectQueue: [], context: null };
+        debug.runtime = {
+          timelineQueue: [],
+          eventQueue: [],
+          triggerQueue: [],
+          effectQueue: [],
+          chainQueue: [],
+          context: null
+        };
 
         debug.zones.deck = deckRows.map((row) => {
           const card = createCardObj(row, "player1");

@@ -81,8 +81,8 @@ const CARD_EFFECT_CARD_TARGET_OPTIONS = [
 ];
 const CARD_PLAYER_TARGET_KINDS = new Set(["draw_card", "add_hand", "add_hand_to_n"]);
 const CARD_CARD_TARGET_KINDS = new Set(["fetch_card", "return_to_hand", "send_to_grave", "return_to_deck", "duplicate_to_hand", "play_to_field", "reveal_card"]);
-const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "continuous", "manual"];
-const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "continuous", "manual"];
+const ATTACKER_TIMINGS = ["onSummon", "onAttack", "onDirectAttack", "onTurnStart", "onTurnEnd", "onLeave", "onDamage", "onHeal", "onShieldGain", "onSkillUse", "continuous", "manual"];
+const SKILL_TIMINGS = ["onSkillBeforeAttackEffect", "onSkillAfterAttackEffect", "onDamage", "onHeal", "onShieldGain", "onSkillUse", "continuous", "manual"];
 
 function getSelectedCard() {
   if (!selectedId) return null;

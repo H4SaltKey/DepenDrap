@@ -6684,3 +6684,30 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `cd001-001` の `onLeave` タイミング条件に `trackerCheck.value=999` が残っており、`directAttackEnabled` 条件を満たしても常に不成立となる構成だった。
 - 当該カードの `onLeave.condition` に `useTrackerCheck: false` を追加し、仕様文（「直接攻撃していないなら発動」）どおりに発火するよう補正。
+
+---
+
+## Round 2026-06-16 — 接続不良フォールバック（Firebase 再初期化）
+
+### 症状
+
+- `.info/connected` が `false` のまま長時間続くケースで、Firebase SDK の自動再接続だけでは復旧しない場合があった。
+
+### 原因
+
+- `setupConnectionMonitoring()` は切断通知を出すのみで、長時間切断時の能動的な再初期化導線がなかった。
+- `initialize()` の再実行時に `.info/connected` 監視が重複登録される可能性があった。
+
+### 対応
+
+- `js/network/firebase-client.js` に以下を追加。
+  - 切断継続時に `tryReconnectFallback()` を実行するタイマー（初回8秒、以降バックオフ）。
+  - 再接続中フラグで多重再初期化を防止。
+  - `setupConnectionMonitoring()` で既存 `.info/connected` listener を先に解除し、重複監視を防止。
+  - 再接続成功時にフォールバックタイマーを停止。
+  - `removeAllListeners()` でも接続監視とフォールバックタイマーを確実に解除。
+
+### 互換性
+
+- 既存イベント（`connected`/`disconnected`）とUI表示フローは維持。
+- 追加はフォールバック挙動のみで、DSLやゲームロジックには非干渉。

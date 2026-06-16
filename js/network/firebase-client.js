@@ -13,6 +13,13 @@ class FirebaseClient {
     this.sessionId = this.generateSessionId();
     this.listeners = new Map();
     this.connectionCheckInterval = null;
+    this.config = null;
+    this.connectedRef = null;
+    this.connectedListener = null;
+    this.reconnectTimer = null;
+    this.reconnectInFlight = false;
+    this.reconnectAttempt = 0;
+    this.lastDisconnectAt = 0;
   }
 
   /**
@@ -102,6 +109,7 @@ class FirebaseClient {
 
     try {
       console.log("[FirebaseClient] 初期化中...");
+      this.config = config;
       
       let app;
       try {
@@ -140,11 +148,17 @@ class FirebaseClient {
   setupConnectionMonitoring() {
     if (!this.db) return;
 
+    if (this.connectedRef && this.connectedListener) {
+      this.connectedRef.off('value', this.connectedListener);
+    }
+
     const connectedRef = this.db.ref('.info/connected');
-    connectedRef.on('value', (snapshot) => {
+    const listener = (snapshot) => {
       if (snapshot.val() === true) {
         console.log("[FirebaseClient] ✅ サーバーに接続");
         this.isConnected = true;
+        this.reconnectAttempt = 0;
+        this.cancelReconnectFallback();
         this.emit('connected');
       } else {
         if (this.isConnected) {
@@ -152,12 +166,55 @@ class FirebaseClient {
           console.warn("[FirebaseClient] ⚠️ サーバーから切断されました。Firebase SDK が自動再接続します。");
         }
         this.isConnected = false;
+        this.lastDisconnectAt = Date.now();
+        this.scheduleReconnectFallback(8000);
         this.emit('disconnected');
       }
-    }, (error) => {
+    };
+    connectedRef.on('value', listener, (error) => {
       // 接続エラーは無視（ネットワーク問題の場合、自動的にリトライされる）
       console.debug("[FirebaseClient] 接続監視エラー（無視）:", error.code);
     });
+
+    this.connectedRef = connectedRef;
+    this.connectedListener = listener;
+  }
+
+  cancelReconnectFallback() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  scheduleReconnectFallback(delayMs = 8000) {
+    this.cancelReconnectFallback();
+    this.reconnectTimer = setTimeout(() => {
+      this.tryReconnectFallback();
+    }, Math.max(2000, Number(delayMs || 8000)));
+  }
+
+  async tryReconnectFallback() {
+    if (this.isConnected) return;
+    if (this.reconnectInFlight) return;
+    if (!this.config) return;
+    this.reconnectInFlight = true;
+    this.reconnectAttempt += 1;
+    try {
+      const downSec = this.lastDisconnectAt ? Math.floor((Date.now() - this.lastDisconnectAt) / 1000) : -1;
+      console.warn(`[FirebaseClient] 再接続フォールバックを実行します (attempt=${this.reconnectAttempt}, down=${downSec}s)`);
+      const ok = await this.initialize(this.config);
+      if (!ok || !this.isConnected) {
+        const nextDelay = Math.min(30000, 5000 * this.reconnectAttempt);
+        this.scheduleReconnectFallback(nextDelay);
+      }
+    } catch (error) {
+      console.warn("[FirebaseClient] 再接続フォールバック失敗:", error?.message || error);
+      const nextDelay = Math.min(30000, 5000 * this.reconnectAttempt);
+      this.scheduleReconnectFallback(nextDelay);
+    } finally {
+      this.reconnectInFlight = false;
+    }
   }
 
   /**
@@ -939,6 +996,12 @@ class FirebaseClient {
       ref.off('value', listener);
     });
     this.listeners.clear();
+    if (this.connectedRef && this.connectedListener) {
+      this.connectedRef.off('value', this.connectedListener);
+    }
+    this.connectedRef = null;
+    this.connectedListener = null;
+    this.cancelReconnectFallback();
   }
 
   /**

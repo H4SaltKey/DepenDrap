@@ -123,12 +123,24 @@ window.organizeHands = function() {
     let startX = (fieldW - totalW) / 2;
     if (startX < 50) startX = 50;
 
+    let handLayerP1 = document.getElementById("handLayerP1");
+    if (!handLayerP1) {
+      handLayerP1 = document.createElement("div");
+      handLayerP1.id = "handLayerP1";
+      handLayerP1.style.cssText = "position:absolute; inset:0; pointer-events:none; z-index:160;";
+      content.appendChild(handLayerP1);
+    }
+
     sortedMyHandCards.forEach((c, idx) => {
       const targetX = startX + idx * actualSpacing + myOffsetX;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
       c.dataset.x = String(targetX);
       c.dataset.y = String(handY);
+      
+      if (c.parentNode !== handLayerP1) {
+        handLayerP1.appendChild(c);
+      }
     });
 
     sortedMyHandCards.forEach((c, idx) => {
@@ -190,12 +202,24 @@ window.organizeHands = function() {
     let startX = (fieldW - totalW) / 2;
     if (startX < 50) startX = 50;
 
+    let handLayerP2 = document.getElementById("handLayerP2");
+    if (!handLayerP2) {
+      handLayerP2 = document.createElement("div");
+      handLayerP2.id = "handLayerP2";
+      handLayerP2.style.cssText = "position:absolute; inset:0; pointer-events:none; z-index:160;";
+      content.appendChild(handLayerP2);
+    }
+
     sortedOpHandCards.forEach((c, idx) => {
       const targetX = startX + idx * actualSpacing;
       c.style.left = targetX + "px";
       c.style.top = handY + "px";
       c.dataset.x = String(targetX);
       c.dataset.y = String(handY);
+      
+      if (c.parentNode !== handLayerP2) {
+        handLayerP2.appendChild(c);
+      }
     });
 
     // 相手手札の順序はリモート共有状態を尊重し、ローカル再採番しない

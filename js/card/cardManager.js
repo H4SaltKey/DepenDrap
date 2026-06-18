@@ -467,6 +467,9 @@ window.organizeBattleZones = function() {
       }
       const list = getZoneCards(owner, type);
       list.forEach((card, idx) => {
+        if (card.parentNode !== content) {
+          content.appendChild(card);
+        }
         card.style.left = `${anchor.x}px`;
         card.style.top = `${anchor.y}px`;
         card.dataset.x = String(anchor.x);
@@ -1321,6 +1324,11 @@ function enablePointerDrag(el){
     if (!el.classList.contains("deckObject")) {
       el.dataset._dragSavedZIndex = el.style.zIndex || "";
       el.style.zIndex = String(++cardZCounter);
+    }
+
+    const content = getFieldContent();
+    if (el.parentNode !== content) {
+      content.appendChild(el);
     }
 
     pointerId = e.pointerId;

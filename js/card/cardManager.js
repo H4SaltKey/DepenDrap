@@ -1326,11 +1326,6 @@ function enablePointerDrag(el){
       el.style.zIndex = String(++cardZCounter);
     }
 
-    const content = getFieldContent();
-    if (el.parentNode !== content) {
-      content.appendChild(el);
-    }
-
     pointerId = e.pointerId;
     clickStartX = e.clientX;
     clickStartY = e.clientY;
@@ -1359,6 +1354,12 @@ function enablePointerDrag(el){
     if(!isDragging){
       if(Math.sqrt(dx*dx + dy*dy) < DRAG_THRESHOLD) return;
       isDragging = true;
+      
+      const content = getFieldContent();
+      if (el.parentNode !== content) {
+        content.appendChild(el);
+      }
+      
       draggingCard = el;
       el.style.opacity = "0.85";
       el.style.zIndex = DRAG_Z_TOP;

@@ -230,11 +230,7 @@ body:not(.deckPage) .cardVisualOverlay::before {
 }
 
 .cvName {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  align-self: center;
   text-align: center;
   font-size: 14px;
   font-weight: 800;
@@ -243,6 +239,11 @@ body:not(.deckPage) .cardVisualOverlay::before {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  background: rgba(12, 12, 18, 0.85);
+  color: #ffffff;
+  padding: 6px;
+  border-radius: 6px;
+  text-shadow: none;
 }
 
 .cvSubMeta {
@@ -273,12 +274,14 @@ body:not(.deckPage) .cardVisualOverlay::before {
   right: 10px;
   bottom: 10px;
   height: 40%;
-  padding: 8px 8px;
+  padding: 8px 10px;
   font-size: 10px;
   line-height: 1.3;
   border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(12, 12, 18, 0.85);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-shadow: none;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 8;

@@ -133,6 +133,7 @@ function updateFirstDrawPhaseUI() {
 
     const clone = typeof createCard === "function" ? createCard(card.dataset.id) : card.cloneNode(true);
     clone.classList.add("firstDrawCardClone");
+    clone.style.pointerEvents = "none";
 
     const ring = document.createElement("div");
     ring.className = "firstDrawCheckRing";
@@ -162,6 +163,7 @@ function updateFirstDrawPhaseUI() {
         if (snap) {
           const pv = typeof createCard === "function" ? createCard(snap.dataset.id) : snap.cloneNode(true);
           pv.classList.add("firstDrawCardClone", "firstDrawLastPickClone");
+          pv.style.pointerEvents = "none";
           const pvLbl = pv.querySelector(".cardVisibilityLabel");
           if (pvLbl) pvLbl.remove();
           previewHost.appendChild(pv);

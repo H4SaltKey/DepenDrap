@@ -208,7 +208,7 @@
 
   function confirmDevPass() {
     const pass = document.getElementById("devPasswordInput").value.trim();
-    if (pass === "neko") {
+    if (btoa(pass) === "bmVrbw==") {
       localStorage.setItem("dev","true");
       location.href = "dev.html";
     } else {

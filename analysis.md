@@ -7030,3 +7030,8 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - 追加対応（2026-06-20）: マッチ画面の相手デッキ表示修正。
   - `js/game/matchSetup.js` `updateOpponentUI()` を修正し、相手オンライン時は deckName 未受信でも `デッキ選択済み` を表示。
   - 受信 deckName がある場合は従来どおりその名称を表示。
+- 追加対応（2026-06-20）: デッキ構築画面のデッキ一覧（5列グリッド）で2段目が画面下にはみ出す問題を修正。
+  - `deckSelect.html` の `.deckGridScroll` を `overflow-y: auto` / `overflow-x: hidden` に変更し、縦スクロール可能化。
+  - `.deckGrid` の `height: 100%` と `overflow: hidden` を除去し、コンテンツ実高さに応じて自然に縦へ伸長させる構成へ変更。
+  - これにより5列維持のまま、2段目以降はスクロールで全件閲覧可能。
+- リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。

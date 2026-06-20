@@ -6946,3 +6946,47 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### リビルド
 
 - リポジトリに `package.json` がなく、実行可能な build スクリプトは未検出（今回も `NO_BUILD_SCRIPT`）。
+
+---
+
+## Round 2026-06-20 — ゲーム画面のデッキ確認ボタン再実装 + メインメニュー常時表示
+
+### 症状
+
+- ダイスロール〜ラウンド開始前に表示されるはずの「デッキ確認」導線がゲーム画面で出ていなかった。
+- 右上メインメニュー側の「デッキ確認」項目も非表示（実体削除）になっていた。
+
+### 原因
+
+- `js/ui/deckViewer.js` が「廃止スタブ」化され、`openDeckViewer / injectPhaseOverlayDeckBtn` が no-op だった。
+- `js/ui/menu.js` から `deckViewerBtn` 項目が削除されていた。
+
+### 対応
+
+- `js/ui/deckViewer.js`
+  - デッキ確認オーバーレイを再実装（自分のデッキ内容を一覧表示）。
+  - `openDeckViewer / closeDeckViewer` を有効化。
+  - `ready_check / setup_dice / setup_evolution / first_draw` の間は固定ボタン `#deckViewerPhaseBtn` を表示するよう再実装。
+- `js/ui/menu.js`
+  - メニュー項目 `#deckViewerBtn` を復帰。
+  - ゲーム画面では常時表示（旧「フェーズボタン表示中は非表示」運用は廃止）。
+  - クリック時 `openDeckViewer()` を呼び出す。
+- `js/game/game.js`
+  - 接続ロック中でも `#deckViewerPhaseBtn` / `#deckViewerOverlay` クリックを許可。
+
+### 仕様メモ
+
+- ゲーム画面では、
+  - フェーズ用固定ボタン（ダイス〜ラウンド開始前）
+  - 右上メインメニューの「デッキ確認」
+  を同時に利用可能（メニュー側は常時表示）。
+
+### リビルド
+
+- `package.json` 不在のため build/rebuild スクリプトは検出できず、今回も `NO_BUILD_SCRIPT`。
+
+- 追加対応（2026-06-20）: カード単押し時の右上拡大プレビュー（`cardHoverPreview`）を、画像のみ表示から「画像 + カード名 + 効果テキスト全文（スクロール可）」へ変更。
+  - `js/card/cardManager.js` の `showCardHoverPreview` を改修。
+  - プレビュー上のスクロール操作で閉じないよう、`pointerdown` の閉じ判定に `#cardHoverPreview` 除外を追加。
+- 追加対応（2026-06-20）: 単押しプレビュー中にカードを右クリックした際、`pointerdown` 経由で自動拡大 (`showCardZoomById`) してしまう問題を修正。
+  - `js/card/cardManager.js` の単押しプレビュー判定に `e.button !== 0` ガードを追加し、主ボタン（左クリック）以外では拡大遷移しないよう変更。

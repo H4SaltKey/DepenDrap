@@ -26,9 +26,9 @@
       <div id="menuPanel" class="hidden" aria-hidden="true">
         <div class="menuItem" id="closeMenuBtn">閉じる</div>
         <div class="menuItem" id="backBtn">タイトルへ戻る</div>
+        <div class="menuItem" id="deckViewerBtn">デッキ確認</div>
         <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
         <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
-        <!-- deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更 -->
         <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
         <div class="menuItem" id="optBtn">オプション</div>
       </div>
@@ -330,8 +330,9 @@
     const resetBtn = document.getElementById("resetFieldBtn");
     const surrenderBtn = document.getElementById("surrenderBtn");
     const soloStartBtn = document.getElementById("soloStartBtn");
-    // deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更
+    const deckViewerBtn = document.getElementById("deckViewerBtn");
     const isLocked = typeof window.isGameInteractionLocked === "function" ? window.isGameInteractionLocked() : false;
+    if (deckViewerBtn) deckViewerBtn.style.display = isGamePage ? "block" : "none";
     if (resetBtn) resetBtn.style.display = (isGamePage && !isLocked) ? "block" : "none";
     if (surrenderBtn) {
       // playing 状態かつゲーム画面のみ表示
@@ -382,7 +383,10 @@
     panel.classList.add("hidden");
   };
 
-  // deckViewerBtn: オーバーレイから削除。フィールド直接配置に変更
+  document.getElementById("deckViewerBtn").onclick = ()=>{
+    if (typeof window.openDeckViewer === "function") window.openDeckViewer();
+    panel.classList.add("hidden");
+  };
 
   document.getElementById("optBtn").onclick = ()=>{
     optionsModal.classList.remove("hidden");

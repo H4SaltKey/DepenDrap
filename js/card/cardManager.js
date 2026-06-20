@@ -120,21 +120,34 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
   if (!canShowSingleTapPreview(cardEl)) return;
   const img = cardEl?.querySelector?.("img");
   if (!img) return;
+  const cardId = String(cardEl?.dataset?.id || "");
+  const cardData = (typeof window.getCardData === "function" && cardId) ? (window.getCardData(cardId) || {}) : {};
+  const cardName = String(cardData?.name || cardId || "カード");
+  const effectText = String(cardData?.effectText || "").trim();
   if (!cardHoverPreviewEl) {
     cardHoverPreviewEl = document.createElement("div");
     cardHoverPreviewEl.id = "cardHoverPreview";
     cardHoverPreviewEl.style.cssText = `
-      position: fixed; z-index: 100220; pointer-events: none;
-      width: 364px; height: 515px; border-radius: 8px; overflow: hidden;
+      position: fixed; z-index: 100220; pointer-events: auto;
+      width: 448px; max-height: calc(100vh - 24px); border-radius: 8px; overflow: hidden;
       border: 2px solid rgba(255,255,255,0.4);
       background: rgba(8,8,16,0.9);
       box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+      display: grid; grid-template-columns: 248px 1fr;
     `;
     document.body.appendChild(cardHoverPreviewEl);
   }
-  cardHoverPreviewEl.innerHTML = `<img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">`;
+  cardHoverPreviewEl.innerHTML = `
+    <div style="width:248px;height:351px;display:flex;align-items:center;justify-content:center;background:rgba(2,2,8,0.72);border-right:1px solid rgba(255,255,255,0.16);">
+      <img src="${img.src}" style="width:100%;height:100%;object-fit:contain;">
+    </div>
+    <div style="display:flex;flex-direction:column;min-width:0;max-height:calc(100vh - 24px);">
+      <div style="padding:10px 10px 8px;border-bottom:1px solid rgba(255,255,255,0.16);font-size:14px;font-weight:700;color:#f2e6b8;line-height:1.25;word-break:break-word;">${cardName}</div>
+      <div style="padding:10px;overflow:auto;font-size:12px;line-height:1.45;color:#f3f3f3;white-space:pre-wrap;word-break:break-word;max-height:calc(100vh - 78px);">${effectText || "効果テキストなし"}</div>
+    </div>
+  `;
   cardHoverPreviewCardId = cardEl.dataset.instanceId || "";
-  cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 540)}px`;
+  cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 476)}px`;
   cardHoverPreviewEl.style.top = `12px`;
   cardHoverPreviewEl.style.display = "block";
 }
@@ -1748,7 +1761,10 @@ async function initCards(){
     setFieldZoom(fieldZoom + (e.deltaY < 0 ? 1 : -1) * wheelStep, pivotX, pivotY);
   }, { passive:false });
   document.addEventListener("pointerdown", (e) => {
+    // 右クリック等の副ボタン操作では単押し→拡大遷移を行わない
+    if (typeof e.button === "number" && e.button !== 0) return;
     if (!cardHoverPreviewEl || cardHoverPreviewEl.style.display === "none") return;
+    if (e.target?.closest?.("#cardHoverPreview")) return;
     const clickedCard = e.target.closest(".card");
     const clickedCardId = clickedCard?.dataset?.instanceId || "";
     if (clickedCardId && clickedCardId === cardHoverPreviewCardId) {

@@ -1838,7 +1838,7 @@ document.body.addEventListener("input", (e) => {
 
 document.body.addEventListener("click", (e) => {
   if (window.isGameInteractionLocked()) {
-    const allowed = e.target.closest("#menuButton, #menuPanel, #optionsModal, #confirmModal, #chatArea, #gameResultOverlay, #showResultBtn");
+    const allowed = e.target.closest("#menuButton, #menuPanel, #optionsModal, #confirmModal, #chatArea, #gameResultOverlay, #showResultBtn, #deckViewerPhaseBtn, #deckViewerOverlay");
     if (!allowed) return;
   }
   const evoTitle = e.target.closest(".evoPanelTitle[data-owner]");

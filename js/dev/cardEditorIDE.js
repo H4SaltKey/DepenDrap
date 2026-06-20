@@ -68,6 +68,10 @@
     "repeat", "once_per_turn", "once_while_on_field", "non_stackable",
     "current_target", "self", "opponent", "field_card", "self_and_current_target"
   ];
+  const TAG_PRESET_OPTIONS = [
+    "ドロー", "ダメージ", "回復", "PP", "貫通", "除去", "バフ", "デバフ",
+    "継続効果", "手札", "山札", "墓地", "コンボ", "フィニッシャー", "守備", "展開"
+  ];
 
   function log(msg) {
     const line = `[${new Date().toLocaleTimeString()}] ${String(msg)}`;
@@ -605,6 +609,10 @@
                 <div class="cardVisualName cardHotspot" data-card-field="name" data-hover-label="カード名"></div>
                 <div class="cardVisualText cardHotspot" data-card-field="effectText" data-hover-label="効果テキスト"></div>
               </div>
+              <div class="cardTagControl">
+                <button class="tagPickerBtn" id="openTagPickerBtn">タグ</button>
+                <div class="cardTagPreview" id="cardTagPreview">タグ未設定</div>
+              </div>
             </div>
           </div>
         </section>
@@ -762,6 +770,19 @@
           <div class="simActionRow" style="margin-top:12px;">
             <button class="ideSmallBtn" id="saveCardFieldBtn">保存</button>
             <button class="ideSmallBtn danger" id="cancelCardFieldBtn">キャンセル</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tagPickerModal" style="display:none;position:fixed;inset:0;z-index:75;background:rgba(2,10,22,0.86);align-items:center;justify-content:center;padding:20px;">
+        <div style="width:min(640px, 100%);max-height:82vh;overflow:auto;background:#11243f;border:1px solid #3f6798;border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="font-weight:700;">タグ設定</div>
+            <button class="ideSmallBtn" id="closeTagPickerBtn">閉じる</button>
+          </div>
+          <div class="tagModalBody" style="margin-top:10px;">
+            <div class="tagModalSummary" id="tagPickerSummary"></div>
+            <div class="tagChipGrid" id="tagChipGrid"></div>
           </div>
         </div>
       </div>
@@ -1122,10 +1143,99 @@
       if (has("effectText")) card.effectText = String(map.effectText || "");
     }
 
+    function normalizeTags(value) {
+      if (Array.isArray(value)) return value.map((x) => String(x || "").trim()).filter(Boolean);
+      return String(value || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean);
+    }
+
+    function selectedTagText(tag, selected) {
+      const t = String(tag || "").trim();
+      return selected ? `]${t}[` : `[${t}]`;
+    }
+
+    function getTagOptionPool() {
+      const set = new Set(TAG_PRESET_OPTIONS);
+      (state.cards || []).forEach((card) => {
+        normalizeTags(card?.tags).forEach((tag) => set.add(tag));
+      });
+      return Array.from(set).filter(Boolean);
+    }
+
+    function updateTagPreview(card) {
+      const preview = root.querySelector("#cardTagPreview");
+      const btn = root.querySelector("#openTagPickerBtn");
+      if (!preview || !btn) return;
+      if (!card) {
+        preview.textContent = "タグ未設定";
+        btn.textContent = "タグ";
+        return;
+      }
+      const tags = normalizeTags(card.tags);
+      preview.textContent = tags.length ? tags.join(" / ") : "タグ未設定";
+      btn.textContent = tags.length ? `タグ(${tags.length})` : "タグ";
+    }
+
+    function openTagPickerModal() {
+      const card = selectedCard();
+      if (!card) {
+        log("タグ編集: カード未選択");
+        return;
+      }
+      const modal = root.querySelector("#tagPickerModal");
+      if (!modal) return;
+      renderTagPickerModal();
+      modal.style.display = "flex";
+    }
+
+    function closeTagPickerModal() {
+      const modal = root.querySelector("#tagPickerModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    function toggleCardTag(tag) {
+      const card = selectedCard();
+      if (!card) return;
+      const key = String(tag || "").trim();
+      if (!key) return;
+      const prev = normalizeTags(card.tags);
+      const set = new Set(prev);
+      if (set.has(key)) set.delete(key);
+      else set.add(key);
+      card.tags = Array.from(set);
+      updateTagPreview(card);
+      renderTagPickerModal();
+      renderCardInfo();
+      renderCardList();
+      renderOutputPreview();
+    }
+
+    function renderTagPickerModal() {
+      const summary = root.querySelector("#tagPickerSummary");
+      const grid = root.querySelector("#tagChipGrid");
+      const card = selectedCard();
+      if (!summary || !grid || !card) return;
+      const selectedSet = new Set(normalizeTags(card.tags));
+      const options = getTagOptionPool();
+      summary.textContent = selectedSet.size
+        ? `${card.id}: ${selectedSet.size}件選択中（クリックでON/OFF）`
+        : `${card.id}: タグ未選択（クリックで追加）`;
+      grid.innerHTML = "";
+      options.forEach((tag) => {
+        const active = selectedSet.has(tag);
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = `tagChip${active ? " active" : ""}`;
+        chip.textContent = selectedTagText(tag, active);
+        chip.addEventListener("click", () => toggleCardTag(tag));
+        grid.appendChild(chip);
+      });
+    }
+
     function renderCardVisual() {
       const card = selectedCard();
       const badge = root.querySelector("#currentCardBadge");
       if (badge) badge.textContent = card ? `${card.id} ${card.name || ""}`.trim() : "未選択";
+      updateTagPreview(card);
       const frame = root.querySelector(".cardVisualFrame");
       if (!frame || !card) return;
       const type = root.querySelector(".cardVisualType");
@@ -1464,8 +1574,9 @@
         </div>
         <div class="formRow2">
           <input data-k="causalRate" type="number" value="${Number(card.causalRate || 0)}" placeholder="因果率">
-          <input data-k="tags" value="${htmlEscape(Array.isArray(card.tags) ? card.tags.join(", ") : (card.tags || ""))}" placeholder="タグ">
+          <button type="button" class="ideSmallBtn" id="openTagPickerFromFormBtn">タグを選択</button>
         </div>
+        <input value="${htmlEscape(Array.isArray(card.tags) ? card.tags.join(", ") : (card.tags || ""))}" placeholder="タグ" readonly>
         <input data-k="image" value="${htmlEscape(card.image || "")}" placeholder="画像パス">
         <textarea data-k="effectText" rows="3" placeholder="効果一覧テキスト">${htmlEscape(card.effectText || "")}</textarea>
       `;
@@ -1473,6 +1584,7 @@
         input.addEventListener("input", () => saveFormToCard(card));
         input.addEventListener("change", () => saveFormToCard(card));
       });
+      wrap.querySelector("#openTagPickerFromFormBtn")?.addEventListener("click", openTagPickerModal);
     }
 
     function saveFormToCard(card) {
@@ -2222,6 +2334,11 @@
       root.querySelector("#saveCardFieldBtn")?.addEventListener("click", commitCardFieldModal);
       root.querySelector("#cardFieldModal")?.addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeCardFieldModal();
+      });
+      root.querySelector("#openTagPickerBtn")?.addEventListener("click", openTagPickerModal);
+      root.querySelector("#closeTagPickerBtn")?.addEventListener("click", closeTagPickerModal);
+      root.querySelector("#tagPickerModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeTagPickerModal();
       });
 
       root.querySelector("#rebuildOutputBtn")?.addEventListener("click", renderOutputPreview);

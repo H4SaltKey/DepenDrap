@@ -200,6 +200,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 10px;
   position: relative;
 }
 .cardMetaBadge {
@@ -226,6 +228,79 @@ body {
   background: linear-gradient(180deg, #1f3659, #172842);
   box-shadow: 0 12px 24px rgba(0,0,0,0.45);
   overflow: hidden;
+}
+.cardTagControl {
+  width: min(100%, 300px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tagPickerBtn {
+  border: 1px solid #3a6ca0;
+  background: linear-gradient(180deg, #2a4f7c, #1d385b);
+  color: #e7f2ff;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.tagPickerBtn:hover {
+  border-color: #7fc5ff;
+  box-shadow: 0 0 0 2px rgba(89, 174, 242, 0.24);
+  transform: translateY(-1px);
+}
+.cardTagPreview {
+  flex: 1;
+  min-height: 32px;
+  border: 1px solid rgba(86, 125, 173, 0.65);
+  background: rgba(9, 19, 33, 0.7);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: #bcd5f5;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tagModalBody {
+  display: grid;
+  gap: 10px;
+}
+.tagModalSummary {
+  border: 1px solid rgba(80, 117, 163, 0.75);
+  border-radius: 10px;
+  background: rgba(10, 21, 37, 0.76);
+  padding: 10px;
+  color: #cbe0ff;
+  font-size: 12px;
+}
+.tagChipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tagChip {
+  border: 1px solid #3e628f;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(14, 30, 50, 0.92);
+  color: #bad4f4;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+}
+.tagChip:hover {
+  border-color: #73b7f3;
+  box-shadow: 0 0 0 2px rgba(112, 185, 244, 0.22);
+  transform: translateY(-1px);
+}
+.tagChip.active {
+  border-color: #9ed6ff;
+  background: linear-gradient(180deg, rgba(54, 115, 169, 0.95), rgba(39, 83, 126, 0.95));
+  color: #f3f9ff;
 }
 .cardVisualImage {
   position: absolute;

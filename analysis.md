@@ -7035,6 +7035,13 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `.deckGrid` の `height: 100%` と `overflow: hidden` を除去し、コンテンツ実高さに応じて自然に縦へ伸長させる構成へ変更。
   - これにより5列維持のまま、2段目以降はスクロールで全件閲覧可能。
 - リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- 追加対応（2026-06-20）: デッキ一覧スクロール未反映の再修正。
+  - 初回修正では `.deckGridScroll` の `overflow-y:auto` のみで、親コンテナ高さが拘束されずスクロール領域化しないケースがあった。
+  - `deckSelect.html`
+    - `.selectMain` を `display:grid; height:100%; min-height:0;` に変更。
+    - `.deckGridWrap` に `height:100%` を追加。
+  - これで `grid-template-rows: auto 1fr` の `1fr` が有効になり、`.deckGridScroll` が確実に縦スクロール領域として機能。
+- リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`。
 - 追加対応（2026-06-20）: 開発者モードのカードエディタにタグ設定UIを追加（プリセット選択式）。
   - `js/dev/cardEditorIDE.js`
     - カードプレビュー下の空白領域に `タグ` ボタンとタグプレビューを追加。

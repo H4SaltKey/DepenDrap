@@ -16,6 +16,13 @@ function updateSyncLoadingOverlay() {
   const overlay = document.getElementById("syncLoadingOverlay");
   const detail = document.getElementById("syncLoadingDetail");
   if (!overlay) return;
+  const status = state?.matchData?.status;
+  const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
+  // 対戦進行中は gate 未達があっても同期オーバーレイで操作を塞がない
+  if (inGamePhase) {
+    overlay.style.display = "none";
+    return;
+  }
   const gate = window._syncGate || {};
   const ready = !!(gate.firebaseReady && gate.roomWatcherReady && gate.playersReady && gate.phaseReady && gate.initDone);
   overlay.style.display = ready ? "none" : "flex";

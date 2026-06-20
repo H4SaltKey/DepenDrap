@@ -7007,3 +7007,8 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `js/ui/responsiveScale.js`: `fullscreenchange` でスケール再計算を行うよう追加。
 - 監査範囲（ゲーム画面で常駐/操作頻度が高い fixed UI）: menu / zoom / chat / match header / turn end / result reopen / phase deck button / single-tap preview / filter panel。
 - リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`。
+- 追加対応（2026-06-20）: ゲーム中に「対戦相手と同期中...」オーバーレイから復帰しない件の暫定安定化。
+  - `js/game/game.js` `updateSyncLoadingOverlay()` を修正し、`playing` 等の進行フェーズ（`ready_check/setup_dice` 以外）では gate 未達でも同期オーバーレイを強制非表示に変更。
+  - `js/watchers/phaseWatcher.js` で `matchData` スナップショットが一時的に `null` の場合でも、ローカルが進行フェーズなら `phaseReady=true` を補完。
+- 意図: カード効果同期や一時的な matchData 欠落で gate が落ちても、対戦進行をオーバーレイで塞がない。
+- 残課題: 根本原因（matchData が欠ける契機）が特定できたら、該当 write 経路（効果実行中の状態書き込み）を別途監査。

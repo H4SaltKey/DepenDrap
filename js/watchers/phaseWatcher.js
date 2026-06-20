@@ -19,7 +19,14 @@ window.setupPhaseWatcher = function(gameRoom) {
 
   const listener = (snap) => {
     if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher.callback", "start");
-    if (!snap || !snap.val()) return;
+    if (!snap || !snap.val()) {
+      const status = state?.matchData?.status;
+      const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
+      if (inGamePhase && typeof window.notifySyncGate === "function") {
+        window.notifySyncGate("phaseReady", true);
+      }
+      return;
+    }
     const incoming = snap.val();
 
     // ──【安定化：相手がリセットを実行した場合、自分のローカル状態も完全にリセットする】──

@@ -6893,3 +6893,56 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - 緩和: DSLフォーマット・命名は維持し、内部正規化のみ追加
 - リスク: パフォーマンス（カード500+）
   - 緩和: EventLogをターン境界で集約し、条件評価にインデックス済みカウンタを利用
+
+---
+
+## Round 2026-06-20 — Runtime Queue接続 / first8 DSL優先化 / grantedEffectsイベント / EXPタイミング変更
+
+### 1) EffectEngine Runtime Queue を Card Editor / Card Debug に接続
+
+- `js/dev/cardEditorIDE.js`
+  - Runtime Inspector に `EffectEngine.getRuntimeQueues()` 表示を追加。
+  - `triggerQueue / effectQueue / chainQueue / timelineQueue` の件数と直近行を表示。
+  - `Queues Clear` ボタンから `EffectEngine.clearRuntimeQueues()` を実行可能化。
+- `js/dev/cardDebug.js`
+  - 既存のローカルdebug queueに加え、`EffectEngine.getRuntimeQueues()` がある場合は本体queueを優先表示。
+  - trigger/effect/chain の表示に skip reason を出すよう補強。
+  - ログクリア時に `EffectEngine.clearRuntimeQueues()` も呼び、UIと本体queueの差分を減らした。
+
+### 2) cd001-001〜008 のハードコード棚卸しと DSL 優先化（段階置換）
+
+- `js/game/auto/firstEightCardEffects.js`
+  - `CardEffectRuntimeV2.resolveCardDsl(profile)` を使い、`dependrap.dsl.v1` かつ trigger が1件以上あるカードはハードコードを通さずDSL優先で実行するよう変更。
+  - `cd001-008` のターン終了回復フォールバックも、同カードに有効DSLがある場合は発火しないよう変更。
+- 置換状況（今回時点）
+  - **DSL優先で実行済み**: `cd001-001`〜`cd001-008`（`resolveCardDsl` 経由で trigger が解決できるもの）
+  - **JSフォールバックが残る条件**: `resolveCardDsl` 結果が空（trigger 0件）の場合のみ
+  - **`preventDefaultDsl` の方向性**: 「DSL有効時は使わない」方針へ寄せた（ゼロ化は次段で実カード差分検証後）
+
+### 3) grant_effect_bundle / grantedEffects の OnEffectAdded / OnEffectRemoved 発火
+
+- `js/game/effects/effectEngine.js`
+  - 付与時 `registerGrantedEffect` で `OnEffectAdded` を送出。
+  - 期限切れ（turn/count/both消費後の失効）で `OnEffectRemoved` を送出。
+  - 明示削除用に `REMOVE_GRANTED_EFFECT_BUNDLE` / `REMOVE_STATUS` を追加し、該当付与効果を削除した際に `OnEffectRemoved` を送出。
+  - 送出先は2系統:
+    1. `CardEffectRuntimeV2.emitGameEvent(...)`（履歴に残す）
+    2. `EffectEngine.triggerZoneCardEffects(owner, attacker/skill, onEffectAdded/onEffectRemoved)`（場カード誘発）
+- `triggerZoneCardEffects` 自体も補強
+  - `profile.effectDsl` 直参照から `CardEffectRuntimeV2.resolveCardDsl(profile)` 優先へ変更。
+  - `effectDslText/effectBlocks` 由来のカードでも zone trigger（例: `OnEffectAdded/Removed`）を拾えるようにした。
+- 制約
+  - 明示削除イベントは `REMOVE_GRANTED_EFFECT_BUNDLE` / `REMOVE_STATUS` が実際に使われた時のみ発火。
+  - 既存カード側が `OnEffectAdded/OnEffectRemoved` を持たない場合、履歴のみ記録される。
+
+### 4) 経験値ルール変更（ラウンド開始 -> ターン開始）
+
+- `js/game/game.js`
+  - ラウンド開始時の「両プレイヤー EXP +1」処理を削除。
+  - ターン開始（`turnPlayer` 切替）ごとに、現在ターンプレイヤーへ `EXP +1` を付与。
+  - `round-turn-player` キーで重複付与を抑止（`sessionStorage: lastTurnExpKey`）。
+  - ゲームリセット時に `lastTurnExpKey` をクリア。
+
+### リビルド
+
+- リポジトリに `package.json` がなく、実行可能な build スクリプトは未検出（今回も `NO_BUILD_SCRIPT`）。

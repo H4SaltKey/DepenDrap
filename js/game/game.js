@@ -1,6 +1,7 @@
 let gameReady = false;
 window._soloStartMode = false;
 let lastTurnDrawKey = sessionStorage.getItem("lastTurnDrawKey") || "";
+let lastTurnExpKey = sessionStorage.getItem("lastTurnExpKey") || "";
 let handOverflowDiscardOpen = false;
 window._lastRound = 0; // 初期化
 window._syncGate = window._syncGate || {
@@ -133,6 +134,8 @@ function resetAllGameVariables() {
   gameReady = false;
   lastResetAt = 0;
   lastTurnPlayer = null;
+  lastTurnExpKey = "";
+  sessionStorage.removeItem("lastTurnExpKey");
   window._lastRound = undefined; // ラウンド通知用の記憶もリセット
   window._isResetting = false; // リセット中フラグをクリア
   window._resultShowing = false; // リザルト表示フラグをクリア
@@ -992,6 +995,15 @@ function handleMatchStateTransitions() {
   const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
   const isFirstTurnOfRound = m.turn === 1;
   const turnChanged = lastTurnPlayer !== m.turnPlayer && isDicePhaseComplete;
+  const turnStartKey = `${m.round}-${m.turn}-${m.turnPlayer}`;
+
+  if (isDicePhaseComplete && !m.winner && turnChanged && lastTurnExpKey !== turnStartKey) {
+    lastTurnExpKey = turnStartKey;
+    sessionStorage.setItem("lastTurnExpKey", lastTurnExpKey);
+    if (typeof addVal === "function" && m.turnPlayer) {
+      addVal(m.turnPlayer, "exp", 1);
+    }
+  }
 
   // ターン開始ドローの取りこぼし防止:
   // 同期順序で turnChanged 判定を逃しても「自分ターンなら1回だけ」必ず実行する。
@@ -1016,12 +1028,6 @@ function handleMatchStateTransitions() {
     showRoundNotification(m.round);
     window._lastRound = m.round;
 
-    // ラウンド開始時、両プレイヤーに EXP を付与
-    if (typeof addVal === "function") {
-      addVal("player1", "exp", 1);
-      addVal("player2", "exp", 1);
-    }
-    
     // R1T1処理（ラウンド1のみ）
     // ファーストドローフェーズで既に5枚取り出し→手札3枚を済ませた場合は二重ドローしない（firstDrawDone は playing 移行時に true）
     if (m.round === 1 && m.firstDrawDone !== true) {

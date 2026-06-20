@@ -61,7 +61,9 @@
       onDiscard: "OnDiscard",
       onDamage: "OnDamage",
       onHeal: "OnHeal",
-      onShieldGain: "OnShieldGain"
+      onShieldGain: "OnShieldGain",
+      onEffectAdded: "OnEffectAdded",
+      onEffectRemoved: "OnEffectRemoved"
     };
     return map[raw] || `On${raw.charAt(0).toUpperCase()}${raw.slice(1)}`;
   }
@@ -761,7 +763,9 @@
       OnDamage: "onDamage",
       OnHeal: "onHeal",
       OnShieldGain: "onShieldGain",
-      OnPenetrateDamage: "onDamage"
+      OnPenetrateDamage: "onDamage",
+      OnEffectAdded: "onEffectAdded",
+      OnEffectRemoved: "onEffectRemoved"
     };
     return map[n] || "manual";
   }
@@ -808,7 +812,9 @@
       onDiscard: "OnDiscard",
       onDamage: "OnDamage",
       onHeal: "OnHeal",
-      onShieldGain: "OnShieldGain"
+      onShieldGain: "OnShieldGain",
+      onEffectAdded: "OnEffectAdded",
+      onEffectRemoved: "OnEffectRemoved"
     };
     return map[raw] || "OnPlay";
   }

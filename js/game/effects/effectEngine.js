@@ -432,7 +432,33 @@
       createdAt: Date.now()
     };
     s.grantedEffects.push(row);
+    emitGrantedEffectLifecycle("OnEffectAdded", targetOwner, row, context);
     if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+  }
+
+  function emitGrantedEffectLifecycle(eventName, owner, grantedRow, context) {
+    const normalized = String(eventName || "");
+    if (!normalized) return;
+    const payload = {
+      owner: String(owner || context?.owner || ""),
+      sourceCardId: String(grantedRow?.sourceCardId || context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || ""),
+      effectName: String(grantedRow?.effectName || ""),
+      duration: safeClone(grantedRow?.duration || {}),
+      triggerEvent: String(context?.event?.name || ""),
+      grantedEffects: safeClone(grantedRow?.grantedEffects || [])
+    };
+    if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+      try {
+        window.CardEffectRuntimeV2.emitGameEvent(normalized, payload, { owner: payload.owner || "player1" });
+      } catch (e) {
+        console.warn("[EffectEngine] lifecycle event emit failed:", e);
+      }
+    }
+    const onName = normalized === "OnEffectAdded" ? "onEffectAdded" : normalized === "OnEffectRemoved" ? "onEffectRemoved" : "";
+    if (onName) {
+      triggerZoneCardEffects(payload.owner, "attacker", onName, payload);
+      triggerZoneCardEffects(payload.owner, "skill", onName, payload);
+    }
   }
 
   const grantedTurnTickMemo = {
@@ -496,6 +522,7 @@
         duration: normalizeDuration(row?.duration)
       };
       if (isGrantedExpired(granted)) {
+        emitGrantedEffectLifecycle("OnEffectRemoved", owner, granted, context);
         changed = true;
         return;
       }
@@ -530,6 +557,7 @@
       if (!isGrantedExpired(granted)) {
         nextGranted.push(granted);
       } else {
+        emitGrantedEffectLifecycle("OnEffectRemoved", owner, granted, context);
         changed = true;
       }
     });
@@ -992,6 +1020,28 @@
         });
         return { applied: true, type };
       }
+      if (type === "REMOVE_GRANTED_EFFECT_BUNDLE" || type === "REMOVE_STATUS") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        let removed = 0;
+        targetOwners.forEach((targetOwner) => {
+          const s = getPlayer(targetOwner);
+          if (!s || !Array.isArray(s.grantedEffects) || s.grantedEffects.length === 0) return;
+          const before = s.grantedEffects.length;
+          const sourceCardId = String(effect.sourceCardId || context?.sourceProfile?.id || context?.sourceCard?.dataset?.id || "");
+          const effectName = String(effect.effectName || "");
+          const next = s.grantedEffects.filter((row) => {
+            const sourceOk = !sourceCardId || String(row?.sourceCardId || "") === sourceCardId;
+            const nameOk = !effectName || String(row?.effectName || "") === effectName;
+            const shouldRemove = sourceOk && nameOk;
+            if (shouldRemove) emitGrantedEffectLifecycle("OnEffectRemoved", targetOwner, row, context);
+            return !shouldRemove;
+          });
+          s.grantedEffects = next;
+          removed += Math.max(0, before - next.length);
+          if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+        });
+        return removed > 0 ? { applied: true, type } : { applied: false, type, skippedReason: "no-granted-effects-matched" };
+      }
       return { applied: false, type };
     }
   };
@@ -1261,17 +1311,21 @@
     const cards = window.getZoneCards(owner, zoneType) || [];
     cards.forEach((cardEl) => {
       const profile = window.CardCombatData?.getResolvedCardData?.(cardEl.dataset.id);
-      if (!profile?.effectDsl) return;
+      if (!profile) return;
+      const dsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
+        ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
+        : profile?.effectDsl;
+      if (!dsl || dsl.format !== DSL_FORMAT || !Array.isArray(dsl.triggers)) return;
       const context = {
         game: window.state,
         sourceCard: cardEl,
         sourceProfile: profile,
         owner,
         opponent: opponentOf(owner),
-        dslSource: Array.isArray(profile?.effectBlocks?.timings) ? "effectBlocks.timings" : "effectDsl.triggers",
+        dslSource: "runtime.resolveCardDsl",
         event: { name: eventName, zoneType, ...(extraEvent || {}) }
       };
-      execute(profile.effectDsl, context);
+      execute(dsl, context);
     });
   }
 

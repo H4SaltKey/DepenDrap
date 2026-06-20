@@ -187,6 +187,24 @@
     return lines.join("\n");
   }
 
+  function formatEffectEngineQueues(queues) {
+    const q = queues || {};
+    const names = ["triggerQueue", "effectQueue", "chainQueue", "timelineQueue"];
+    const lines = [];
+    names.forEach((name) => {
+      const rows = Array.isArray(q[name]) ? q[name] : [];
+      lines.push(`[${name}] ${rows.length}`);
+      rows.slice(-8).forEach((row) => {
+        const stage = compactText(row?.stage || row?.kind || "-", "-");
+        const trigger = compactText(row?.trigger || row?.eventName || "-", "-");
+        const result = compactText(row?.result?.applied === true ? "applied" : row?.result || row?.skippedReason || "", "");
+        lines.push(`- ${stage} | ${trigger}${result ? ` | ${result}` : ""}`);
+      });
+      lines.push("");
+    });
+    return lines.join("\n").trim() || "(no runtime queues)";
+  }
+
   function formatSimulatorResult(row) {
     if (!row) return "(no simulation yet)";
     const lines = [];
@@ -687,8 +705,9 @@
               <div class="logList" id="eventEngineViewer"></div>
             </div>
             <div id="drawer-runtimeInspector" class="drawerPane" style="display:none;">
-              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="refreshRuntimeBtn">Refresh</button></div>
+              <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="refreshRuntimeBtn">Refresh</button><button class="ideSmallBtn" id="clearRuntimeQueueBtn">Queues Clear</button></div>
               <div class="logList" id="runtimeInspectorView"></div>
+              <div class="logList" id="runtimeQueueView" style="margin-top:8px;"></div>
             </div>
             <div id="drawer-replayDebugger" class="drawerPane" style="display:none;">
               <div class="simActionRow" style="margin-bottom:8px;"><button class="ideSmallBtn" id="replayPrevBtn">◀</button><button class="ideSmallBtn" id="replayNextBtn">▶</button></div>
@@ -1612,6 +1631,7 @@
     function renderEventPanels() {
       const eventViewer = root.querySelector("#eventEngineViewer");
       const runtimeView = root.querySelector("#runtimeInspectorView");
+      const runtimeQueueView = root.querySelector("#runtimeQueueView");
       const replayView = root.querySelector("#replayView");
       if (!eventViewer || !runtimeView || !replayView || !runtime()) return;
 
@@ -1620,6 +1640,12 @@
 
       const snap = runtime().runtimeInspector.snapshot();
       runtimeView.textContent = formatRuntimeInspectorSnapshot(snap);
+      if (runtimeQueueView) {
+        const queues = (window.EffectEngine && typeof window.EffectEngine.getRuntimeQueues === "function")
+          ? window.EffectEngine.getRuntimeQueues()
+          : null;
+        runtimeQueueView.textContent = formatEffectEngineQueues(queues);
+      }
 
       const replayRows = runtime().replayDebugger.rows();
       if (state.replayCursor < 0 && replayRows.length) state.replayCursor = replayRows.length - 1;
@@ -2208,6 +2234,12 @@
       });
 
       root.querySelector("#refreshRuntimeBtn")?.addEventListener("click", renderEventPanels);
+      root.querySelector("#clearRuntimeQueueBtn")?.addEventListener("click", () => {
+        if (window.EffectEngine && typeof window.EffectEngine.clearRuntimeQueues === "function") {
+          window.EffectEngine.clearRuntimeQueues();
+        }
+        renderEventPanels();
+      });
       root.querySelector("#replayPrevBtn")?.addEventListener("click", () => {
         const rows = runtime()?.replayDebugger?.rows?.() || [];
         if (!rows.length) return;

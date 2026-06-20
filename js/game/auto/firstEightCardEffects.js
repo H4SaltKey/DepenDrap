@@ -196,7 +196,12 @@
     const { profile, owner, zoneType } = context;
     const id = profile?.id;
     if (!id || !TARGET_IDS.has(id)) return { handled: false };
-    if (profile?.effectDsl?.format === "dependrap.dsl.v1") return { handled: false };
+    const resolvedDsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
+      ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
+      : profile?.effectDsl;
+    if (resolvedDsl?.format === "dependrap.dsl.v1" && Array.isArray(resolvedDsl?.triggers) && resolvedDsl.triggers.length > 0) {
+      return { handled: false, reason: "prefer-dsl-v1" };
+    }
 
     const self = getPlayer(owner);
     const op = meToOp(owner);
@@ -288,6 +293,21 @@
     const m = window.state?.matchData;
     if (!m || m.status !== "playing") return;
     const owner = m.turnPlayer;
+    const roleCards = (typeof window.getZoneCards === "function")
+      ? [
+        ...(window.getZoneCards(owner, "attacker") || []),
+        ...(window.getZoneCards(owner, "skill") || [])
+      ]
+      : [];
+    const hasDslCd001008 = roleCards.some((el) => {
+      if (String(el?.dataset?.id || "") !== "cd001-008") return false;
+      const profile = window.CardCombatData?.getResolvedCardData?.(el.dataset.id) || null;
+      const dsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
+        ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
+        : profile?.effectDsl;
+      return !!(dsl?.format === "dependrap.dsl.v1" && Array.isArray(dsl?.triggers) && dsl.triggers.length > 0);
+    });
+    if (hasDslCd001008) return;
     const key = `${owner}:${m.round || 0}:${m.turn || 0}`;
     const pending = window.runtimeState?.effects?.pendingTurnEndHeal?.[key];
     if (!Number.isFinite(Number(pending)) || Number(pending) <= 0) return;

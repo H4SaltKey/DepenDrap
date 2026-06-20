@@ -589,6 +589,21 @@
       const qChainEl = root.querySelector("#dbgChainQueuePanel");
       const qCtxEl = root.querySelector("#dbgContextPanel");
       if (!execEl || !errEl) return;
+      const engineQueues = (window.EffectEngine && typeof window.EffectEngine.getRuntimeQueues === "function")
+        ? window.EffectEngine.getRuntimeQueues()
+        : null;
+      const timelineRows = Array.isArray(engineQueues?.timelineQueue) && engineQueues.timelineQueue.length > 0
+        ? engineQueues.timelineQueue
+        : debug.runtime.timelineQueue;
+      const triggerRows = Array.isArray(engineQueues?.triggerQueue) && engineQueues.triggerQueue.length > 0
+        ? engineQueues.triggerQueue
+        : debug.runtime.triggerQueue;
+      const effectRows = Array.isArray(engineQueues?.effectQueue) && engineQueues.effectQueue.length > 0
+        ? engineQueues.effectQueue
+        : debug.runtime.effectQueue;
+      const chainRows = Array.isArray(engineQueues?.chainQueue) && engineQueues.chainQueue.length > 0
+        ? engineQueues.chainQueue
+        : debug.runtime.chainQueue;
       const row = debug.lastExecution;
       if (!row) {
         execEl.innerHTML = `<div style="font-size:12px;color:#94a3b8;">まだ効果実行はありません。</div>`;
@@ -633,9 +648,20 @@
       }
 
       if (qEventEl) {
-        const rows = debug.runtime.timelineQueue.slice(-16).reverse();
+        const rows = (triggerRows.length > 0 ? triggerRows : timelineRows).slice(-16).reverse();
         qEventEl.innerHTML = rows.length > 0
-          ? rows.map((r) => {
+          ? [`<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">trigger:${triggerRows.length} / timeline:${timelineRows.length}</div>`, ...rows.map((r) => {
+            if (r?.kind === "trigger") {
+              const reason = esc(r?.result?.skippedReason || r?.result || r?.bundleConditionReason || "");
+              const state = esc(r?.stage || "trigger");
+              return `<div style="font-size:11px;color:#93c5fd;">${state}: ${esc(r?.trigger || r?.eventName || "?")} ${reason ? `(${reason})` : ""}</div>`;
+            }
+            if (r?.kind === "effect") {
+              const applied = r?.result?.applied === true ? "実行" : "スキップ";
+              const reason = esc(r?.result?.skippedReason || "");
+              return `<div style="font-size:11px;color:#5eead4;">effect ${esc(r?.trigger || "?")} #${esc(r?.order || "?")} ${applied}${reason ? ` (${reason})` : ""}</div>`;
+            }
+            if (r?.kind === "chain") return `<div style="font-size:11px;color:#fda4af;">chain=${esc(JSON.stringify(r?.executedOrders || []))}</div>`;
             if (r?.type === "event_fire") return `<div style="font-size:11px;color:#fde68a;">event発火: ${esc(r?.eventName || "?")}</div>`;
             if (r?.type === "trigger_search") return `<div style="font-size:11px;color:#93c5fd;">trigger検索: ${esc(r?.eventName || "?")} -> ${esc(r?.matchedCount || 0)}件 (source:${esc(r?.dslSource || r?.searchedFrom || "")})</div>`;
             if (r?.type === "condition") return `<div style="font-size:11px;color:${r?.result ? "#86efac" : "#fca5a5"};">条件判定 ${esc(r?.effectType || "?")} -> ${r?.result ? "true" : "false"} (${esc(r?.reason || "")})</div>`;
@@ -652,20 +678,20 @@
             if (r?.type === "effect") return `<div style="font-size:11px;color:#5eead4;">effect=${esc(r?.result?.type || "?")} applied=${esc(String(r?.result?.applied === true))}</div>`;
             if (r?.type === "chain") return `<div style="font-size:11px;color:#fda4af;">chain=${esc(JSON.stringify(r?.executedOrders || []))}</div>`;
             return `<div style="font-size:11px;color:#cbd5e1;">${esc(JSON.stringify(r))}</div>`;
-          }).join("")
+          })].join("")
           : '<div style="font-size:11px;color:#94a3b8;">イベントキューは空</div>';
       }
       if (qEffectEl) {
-        const rows = debug.runtime.effectQueue.slice(-12).reverse();
+        const rows = effectRows.slice(-12).reverse();
         qEffectEl.innerHTML = rows.length > 0
-          ? rows.map((r) => `<div style="font-size:11px;color:#cbd5e1;">${esc(r?.trigger || "?")} #${esc(r?.order || "?")} ${esc(r?.result?.type || "?")} ${r?.result?.applied ? "実行" : "待機/スキップ"}</div>`).join("")
+          ? rows.map((r) => `<div style="font-size:11px;color:#cbd5e1;">${esc(r?.trigger || r?.eventName || "?")} #${esc(r?.order || "?")} ${esc(r?.result?.type || r?.type || "?")} ${r?.result?.applied ? "実行" : "待機/スキップ"} ${esc(r?.result?.skippedReason || "")}</div>`).join("")
           : '<div style="font-size:11px;color:#94a3b8;">効果キューは空</div>';
       }
       if (qCtxEl) {
         qCtxEl.textContent = JSON.stringify(debug.runtime.context || {}, null, 2);
       }
       if (qChainEl) {
-        const rows = debug.runtime.chainQueue.slice(-12).reverse();
+        const rows = chainRows.slice(-12).reverse();
         qChainEl.innerHTML = rows.length > 0
           ? rows.map((r) => `<div style="font-size:11px;color:#fda4af;">trigger=${esc(r?.trigger || "?")} order=${esc(r?.order || "?")} executed=${esc(JSON.stringify(r?.executedOrders || []))}</div>`).join("")
           : '<div style="font-size:11px;color:#94a3b8;">チェインキューは空</div>';
@@ -969,6 +995,9 @@
         debug.runtime.effectQueue = [];
         debug.runtime.chainQueue = [];
         debug.runtime.context = null;
+        if (window.EffectEngine && typeof window.EffectEngine.clearRuntimeQueues === "function") {
+          window.EffectEngine.clearRuntimeQueues();
+        }
         render();
       };
       root.querySelector("#dbgChatSend").onclick = () => {

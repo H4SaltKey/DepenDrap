@@ -422,6 +422,86 @@ document.getElementById("btnEdit").addEventListener("click", () => {
   location.href = "deck.html?deckId=" + encodeURIComponent(selectedDeckId);
 });
 
+function openPublishConfirmModal(options) {
+  const currentName = String(options?.currentPublicDeckName || "").trim();
+  const nextName = String(options?.nextDeckName || "公開デッキ").trim();
+  const onConfirm = typeof options?.onConfirm === "function" ? options.onConfirm : () => {};
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:120000;background:rgba(0,0,0,0.66);display:flex;align-items:center;justify-content:center;padding:16px;";
+  overlay.innerHTML = `
+    <div style="width:min(520px,94vw);background:#1a172c;border:1px solid #c7b377;border-radius:10px;padding:16px;color:#e0d0a0;box-shadow:0 16px 40px rgba(0,0,0,0.45);">
+      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">デッキ公開の確認</div>
+      <div style="font-size:13px;line-height:1.6;color:#d7cda8;">
+        <div>現在公開中: <span style="color:#8fe3ff;font-weight:700;">${escapeHtml(currentName || "なし")}</span></div>
+        <div style="margin-top:6px;">更新対象: <span style="color:#8fe3ff;font-weight:700;">${escapeHtml(nextName)}</span></div>
+        <div style="margin-top:10px;color:#ffcf9f;">この操作を実行すると、現在公開中のデッキはこの内容で上書き更新されます。</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+        <button type="button" id="publishConfirmCancelBtn" class="btnDelete" style="padding:8px 14px;">キャンセル</button>
+        <button type="button" id="publishConfirmOkBtn" class="btnEdit" style="padding:8px 14px;background:linear-gradient(to bottom,#69d8ff,#3baed6);border-color:#3aa8ce;color:#042a3a;font-weight:700;">公開して上書き</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  overlay.querySelector("#publishConfirmCancelBtn")?.addEventListener("click", close);
+  overlay.querySelector("#publishConfirmOkBtn")?.addEventListener("click", async () => {
+    try {
+      await onConfirm();
+    } finally {
+      close();
+    }
+  });
+}
+
+async function handlePublishDeck() {
+  if (!selectedDeckId) return;
+  const username = localStorage.getItem("username");
+  if (!username || !window.firebaseClient?.db) {
+    alert("公開機能を利用するにはオンライン接続が必要です。");
+    return;
+  }
+  const deck = loadDeckList().find(d => d.id === selectedDeckId);
+  if (!deck || !deck.code || deck.code === "empty") {
+    alert("公開するデッキが選択されていないか、デッキが空です。");
+    return;
+  }
+
+  let currentPublicDeckName = "";
+  try {
+    const snap = await firebaseClient.db.ref(`accounts/${username}/publicDeck`).once("value");
+    const current = snap.val() || null;
+    currentPublicDeckName = String(current?.name || "").trim();
+  } catch (_) {
+    currentPublicDeckName = "";
+  }
+
+  const payload = {
+    name: deck.name || "公開デッキ",
+    code: deck.code,
+    author: username,
+    updatedAt: Date.now()
+  };
+
+  openPublishConfirmModal({
+    currentPublicDeckName,
+    nextDeckName: payload.name,
+    onConfirm: async () => {
+      try {
+        await firebaseClient.db.ref(`accounts/${username}/publicDeck`).set(payload);
+        alert("公開デッキを更新しました。");
+      } catch (e) {
+        alert("公開デッキの更新に失敗しました。");
+      }
+    }
+  });
+}
+
 // ===== 削除ボタン =====
 document.getElementById("btnDelete").addEventListener("click", () => {
   if (!selectedDeckId) return;
@@ -526,29 +606,7 @@ document.getElementById("importCodeInput").addEventListener("keydown", (e) => {
 
 // ===== 公開デッキ =====
 document.getElementById("btnPublishDeck")?.addEventListener("click", async () => {
-  if (!selectedDeckId) return;
-  const username = localStorage.getItem("username");
-  if (!username || !window.firebaseClient?.db) {
-    alert("公開機能を利用するにはオンライン接続が必要です。");
-    return;
-  }
-  const deck = loadDeckList().find(d => d.id === selectedDeckId);
-  if (!deck || !deck.code || deck.code === "empty") {
-    alert("公開するデッキが選択されていないか、デッキが空です。");
-    return;
-  }
-  const payload = {
-    name: deck.name || "公開デッキ",
-    code: deck.code,
-    author: username,
-    updatedAt: Date.now()
-  };
-  try {
-    await firebaseClient.db.ref(`accounts/${username}/publicDeck`).set(payload);
-    alert("公開デッキを更新しました。");
-  } catch (e) {
-    alert("公開デッキの更新に失敗しました。");
-  }
+  await handlePublishDeck();
 });
 
 async function openPublicDeckModal() {
@@ -717,10 +775,10 @@ function showDeckHoverDetail(deck) {
     </div>
     <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:52vh;overflow:auto;">${listHtml || '<div style="color:#aaa;font-size:12px;grid-column:1/-1;">カードなし</div>'}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
-      <button type="button" id="hoverDeleteBtn" class="btnDelete" style="padding:8px 8px;font-size:12px;">削除</button>
-      <button type="button" id="hoverPublishBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">公開</button>
       <button type="button" id="hoverSleeveBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">スリーブ変更</button>
-      <button type="button" id="hoverEditBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">編集</button>
+      <button type="button" id="hoverEditBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;">デッキを編集</button>
+      <button type="button" id="hoverDeleteBtn" class="btnDelete" style="padding:8px 8px;font-size:12px;">削除</button>
+      <button type="button" id="hoverPublishBtn" class="btnEdit" style="padding:8px 8px;font-size:12px;background:linear-gradient(to bottom,#69d8ff,#3baed6);border-color:#3aa8ce;color:#042a3a;font-weight:700;">デッキを公開</button>
     </div>
   `;
   

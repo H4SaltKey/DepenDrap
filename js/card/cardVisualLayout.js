@@ -1,5 +1,6 @@
 (function() {
   const BASE_W = 320;
+  const BASE_H = 457;
   const scaleObservers = new WeakMap();
 
   function escapeHtml(value) {
@@ -70,27 +71,61 @@
   }
 
   function syncScale(el) {
+    if (!el) return;
+    attachScaleSync(el);
     const w = Number(el.clientWidth || 0);
-    if (!Number.isFinite(w) || w <= 0) return;
+    if (!Number.isFinite(w) || w <= 0) {
+      el.style.setProperty("--cv-scale", "1");
+      return;
+    }
     const scale = w / BASE_W;
     el.style.setProperty("--cv-scale", String(scale));
   }
 
   function attachScaleSync(el) {
-    syncScale(el);
-    if (scaleObservers.has(el)) return;
+    if (!el || scaleObservers.has(el)) return;
 
     if (typeof ResizeObserver === "function") {
-      const ro = new ResizeObserver(() => syncScale(el));
+      const ro = new ResizeObserver(() => {
+        const w = Number(el.clientWidth || 0);
+        if (!Number.isFinite(w) || w <= 0) return;
+        const scale = w / BASE_W;
+        el.style.setProperty("--cv-scale", String(scale));
+      });
       ro.observe(el);
       scaleObservers.set(el, ro);
-      return;
+    } else {
+      // ResizeObserver 非対応環境フォールバック
+      const onResize = () => {
+        const w = Number(el.clientWidth || 0);
+        if (!Number.isFinite(w) || w <= 0) return;
+        const scale = w / BASE_W;
+        el.style.setProperty("--cv-scale", String(scale));
+      };
+      window.addEventListener("resize", onResize, { passive: true });
+      scaleObservers.set(el, { disconnect: () => window.removeEventListener("resize", onResize) });
     }
 
-    // ResizeObserver 非対応環境フォールバック
-    const onResize = () => syncScale(el);
-    window.addEventListener("resize", onResize, { passive: true });
-    scaleObservers.set(el, { disconnect: () => window.removeEventListener("resize", onResize) });
+    // 初回描画で 0px 幅になるケース（プレビュー切替直後）を再試行で吸収
+    let tries = 0;
+    const retry = () => {
+      tries += 1;
+      const w = Number(el.clientWidth || 0);
+      if (Number.isFinite(w) && w > 0) {
+        el.style.setProperty("--cv-scale", String(w / BASE_W));
+        return;
+      }
+      if (tries < 12) requestAnimationFrame(retry);
+    };
+    requestAnimationFrame(retry);
+
+    const img = el.querySelector("img");
+    if (img && !img.complete) {
+      img.addEventListener("load", () => {
+        const w = Number(el.clientWidth || 0);
+        if (Number.isFinite(w) && w > 0) el.style.setProperty("--cv-scale", String(w / BASE_W));
+      }, { once: true });
+    }
   }
 
   function buildDeckCardInnerHtml(card, options = {}) {

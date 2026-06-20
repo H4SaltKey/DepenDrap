@@ -7012,3 +7012,14 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `js/watchers/phaseWatcher.js` で `matchData` スナップショットが一時的に `null` の場合でも、ローカルが進行フェーズなら `phaseReady=true` を補完。
 - 意図: カード効果同期や一時的な matchData 欠落で gate が落ちても、対戦進行をオーバーレイで塞がない。
 - 残課題: 根本原因（matchData が欠ける契機）が特定できたら、該当 write 経路（効果実行中の状態書き込み）を別途監査。
+- 追加対応（2026-06-20）: デッキ構築画面のカードテキスト描画・拡大プレビューのスケール不整合を修正。
+  - `js/card/cardVisualLayout.js`
+    - `syncScale()` 呼び出し時に `attachScaleSync()` を自動付与し、右端拡大/ホバー側でも ResizeObserver ベースで追従。
+    - 初回幅0のタイミングに対して `requestAnimationFrame` 再試行（最大12回）を追加。
+    - 画像ロード完了時にも再計算するよう補強。
+    - ベース高さを `457` に更新（カード比率とのズレ縮小）。
+  - `css/style.css`
+    - テキスト群の縮小率を解除（`--cv-content-scale: 1`）。
+    - カード上の薄黒い半透明フィルタを透明化（`.cardVisualOverlay::before`）。
+    - カード名を中央配置へ変更し、攻撃力表示の下層に配置（`cvName` absolute + `cvAttack` z-index優先）。
+    - 効果テキスト背景/枠を透明化し、文字の可読性は text-shadow で維持。

@@ -7023,3 +7023,10 @@ grep 結果: game.js に window.startSoloGame が定義されている
     - カード上の薄黒い半透明フィルタを透明化（`.cardVisualOverlay::before`）。
     - カード名を中央配置へ変更し、攻撃力表示の下層に配置（`cvName` absolute + `cvAttack` z-index優先）。
     - 効果テキスト背景/枠を透明化し、文字の可読性は text-shadow で維持。
+- 追加対応（2026-06-20）: 同期ロック再発（時間経過後に「対戦相手と同期中...」から復帰しない）への追加緩和。
+  - `js/game/game.js`
+    - `matchData.firstPlayer` が立っている（=先後決定済み/対戦開始済み）場合、`updateSyncLoadingOverlay()` は常に非表示。
+    - 同条件で `isGameInteractionLocked()` も `false` を返すように変更し、gate揺れによる操作不能化を抑止。
+- 追加対応（2026-06-20）: マッチ画面の相手デッキ表示修正。
+  - `js/game/matchSetup.js` `updateOpponentUI()` を修正し、相手オンライン時は deckName 未受信でも `デッキ選択済み` を表示。
+  - 受信 deckName がある場合は従来どおりその名称を表示。

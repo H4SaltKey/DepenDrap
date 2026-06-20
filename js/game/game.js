@@ -17,9 +17,10 @@ function updateSyncLoadingOverlay() {
   const detail = document.getElementById("syncLoadingDetail");
   if (!overlay) return;
   const status = state?.matchData?.status;
+  const hasStartedBattle = !!state?.matchData?.firstPlayer;
   const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
   // 対戦進行中は gate 未達があっても同期オーバーレイで操作を塞がない
-  if (inGamePhase) {
+  if (inGamePhase || (gameReady && hasStartedBattle)) {
     overlay.style.display = "none";
     return;
   }
@@ -47,7 +48,10 @@ window.isGameInteractionLocked = function() {
   const isGamePage = window.location.pathname.endsWith("game.html") || !!document.getElementById("field");
   if (!isGamePage) return false;
   const status = state.matchData?.status;
+  const hasStartedBattle = !!state?.matchData?.firstPlayer;
   if (state.matchData?.winner || window._lastWinner) return true;
+  // 対戦開始後（先後決定済み）は一時的な同期揺れでロックしない
+  if (gameReady && hasStartedBattle) return false;
   
   // 進行中のフェーズ（ready_check, setup_dice 以外）であれば、一時的な切断でロックしない
   const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";

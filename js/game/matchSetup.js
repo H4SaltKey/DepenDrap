@@ -520,7 +520,13 @@ function updateOpponentUI(name, isReady, isOnline, deckName) {
     dot.className = "online";
     status.textContent = "接続中"; status.className = "";
   }
-  if (deckName) { dkName.textContent = deckName; dkName.className = "active"; }
+  if (deckName) {
+    dkName.textContent = deckName;
+    dkName.className = "active";
+  } else {
+    dkName.textContent = "デッキ選択済み";
+    dkName.className = "active";
+  }
 }
 
 function renderRoomList(rooms) {

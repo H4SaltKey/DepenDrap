@@ -6998,3 +6998,12 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - クリック時に `accounts/<username>/publicDeck` を取得し、
     「現在公開中のデッキ名」と「この公開で上書き更新される」旨を表示。
   - モーダルの「公開して上書き」で実際の `set(payload)` を実行するフローへ変更。
+- 追加対応（2026-06-20）: フルスクリーン時の固定UI崩れ対策として、`position: fixed` 系HUDのアンカーを safe-area / d*vh 基準へ統一。
+  - `css/style.css`: `--safe-top/right/bottom/left` を追加し、`#zoomControls`, `#chatArea`, `#chatArea.chat-expanded`, `.toast`, `.back-btn`, `.filterPanel` を安全領域追従へ更新。
+  - `js/game/game.js`: `match-header`, `#matchInfoDisplay`, `#turnEndBtn`, `#showResultBtn` の fixed 位置を `env(safe-area-inset-*)` 対応へ更新。
+  - `js/ui/menu.js`: `#menuDock` の上端/右端を safe-area 追従、`#menuPanel` に `max-height` と `overflow:auto` を追加。
+  - `js/ui/deckViewer.js`: フェーズ用「デッキ確認」固定ボタンの位置を safe-area 対応。
+  - `js/card/cardManager.js`: 右上単押しプレビューの上端を safe-area 対応。
+  - `js/ui/responsiveScale.js`: `fullscreenchange` でスケール再計算を行うよう追加。
+- 監査範囲（ゲーム画面で常駐/操作頻度が高い fixed UI）: menu / zoom / chat / match header / turn end / result reopen / phase deck button / single-tap preview / filter panel。
+- リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`。

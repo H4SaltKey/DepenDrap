@@ -148,7 +148,7 @@ function showCardHoverPreview(cardEl, clientX, clientY) {
   `;
   cardHoverPreviewCardId = cardEl.dataset.instanceId || "";
   cardHoverPreviewEl.style.left = `${Math.max(12, window.innerWidth - 476)}px`;
-  cardHoverPreviewEl.style.top = `12px`;
+  cardHoverPreviewEl.style.top = `max(12px, calc(env(safe-area-inset-top, 0px) + 10px))`;
   cardHoverPreviewEl.style.display = "block";
 }
 

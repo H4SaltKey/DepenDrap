@@ -80,8 +80,8 @@
   style.innerHTML = `
     #menuDock{
       position:fixed;
-      top:18%;
-      right:0;
+      top:max(12px, calc(env(safe-area-inset-top, 0px) + 10px));
+      right:max(0px, env(safe-area-inset-right, 0px));
       display:flex;
       align-items:stretch;
       z-index:9999999 !important;
@@ -117,6 +117,7 @@
     #menuPanel{
       width:220px;
       max-width:70vw;
+      max-height:calc(100dvh - max(24px, calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 20px)));
       background:#222;
       border:1px solid #3f5a82;
       border-right:none;
@@ -128,6 +129,7 @@
       pointer-events:none;
       transition:transform 0.22s ease, opacity 0.2s ease;
       z-index:9999999 !important;
+      overflow:auto;
     }
 
     #menuPanel:not(.hidden){

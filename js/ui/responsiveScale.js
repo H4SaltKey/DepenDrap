@@ -40,6 +40,7 @@
   window.applyResponsiveScale = applyResponsiveScale;
   window.addEventListener("resize", applyResponsiveScale, { passive: true });
   window.addEventListener("orientationchange", applyResponsiveScale, { passive: true });
+  document.addEventListener("fullscreenchange", applyResponsiveScale);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", applyResponsiveScale, { once: true });
   } else {

@@ -77,7 +77,7 @@
     btn.id = PHASE_BUTTON_ID;
     btn.type = "button";
     btn.textContent = "デッキ確認";
-    btn.style.cssText = "position:fixed;right:26px;top:24px;z-index:100150;padding:10px 14px;border-radius:10px;border:1px solid #8d7a4b;background:linear-gradient(180deg,#2a2436,#171421);color:#f2e6b8;font-weight:700;cursor:pointer;";
+    btn.style.cssText = "position:fixed;right:max(12px, calc(env(safe-area-inset-right, 0px) + 10px));top:max(14px, calc(env(safe-area-inset-top, 0px) + 10px));z-index:100150;padding:10px 14px;border-radius:10px;border:1px solid #8d7a4b;background:linear-gradient(180deg,#2a2436,#171421);color:#f2e6b8;font-weight:700;cursor:pointer;";
     btn.addEventListener("click", openDeckViewer);
     document.body.appendChild(btn);
   }

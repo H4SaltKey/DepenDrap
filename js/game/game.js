@@ -859,7 +859,7 @@ let lastTurnPlayer = null;
   s.textContent = `
     /* ── コンパクト表示（通常時） ── */
     .match-header-compact {
-      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      position: fixed; top: max(0px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
       z-index: 5000; pointer-events: auto;
       display: flex; align-items: center; gap: 8px;
       background: rgba(10, 8, 20, 0.82);
@@ -1067,7 +1067,7 @@ function updateMatchUI() {
     info = document.createElement("div");
     info.id = "matchInfoDisplay";
     info.style.cssText = `
-      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      position: fixed; top: max(0px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
       z-index: 5300; pointer-events: none;
       display: flex; flex-direction: column; align-items: center;
       font-family: 'Outfit', sans-serif;
@@ -1116,7 +1116,7 @@ function updateMatchUI() {
     endBtn.id = "turnEndBtn";
     endBtn.innerHTML = "TURN<br>END";
     endBtn.style.cssText = `
-      position: fixed; right: 40px; top: 50%; transform: translateY(-50%);
+      position: fixed; right: max(18px, calc(env(safe-area-inset-right, 0px) + 14px)); top: 50%; transform: translateY(-50%);
       width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #c7b377, #8e7b45);
       border: 4px solid #1a172c; color: #1a172c; font-size: 16px; font-weight: 900;
       cursor: pointer; z-index: 5000; box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.3);
@@ -1144,7 +1144,7 @@ function updateMatchUI() {
       resultBtn.id = "showResultBtn";
       resultBtn.innerHTML = "リザルト<br>表示";
       resultBtn.style.cssText = `
-        position: fixed; right: 40px; top: calc(50% + 120px); transform: translateY(-50%);
+        position: fixed; right: max(22px, calc(env(safe-area-inset-right, 0px) + 18px)); top: calc(50% + 120px); transform: translateY(-50%);
         width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #7a6a40, #5a4a30);
         border: 3px solid #1a172c; color: #e0d0a0; font-size: 14px; font-weight: 700;
         cursor: pointer; z-index: 5000; box-shadow: 0 0 15px rgba(0,0,0,0.5), inset 0 0 8px rgba(255,255,255,0.2);

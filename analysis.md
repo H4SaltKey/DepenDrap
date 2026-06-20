@@ -7045,3 +7045,10 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `dev.html`
     - タグボタン/タグプレビュー/タグモーダル/タグチップのスタイルを追加（既存IDEトーンを維持しつつ、ホバー・選択状態を強調）。
 - リビルド: 静的構成のためビルドスクリプトは未検出。リビルド相当として `node --check js/dev/cardEditorIDE.js` を実行し `JS_CHECK_OK` を確認。
+- 追加対応（2026-06-20）: デッキ構築画面のカードテキスト背景の回帰修正。
+  - 先行修正で `.cvName` / `.cvEffectText` の背景まで透明化されていたため、テキスト可読領域のみ黒半透明を復帰。
+  - `css/style.css`
+    - `.cvName` の `background` を `rgba(0, 0, 0, 0.58)` に変更。
+    - `.cvEffectText` の `background` を `rgba(0, 0, 0, 0.58)` に変更。
+  - カード全面の不要な半透明オーバーレイ（`cardVisualOverlay::before`）は引き続き透明のまま維持。
+- リビルド: `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。

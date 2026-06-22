@@ -3,13 +3,42 @@
   const OVERLAY_ID = "deckViewerOverlay";
   const ALLOWED_PHASES = new Set(["ready_check", "setup_dice", "setup_evolution", "first_draw"]);
 
-  function getMyRoleSafe() {
-    return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
-  }
-
   function cardDataOf(id) {
     if (typeof window.getCardData === "function") return window.getCardData(id) || null;
     return null;
+  }
+
+  function getDeckCodeForViewer() {
+    try {
+      const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");
+      if (setup?.deckCode && setup.deckCode !== "empty") return setup.deckCode;
+    } catch {}
+    const fromStorage = localStorage.getItem("deckCode");
+    return (fromStorage && fromStorage !== "empty") ? fromStorage : null;
+  }
+
+  function decodeDeckForViewer() {
+    const code = getDeckCodeForViewer();
+    if (!code || typeof window.decodeDeck !== "function") return [];
+    try {
+      const decoded = window.decodeDeck(code);
+      return Array.isArray(decoded) ? decoded.slice() : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function compareCardIdAsc(a, b) {
+    const aa = String(a || "");
+    const bb = String(b || "");
+    const ma = aa.match(/^([a-zA-Z]+)(\d+)$/);
+    const mb = bb.match(/^([a-zA-Z]+)(\d+)$/);
+    if (ma && mb) {
+      const headCmp = ma[1].localeCompare(mb[1], "ja");
+      if (headCmp !== 0) return headCmp;
+      return Number(ma[2]) - Number(mb[2]);
+    }
+    return aa.localeCompare(bb, "ja");
   }
 
   function closeDeckViewer() {
@@ -19,20 +48,27 @@
 
   function openDeckViewer() {
     closeDeckViewer();
-    const owner = getMyRoleSafe();
-    const ids = Array.isArray(window.state?.[owner]?.deck) ? window.state[owner].deck.slice().reverse() : [];
+    const ids = decodeDeckForViewer();
+    const countMap = {};
+    ids.forEach((rawId) => {
+      const normalized = String(rawId || "").replace(/^TEMP:/, "");
+      if (!normalized) return;
+      countMap[normalized] = (countMap[normalized] || 0) + 1;
+    });
+    const sortedIds = Object.keys(countMap).sort(compareCardIdAsc);
     const overlay = document.createElement("div");
     overlay.id = OVERLAY_ID;
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(8,6,15,0.86);z-index:100210;display:flex;align-items:center;justify-content:center;padding:14px;";
 
-    const cardsHtml = ids.map((rawId, idx) => {
-      const id = String(rawId || "").replace(/^TEMP:/, "");
+    const cardsHtml = sortedIds.map((id, idx) => {
       const row = cardDataOf(id) || {};
       const image = String(row.image || "assets/System/404.png");
       const name = String(row.name || id || "Unknown");
+      const count = Number(countMap[id] || 0);
       return `
-        <div style="border:1px solid #544826;border-radius:8px;padding:6px;background:#0f1220;">
+        <div style="position:relative;border:1px solid #544826;border-radius:8px;padding:6px;background:#0f1220;">
           <img src="${image}" alt="${name}" style="width:120px;height:170px;object-fit:cover;border-radius:6px;border:1px solid #222;">
+          ${count > 1 ? `<div style="position:absolute;right:8px;top:8px;background:#111;color:#fff;font-size:11px;font-weight:700;line-height:1;padding:3px 5px;border-radius:4px;">×${count}</div>` : ""}
           <div style="font-size:11px;color:#f0d080;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${idx + 1}. ${name}</div>
           <div style="font-size:10px;color:#9aa5c0;">${id}</div>
         </div>

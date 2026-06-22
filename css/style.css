@@ -208,7 +208,7 @@ body:not(.deckPage) .cardVisualOverlay::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff6d6;
+  color: #111111;
 }
 
 .cvAttackFlat {
@@ -231,15 +231,15 @@ body:not(.deckPage) .cardVisualOverlay::before {
 .cvAttackNone > span {
   width: 19px;
   height: 2px;
-  background: rgba(245, 224, 162, 0.95);
+  background: #111111;
   border-radius: 2px;
   display: inline-block;
 }
 
 .cvName {
   position: absolute;
-  left: 56px;
-  right: 10px;
+  left: 50px;
+  right: 22px;
   top: 46%;
   transform: translateY(-50%);
   z-index: 1;
@@ -254,7 +254,7 @@ body:not(.deckPage) .cardVisualOverlay::before {
   -webkit-box-orient: vertical;
   background: rgba(0, 0, 0, 0.58);
   color: #ffffff;
-  padding: 6px;
+  padding: 6px 5px;
   border-radius: 6px;
   text-shadow: 0 1px 2px rgba(0,0,0,0.82);
 }

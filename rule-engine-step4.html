@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ルールエンジン — ステップ4 検証</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --dim: #8b949e;
+      --accent: #d2a8ff;
+      --ok: #3fb950;
+      --ng: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+      padding: 24px;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { color: var(--dim); margin: 0 0 16px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    button {
+      background: var(--accent);
+      color: #1c1c1c;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 400;
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .ok { color: var(--ok); }
+    .ng { color: var(--ng); }
+    .log-line { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>ルール処理エンジン — ステップ4</h1>
+  <p>効果の代行（PROXY）— 汎用 DSL のみ</p>
+
+  <div class="panel">
+    <button id="btnAuto">自動検証を実行</button>
+    <button id="btnDelegate" class="secondary">代行デモ（DRAW→PP回復）</button>
+    <button id="btnPipeline" class="secondary">置換→代行パイプライン</button>
+  </div>
+
+  <div class="panel">
+    <strong>ログ</strong>
+    <div id="log"></div>
+  </div>
+
+  <div class="panel">
+    <strong>ゲーム状態 (JSON)</strong>
+    <pre id="stateView">—</pre>
+  </div>
+
+  <script type="module">
+    import { RuleEngine } from "./js/ruleEngine/index.js";
+    import { registerContinuousEffect } from "./js/ruleEngine/continuousEffects.js";
+    import { runStep4Verification, PROXY_DELEGATE_SAMPLE } from "./js/ruleEngine/verifyStep4.js";
+
+    const logEl = document.getElementById("log");
+    const stateView = document.getElementById("stateView");
+
+    function log(msg, ok = true) {
+      const div = document.createElement("div");
+      div.className = "log-line " + (ok ? "ok" : "ng");
+      div.textContent = (ok ? "✓ " : "✗ ") + msg;
+      logEl.appendChild(div);
+    }
+
+    function showState(state) {
+      stateView.textContent = JSON.stringify(state.snapshot(), null, 2);
+    }
+
+    document.getElementById("btnAuto").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      try {
+        runStep4Verification().forEach((r) => log(r));
+        log("すべての自動検証に合格しました");
+      } catch (e) {
+        log(e.message, false);
+      }
+    });
+
+    document.getElementById("btnDelegate").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      const engine = new RuleEngine({
+        pp: 0,
+        ppMax: 2,
+        field: [{ id: "PROXY_EXECUTOR", name: "代行者" }],
+        hand: [{ ...PROXY_DELEGATE_SAMPLE }],
+        deck: [{ id: "D1", name: "山札1" }, { id: "D2", name: "山札2" }]
+      });
+      log("代行ホストを場に出して PROXY 常駐を登録…");
+      engine.playCardFromHand("PROXY_HOST");
+      engine.resolveAll();
+      log("発動者(CASTER)の DRAW_CARD をスタックへ");
+      engine.push({ action: "DRAW_CARD", value: 1, sourceCardId: "CASTER", sourceCardName: "発動者" });
+      const row = engine.resolveNext();
+      log(`代行: ${row.delegation.disposition} / 実行: ${row.result.action}`);
+      log(`代行者 ${row.executedIntents[0].sourceCardName} が代行 (元: ${row.executedIntents[0]._proxiedFrom})`);
+      log(`PP ${engine.gameState.pp} / 手札 ${engine.gameState.hand.length}枚 / 山札 ${engine.gameState.deck.length}枚`);
+      showState(engine.gameState);
+    });
+
+    document.getElementById("btnPipeline").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      const engine = new RuleEngine({
+        pp: 0,
+        ppMax: 2,
+        field: [{ id: "PROXY_EXECUTOR", name: "代行者" }],
+        deck: [{ id: "D1", name: "山札1" }]
+      });
+      registerContinuousEffect(engine.gameState, {
+        kind: "REPLACEMENT",
+        interceptAction: "DRAW_CARD",
+        replaceWith: { action: "RECOVER_PP", value: 1 },
+        sourceCardName: "検閲"
+      });
+      registerContinuousEffect(engine.gameState, {
+        kind: "PROXY",
+        interceptAction: "RECOVER_PP",
+        delegateSourceCardId: "PROXY_EXECUTOR",
+        delegateMode: "REDIRECT_SOURCE",
+        sourceCardName: "代行"
+      });
+      log("パイプライン: DRAW → [検閲] RECOVER_PP → [代行] 代行者名義");
+      engine.push({ action: "DRAW_CARD", value: 1, sourceCardId: "CASTER" });
+      const row = engine.resolveNext();
+      log(`置換: ${row.interception.disposition} / 代行: ${row.delegation.disposition}`);
+      log(`実行者: ${row.executedIntents[0].sourceCardName} / PP ${engine.gameState.pp}`);
+      showState(engine.gameState);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ルールエンジン — ステップ2 検証</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --dim: #8b949e;
+      --accent: #a371f7;
+      --ok: #3fb950;
+      --ng: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+      padding: 24px;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { color: var(--dim); margin: 0 0 16px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .ok { color: var(--ok); }
+    .ng { color: var(--ng); }
+    .log-line { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>ルール処理エンジン — ステップ2</h1>
+  <p>置換（検閲）パイプラインとトウカ効果の検証</p>
+
+  <div class="panel">
+    <button id="btnAuto">自動検証を実行</button>
+    <button id="btnTouka" class="secondary">トウカ検閲デモ</button>
+    <button id="btnGrave" class="secondary">墓地→山札 置換デモ</button>
+  </div>
+
+  <div class="panel">
+    <strong>ログ</strong>
+    <div id="log"></div>
+  </div>
+
+  <div class="panel">
+    <strong>ゲーム状態 (JSON)</strong>
+    <pre id="stateView">—</pre>
+  </div>
+
+  <script type="module">
+    import { GameState, EffectStack, playCardFromHand } from "./js/ruleEngine/index.js";
+    import { runStep2Verification, TOUKA_CARD } from "./js/ruleEngine/verifyStep2.js";
+    import { registerContinuousEffect } from "./js/ruleEngine/continuousEffects.js";
+
+    const logEl = document.getElementById("log");
+    const stateView = document.getElementById("stateView");
+
+    function log(msg, ok = true) {
+      const div = document.createElement("div");
+      div.className = "log-line " + (ok ? "ok" : "ng");
+      div.textContent = (ok ? "✓ " : "✗ ") + msg;
+      logEl.appendChild(div);
+    }
+
+    function showState(state) {
+      stateView.textContent = JSON.stringify(state.snapshot(), null, 2);
+    }
+
+    document.getElementById("btnAuto").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      try {
+        runStep2Verification().forEach((r) => log(r));
+        log("すべての自動検証に合格しました");
+      } catch (e) {
+        log(e.message, false);
+      }
+    });
+
+    document.getElementById("btnTouka").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      const state = new GameState({
+        pp: 0,
+        ppMax: 2,
+        hand: [{ ...TOUKA_CARD }],
+        deck: [
+          { id: "D1", name: "山札1" },
+          { id: "D2", name: "山札2" }
+        ]
+      });
+      const stack = new EffectStack();
+
+      log("トウカを場に出す…");
+      playCardFromHand("TOUKA", state, stack);
+      stack.resolveAll(state);
+      log(`常駐効果: ${state.activeContinuousEffects.length}件（DRAW_CARD を検閲）`);
+
+      log("DRAW_CARD をスタックに積む（通常なら2枚ドロー）");
+      stack.push({ action: "DRAW_CARD", value: 2 });
+      const res = stack.resolveNext(state);
+      log(`パイプライン結果: ${res.interception.disposition}`);
+      log(`実際の効果: ${res.result.action} (+${res.result.recovered} PP)`);
+      log(`手札 ${state.hand.length}枚 / 山札 ${state.deck.length}枚 / PP ${state.pp}`);
+      showState(state);
+    });
+
+    document.getElementById("btnGrave").addEventListener("click", () => {
+      logEl.innerHTML = "";
+      const state = new GameState({
+        field: [{ id: "LEAVE_CARD", name: "退場対象" }],
+        deck: [],
+        grave: []
+      });
+      registerContinuousEffect(state, {
+        kind: "REPLACEMENT",
+        interceptAction: "MOVE_TO_GRAVE",
+        replaceWith: { action: "RETURN_TO_DECK" },
+        sourceCardName: "退場置換"
+      });
+      const stack = new EffectStack();
+      stack.push({ action: "MOVE_TO_GRAVE", cardId: "LEAVE_CARD", fromZone: "field" });
+      const res = stack.resolveNext(state);
+      log(`置換: ${res.interception.disposition} (${res.interception.matchedEffect?.sourceCardName})`);
+      log(`墓地 ${state.grave.length}枚 → 山札 ${state.deck.length}枚`);
+      showState(state);
+    });
+  </script>
+</body>
+</html>

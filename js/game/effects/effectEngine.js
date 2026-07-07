@@ -75,6 +75,7 @@
       "attacker_zone_card",
       "target_attacker_zone_card",
       "self_and_target_attacker_zone_card",
+      "self_skill_card",
       "grave_card",
       "hand_card",
       "target_skill_card"
@@ -263,6 +264,7 @@
       const out = [getTopZoneCard(context.owner, "attacker"), getTopZoneCard(current.owner, "attacker")].filter(Boolean);
       return out;
     }
+    if (t === "self_skill_card") return [getTopZoneCard(context.owner, "skill")].filter(Boolean);
     if (t === "grave_card") return [getTopZoneCard(context.owner, "grave")].filter(Boolean);
     if (t === "hand_card") {
       const cards = getHandCardsOfOwner(context.owner);
@@ -364,6 +366,12 @@
         return true;
       }
       const card = getTopZoneCard(targetInfo.owner, "skill");
+      if (isSetMode) setCardAttack(card, setValue);
+      else addCardAttack(card, amountSigned);
+      return true;
+    }
+    if (atkTarget === "self_skill_card") {
+      const card = getTopZoneCard(context.owner, "skill");
       if (isSetMode) setCardAttack(card, setValue);
       else addCardAttack(card, amountSigned);
       return true;

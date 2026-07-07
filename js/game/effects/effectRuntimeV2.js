@@ -681,7 +681,7 @@
     if (["self", "self_player", "owner", "player", "source_player"].includes(raw)) return "self_player";
     if (["opponent", "enemy", "target", "current_target", "target_player", "eventtarget"].includes(raw)) return "current_target";
     if (["both", "self_and_current_target"].includes(raw)) return "self_and_current_target";
-    if (["this_card", "source_card", "card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "grave_card", "hand_card", "target_skill_card"].includes(raw)) return raw;
+    if (["this_card", "source_card", "card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "self_skill_card", "grave_card", "hand_card", "target_skill_card"].includes(raw)) return raw;
     return "self_player";
   }
 

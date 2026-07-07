@@ -66,7 +66,7 @@
     "draw", "add_hand_to_min", "damage", "hp_reduce", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "set_hp", "add_pp", "set_pp_min", "add_shield", "add_atk",
     "move_to_grave", "return_to_hand", "return_to_deck", "duplicate_to_hand", "reveal_card", "fetch_card", "play_to_field", "trigger_attack_effect",
     "add_effect", "remove_effect", "remove_status",
-    "self", "opponent", "current_target", "self_and_current_target", "this_card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "target_skill_card"
+    "self", "opponent", "current_target", "self_and_current_target", "this_card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "self_skill_card", "target_skill_card"
   ];
   const TAG_PRESET_OPTIONS = [
     "ドロー", "ダメージ", "回復", "PP", "貫通", "除去", "バフ", "デバフ",
@@ -823,6 +823,7 @@
       { value: "target_card", label: "ターゲット側アタッカー" },
       { value: "attacker_zone_card", label: "自分のアタッカー" },
       { value: "target_attacker_zone_card", label: "相手のアタッカー" },
+      { value: "self_skill_card", label: "自分のスキル" },
       { value: "target_skill_card", label: "相手のスキル" },
       { value: "grave_card", label: "自分の墓地トップ" },
       { value: "hand_card", label: "自分の手札末尾" },

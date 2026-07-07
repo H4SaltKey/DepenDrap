@@ -7209,3 +7209,34 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
 - リビルド相当チェック:
   - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`
+
+---
+
+## Round 2026-07-07 — 対象「自分のスキル」追加
+
+### 要望
+
+- 対象に「自分のスキル」がない。
+
+### 対応
+
+- `js/dev/cardEditorIDE.js`
+  - `TARGET_OPTIONS` に `self_skill_card`（表示名: 自分のスキル）を追加。
+  - DSL候補 (`DSL_KEYWORDS`) に `self_skill_card` を追加。
+- `js/game/effects/effectEngine.js`
+  - カード対象トークンに `self_skill_card` を追加。
+  - `resolveCardTargets()` で `self_skill_card` を `getTopZoneCard(context.owner, "skill")` へ解決。
+  - `ADD_ATK` の `atkTarget` としても `self_skill_card` を解決可能化。
+- `js/game/effects/effectRuntimeV2.js`
+  - `mapTarget()` に `self_skill_card` を追加（DSLテキスト -> 実行DSL変換で保持）。
+- `js/dev/cardEffectBlockCompiler.js`
+  - `normalizeTarget()` に `self_skill_card` を追加（旧ブロック互換経路）。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`
+  - `node --check js/game/effects/effectRuntimeV2.js` -> `CHECK_runtimeV2_OK`
+  - `node --check js/game/effects/effectEngine.js` -> `CHECK_effectEngine_OK`
+  - `node --check js/dev/cardEffectBlockCompiler.js` -> `CHECK_blockCompiler_OK`

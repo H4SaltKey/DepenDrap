@@ -30,7 +30,7 @@
       "self_player", "current_target", "self_and_current_target",
       "player", "target_player", "source_player",
       "card", "target_card", "source_card",
-      "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card",
+      "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "self_skill_card",
       "this_card", "grave_card", "hand_card"
     ].includes(t)) return t;
     if (["self", "opponent", "owner", "eventTarget"].includes(t)) return t;

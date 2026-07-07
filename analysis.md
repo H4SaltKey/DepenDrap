@@ -7182,3 +7182,30 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`
   - `node --check js/dev/cardEffectBlockCatalog.js` -> `CHECK_blockCatalog_OK`
   - `node --check js/dev/cardEffectBlockCompiler.js` -> `CHECK_blockCompiler_OK`
+
+---
+
+## Round 2026-07-07 — IDE: 対象必須ノードの自動 target 生成・自動接続
+
+### 要望
+
+- 「対象ノードが必要なノードA」を作成した際、同時に対象ノードを作成し、ノードAへ自動接続する。
+
+### 対応
+
+- 対象: `js/dev/cardEditorIDE.js`
+- 追加:
+  - `nodeRequiresTargetNode(node)`:
+    - `effect` / `modifier` ノードで、`trigger_attack_effect` 以外を「対象ノード必須」と判定。
+  - `createAutoTargetNodeFor(node)`:
+    - `target: current_target` の `target` ノードを自動生成。
+    - 生成した `target -> nodeA` を自動接続。
+- `commitNodeConfig()` の作成分岐を変更:
+  - ノードA作成時に上記判定を行い、必要なら target ノードを同時生成して接続。
+  - 作成後の選択状態は `nodeA + autoTarget` の2ノード選択に設定。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`

@@ -1116,13 +1116,42 @@
       }
     }
 
+    function nodeRequiresTargetNode(node) {
+      if (!node || (node.type !== "effect" && node.type !== "modifier")) return false;
+      const action = String(node.data?.action || "").trim();
+      if (!action) return false;
+      // trigger_attack_effect は owner 基準で動作し、target ノード必須ではない
+      if (action === "trigger_attack_effect") return false;
+      return true;
+    }
+
+    function createAutoTargetNodeFor(node) {
+      const targetNode = {
+        id: `node-${Date.now()}-${Math.floor(Math.random() * 1e5)}`,
+        type: "target",
+        label: "対象指定",
+        data: { target: "current_target" },
+        x: Math.round(Number(node?.x || 0) - 220),
+        y: Math.round(Number(node?.y || 0))
+      };
+      state.graph.nodes.push(targetNode);
+      addEdge(targetNode.id, node.id);
+      return targetNode;
+    }
+
     function commitNodeConfig() {
       if (!nodeConfigCtx?.draft) return;
       updateDraftFromNodeConfigForm();
       if (nodeConfigCtx.mode === "create") {
         pushUndo("add-node-config");
-        state.graph.nodes.push(clone(nodeConfigCtx.draft));
-        state.selectedNodeIds = new Set([nodeConfigCtx.draft.id]);
+        const createdNode = clone(nodeConfigCtx.draft);
+        state.graph.nodes.push(createdNode);
+        if (nodeRequiresTargetNode(createdNode)) {
+          const autoTarget = createAutoTargetNodeFor(createdNode);
+          state.selectedNodeIds = new Set([createdNode.id, autoTarget.id]);
+        } else {
+          state.selectedNodeIds = new Set([createdNode.id]);
+        }
         state.selectedEdgeIds = new Set();
       } else {
         const target = nodeById(nodeConfigCtx.nodeId);

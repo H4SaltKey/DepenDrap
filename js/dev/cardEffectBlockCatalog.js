@@ -43,6 +43,7 @@
     { id: "set_pp_min", category: "pp", label: "PPをNまで回復（不足分のみ）", params: ["target", "value", "condition"] },
     { id: "heal", category: "hp", label: "HPを回復", params: ["target", "value", "condition"] },
     { id: "hp_reduce", category: "hp", label: "HPを減らす", params: ["target", "value", "condition"] },
+    { id: "set_hp", category: "hp", label: "HPをNにする", params: ["target", "value", "condition"] },
     { id: "grant_effect_bundle", category: "effect_grant", label: "付与する効果を作成", params: ["target", "effectName", "allowDuplicate", "duration", "grantedEffects", "condition"] }
   ];
 

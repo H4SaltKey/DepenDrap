@@ -63,7 +63,7 @@
     "trigger", "if", "target", "effect", "modifier", "end",
     "OnPlay", "OnAttack", "OnDirectAttack", "OnSkillUse", "OnBeforeAttackEffect", "OnAfterAttackEffect",
     "OnDamage", "OnPenetrateDamage", "OnHeal", "OnDraw", "OnDiscard", "OnLeaveField", "OnReturnHand", "OnTurnStart", "OnTurnEnd", "OnEffectAdded", "OnEffectRemoved",
-    "draw", "add_hand_to_min", "damage", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "add_pp", "set_pp_min", "add_shield", "add_atk",
+    "draw", "add_hand_to_min", "damage", "hp_reduce", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "set_hp", "add_pp", "set_pp_min", "add_shield", "add_atk",
     "move_to_grave", "return_to_hand", "return_to_deck", "duplicate_to_hand", "reveal_card", "fetch_card", "play_to_field", "trigger_attack_effect",
     "add_effect", "remove_effect", "remove_status",
     "self", "opponent", "current_target", "self_and_current_target", "this_card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "target_skill_card"
@@ -833,10 +833,12 @@
       { value: "draw", label: "draw" },
       { value: "add_hand_to_min", label: "add_hand_to_min" },
       { value: "damage", label: "damage" },
+      { value: "hp_reduce", label: "hp_reduce" },
       { value: "penetrate_damage", label: "penetrate_damage" },
       { value: "extra_damage", label: "extra_damage" },
       { value: "extra_penetrate_damage", label: "extra_penetrate_damage" },
       { value: "heal", label: "heal" },
+      { value: "set_hp", label: "set_hp" },
       { value: "add_pp", label: "add_pp" },
       { value: "set_pp_min", label: "set_pp_min" },
       { value: "add_shield", label: "add_shield" },
@@ -857,11 +859,13 @@
     const ACTION_LABEL_MAP = {
       draw: "ドロー",
       add_hand_to_min: "手札をN枚まで補充",
-      damage: "ダメージ",
+      damage: "通常ダメージ",
+      hp_reduce: "HP減少（防御無視）",
       penetrate_damage: "貫通ダメージ",
       extra_damage: "追加ダメージ",
       extra_penetrate_damage: "追加貫通ダメージ",
       heal: "回復",
+      set_hp: "HPを指定値にする",
       add_pp: "PP回復",
       set_pp_min: "PPを指定値まで回復",
       add_shield: "シールド増加",
@@ -991,10 +995,12 @@
           draw: "例: 1",
           add_hand_to_min: "例: 5",
           damage: "例: 3",
+          hp_reduce: "例: 3",
           penetrate_damage: "例: 2",
           extra_damage: "例: 2",
           extra_penetrate_damage: "例: 2",
           heal: "例: 2",
+          set_hp: "例: 0",
           add_pp: "例: 1",
           set_pp_min: "例: 1",
           add_shield: "例: 1",
@@ -1797,8 +1803,10 @@
         const action = p[1] || "";
         const arg = p.slice(2).join(" ");
         if (action === "draw") return `カードを${arg || 1}枚引く`;
-        if (action === "damage") return `${arg || 1}ダメージを与える`;
+        if (action === "damage") return `${arg || 1}の通常ダメージを与える`;
+        if (action === "hp_reduce") return `シールド等を無視してHPを${arg || 1}減らす`;
         if (action === "heal") return `HPを${arg || 1}回復`;
+        if (action === "set_hp") return `HPを${arg || 0}にする`;
         if (action === "add_pp") return `PPを${arg || 1}回復`;
         return line;
       });

@@ -7137,3 +7137,48 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `node --check js/game/auto/firstEightCardEffects.js` -> `CHECK_first8_OK`
   - `node --check js/game/effects/effectRuntimeV2.js` -> `CHECK_runtimeV2_OK`
   - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`
+
+---
+
+## Round 2026-07-07 — ダメージ種別の明確化（通常ダメージ / HP減少）と `set_hp` 追加
+
+### 要望
+
+- 効果で「(無印)ダメージ」と「HPを減らす」を明確に分離する。
+- `HPを減らす` はシールド/防御の影響を一切受けない。
+- 新効果 `HPをxにする` を追加する（例: 相手に `0` を適用するとHP=0になり敗北判定へ）。
+
+### 対応内容
+
+- `js/game/effects/effectEngine.js`
+  - 新 effect type `SET_HP` を追加。
+  - 対象プレイヤーのHPを `max(0, floor(x))` へ直接設定（シールド/防御を経由しない）。
+  - `pushMyStateDebounced` と変更履歴（`changed`）へ反映。
+- `js/game/effects/effectRuntimeV2.js`
+  - DSL action `hp_reduce` を `DAMAGE` + `damageType:"hp_reduce"` にマッピング。
+  - DSL action `set_hp` を `SET_HP` にマッピング。
+  - 逆変換 `SET_HP -> set_hp` を追加。
+- `js/dev/cardEditorIDE.js`
+  - 実行可能コマンド一覧に `hp_reduce`, `set_hp` を追加。
+  - 表示ラベルを明確化:
+    - `damage`: 通常ダメージ
+    - `hp_reduce`: HP減少（防御無視）
+    - `set_hp`: HPを指定値にする
+  - 入力ヒント/生成テキストプレビューにも反映。
+- 旧ブロック互換（開発者モードの block->DSL 経路）
+  - `js/dev/cardEffectBlockCatalog.js`: `set_hp` ブロックを追加。
+  - `js/dev/cardEffectBlockCompiler.js`: `set_hp -> SET_HP` コンパイルを追加。
+
+### 補足（ゲームエンド）
+
+- 既存の勝敗判定は `HP <= 0` で評価されるため、`effect set_hp 0` を相手に適用した場合は既存フローでそのままゲーム終了する。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/game/effects/effectEngine.js` -> `CHECK_effectEngine_OK`
+  - `node --check js/game/effects/effectRuntimeV2.js` -> `CHECK_runtimeV2_OK`
+  - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`
+  - `node --check js/dev/cardEffectBlockCatalog.js` -> `CHECK_blockCatalog_OK`
+  - `node --check js/dev/cardEffectBlockCompiler.js` -> `CHECK_blockCompiler_OK`

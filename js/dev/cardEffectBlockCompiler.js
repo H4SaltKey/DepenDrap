@@ -20,6 +20,7 @@
     set_pp_min: "SET_PP_MIN",
     recover_pp_to: "SET_PP_MIN",
     heal: "HEAL",
+    set_hp: "SET_HP",
     grant_effect_bundle: "GRANT_EFFECT_BUNDLE"
   };
 
@@ -77,7 +78,7 @@
       return compiled;
     }
 
-    if (["add_atk", "draw_card", "add_hand", "add_hand_to_n", "recover_pp", "set_pp_min", "recover_pp_to", "heal", "duplicate_to_hand", "reveal_card"].includes(kind)) {
+    if (["add_atk", "draw_card", "add_hand", "add_hand_to_n", "recover_pp", "set_pp_min", "recover_pp_to", "heal", "set_hp", "duplicate_to_hand", "reveal_card"].includes(kind)) {
       compiled.amount = normalizeValue(effect.value, 1);
       if (kind === "add_atk") {
         compiled.atkMode = String(effect.atkMode || "increase");
@@ -88,7 +89,7 @@
       } else if (["duplicate_to_hand", "reveal_card"].includes(kind)) {
         compiled.cardTarget = normalizeTarget(effect.cardTarget || "this_card");
         compiled.targetType = "card";
-      } else if (["recover_pp", "set_pp_min", "recover_pp_to", "heal"].includes(kind)) {
+      } else if (["recover_pp", "set_pp_min", "recover_pp_to", "heal", "set_hp"].includes(kind)) {
         compiled.targetType = "player";
       }
       return compiled;

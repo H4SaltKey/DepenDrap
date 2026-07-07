@@ -796,6 +796,20 @@
         });
         return { applied: true, type, changed };
       }
+      if (type === "SET_HP") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
+        targetOwners.forEach((targetOwner) => {
+          const s = getPlayer(targetOwner);
+          if (!s) return;
+          const before = Number(s.hp || 0);
+          s.hp = Math.max(0, Math.floor(Math.max(0, amount)));
+          const after = Number(s.hp || 0);
+          if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+          changed.push({ owner: targetOwner, stat: "hp", before, after, mode: "set" });
+        });
+        return { applied: true, type, changed };
+      }
       if (type === "DAMAGE") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         const changed = [];

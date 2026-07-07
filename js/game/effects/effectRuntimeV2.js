@@ -711,13 +711,17 @@
     if (a === "add_hand_to_min") {
       return { type: "ADD_HAND_TO_MIN", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
-    if (a === "damage" || a === "penetrate_damage" || a === "extra_damage" || a === "extra_penetrate_damage") {
+    if (a === "damage" || a === "penetrate_damage" || a === "extra_damage" || a === "extra_penetrate_damage" || a === "hp_reduce") {
       const damageType = (a === "penetrate_damage" || a === "extra_penetrate_damage") ? "penetrate_damage" : "damage";
       const subType = (a === "extra_damage" || a === "extra_penetrate_damage") ? "extra" : "none";
-      return { type: "DAMAGE", target: mappedTarget, targetType: "player", amount: n || 1, damageType, subType };
+      const resolvedDamageType = a === "hp_reduce" ? "hp_reduce" : damageType;
+      return { type: "DAMAGE", target: mappedTarget, targetType: "player", amount: n || 1, damageType: resolvedDamageType, subType };
     }
     if (a === "heal") {
       return { type: "HEAL", target: mappedTarget, targetType: "player", amount: n || 1 };
+    }
+    if (a === "set_hp") {
+      return { type: "SET_HP", target: mappedTarget, targetType: "player", amount: n || 0 };
     }
     if (a === "add_pp") {
       return { type: "RECOVER_PP", target: mappedTarget, targetType: "player", amount: n || 1 };
@@ -906,6 +910,7 @@
       DRAW_CARD: "draw",
       ADD_HAND_TO_MIN: "add_hand_to_min",
       DAMAGE: "damage",
+      SET_HP: "set_hp",
       HEAL: "heal",
       RECOVER_PP: "add_pp",
       SET_PP_MIN: "set_pp_min",

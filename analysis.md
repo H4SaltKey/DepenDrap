@@ -7088,3 +7088,52 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - デッキ確認機能を「現在の山札ビュー」ではなく「デッキリストビュー」として固定。
 - 既存のカードデザインを崩さず、最小差分で重なりと視認性のみを改善。
+
+---
+
+## Round 2026-07-07 — first8 攻撃時連鎖の resolveCardDsl 統一 + 開発者IDE DSL操作面の実行可能コマンド統一
+
+### 対応1: `resolveAttackTriggerForAttacker()` の最小修正（first8）
+
+- 対象: `js/game/auto/firstEightCardEffects.js`
+- `resolveAttackTriggerForAttacker(owner)` 内で、`profile.effectDsl` 直参照を廃止し、以下へ統一。
+  - `window.CardEffectRuntimeV2.resolveCardDsl(profile)` 優先
+  - 未提供時のみ `profile.effectDsl` フォールバック
+- `EffectEngine.execute(...)` に渡すDSLも `resolvedDsl` に変更。
+- これにより、`cd001-004` の「攻撃時効果を追加発動」から連鎖する attacker 側効果で、`effectDslText` / `effectBlocks` 由来DSLを確実に使用可能にした。
+
+### 対応2: どの first8 カードで差分が出るか
+
+- 影響あり（`cd001-004` 起点の攻撃時連鎖で差分が出るカード）
+  - `cd001-003`（`OnAttack` を `effectDslText` 側で保持）
+  - `cd001-005`（`OnAttack` を `effectDslText` 側で保持）
+  - `cd001-007`（`OnAttack` を `effectDslText` 側で保持）
+- 影響なし
+  - `cd001-001`（`OnAttack` 定義を持たず、`OnDirectAttack`/`OnLeaveField`中心）
+  - `cd001-002`, `cd001-004`, `cd001-006`, `cd001-008`（攻撃時連鎖の attacker 側対象外）
+
+### 対応3: 開発者モードIDEの DSL 設定環境を実行可能セットへ整理
+
+- 対象: `js/dev/cardEditorIDE.js`, `js/game/effects/effectRuntimeV2.js`
+- 実施内容:
+  - IDEのイベント選択肢を Runtime 実装準拠に統一
+    - `OnSkillUsed` -> `OnSkillUse` へ修正
+    - `OnBeforeLeaveField` など未実装イベント選択肢を削除
+  - IDEの対象選択肢を Runtime 解決可能トークンへ統一
+    - 例: `this_card`, `target_card`, `attacker_zone_card`, `target_skill_card` などを追加
+    - `field_card`, `hand_random`, `deck_top` など未解決トークンを削除
+  - IDEの効果コマンド選択肢を「実行エンジンで処理可能なコマンド」に限定
+    - 追加: `add_hand_to_min`, `set_pp_min`, `add_shield`, `add_atk`, `duplicate_to_hand`, `reveal_card`, `fetch_card`, `play_to_field`, `trigger_attack_effect` など
+    - 削除: `append_effect`, `override_effect`, `invoke_effect`, `invoke_trigger`, `choose_one`, `repeat`, `set_flag`, `clear_flag` など（現行実行不可）
+  - ノードライブラリ初期テンプレートも実行可能コマンドへ置換
+  - 効果/修飾ノードの引数プレースホルダをコマンド別に具体化し、タイミング・対象・条件との接続が規則的に組めるよう改善
+  - `compileAstToDslV1` を拡張し、`modifier` ノードも `mapEffectAction` 経由で実行DSLへコンパイル
+  - `mapEffectAction` を拡張し、上記実行可能コマンドを `EffectEngine` の effect type へ変換可能化
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェックとして以下を実行し、構文正常を確認。
+  - `node --check js/game/auto/firstEightCardEffects.js` -> `CHECK_first8_OK`
+  - `node --check js/game/effects/effectRuntimeV2.js` -> `CHECK_runtimeV2_OK`
+  - `node --check js/dev/cardEditorIDE.js` -> `CHECK_ide_OK`

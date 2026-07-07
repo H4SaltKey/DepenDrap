@@ -135,7 +135,10 @@
     if (!attacker) return;
     const id = attacker.dataset.id;
     const profile = window.CardCombatData?.getResolvedCardData?.(id);
-    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl?.format === window.EffectEngine.DSL_FORMAT) {
+    const resolvedDsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
+      ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
+      : profile?.effectDsl;
+    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && resolvedDsl?.format === window.EffectEngine.DSL_FORMAT) {
       const context = {
         game: window.state,
         sourceCard: attacker,
@@ -148,7 +151,7 @@
       if (typeof window.EffectEngine.executeGrantedEffects === "function") {
         window.EffectEngine.executeGrantedEffects(context);
       }
-      window.EffectEngine.execute(profile.effectDsl, context);
+      window.EffectEngine.execute(resolvedDsl, context);
       return;
     }
     const self = getPlayer(owner);

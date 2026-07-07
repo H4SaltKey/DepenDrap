@@ -678,25 +678,43 @@
 
   function mapTarget(target) {
     const raw = String(target || "self").toLowerCase();
-    if (["self", "self_player", "owner"].includes(raw)) return "self_player";
-    if (["opponent", "enemy", "target", "current_target", "target_player"].includes(raw)) return "current_target";
+    if (["self", "self_player", "owner", "player", "source_player"].includes(raw)) return "self_player";
+    if (["opponent", "enemy", "target", "current_target", "target_player", "eventtarget"].includes(raw)) return "current_target";
     if (["both", "self_and_current_target"].includes(raw)) return "self_and_current_target";
+    if (["this_card", "source_card", "card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "self_and_target_attacker_zone_card", "grave_card", "hand_card", "target_skill_card"].includes(raw)) return raw;
     return "self_player";
+  }
+
+  function parseKeyValueArgs(args) {
+    const out = Object.create(null);
+    safeArray(args).forEach((token) => {
+      const text = String(token || "");
+      const idx = text.indexOf("=");
+      if (idx <= 0) return;
+      const key = text.slice(0, idx).trim().toLowerCase();
+      const value = text.slice(idx + 1).trim();
+      if (!key) return;
+      out[key] = value;
+    });
+    return out;
   }
 
   function mapEffectAction(action, args, target) {
     const a = String(action || "noop").toLowerCase();
     const n = Math.max(0, toNumber(args?.[0], 1));
     const mappedTarget = mapTarget(target);
+    const kv = parseKeyValueArgs(args);
 
     if (a === "draw") {
       return { type: "DRAW_CARD", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
-    if (a === "damage") {
-      return { type: "DAMAGE", target: mappedTarget, targetType: "player", amount: n || 1, damageType: "damage", subType: "none" };
+    if (a === "add_hand_to_min") {
+      return { type: "ADD_HAND_TO_MIN", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
-    if (a === "pierce_damage") {
-      return { type: "DAMAGE", target: mappedTarget, targetType: "player", amount: n || 1, damageType: "pierce", subType: "none" };
+    if (a === "damage" || a === "penetrate_damage" || a === "extra_damage" || a === "extra_penetrate_damage") {
+      const damageType = (a === "penetrate_damage" || a === "extra_penetrate_damage") ? "penetrate_damage" : "damage";
+      const subType = (a === "extra_damage" || a === "extra_penetrate_damage") ? "extra" : "none";
+      return { type: "DAMAGE", target: mappedTarget, targetType: "player", amount: n || 1, damageType, subType };
     }
     if (a === "heal") {
       return { type: "HEAL", target: mappedTarget, targetType: "player", amount: n || 1 };
@@ -704,17 +722,77 @@
     if (a === "add_pp") {
       return { type: "RECOVER_PP", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
-    if (a === "add_status") {
+    if (a === "set_pp" || a === "set_pp_min") {
+      return { type: "SET_PP_MIN", target: mappedTarget, targetType: "player", amount: n || 1 };
+    }
+    if (a === "add_shield") {
+      return { type: "ADD_SHIELD", target: mappedTarget, targetType: "player", amount: n || 1 };
+    }
+    if (a === "add_atk") {
+      return {
+        type: "ADD_ATK",
+        target: mappedTarget,
+        amount: n || 1,
+        atkMode: String(kv.atkmode || kv.mode || "increase"),
+        atkTarget: String(kv.atktarget || kv.target || "this_card")
+      };
+    }
+    if (a === "move_to_grave") {
+      return { type: "MOVE_SOURCE_TO_GRAVE", target: mappedTarget, targetType: "card", cardTarget: mappedTarget };
+    }
+    if (a === "return_to_hand") {
+      return { type: "MOVE_SOURCE_TO_HAND", target: mappedTarget, targetType: "card", cardTarget: mappedTarget };
+    }
+    if (a === "return_to_deck") {
+      return { type: "MOVE_SOURCE_TO_DECK", target: mappedTarget, targetType: "card", cardTarget: mappedTarget };
+    }
+    if (a === "duplicate_to_hand") {
+      return { type: "DUPLICATE_SOURCE_TO_HAND", target: mappedTarget, targetType: "card", cardTarget: mappedTarget };
+    }
+    if (a === "reveal_card") {
+      return { type: "REVEAL_CARD", target: mappedTarget, targetType: "card", cardTarget: mappedTarget };
+    }
+    if (a === "fetch_card") {
+      return {
+        type: "FETCH_CARD",
+        target: mappedTarget,
+        targetType: "card",
+        cardTarget: mappedTarget,
+        toZone: String(kv.tozone || args?.[1] || "hand")
+      };
+    }
+    if (a === "play_to_field") {
+      return {
+        type: "PLAY_SOURCE_TO_FIELD",
+        target: mappedTarget,
+        targetType: "card",
+        cardTarget: mappedTarget,
+        toZone: String(kv.tozone || args?.[1] || "attacker")
+      };
+    }
+    if (a === "trigger_attack_effect") {
+      return { type: "TRIGGER_ATTACK_EFFECT", target: "self_player", targetType: "player" };
+    }
+    if (a === "add_effect" || a === "add_status" || a === "grant_effect_bundle") {
       return {
         type: "GRANT_EFFECT_BUNDLE",
         target: mappedTarget,
         targetType: "player",
-        effectName: String(args?.[0] || "Status"),
-        allowDuplicate: true,
-        duration: { mode: "turn", turns: 1, counts: 0 },
+        effectName: String(args?.[0] || kv.effectname || "Status"),
+        allowDuplicate: String(kv.allowduplicate || "false") === "true",
+        duration: { mode: "turn", turns: Math.max(0, toNumber(kv.turns, 1)), counts: Math.max(0, toNumber(kv.counts, 0)) },
         grantedEffects: []
       };
     }
+    if (a === "remove_effect" || a === "remove_status" || a === "remove_granted_effect_bundle") {
+      return {
+        type: "REMOVE_GRANTED_EFFECT_BUNDLE",
+        target: mappedTarget,
+        targetType: "player",
+        effectName: String(args?.[0] || kv.effectname || "")
+      };
+    }
+
     return {
       type: "UNKNOWN",
       target: mappedTarget,
@@ -725,7 +803,10 @@
   function compileAstToDslV1(ast) {
     const rules = safeArray(ast?.rules);
     const triggers = rules.map((rule) => {
-      const effects = safeArray(rule.effects).map((effect) => mapEffectAction(effect.action, effect.args, rule.target));
+      const effects = [
+        ...safeArray(rule.effects).map((effect) => mapEffectAction(effect.action, effect.args, rule.target)),
+        ...safeArray(rule.modifiers).map((effect) => mapEffectAction(effect.action, effect.args, rule.target))
+      ];
       const conditions = safeArray(rule.conditions).map(parseConditionText).filter(Boolean);
       const trigger = {
         on: mapTriggerToV1(rule.trigger),
@@ -823,10 +904,24 @@
     const raw = String(type || "UNKNOWN");
     const map = {
       DRAW_CARD: "draw",
+      ADD_HAND_TO_MIN: "add_hand_to_min",
       DAMAGE: "damage",
       HEAL: "heal",
       RECOVER_PP: "add_pp",
-      GRANT_EFFECT_BUNDLE: "add_status"
+      SET_PP_MIN: "set_pp_min",
+      ADD_SHIELD: "add_shield",
+      ADD_ATK: "add_atk",
+      MOVE_SOURCE_TO_GRAVE: "move_to_grave",
+      MOVE_SOURCE_TO_HAND: "return_to_hand",
+      MOVE_SOURCE_TO_DECK: "return_to_deck",
+      DUPLICATE_SOURCE_TO_HAND: "duplicate_to_hand",
+      REVEAL_CARD: "reveal_card",
+      FETCH_CARD: "fetch_card",
+      PLAY_SOURCE_TO_FIELD: "play_to_field",
+      TRIGGER_ATTACK_EFFECT: "trigger_attack_effect",
+      GRANT_EFFECT_BUNDLE: "add_effect",
+      REMOVE_GRANTED_EFFECT_BUNDLE: "remove_effect",
+      REMOVE_STATUS: "remove_status"
     };
     return map[raw] || raw.toLowerCase();
   }

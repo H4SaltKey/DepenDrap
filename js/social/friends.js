@@ -12,21 +12,7 @@
     friendStatusUnsub: null,
     roomInviteUnsub: null,
     myName: localStorage.getItem("username") || "Player",
-    searchTimer: null,
-    dmDebug: {
-      selectedFriend: "",
-      watchCount: 0,
-      pollCount: 0,
-      lastRows: 0,
-      renderCount: 0,
-      sendTry: 0,
-      sendOk: 0,
-      sendNg: 0,
-      lastError: "",
-      lastUpdate: ""
-    },
-    dmSeenIds: new Set(),
-    dmEventRows: []
+    searchTimer: null
   };
 
   function el(id) { return document.getElementById(id); }
@@ -273,35 +259,15 @@
       if (state.chatUnsub) state.chatUnsub();
       state.chatUnsub = null;
       stopDirectChatPolling();
-      state.dmSeenIds = new Set();
-      state.dmEventRows = [];
-      renderDmEventLog();
       renderDirectChat([]);
       return;
     }
 
     panel.classList.remove("hidden");
     title.textContent = name;
-    state.dmDebug.selectedFriend = name;
-    state.dmDebug.watchCount = 0;
-    state.dmDebug.pollCount = 0;
-    state.dmDebug.lastRows = 0;
-    state.dmDebug.renderCount = 0;
-    state.dmDebug.lastError = "";
-    state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
-    state.dmSeenIds = new Set();
-    state.dmEventRows = [];
-    appendDmEventLog(`相手「${name}」とのDMを開きました。`);
-    renderDmDebug();
 
     if (state.chatUnsub) state.chatUnsub();
-    state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => {
-      state.dmDebug.watchCount += 1;
-      state.dmDebug.lastRows = Array.isArray(rows) ? rows.length : 0;
-      state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
-      renderDirectChat(rows);
-      renderDmDebug();
-    });
+    state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => renderDirectChat(rows));
     startDirectChatPolling(name);
     const input = el("friendDmInput");
     if (input) setTimeout(() => input.focus(), 0);
@@ -313,18 +279,12 @@
       if (!state.selectedFriend || state.selectedFriend !== targetName) return;
       try {
         const rows = await firebaseClient.fetchDirectChat(targetName, 100);
-        state.dmDebug.pollCount += 1;
         const fingerprint = rows.map((r) => r.id).join("|");
         if (fingerprint !== state.lastChatFingerprint) {
-          state.dmDebug.lastRows = rows.length;
-          state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
           renderDirectChat(rows);
-          renderDmDebug();
         }
       } catch (e) {
         console.warn("direct chat polling failed", e);
-        state.dmDebug.lastError = String(e?.message || e);
-        renderDmDebug();
       }
     };
     run();
@@ -343,7 +303,6 @@
     if (!log) return;
     log.innerHTML = "";
     const list = Array.isArray(rows) ? rows : [];
-    state.dmDebug.renderCount += 1;
     state.lastChatFingerprint = list.map((r) => r.id).join("|");
     if (!list.length) {
       const empty = document.createElement("div");
@@ -353,10 +312,6 @@
       return;
     }
     list.forEach((row) => {
-      const rowId = String(row.id || "");
-      const firstSeen = rowId && !state.dmSeenIds.has(rowId);
-      if (rowId) state.dmSeenIds.add(rowId);
-
       const line = document.createElement("div");
       line.className = `friend-dm-line ${row.from === state.myName ? "mine" : "other"}`;
       const color = typeof row.color === "string" ? row.color.trim().toLowerCase() : "";
@@ -366,10 +321,6 @@
       const time = ts ? new Date(ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "--:--";
       line.textContent = `[${time}] ${row.from}: ${row.text || ""}`;
       log.appendChild(line);
-
-      if (firstSeen && row.from !== state.myName) {
-        appendDmEventLog(`受信: ${row.from}: ${row.text || ""}`);
-      }
     });
     log.scrollTop = log.scrollHeight;
   }
@@ -381,63 +332,18 @@
     if (!text) return;
     input.value = "";
     const color = localStorage.getItem("chatColor") || "#ffffff";
-    state.dmDebug.sendTry += 1;
-    renderDmDebug();
     try {
       const ok = await firebaseClient.sendDirectChat(state.selectedFriend, text, color);
       if (!ok && window.showErrorMessage) {
         showErrorMessage("メッセージ送信に失敗しました。");
-        state.dmDebug.sendNg += 1;
-        state.dmDebug.lastError = "sendDirectChat returned false";
-        renderDmDebug();
         return;
       }
-      state.dmDebug.sendOk += 1;
-      appendDmEventLog(`送信: ${state.myName}: ${text}`);
       const rows = await firebaseClient.fetchDirectChat(state.selectedFriend, 100);
-      state.dmDebug.lastRows = rows.length;
-      state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
       renderDirectChat(rows);
-      renderDmDebug();
     } catch (e) {
       console.error("direct chat send failed", e);
       if (window.showErrorMessage) showErrorMessage("メッセージ送信に失敗しました。");
-      state.dmDebug.sendNg += 1;
-      state.dmDebug.lastError = String(e?.message || e);
-      appendDmEventLog(`送信失敗: ${String(e?.message || e)}`);
-      renderDmDebug();
     }
-  }
-
-  function renderDmDebug() {
-    const box = el("friendDmDebug");
-    if (!box) return;
-    const d = state.dmDebug;
-    box.textContent = [
-      `[DM DEBUG] target=${d.selectedFriend || "-"}`,
-      `watch=${d.watchCount} poll=${d.pollCount} render=${d.renderCount}`,
-      `rows=${d.lastRows} sendTry=${d.sendTry} ok=${d.sendOk} ng=${d.sendNg}`,
-      `lastUpdate=${d.lastUpdate || "-"}`,
-      `lastError=${d.lastError || "-"}`
-    ].join("\n");
-  }
-
-  function appendDmEventLog(text) {
-    const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    state.dmEventRows.push(`[${time}] ${text}`);
-    if (state.dmEventRows.length > 24) state.dmEventRows.shift();
-    renderDmEventLog();
-  }
-
-  function renderDmEventLog() {
-    const box = el("friendDmEventLog");
-    if (!box) return;
-    if (!state.dmEventRows.length) {
-      box.textContent = "受信ログはここに表示されます。";
-      return;
-    }
-    box.textContent = state.dmEventRows.join("\n");
-    box.scrollTop = box.scrollHeight;
   }
 
   function closeDirectMessagePanel() {

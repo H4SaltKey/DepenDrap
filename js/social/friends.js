@@ -12,7 +12,19 @@
     friendStatusUnsub: null,
     roomInviteUnsub: null,
     myName: localStorage.getItem("username") || "Player",
-    searchTimer: null
+    searchTimer: null,
+    dmDebug: {
+      selectedFriend: "",
+      watchCount: 0,
+      pollCount: 0,
+      lastRows: 0,
+      renderCount: 0,
+      sendTry: 0,
+      sendOk: 0,
+      sendNg: 0,
+      lastError: "",
+      lastUpdate: ""
+    }
   };
 
   function el(id) { return document.getElementById(id); }
@@ -222,9 +234,23 @@
 
     panel.classList.remove("hidden");
     title.textContent = name;
+    state.dmDebug.selectedFriend = name;
+    state.dmDebug.watchCount = 0;
+    state.dmDebug.pollCount = 0;
+    state.dmDebug.lastRows = 0;
+    state.dmDebug.renderCount = 0;
+    state.dmDebug.lastError = "";
+    state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
+    renderDmDebug();
 
     if (state.chatUnsub) state.chatUnsub();
-    state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => renderDirectChat(rows));
+    state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => {
+      state.dmDebug.watchCount += 1;
+      state.dmDebug.lastRows = Array.isArray(rows) ? rows.length : 0;
+      state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
+      renderDirectChat(rows);
+      renderDmDebug();
+    });
     startDirectChatPolling(name);
     const input = el("friendDmInput");
     if (input) setTimeout(() => input.focus(), 0);
@@ -236,12 +262,18 @@
       if (!state.selectedFriend || state.selectedFriend !== targetName) return;
       try {
         const rows = await firebaseClient.fetchDirectChat(targetName, 100);
+        state.dmDebug.pollCount += 1;
         const fingerprint = rows.map((r) => r.id).join("|");
         if (fingerprint !== state.lastChatFingerprint) {
+          state.dmDebug.lastRows = rows.length;
+          state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
           renderDirectChat(rows);
+          renderDmDebug();
         }
       } catch (e) {
         console.warn("direct chat polling failed", e);
+        state.dmDebug.lastError = String(e?.message || e);
+        renderDmDebug();
       }
     };
     run();
@@ -260,6 +292,7 @@
     if (!log) return;
     log.innerHTML = "";
     const list = Array.isArray(rows) ? rows : [];
+    state.dmDebug.renderCount += 1;
     state.lastChatFingerprint = list.map((r) => r.id).join("|");
     if (!list.length) {
       const empty = document.createElement("div");
@@ -289,18 +322,43 @@
     if (!text) return;
     input.value = "";
     const color = localStorage.getItem("chatColor") || "#ffffff";
+    state.dmDebug.sendTry += 1;
+    renderDmDebug();
     try {
       const ok = await firebaseClient.sendDirectChat(state.selectedFriend, text, color);
       if (!ok && window.showErrorMessage) {
         showErrorMessage("メッセージ送信に失敗しました。");
+        state.dmDebug.sendNg += 1;
+        state.dmDebug.lastError = "sendDirectChat returned false";
+        renderDmDebug();
         return;
       }
+      state.dmDebug.sendOk += 1;
       const rows = await firebaseClient.fetchDirectChat(state.selectedFriend, 100);
+      state.dmDebug.lastRows = rows.length;
+      state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
       renderDirectChat(rows);
+      renderDmDebug();
     } catch (e) {
       console.error("direct chat send failed", e);
       if (window.showErrorMessage) showErrorMessage("メッセージ送信に失敗しました。");
+      state.dmDebug.sendNg += 1;
+      state.dmDebug.lastError = String(e?.message || e);
+      renderDmDebug();
     }
+  }
+
+  function renderDmDebug() {
+    const box = el("friendDmDebug");
+    if (!box) return;
+    const d = state.dmDebug;
+    box.textContent = [
+      `[DM DEBUG] target=${d.selectedFriend || "-"}`,
+      `watch=${d.watchCount} poll=${d.pollCount} render=${d.renderCount}`,
+      `rows=${d.lastRows} sendTry=${d.sendTry} ok=${d.sendOk} ng=${d.sendNg}`,
+      `lastUpdate=${d.lastUpdate || "-"}`,
+      `lastError=${d.lastError || "-"}`
+    ].join("\n");
   }
 
   function renderIncomingRequests(list) {

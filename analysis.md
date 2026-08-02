@@ -7714,3 +7714,26 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node --check js/network/firebase-client.js`
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 10) — タイトルDMの画面内デバッグ表示追加
+
+### 目的
+- 「送れているか/取得できているか/描画されているか」をUI上で即切り分ける。
+
+### 変更
+- `index.html`
+  - `#friendDmDebug` を DM ログ下に追加。
+- `js/social/friends.js`
+  - `dmDebug` 状態を追加し、以下を表示:
+    - target
+    - watch callback 回数
+    - polling 回数
+    - render 回数
+    - rows 件数
+    - sendTry / ok / ng
+    - lastUpdate
+    - lastError
+  - 送信/受信/ポーリング失敗時にデバッグ情報を更新。
+
+### 検証
+- `node --check js/social/friends.js`

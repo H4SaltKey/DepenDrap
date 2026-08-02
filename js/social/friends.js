@@ -42,6 +42,20 @@
       });
     }
 
+    const searchInput = el("friendSearchInput");
+    if (searchInput) {
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const target = el("friendRequestSendBtn")?.dataset?.target || "";
+        if (target) {
+          sendFriendRequestFromModal();
+        } else {
+          searchFriendByName();
+        }
+      });
+    }
+
     const modal = el("friendAddModal");
     if (modal) {
       modal.addEventListener("click", (e) => {
@@ -87,29 +101,26 @@
       return;
     }
 
-    const found = await firebaseClient.findAccountByExactName(name);
-    if (!found) {
+    const foundList = await firebaseClient.searchAccountsByPartialName(name, 10);
+    const rows = foundList.filter((row) => row.username !== state.myName);
+    if (!rows.length) {
       resultEl.innerHTML = "<div class='friend-modal-empty'>一致するプレイヤーが見つかりません。</div>";
       return;
     }
-    if (found.username === state.myName) {
-      resultEl.innerHTML = "<div class='friend-modal-empty'>自分自身は選択できません。</div>";
-      return;
-    }
-
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "friend-search-player";
-    row.textContent = found.username;
-    row.addEventListener("click", () => {
-      resultEl.querySelectorAll(".friend-search-player").forEach((n) => n.classList.remove("selected"));
-      row.classList.add("selected");
-      sendBtn.disabled = false;
-      sendBtn.dataset.target = found.username;
-    });
-
     resultEl.innerHTML = "";
-    resultEl.appendChild(row);
+    rows.forEach((found) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "friend-search-player";
+      row.textContent = found.username;
+      row.addEventListener("click", () => {
+        resultEl.querySelectorAll(".friend-search-player").forEach((n) => n.classList.remove("selected"));
+        row.classList.add("selected");
+        sendBtn.disabled = false;
+        sendBtn.dataset.target = found.username;
+      });
+      resultEl.appendChild(row);
+    });
   }
 
   async function sendFriendRequestFromModal() {
@@ -256,6 +267,23 @@
       `;
       row.querySelector('[data-act="accept"]').addEventListener("click", async () => {
         await firebaseClient.acceptFriendRequest(req.from);
+        try {
+          const snap = await firebaseClient.db.ref(`roomInvites/${state.myName}`).once("value");
+          if (snap.exists()) {
+            const invites = [];
+            snap.forEach((child) => invites.push({ id: child.key, ...(child.val() || {}) }));
+            const pendingFromSameUser = invites
+              .filter((inv) => inv.from === req.from && inv.status === "pending")
+              .sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+            if (pendingFromSameUser?.roomName) {
+              await firebaseClient.respondRoomInvite(pendingFromSameUser.id, "accepted");
+              localStorage.setItem("pendingInviteRoom", pendingFromSameUser.roomName || "");
+              location.href = "matchSetup.html";
+            }
+          }
+        } catch (e) {
+          console.warn("check invite after friend accept failed", e);
+        }
       });
       row.querySelector('[data-act="reject"]').addEventListener("click", async () => {
         await firebaseClient.rejectFriendRequest(req.from);

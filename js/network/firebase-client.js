@@ -1063,6 +1063,20 @@ class FirebaseClient {
     return { username: key, profile: data[key] || {} };
   }
 
+  async searchAccountsByPartialName(keyword, limit = 10) {
+    if (!this.db || !keyword) return [];
+    const needle = String(keyword).trim().toLowerCase();
+    if (!needle) return [];
+    const snap = await this.db.ref("accounts").once("value");
+    if (!snap.exists()) return [];
+    const all = snap.val() || {};
+    const keys = Object.keys(all)
+      .filter((name) => String(name).toLowerCase().includes(needle))
+      .sort((a, b) => a.localeCompare(b, "ja"))
+      .slice(0, Math.max(1, Number(limit) || 10));
+    return keys.map((name) => ({ username: name, profile: all[name] || {} }));
+  }
+
   watchFriendList(callback) {
     if (!this.db || !this.username) return null;
     const ref = this.db.ref(`friends/${this.username}`);

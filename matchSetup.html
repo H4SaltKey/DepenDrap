@@ -476,6 +476,17 @@ body {
   padding: 6px 10px;
   cursor: pointer;
 }
+
+#incomingRoomInviteModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.64);
+  z-index: 10100;
+}
+#incomingRoomInviteModal.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -597,6 +608,17 @@ body {
     <div class="friend-invite-actions">
       <button id="friendInviteCancelBtn" type="button" class="friend-invite-btn">キャンセル</button>
       <button id="friendInviteConfirmBtn" type="button" class="friend-invite-btn" disabled>決定</button>
+    </div>
+  </div>
+</div>
+
+<div id="incomingRoomInviteModal" class="hidden">
+  <div class="friend-invite-box">
+    <div class="friend-invite-title">ルーム招待を受信</div>
+    <div id="incomingRoomInviteText" style="color:#d8c58d;font-size:13px;margin-bottom:12px;"></div>
+    <div class="friend-invite-actions">
+      <button id="incomingRoomInviteRejectBtn" type="button" class="friend-invite-btn">拒否</button>
+      <button id="incomingRoomInviteAcceptBtn" type="button" class="friend-invite-btn">承諾</button>
     </div>
   </div>
 </div>

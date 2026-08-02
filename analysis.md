@@ -7400,3 +7400,51 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `node --check js/game/game.js` -> `CHECK_game_OK`
   - `node --check js/watchers/phaseWatcher.js` -> `CHECK_phaseWatcher_OK`
   - `node --check js/watchers/roomWatcher.js` -> `CHECK_roomWatcher_OK`
+
+## Round 2026-08-02 (Fix) — フレンド/招待周りの不具合修正
+
+### 修正対象
+- タイトル画面 DM ログが実質1行表示になる不安定挙動。
+- フレンド検索が完全一致のみ（部分一致未対応）。
+- 新規入力UIで Enter 確定不足。
+- 招待受信がタイトル限定で、マッチ画面で受信できない問題。
+- フレンド申請承諾後の導線強化（承諾時に同一ユーザーからの pending 招待があれば即参加導線へ）。
+
+### 変更点
+- `index.html`
+  - `#friendDmLog` を固定高さ化（`height/min-height: 120px`）して表示安定化。
+
+- `js/network/firebase-client.js`
+  - `searchAccountsByPartialName(keyword, limit=10)` を追加。
+  - `accounts` 全体から `includes` で部分一致検索し、最大10件で返す。
+
+- `js/social/friends.js`
+  - フレンド検索を完全一致→部分一致（最大10件）へ変更。
+  - 検索結果を複数行表示し、1人選択後に申請送信できるよう変更。
+  - `friendSearchInput` で Enter 対応:
+    - 選択済みなら申請送信
+    - 未選択なら検索実行
+  - フレンド申請承諾時、同一送信者からの pending ルーム招待を検索し、存在時は:
+    - 招待を `accepted` 更新
+    - `pendingInviteRoom` に保存
+    - `matchSetup.html` へ遷移
+
+- `matchSetup.html`
+  - 受信招待用モーダル `#incomingRoomInviteModal` を追加。
+
+- `js/game/matchSetup.js`
+  - `watchRoomInvites` をマッチ画面でも起動し、pending 招待をリアルタイム受信。
+  - 受信招待モーダルを表示し、承諾で即 `joinRoom()`（参加中ルームがある場合は先に退出）。
+  - 受信モーダルは Enter で承諾可能。
+  - 送信側のフレンド招待モーダルも Enter で「決定」を実行。
+  - `beforeunload` で受信招待監視解除を追加。
+
+### 確認
+- `node --check`:
+  - `js/social/friends.js`
+  - `js/game/matchSetup.js`
+  - `js/network/firebase-client.js`
+  すべて成功。
+
+### リビルド
+- 既存方針どおり、`package.json` 未検出のため `NO_BUILD_SCRIPT`（静的 HTML/JS）。

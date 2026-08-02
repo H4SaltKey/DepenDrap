@@ -7737,3 +7737,17 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 11) — DM UI構造を分離して表示問題を回避
+
+### 背景
+- 送受信は成功しているが表示されないため、データではなくレイアウト/重なり問題と判断。
+
+### 変更
+- `index.html`
+  - `friendDmSection` を `#userProfile` の内側から外側へ移動し、独立固定パネル化。
+  - 固定位置・高z-index・背景/境界を付与して、親要素の overflow や高さ制限の影響を受けないように修正。
+  - `friends.js` キャッシュバスターを `v=7` に更新。
+
+### 期待効果
+- DMログ/入力欄がプロファイル枠のスクロールやクリッピングで隠れる問題を解消。

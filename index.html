@@ -134,7 +134,23 @@
     border-radius: 4px;
     cursor: pointer;
   }
-  #friendDmSection { display: flex; flex-direction: column; min-height: 0; }
+  #friendDmSection {
+    position: fixed;
+    left: clamp(8px, 1.2vw, 18px);
+    top: clamp(260px, 32vh, 320px);
+    width: min(420px, calc(100vw - 22px));
+    max-height: calc(100vh - clamp(260px, 32vh, 320px) - 12px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    z-index: 10020;
+    background: rgba(10,8,20,0.88);
+    border: 1px solid #5a4b27;
+    border-radius: 6px;
+    backdrop-filter: blur(4px);
+    padding: 8px;
+    box-sizing: border-box;
+  }
   #friendDmSection.hidden { display: none; }
   #friendDmLog {
     margin-top: 6px;
@@ -344,16 +360,17 @@
       <div id="friendIncomingRequests"></div>
       <div id="friendList"></div>
       <button id="friendAddBtn" type="button">フレンドを追加</button>
-      <div id="friendDmSection" class="hidden">
-        <div style="font-size:11px;margin-top:8px;">チャット: <span id="friendDmTargetName">-</span></div>
-        <div id="friendDmLog"></div>
-        <div id="friendDmDebug"></div>
-        <div id="friendDmInputRow">
-          <input id="friendDmInput" type="text" maxlength="150" placeholder="メッセージを入力...">
-          <button id="friendDmSendBtn" type="button">送信</button>
-        </div>
-      </div>
     </div>
+  </div>
+</div>
+
+<div id="friendDmSection" class="hidden">
+  <div style="font-size:11px;margin-top:2px;">チャット: <span id="friendDmTargetName">-</span></div>
+  <div id="friendDmLog"></div>
+  <div id="friendDmDebug"></div>
+  <div id="friendDmInputRow">
+    <input id="friendDmInput" type="text" maxlength="150" placeholder="メッセージを入力...">
+    <button id="friendDmSendBtn" type="button">送信</button>
   </div>
 </div>
 
@@ -402,7 +419,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 <script src="js/network/firebase-client.js?v=15"></script>
 <script src="js/network/messaging.js?v=1"></script>
-<script src="js/social/friends.js?v=6"></script>
+<script src="js/social/friends.js?v=7"></script>
 <script src="js/ui/menu.js?v=11"></script>
 
 <script>

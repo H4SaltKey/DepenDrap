@@ -216,6 +216,8 @@
 
     if (state.chatUnsub) state.chatUnsub();
     state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => renderDirectChat(rows));
+    const input = el("friendDmInput");
+    if (input) setTimeout(() => input.focus(), 0);
   }
 
   function renderDirectChat(rows) {
@@ -226,7 +228,8 @@
       const line = document.createElement("div");
       line.className = `friend-dm-line ${row.from === state.myName ? "mine" : "other"}`;
       if (row.color) line.style.color = row.color;
-      const time = row.ts ? new Date(row.ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+      const ts = typeof row.ts === "number" ? row.ts : null;
+      const time = ts ? new Date(ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "--:--";
       line.textContent = `[${time}] ${row.from}: ${row.text || ""}`;
       log.appendChild(line);
     });
@@ -241,7 +244,10 @@
     input.value = "";
     const color = localStorage.getItem("chatColor") || "#ffffff";
     try {
-      await firebaseClient.sendDirectChat(state.selectedFriend, text, color);
+      const ok = await firebaseClient.sendDirectChat(state.selectedFriend, text, color);
+      if (!ok && window.showErrorMessage) {
+        showErrorMessage("メッセージ送信に失敗しました。");
+      }
     } catch (e) {
       console.error("direct chat send failed", e);
       if (window.showErrorMessage) showErrorMessage("メッセージ送信に失敗しました。");

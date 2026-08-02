@@ -1047,9 +1047,11 @@ class FirebaseClient {
   }
 
   normalizeChatPair(userA, userB) {
-    const a = String(userA || "").trim();
-    const b = String(userB || "").trim();
-    return [a, b].sort((x, y) => x.localeCompare(y, "ja")).join("__");
+    const aRaw = String(userA || "").trim();
+    const bRaw = String(userB || "").trim();
+    const a = encodeURIComponent(aRaw);
+    const b = encodeURIComponent(bRaw);
+    return a <= b ? `${a}__${b}` : `${b}__${a}`;
   }
 
   async findAccountByExactName(name) {
@@ -1163,10 +1165,10 @@ class FirebaseClient {
   watchDirectChat(targetName, callback) {
     if (!this.db || !this.username || !targetName) return null;
     const pairKey = this.normalizeChatPair(this.username, targetName);
-    const ref = this.db.ref(`directChats/${pairKey}`).orderByChild("ts").limitToLast(80);
+    const ref = this.db.ref(`directChats/${pairKey}`).orderByKey().limitToLast(100);
     const listener = ref.on("value", snap => {
       const rows = [];
-      snap.forEach(child => rows.push({ id: child.key, ...(child.val() || {}) }));
+      snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
       callback(rows);
     });
     const key = `directChat:${pairKey}`;
@@ -1192,13 +1194,17 @@ class FirebaseClient {
 
   async sendRoomInvite(targetName, roomName) {
     if (!this.db || !this.username || !targetName || !roomName) return false;
-    const inviteId = this.db.ref(`roomInvites/${targetName}`).push().key;
+    const to = String(targetName).trim();
+    const normalizedRoom = String(roomName).trim().toUpperCase();
+    if (!to || !normalizedRoom) return false;
+
+    const inviteId = this.db.ref(`roomInvites/${to}`).push().key;
     if (!inviteId) return false;
-    await this.db.ref(`roomInvites/${targetName}/${inviteId}`).set({
+    await this.db.ref(`roomInvites/${to}/${inviteId}`).set({
       id: inviteId,
-      roomName,
+      roomName: normalizedRoom,
       from: this.username,
-      to: String(targetName).trim(),
+      to,
       status: "pending",
       ts: firebase.database.ServerValue.TIMESTAMP
     });
@@ -1207,10 +1213,11 @@ class FirebaseClient {
 
   watchRoomInvites(callback) {
     if (!this.db || !this.username) return null;
-    const ref = this.db.ref(`roomInvites/${this.username}`).orderByChild("ts").limitToLast(20);
+    const ref = this.db.ref(`roomInvites/${this.username}`).limitToLast(50);
     const listener = ref.on("value", snap => {
       const list = [];
       snap.forEach(child => list.push({ id: child.key, ...(child.val() || {}) }));
+      list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       callback(list);
     });
     this.listeners.set(`roomInvites:${this.username}`, { ref, listener });

@@ -645,7 +645,11 @@ function setupFriendInviteModal() {
     const roomName = confirmBtn.dataset.room || "";
     if (!target || !roomName) return;
     try {
-      await firebaseClient.sendRoomInvite(target, roomName);
+      const ok = await firebaseClient.sendRoomInvite(target, roomName);
+      if (!ok) {
+        addLog("system", "ルーム招待の送信に失敗しました（送信条件不正）。");
+        return;
+      }
       addLog("system", `「${target}」へルーム招待を送信しました。`);
       closeFriendInviteModal();
     } catch (e) {
@@ -680,9 +684,14 @@ async function openFriendInviteModal(roomName) {
   confirmBtn.dataset.friend = "";
   listEl.innerHTML = '<div style="color:#666;font-size:12px;padding:8px;">フレンド情報を読み込み中...</div>';
 
-  const friendsSnap = await firebaseClient.db.ref(`friends/${currentUser}`).once("value");
-  const val = friendsSnap.val() || {};
-  inviteFriendList = Object.keys(val);
+  try {
+    const friendsSnap = await firebaseClient.db.ref(`friends/${currentUser}`).once("value");
+    const val = friendsSnap.val() || {};
+    inviteFriendList = Object.keys(val);
+  } catch (e) {
+    console.error("friend list fetch failed", e);
+    inviteFriendList = [];
+  }
 
   if (inviteFriendStatusUnsub) inviteFriendStatusUnsub();
   inviteFriendStatusUnsub = firebaseClient.watchFriendStatuses(inviteFriendList, (map) => {
@@ -935,7 +944,7 @@ function sendChat() {
 }
 
 let _chatListenerRef = null;
-let _chatJoinedAt = 0;
+let _chatSeenMessageIds = new Set();
 
 function watchChat(roomName) {
   // 既存リスナーを解除
@@ -945,14 +954,19 @@ function watchChat(roomName) {
   }
   if (!firebaseClient.db) return;
 
-  // 参加時刻を記録 — これ以降に届いたメッセージのみ受信する
-  _chatJoinedAt = Date.now();
+  _chatSeenMessageIds = new Set();
+  const chatLog = document.getElementById("chatLog");
+  if (chatLog) chatLog.innerHTML = "";
 
   _chatListenerRef = firebaseClient.db.ref(`rooms/${roomName}/chat`);
   _chatListenerRef
-    .orderByChild("ts")
-    .startAt(_chatJoinedAt)
+    .orderByKey()
+    .limitToLast(120)
     .on("child_added", snap => {
+      if (!snap || !snap.key) return;
+      if (_chatSeenMessageIds.has(snap.key)) return;
+      _chatSeenMessageIds.add(snap.key);
+
       const d = snap.val();
       if (!d || !d.text) return;
 

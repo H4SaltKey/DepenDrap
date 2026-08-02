@@ -7448,3 +7448,72 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### リビルド
 - 既存方針どおり、`package.json` 未検出のため `NO_BUILD_SCRIPT`（静的 HTML/JS）。
+
+## Round 2026-08-02 (Hotfix) — チャット受信不具合の修正
+
+### 症状
+- チャットが機能しない/表示されないケースが発生。
+
+### 原因
+- `matchSetup` 側チャット監視で `orderByChild("ts").startAt(joinTime)` を使っており、
+  クライアント時刻差や `ServerValue.TIMESTAMP` の反映タイミングにより、送信メッセージが監視条件から漏れる場合があった。
+
+### 対応
+- `js/game/matchSetup.js`
+  - チャット監視を `orderByKey().limitToLast(120)` に変更。
+  - `child_added` で message key を `Set` 管理し重複描画を防止。
+  - ルーム監視開始時に `chatLog` と seen-set を初期化。
+
+- `js/social/friends.js`
+  - DM 時刻描画を防御的に修正（`ts` が number の時のみ時刻表示）。
+
+### 検証
+- `node --check js/game/matchSetup.js`
+- `node --check js/social/friends.js`
+
+### リビルド
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`。
+
+## Round 2026-08-02 (Hotfix 2) — タイトルDM不具合の追加対処
+
+### 対応内容
+- `js/network/firebase-client.js`
+  - DMペアキー生成を locale 依存比較から、`encodeURIComponent` + 文字列比較ベースへ変更。
+  - これによりクライアント差異に依存しない安定キーを生成。
+  - DM監視クエリを `orderByKey().limitToLast(100)` に統一。
+
+- `js/social/friends.js`
+  - フレンド選択時にDM入力へフォーカス。
+  - 送信結果が `false` の場合もエラーメッセージ表示。
+
+### 期待効果
+- タイトルDMの送受信経路（同一ペアキー解決）がより安定。
+- 送信失敗時の無反応感を軽減。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`
+
+## Round 2026-08-02 (Hotfix 3) — ルーム招待が機能しない問題の対処
+
+### 対応
+- `js/network/firebase-client.js`
+  - `sendRoomInvite()` を強化:
+    - 宛先名/ルーム名を trim
+    - ルーム名を大文字化して保存
+    - 不正入力時は `false` 返却
+  - `watchRoomInvites()` を強化:
+    - `orderByChild("ts")` 依存を外し `limitToLast(50)` へ変更
+    - クライアント側で `ts` 降順ソート
+
+- `js/game/matchSetup.js`
+  - 招待送信時の戻り値チェックを追加し、失敗時に明示ログを表示。
+  - フレンド一覧取得を `try/catch` 化し、読込失敗時に安全に空配列処理。
+
+### 期待効果
+- 招待監視クエリの取りこぼし低減。
+- 招待送信失敗時の無反応状態を回避し、原因切り分けしやすくなる。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/game/matchSetup.js`

@@ -1175,6 +1175,7 @@ class FirebaseClient {
   watchDirectChat(targetName, callback) {
     if (!this.db || !this.username || !targetName) return null;
     const normalizedTarget = String(targetName).trim();
+    const targetPeerKey = this.encodeUserKey(normalizedTarget);
     const inboxRootRef = this.db.ref(`friendDm/${this.encodeUserKey(this.username)}`);
     const legacyPairKey = this.normalizeChatPair(this.username, targetName);
     const legacyRef = this.db.ref(`directChats/${legacyPairKey}`).orderByKey().limitToLast(100);
@@ -1201,11 +1202,9 @@ class FirebaseClient {
       (snap) => {
         const rows = [];
         snap.forEach((peerSnap) => {
+          if (String(peerSnap.key || "") !== targetPeerKey) return;
           peerSnap.forEach((msgSnap) => {
             const msg = msgSnap.val() || {};
-            const from = String(msg.from || "").trim();
-            const to = String(msg.to || "").trim();
-            if (from !== normalizedTarget && to !== normalizedTarget) return;
             rows.push({ id: msgSnap.key, ...msg });
           });
         });
@@ -1273,6 +1272,7 @@ class FirebaseClient {
   async fetchDirectChat(targetName, limit = 100) {
     if (!this.db || !this.username || !targetName) return [];
     const normalizedTarget = String(targetName).trim();
+    const targetPeerKey = this.encodeUserKey(normalizedTarget);
     const [inboxSnap, legacySnap] = await Promise.all([
       this.db
       .ref(`friendDm/${this.encodeUserKey(this.username)}`)
@@ -1286,11 +1286,9 @@ class FirebaseClient {
 
     const map = new Map();
     inboxSnap.forEach((peerSnap) => {
+      if (String(peerSnap.key || "") !== targetPeerKey) return;
       peerSnap.forEach((msgSnap) => {
         const msg = msgSnap.val() || {};
-        const from = String(msg.from || "").trim();
-        const to = String(msg.to || "").trim();
-        if (from !== normalizedTarget && to !== normalizedTarget) return;
         map.set(`inbox:${String(msgSnap.key)}`, { id: msgSnap.key, ...msg });
       });
     });

@@ -7240,3 +7240,35 @@ grep 結果: game.js に window.startSoloGame が定義されている
   - `node --check js/game/effects/effectRuntimeV2.js` -> `CHECK_runtimeV2_OK`
   - `node --check js/game/effects/effectEngine.js` -> `CHECK_effectEngine_OK`
   - `node --check js/dev/cardEffectBlockCompiler.js` -> `CHECK_blockCompiler_OK`
+
+---
+
+## Round 2026-08-02 — 効果処理/ターン管理の整合性ガード追加
+
+### 要望
+
+- ゲーム開始後のカード効果処理やターン管理で、フェーズ外実行やターン外実行による不整合を抑止したい。
+
+### 対応
+
+- `js/game/auto/playerActionResolver.js`
+  - `isPlayableTurn(owner)` を追加。
+    - `matchData` が存在
+    - `status === "playing"`
+    - `winner` 未確定
+    - `turnPlayer === owner`
+    を満たす場合のみ `true`。
+  - `resolveCardOnPlay()` に上記ガードを追加し、`playing` 以外/ターン外での使用時は効果処理を実行しないよう修正。
+  - `resolveCardOnLeave()` に上記ガードを追加し、対戦進行外での場離脱時に `onLeave` 系効果が誤発火しないよう修正。
+  - `resolveDirectAttack()` に上記ガードを追加し、ターン外・勝敗確定後の `OnAttack` / `OnDirectAttack` 発火を抑止。
+
+- `js/phases/battlePhase.js`
+  - `handleTurnEnd()` 冒頭に `m.status !== "playing"` の早期 return を追加。
+  - これにより、非プレイングフェーズでのターン遷移処理実行を防止。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/game/auto/playerActionResolver.js` -> `CHECK_playerActionResolver_OK`
+  - `node --check js/phases/battlePhase.js` -> `CHECK_battlePhase_OK`

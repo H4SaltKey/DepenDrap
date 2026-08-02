@@ -12,6 +12,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   const m  = state.matchData;
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
+  if (m.status !== "playing") return;
   if (m.turnPlayer !== me) return;
   if (m.winner) return;
 

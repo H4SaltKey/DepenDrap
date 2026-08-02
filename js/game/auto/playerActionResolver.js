@@ -70,6 +70,15 @@
     return (window.getMyRole ? window.getMyRole() : window.myRole) || "player1";
   }
 
+  function isPlayableTurn(owner) {
+    const m = window.state?.matchData;
+    if (!m) return false;
+    if (m.status !== "playing") return false;
+    if (m.winner) return false;
+    if (!owner) return false;
+    return m.turnPlayer === owner;
+  }
+
   function opponentOf(owner) {
     return String(owner || "player1") === "player1" ? "player2" : "player1";
   }
@@ -419,6 +428,7 @@
     const me = getMyRoleSafe();
     if (owner !== me) return;
     if (zoneType !== "attacker" && zoneType !== "skill") return;
+    if (!isPlayableTurn(owner)) return;
 
     const instanceKey = `${cardEl.dataset.instanceId || "noinst"}:${zoneType}`;
     if (runtime.lastResolvedInstanceKey === instanceKey) return;
@@ -570,6 +580,7 @@
     const owner = cardEl.dataset.owner || getMyRoleSafe();
     const me = getMyRoleSafe();
     if (owner !== me && options.force !== true) return;
+    if (!isPlayableTurn(owner)) return;
     const card = getCardByElement(cardEl);
     if (!card) return;
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")
@@ -641,7 +652,9 @@
   function resolveDirectAttack(cardEl, owner, targetInfo = {}) {
     if (!runtime.enabled || !cardEl) return;
     const me = getMyRoleSafe();
-    if ((owner || cardEl.dataset.owner || me) !== me) return;
+    const actionOwner = owner || cardEl.dataset.owner || me;
+    if (actionOwner !== me) return;
+    if (!isPlayableTurn(actionOwner)) return;
     const card = getCardByElement(cardEl);
     if (!card) return;
     const profile = (window.CardCombatData && typeof window.CardCombatData.getResolvedCardData === "function")

@@ -363,6 +363,7 @@
       if (window.showErrorMessage) showErrorMessage("メッセージ送信に失敗しました。");
       state.dmDebug.sendNg += 1;
       state.dmDebug.lastError = String(e?.message || e);
+      appendDmEventLog(`送信失敗: ${String(e?.message || e)}`);
       renderDmDebug();
     }
   }

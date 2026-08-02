@@ -1174,25 +1174,61 @@ class FirebaseClient {
 
   watchDirectChat(targetName, callback) {
     if (!this.db || !this.username || !targetName) return null;
-    const ref = this.db
+    const inboxRef = this.db
       .ref(this.getDirectChatInboxPath(this.username, targetName))
       .orderByKey()
       .limitToLast(100);
-    const listener = ref.on(
+    const legacyPairKey = this.normalizeChatPair(this.username, targetName);
+    const legacyRef = this.db.ref(`directChats/${legacyPairKey}`).orderByKey().limitToLast(100);
+
+    let inboxRows = [];
+    let legacyRows = [];
+    const emitMerged = () => {
+      const map = new Map();
+      [...legacyRows, ...inboxRows].forEach((row) => {
+        const key = String(row.id || "");
+        if (!key) return;
+        map.set(key, row);
+      });
+      const merged = Array.from(map.values()).sort((a, b) => {
+        const aTs = Number(a.ts || a.clientTs || 0);
+        const bTs = Number(b.ts || b.clientTs || 0);
+        return aTs - bTs;
+      });
+      callback(merged.slice(-100));
+    };
+
+    const inboxListener = inboxRef.on(
       "value",
       (snap) => {
         const rows = [];
         snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
-        callback(rows);
+        inboxRows = rows;
+        emitMerged();
       },
       (error) => {
         console.error("[FirebaseClient] DM監視エラー:", error?.message || error);
       }
     );
+
+    const legacyListener = legacyRef.on(
+      "value",
+      (snap) => {
+        const rows = [];
+        snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
+        legacyRows = rows;
+        emitMerged();
+      },
+      (error) => {
+        console.error("[FirebaseClient] DM監視(legacy)エラー:", error?.message || error);
+      }
+    );
+
     const key = `directChat:${this.username}:${targetName}`;
-    this.listeners.set(key, { ref, listener });
+    this.listeners.set(key, { ref: inboxRef, listener: inboxListener, legacyRef, legacyListener });
     return () => {
-      ref.off("value", listener);
+      inboxRef.off("value", inboxListener);
+      legacyRef.off("value", legacyListener);
       this.listeners.delete(key);
     };
   }
@@ -1216,24 +1252,38 @@ class FirebaseClient {
       ts: firebase.database.ServerValue.TIMESTAMP
     };
 
+    const legacyPairKey = this.normalizeChatPair(from, to);
+    const legacyRef = this.db.ref(`directChats/${legacyPairKey}`).push();
+
     await Promise.all([
       senderRef.set({ id: senderRef.key, ...basePayload }),
-      receiverRef.set({ id: receiverRef.key, ...basePayload })
+      receiverRef.set({ id: receiverRef.key, ...basePayload }),
+      legacyRef.set({ id: legacyRef.key || senderRef.key, ...basePayload })
     ]);
     return true;
   }
 
   async fetchDirectChat(targetName, limit = 100) {
     if (!this.db || !this.username || !targetName) return [];
-    const snap = await this.db
+    const [inboxSnap, legacySnap] = await Promise.all([
+      this.db
       .ref(this.getDirectChatInboxPath(this.username, targetName))
       .orderByKey()
       .limitToLast(limit)
-      .once("value");
-    if (!snap.exists()) return [];
-    const rows = [];
-    snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
-    return rows;
+      .once("value"),
+      this.db
+        .ref(`directChats/${this.normalizeChatPair(this.username, targetName)}`)
+        .orderByKey()
+        .limitToLast(limit)
+        .once("value")
+    ]);
+
+    const map = new Map();
+    inboxSnap.forEach((child) => map.set(String(child.key), { id: child.key, ...(child.val() || {}) }));
+    legacySnap.forEach((child) => map.set(String(child.key), { id: child.key, ...(child.val() || {}) }));
+    return Array.from(map.values())
+      .sort((a, b) => Number(a.ts || a.clientTs || 0) - Number(b.ts || b.clientTs || 0))
+      .slice(-limit);
   }
 
   async sendRoomInvite(targetName, roomName) {

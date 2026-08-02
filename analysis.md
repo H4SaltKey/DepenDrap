@@ -7350,3 +7350,53 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### リビルド
 - `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的 HTML/JS 構成）。
+
+---
+
+## Round 2026-08-02 — 「相手プレイヤー接続待機」無限ループの根治対策
+
+### 事象
+
+- ゲーム中、何らかの瞬断や同期揺れのあとに `ready_check` 側へ巻き戻り、
+  「対戦相手接続待機」系のロック/オーバーレイが解除されないケースがあった。
+
+### 根本原因（複合）
+
+1. `phaseWatcher` が `ready_check/setup_dice` を受信すると、世代判定なしで「リモートリセット」とみなし `executeReset(false)` を実行していた。
+   - 古い `matchData` / 一時的な不整合でも巻き戻りが起こり得る。
+2. `roomWatcher` で `players` が一時的に空になった瞬間に、即座に
+   `resetAllGameVariables()` + `stopAllWatchers()` + `resetRoomGameState()` を実行していた。
+   - 瞬断でも全退出扱いになり、待機状態へ恒久遷移しやすかった。
+
+### 修正（再発防止）
+
+- `js/game/game.js`
+  - `matchData.resetSeq`（リセット世代）を導入。
+  - `executeReset()` 実行時に `resetSeq` を必ずインクリメントして記録。
+  - `window._lastAppliedResetSeq` を導入し、ローカルで最新リセット世代を保持。
+  - 初期化/再戦初期状態にも `resetSeq` を保持するよう調整。
+
+- `js/watchers/phaseWatcher.js`
+  - `incoming.resetSeq` とローカル世代を比較し、
+    **`incoming.resetSeq <= local` の `ready_check/setup_dice` は stale reset として無視**。
+  - これにより、古い `matchData` 受信で試合中ステータスが巻き戻る経路を遮断。
+
+- `js/watchers/roomWatcher.js`
+  - `players=0` を即時「全退出」と判定しないよう変更。
+  - 試合進行中（`inGamePhase` または `firstPlayer` 設定済み）は全消去リセットを抑止。
+  - 非進行時でも 4 秒待って再読込検証し、継続して `players=0` の場合のみ安全リセット。
+  - 検証タイマーは再接続時/stopAllWatchers時に必ず解除。
+
+### 効果
+
+- 瞬断・遅延・古いスナップショット受信による `ready_check` への誤巻き戻りを防止。
+- `players` の瞬間的な空状態でゲーム全体を破壊的リセットしないため、
+  「両プレイヤーが接続待機のまま戻らない」ループを大幅に抑止。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/game/game.js` -> `CHECK_game_OK`
+  - `node --check js/watchers/phaseWatcher.js` -> `CHECK_phaseWatcher_OK`
+  - `node --check js/watchers/roomWatcher.js` -> `CHECK_roomWatcher_OK`

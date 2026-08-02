@@ -5,6 +5,7 @@
 window.roomWatcherUnsubscribe = window.roomWatcherUnsubscribe || null;
 window.playerDiceWatcherUnsubscribe = window.playerDiceWatcherUnsubscribe || null;
 window._bothPlayersConnected = false;
+window._emptyPlayersResetTimer = window._emptyPlayersResetTimer || null;
 
 window.setupRoomWatcher = function() {
   if (typeof window.traceFlow === "function") window.traceFlow("roomWatcher", "start");
@@ -72,10 +73,34 @@ window.setupRoomWatcher = function() {
 
     const playerCount = Object.keys(players).length;
     if (playerCount === 0) {
-      console.log("[Game] 両プレイヤーが退出");
-      resetAllGameVariables();
-      stopAllWatchers();
-      firebaseClient.resetRoomGameState(gameRoom);
+      const status = state?.matchData?.status;
+      const hasStartedBattle = !!state?.matchData?.firstPlayer;
+      const inGamePhase = status && status !== "ready_check" && status !== "setup_dice";
+      if (inGamePhase || hasStartedBattle) {
+        console.warn("[RoomWatcher] players=0 を検知しましたが、対戦進行中のため全消去リセットを抑止します。", { status, hasStartedBattle });
+      } else if (!window._emptyPlayersResetTimer) {
+        window._emptyPlayersResetTimer = setTimeout(async () => {
+          window._emptyPlayersResetTimer = null;
+          try {
+            const verifySnap = await db.ref(`rooms/${gameRoom}/players`).once('value');
+            const verifyPlayers = verifySnap.val() || {};
+            const verifyCount = Object.keys(verifyPlayers).length;
+            if (verifyCount !== 0) {
+              console.log("[RoomWatcher] players=0 は一時的な瞬断と判断。リセットを中止します。", { verifyCount });
+              return;
+            }
+            console.log("[RoomWatcher] players=0 が継続。待機ルームへ安全にリセットします。");
+            resetAllGameVariables();
+            stopAllWatchers();
+            firebaseClient.resetRoomGameState(gameRoom);
+          } catch (e) {
+            console.warn("[RoomWatcher] players=0 検証中にエラー。安全のためリセットを中止:", e?.message || e);
+          }
+        }, 4000);
+      }
+    } else if (window._emptyPlayersResetTimer) {
+      clearTimeout(window._emptyPlayersResetTimer);
+      window._emptyPlayersResetTimer = null;
     }
     if (typeof update === "function") {
       update();
@@ -245,6 +270,10 @@ window.stopAllWatchers = function() {
   if (typeof window.phaseWatcherUnsubscribe === "function") { window.phaseWatcherUnsubscribe(); window.phaseWatcherUnsubscribe = null; }
   if (typeof window.clearAllWatchers === "function") window.clearAllWatchers();
   window._bothPlayersConnected = false;
+  if (window._emptyPlayersResetTimer) {
+    clearTimeout(window._emptyPlayersResetTimer);
+    window._emptyPlayersResetTimer = null;
+  }
   applyInteractionLockState();
 };
 

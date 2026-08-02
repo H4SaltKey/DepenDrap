@@ -1,5 +1,6 @@
 let gameReady = false;
 window._soloStartMode = false;
+window._lastAppliedResetSeq = Number(window._lastAppliedResetSeq || 0);
 let lastTurnDrawKey = sessionStorage.getItem("lastTurnDrawKey") || "";
 let lastTurnExpKey = sessionStorage.getItem("lastTurnExpKey") || "";
 let handOverflowDiscardOpen = false;
@@ -176,7 +177,8 @@ function resetAllGameVariables() {
       round: 1, turn: 1,
       turnPlayer: "player1",
       status: "ready_check",
-      winner: null, firstPlayer: null
+      winner: null, firstPlayer: null,
+      resetSeq: Number(window._lastAppliedResetSeq || 0)
     },
     logs: []
   };
@@ -1639,8 +1641,12 @@ async function executeReset(syncShared = true) {
 
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "ready_check",
-    winner: null, winnerSetAt: null, firstPlayer: null
+    winner: null, winnerSetAt: null, firstPlayer: null,
+    resetSeq: Number(state.matchData?.resetSeq || window._lastAppliedResetSeq || 0)
   };
+  const nextResetSeq = Math.max(Number(state.matchData.resetSeq || 0), Number(window._lastAppliedResetSeq || 0)) + 1;
+  state.matchData.resetSeq = nextResetSeq;
+  window._lastAppliedResetSeq = nextResetSeq;
   state.player1.diceValue = -1;
   state.player2.diceValue = -1;
   window._gameStartInitiated = false;
@@ -2052,7 +2058,8 @@ async function handleFreshStart(currentRoom, myKey) {
   // matchData を初期状態にリセット
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1",
-    status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null
+    status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null,
+    resetSeq: Number(window._lastAppliedResetSeq || 0)
   };
 
   // 各種フラグをクリア

@@ -28,13 +28,20 @@ window.setupPhaseWatcher = function(gameRoom) {
       return;
     }
     const incoming = snap.val();
+    const incomingResetSeq = Number(incoming?.resetSeq || 0);
+    const localResetSeq = Number(state?.matchData?.resetSeq || window._lastAppliedResetSeq || 0);
 
     // ──【安定化：相手がリセットを実行した場合、自分のローカル状態も完全にリセットする】──
     const currentStatus = state.matchData?.status;
     const isResetTarget = incoming.status === "ready_check" || incoming.status === "setup_dice";
     const currentIsReset = currentStatus === "ready_check" || currentStatus === "setup_dice";
     if (isResetTarget && !currentIsReset && !window._isResetting) {
-      console.log(`[PhaseWatcher] リモートでリセットが検出されました (${currentStatus} -> ${incoming.status})。ローカル状態を初期化します。`);
+      if (incomingResetSeq <= localResetSeq) {
+        console.warn(`[PhaseWatcher] stale reset を無視: incoming resetSeq=${incomingResetSeq}, local=${localResetSeq}, status=${incoming.status}`);
+        return;
+      }
+      console.log(`[PhaseWatcher] リモートでリセットが検出されました (${currentStatus} -> ${incoming.status}, resetSeq=${incomingResetSeq})。ローカル状態を初期化します。`);
+      window._lastAppliedResetSeq = incomingResetSeq;
       if (typeof executeReset === "function") {
         // ローカル側リセットなので Firebase への再書き込み(syncShared)は不要(false)
         executeReset(false);
@@ -73,6 +80,9 @@ window.setupPhaseWatcher = function(gameRoom) {
 
     // matchData は丸ごと上書き（ターン権を持つプレイヤーが書いた値が正）
     state.matchData = { ...state.matchData, ...incoming };
+    if (incomingResetSeq > Number(window._lastAppliedResetSeq || 0)) {
+      window._lastAppliedResetSeq = incomingResetSeq;
+    }
     if (typeof update === "function") {
       update();
       if (typeof window.traceFlow === "function") window.traceFlow("phaseWatcher.callback", "success", "update");

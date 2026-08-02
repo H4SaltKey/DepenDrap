@@ -39,6 +39,8 @@
     const dmSendBtn = el("friendDmSendBtn");
     const dmInput = el("friendDmInput");
     const dmCloseBtn = el("friendDmCloseBtn");
+    const dmColorBtn = el("friendDmColorBtn");
+    const dmColorPalette = el("friendDmColorPalette");
 
     if (toggle) {
       toggle.addEventListener("click", () => {
@@ -53,6 +55,30 @@
 
     if (dmSendBtn) dmSendBtn.addEventListener("click", sendDirectMessage);
     if (dmCloseBtn) dmCloseBtn.addEventListener("click", closeDirectMessagePanel);
+
+    const savedColor = localStorage.getItem("chatColor") || "#ffffff";
+    if (dmInput) dmInput.style.color = savedColor;
+
+    if (dmColorBtn && dmColorPalette) {
+      dmColorBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dmColorPalette.style.display = dmColorPalette.style.display === "grid" ? "none" : "grid";
+      });
+
+      dmColorPalette.querySelectorAll(".friend-dm-color-opt").forEach((opt) => {
+        opt.addEventListener("click", (e) => {
+          const color = e.currentTarget?.dataset?.color || "#ffffff";
+          localStorage.setItem("chatColor", color);
+          if (dmInput) dmInput.style.color = color;
+          dmColorPalette.style.display = "none";
+        });
+      });
+
+      document.addEventListener("click", () => {
+        dmColorPalette.style.display = "none";
+      });
+      dmColorPalette.addEventListener("click", (e) => e.stopPropagation());
+    }
     if (dmInput) {
       dmInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendDirectMessage();

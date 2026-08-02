@@ -7751,3 +7751,20 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 期待効果
 - DMログ/入力欄がプロファイル枠のスクロールやクリッピングで隠れる問題を解消。
+
+## Round 2026-08-03 (Hotfix 12) — タイトルDMにテキストカラー変更機能を追加
+
+### 変更
+- `index.html`
+  - DM入力行を3カラム化（色ボタン / 入力 / 送信）。
+  - カラーパレットUI（🎨）を追加。
+  - `friends.js` を `v=10` へ更新。
+
+- `js/social/friends.js`
+  - DM色変更UIを初期化。
+  - カラー選択時に `localStorage.chatColor` を更新。
+  - DM入力の文字色に即時反映。
+  - 送信色は既存送信処理（`chatColor` 使用）へそのまま連携。
+
+### 検証
+- `node --check js/social/friends.js`

@@ -215,8 +215,41 @@
   #friendDmInputRow {
     margin-top: 4px;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto;
     gap: 4px;
+  }
+  #friendDmColorWrap { position: relative; }
+  #friendDmColorBtn {
+    width: 32px;
+    height: 30px;
+    border: 1px solid rgba(199,179,119,0.45);
+    background: rgba(199,179,119,0.12);
+    color: #e0d0a0;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #friendDmColorPalette {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 4px);
+    width: 156px;
+    padding: 6px;
+    background: rgba(12,10,20,0.96);
+    border: 1px solid #c7b377;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+    z-index: 10030;
+    display: none;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+  .friend-dm-color-opt {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.28);
+    cursor: pointer;
   }
   #friendDmInput {
     background: rgba(0,0,0,0.45);
@@ -403,6 +436,23 @@
   <div id="friendDmDebug"></div>
   <div id="friendDmEventLog"></div>
   <div id="friendDmInputRow">
+    <div id="friendDmColorWrap">
+      <button id="friendDmColorBtn" type="button" title="文字色">🎨</button>
+      <div id="friendDmColorPalette">
+        <button type="button" class="friend-dm-color-opt" data-color="#ffffff" style="background:#ffffff"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#ff9999" style="background:#ff9999"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#99ff99" style="background:#99ff99"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#9999ff" style="background:#9999ff"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#ffff99" style="background:#ffff99"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#ff99ff" style="background:#ff99ff"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#99ffff" style="background:#99ffff"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#ffcc99" style="background:#ffcc99"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#cc99ff" style="background:#cc99ff"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#e0d0a0" style="background:#e0d0a0"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#cccccc" style="background:#cccccc"></button>
+        <button type="button" class="friend-dm-color-opt" data-color="#ff66b2" style="background:#ff66b2"></button>
+      </div>
+    </div>
     <input id="friendDmInput" type="text" maxlength="150" placeholder="メッセージを入力...">
     <button id="friendDmSendBtn" type="button">送信</button>
   </div>
@@ -453,7 +503,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 <script src="js/network/firebase-client.js?v=18"></script>
 <script src="js/network/messaging.js?v=1"></script>
-<script src="js/social/friends.js?v=9"></script>
+<script src="js/social/friends.js?v=10"></script>
 <script src="js/ui/menu.js?v=11"></script>
 
 <script>

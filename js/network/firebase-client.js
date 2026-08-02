@@ -1304,31 +1304,67 @@ class FirebaseClient {
     const normalizedRoom = String(roomName).trim().toUpperCase();
     if (!to || !normalizedRoom) return false;
 
-    const inviteId = this.db.ref(`roomInvites/${to}`).push().key;
+    const encodedTo = this.encodeUserKey(to);
+    const inviteId = this.db.ref(`roomInvites/${encodedTo}`).push().key;
     if (!inviteId) return false;
-    await this.db.ref(`roomInvites/${to}/${inviteId}`).set({
+
+    const payload = {
       id: inviteId,
       roomName: normalizedRoom,
       from: this.username,
       to,
       status: "pending",
       ts: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+
+    const updates = {};
+    updates[`roomInvites/${to}/${inviteId}`] = payload;
+    updates[`roomInvites/${encodedTo}/${inviteId}`] = payload;
+    await this.db.ref().update(updates);
     return true;
   }
 
   watchRoomInvites(callback) {
     if (!this.db || !this.username) return null;
-    const ref = this.db.ref(`roomInvites/${this.username}`).limitToLast(50);
-    const listener = ref.on("value", snap => {
+    const rawRef = this.db.ref(`roomInvites/${this.username}`).limitToLast(100);
+    const encodedRef = this.db.ref(`roomInvites/${this.encodeUserKey(this.username)}`).limitToLast(100);
+
+    let rawList = [];
+    let encodedList = [];
+    const emitMerged = () => {
+      const map = new Map();
+      [...rawList, ...encodedList].forEach((row) => {
+        const key = String(row.id || "");
+        if (!key) return;
+        map.set(key, row);
+      });
+      const merged = Array.from(map.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      callback(merged);
+    };
+
+    const rawListener = rawRef.on("value", (snap) => {
       const list = [];
-      snap.forEach(child => list.push({ id: child.key, ...(child.val() || {}) }));
-      list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-      callback(list);
+      snap.forEach((child) => list.push({ id: child.key, ...(child.val() || {}) }));
+      rawList = list;
+      emitMerged();
     });
-    this.listeners.set(`roomInvites:${this.username}`, { ref, listener });
+
+    const encodedListener = encodedRef.on("value", (snap) => {
+      const list = [];
+      snap.forEach((child) => list.push({ id: child.key, ...(child.val() || {}) }));
+      encodedList = list;
+      emitMerged();
+    });
+
+    this.listeners.set(`roomInvites:${this.username}`, {
+      rawRef,
+      encodedRef,
+      rawListener,
+      encodedListener
+    });
     return () => {
-      ref.off("value", listener);
+      rawRef.off("value", rawListener);
+      encodedRef.off("value", encodedListener);
       this.listeners.delete(`roomInvites:${this.username}`);
     };
   }
@@ -1336,10 +1372,16 @@ class FirebaseClient {
   async respondRoomInvite(inviteId, status) {
     if (!this.db || !this.username || !inviteId) return false;
     const safeStatus = status === "accepted" ? "accepted" : "rejected";
-    await this.db.ref(`roomInvites/${this.username}/${inviteId}`).update({
+    const updates = {
       status: safeStatus,
       respondedAt: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+    const rawPath = `roomInvites/${this.username}/${inviteId}`;
+    const encodedPath = `roomInvites/${this.encodeUserKey(this.username)}/${inviteId}`;
+    await Promise.all([
+      this.db.ref(rawPath).update(updates).catch(() => {}),
+      this.db.ref(encodedPath).update(updates).catch(() => {})
+    ]);
     return true;
   }
 }

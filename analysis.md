@@ -7786,3 +7786,32 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 14) — フレンド招待機能の再修正 + 追加ボタン位置調整
+
+### 問題
+- フレンド招待が機能しないケースが継続。
+- 以前は動作していたため、保存/監視キー差異の影響を疑う。
+
+### 修正内容
+- `js/network/firebase-client.js`
+  - `sendRoomInvite()`:
+    - `roomInvites/{rawUsername}/{inviteId}` と `roomInvites/{encodedUsername}/{inviteId}` の双方へ同時保存。
+  - `watchRoomInvites()`:
+    - raw/encoded の両ノードを同時監視し、inviteId で重複排除してマージ返却。
+  - `respondRoomInvite()`:
+    - raw/encoded の双方に `accepted/rejected` を反映（片系統失敗は吸収）。
+
+- `index.html`
+  - フレンドパネル内の「フレンドを追加」ボタンを一覧の上へ移動。
+  - キャッシュ更新:
+    - `firebase-client.js?v=19`
+    - `friends.js?v=13`
+
+- `matchSetup.html`
+  - `firebase-client.js?v=19` に更新。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`
+- `node --check js/game/matchSetup.js`

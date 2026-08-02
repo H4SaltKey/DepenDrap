@@ -267,6 +267,18 @@ body {
   line-height: 1;
 }
 .room-delete-btn:hover { background: rgba(140,20,20,0.7); border-color: #ff6b6b; color: #ff9999; }
+.room-invite-btn {
+  background: rgba(40,90,130,0.55);
+  border: 1px solid rgba(120,180,255,0.55);
+  color: #cfe8ff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.room-invite-btn:hover {
+  background: rgba(70,120,170,0.75);
+}
 
 /* ===== 右: 相手情報 ===== */
 #msOpponentBox {
@@ -406,6 +418,64 @@ body {
 #deckPreviewEmpty {
   color: #444; font-size: 12px; padding: 20px; text-align: center;
 }
+
+#friendInviteModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 10050;
+}
+#friendInviteModal.hidden { display: none; }
+.friend-invite-box {
+  width: min(420px, calc(100vw - 30px));
+  background: rgba(16,12,24,0.96);
+  border: 1px solid #5a4b27;
+  border-radius: 6px;
+  padding: 14px;
+}
+.friend-invite-title {
+  color: #e0d0a0;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+#friendInviteList {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(199,179,119,0.25);
+  border-radius: 4px;
+  padding: 6px;
+  margin-bottom: 10px;
+}
+.friend-invite-row {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+  background: rgba(0,0,0,0.35);
+  color: #d8c58d;
+  border: 1px solid rgba(199,179,119,0.25);
+  border-radius: 4px;
+  padding: 7px 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.friend-invite-row.selected { border-color: #c7b377; background: rgba(199,179,119,0.18); }
+.friend-invite-status.online { color: #70c070; font-size: 11px; }
+.friend-invite-status.offline { color: #888; font-size: 11px; }
+.friend-invite-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.friend-invite-btn {
+  border: 1px solid rgba(199,179,119,0.5);
+  background: rgba(199,179,119,0.15);
+  color: #e0d0a0;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -519,6 +589,17 @@ body {
 </div>
 
 <select id="deckSelect" style="display:none;"></select>
+
+<div id="friendInviteModal" class="hidden">
+  <div class="friend-invite-box">
+    <div class="friend-invite-title">フレンドを招待</div>
+    <div id="friendInviteList"></div>
+    <div class="friend-invite-actions">
+      <button id="friendInviteCancelBtn" type="button" class="friend-invite-btn">キャンセル</button>
+      <button id="friendInviteConfirmBtn" type="button" class="friend-invite-btn" disabled>決定</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>

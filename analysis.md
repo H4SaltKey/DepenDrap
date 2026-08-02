@@ -7272,3 +7272,81 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - リビルド相当チェック:
   - `node --check js/game/auto/playerActionResolver.js` -> `CHECK_playerActionResolver_OK`
   - `node --check js/phases/battlePhase.js` -> `CHECK_battlePhase_OK`
+
+## Round 2026-08-02 — フレンド機能（一覧/申請/DM/ルーム招待）実装
+
+### 目的
+- タイトル画面にフレンドタブを追加し、一覧表示・オンライン状況表示・DM を可能にする。
+- フレンド追加モーダルで名前一致検索とフレンド申請送信を可能にする。
+- マッチ画面の自室行に「フレンドを招待」導線を追加し、招待送信～承諾参加フローを実装する。
+
+### 実装概要
+- `js/network/firebase-client.js`
+  - フレンド関連 API を追加:
+    - `findAccountByExactName(name)`
+    - `watchFriendList(callback)`
+    - `watchIncomingFriendRequests(callback)`
+    - `watchFriendStatuses(friendNames, callback)`
+    - `sendFriendRequest(targetName)`
+    - `acceptFriendRequest(fromName)`
+    - `rejectFriendRequest(fromName)`
+  - DM 関連 API を追加:
+    - `normalizeChatPair(userA, userB)`
+    - `watchDirectChat(targetName, callback)`
+    - `sendDirectChat(targetName, text, color)`
+  - ルーム招待 API を追加:
+    - `sendRoomInvite(targetName, roomName)`
+    - `watchRoomInvites(callback)`
+    - `respondRoomInvite(inviteId, status)`
+
+- `index.html`
+  - `#userProfile` 配下にフレンド UI を追加:
+    - 開閉式「フレンド」タブ
+    - フレンド一覧（名前/アイコン/オンライン状況）
+    - フレンド申請受信（承諾/拒否）
+    - フレンド追加ボタン
+    - DM 領域（ログ + 入力 + 送信）
+  - モーダル追加:
+    - フレンド追加モーダル（検索/キャンセル/申請送信）
+    - ルーム招待受信モーダル（承諾/拒否）
+  - スタイル追加（フレンド一覧、DM、各モーダル）
+  - `logout`/`beforeunload` で `setOnlineStatus(false)` を呼び出すよう修正。
+  - Firebase 初期化成功時に `setOnlineStatus(true)` とフレンド監視開始を実行。
+  - `js/social/friends.js` を読み込み追加。
+
+- `js/social/friends.js`（新規）
+  - タイトル画面フレンド機能本体を実装:
+    - タブ開閉
+    - フレンド一覧描画
+    - オンライン状態反映
+    - フレンド追加検索/申請
+    - 受信申請の承諾/拒否
+    - フレンド選択時の DM 監視/送信
+    - ルーム招待受信モーダル表示/承諾時 `pendingInviteRoom` 記録
+
+- `matchSetup.html`
+  - ルーム行用 `room-invite-btn` のスタイル追加。
+  - 「フレンド招待」モーダル UI を追加。
+
+- `js/game/matchSetup.js`
+  - ルーム一覧描画で、参加中ルームにのみ「フレンドを招待」ボタンを表示。
+  - フレンド招待モーダル開閉、フレンド一覧描画、選択確定、招待送信を実装。
+  - Firebase 接続成功時に `setOnlineStatus(true)` を呼び出し。
+  - 招待承諾後の遷移に対応するため、`pendingInviteRoom` がある場合は自動で `joinRoom()` を実行。
+  - `beforeunload` で招待モーダル監視解除と `setOnlineStatus(false)` を実行。
+
+### データ構造（Realtime Database）
+- `friends/{username}/{friendName}`
+- `friendRequests/{username}/incoming/{from}`
+- `friendRequests/{username}/outgoing/{to}`
+- `directChats/{sortedUserA__sortedUserB}/{messageId}`
+- `roomInvites/{username}/{inviteId}`
+
+### 動作確認
+- 構文チェック:
+  - `node --check js/social/friends.js`
+  - `node --check js/game/matchSetup.js`
+  - `node --check js/network/firebase-client.js`
+
+### リビルド
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的 HTML/JS 構成）。

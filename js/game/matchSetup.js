@@ -15,6 +15,10 @@ let isStartingGame = false;
 let roomListWatching = false;
 let roomListRefreshInFlight = false;
 let roomListRefreshToken = 0;
+let inviteFriendList = [];
+let inviteFriendStatusMap = {};
+let inviteSelectedFriend = null;
+let inviteFriendStatusUnsub = null;
 
 let selectedDeckId = null;
 let popupSelectedDeckId = null;
@@ -57,10 +61,19 @@ async function initMatchSetup() {
   // Firebase
   const success = await firebaseClient.initialize(window.FIREBASE_CONFIG);
   if (success) {
+    await firebaseClient.setOnlineStatus(true);
     updateFirebaseStatus("Firebase 接続済み ✓", true);
     watchRoomList();
     setupRefreshButton();
+    setupFriendInviteModal();
     addLog("system", "Firebase に接続しました。");
+
+    const pendingInviteRoom = (localStorage.getItem("pendingInviteRoom") || "").trim().toUpperCase();
+    if (pendingInviteRoom) {
+      localStorage.removeItem("pendingInviteRoom");
+      document.getElementById("roomNameInput").value = pendingInviteRoom;
+      await joinRoom();
+    }
   } else {
     updateFirebaseStatus("接続エラー", false);
     addLog("system", "Firebase への接続に失敗しました。");
@@ -561,6 +574,15 @@ function renderRoomList(rooms) {
       deleteRoom(room.name);
     });
 
+    const inviteBtn = document.createElement("button");
+    inviteBtn.className = "room-invite-btn";
+    inviteBtn.type = "button";
+    inviteBtn.textContent = "フレンドを招待";
+    inviteBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      openFriendInviteModal(room.name);
+    });
+
     // 参加ボタン
     const joinBtn = document.createElement("button");
     joinBtn.className = "room-join-btn";
@@ -573,8 +595,10 @@ function renderRoomList(rooms) {
       joinBtn.disabled = true;
       joinBtn.style.opacity = "0.5";
       joinBtn.style.cursor = "not-allowed";
+      inviteBtn.style.display = "inline-block";
     } else {
       joinBtn.textContent = "参加";
+      inviteBtn.style.display = "none";
       joinBtn.addEventListener("click", e => {
         e.stopPropagation();
         document.getElementById("roomNameInput").value = room.name;
@@ -583,6 +607,7 @@ function renderRoomList(rooms) {
     }
 
     btnGroup.appendChild(deleteBtn);
+    btnGroup.appendChild(inviteBtn);
     btnGroup.appendChild(joinBtn);
 
     item.appendChild(nameSpan);
@@ -595,6 +620,109 @@ function renderRoomList(rooms) {
     });
 
     container.appendChild(item);
+  });
+}
+
+function setupFriendInviteModal() {
+  const modal = document.getElementById("friendInviteModal");
+  const cancelBtn = document.getElementById("friendInviteCancelBtn");
+  const confirmBtn = document.getElementById("friendInviteConfirmBtn");
+  if (!modal || !cancelBtn || !confirmBtn) return;
+  if (modal.dataset.bound === "true") return;
+  modal.dataset.bound = "true";
+
+  cancelBtn.addEventListener("click", closeFriendInviteModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeFriendInviteModal();
+  });
+
+  confirmBtn.addEventListener("click", async () => {
+    const target = confirmBtn.dataset.friend || "";
+    const roomName = confirmBtn.dataset.room || "";
+    if (!target || !roomName) return;
+    try {
+      await firebaseClient.sendRoomInvite(target, roomName);
+      addLog("system", `「${target}」へルーム招待を送信しました。`);
+      closeFriendInviteModal();
+    } catch (e) {
+      console.error("invite send failed", e);
+      addLog("system", "ルーム招待の送信に失敗しました。");
+    }
+  });
+}
+
+async function openFriendInviteModal(roomName) {
+  if (!firebaseClient?.db) {
+    addLog("system", "Firebase 接続時のみ招待できます。");
+    return;
+  }
+  const modal = document.getElementById("friendInviteModal");
+  const listEl = document.getElementById("friendInviteList");
+  const confirmBtn = document.getElementById("friendInviteConfirmBtn");
+  if (!modal || !listEl || !confirmBtn) return;
+
+  modal.classList.remove("hidden");
+  inviteSelectedFriend = null;
+  confirmBtn.disabled = true;
+  confirmBtn.dataset.room = roomName;
+  confirmBtn.dataset.friend = "";
+  listEl.innerHTML = '<div style="color:#666;font-size:12px;padding:8px;">フレンド情報を読み込み中...</div>';
+
+  const friendsSnap = await firebaseClient.db.ref(`friends/${currentUser}`).once("value");
+  const val = friendsSnap.val() || {};
+  inviteFriendList = Object.keys(val);
+
+  if (inviteFriendStatusUnsub) inviteFriendStatusUnsub();
+  inviteFriendStatusUnsub = firebaseClient.watchFriendStatuses(inviteFriendList, (map) => {
+    inviteFriendStatusMap = map || {};
+    renderFriendInviteList();
+  });
+
+  renderFriendInviteList();
+}
+
+function closeFriendInviteModal() {
+  const modal = document.getElementById("friendInviteModal");
+  if (modal) modal.classList.add("hidden");
+  const confirmBtn = document.getElementById("friendInviteConfirmBtn");
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.dataset.friend = "";
+  }
+  inviteSelectedFriend = null;
+  inviteFriendList = [];
+  inviteFriendStatusMap = {};
+  if (inviteFriendStatusUnsub) {
+    inviteFriendStatusUnsub();
+    inviteFriendStatusUnsub = null;
+  }
+}
+
+function renderFriendInviteList() {
+  const listEl = document.getElementById("friendInviteList");
+  const confirmBtn = document.getElementById("friendInviteConfirmBtn");
+  if (!listEl || !confirmBtn) return;
+
+  if (!inviteFriendList.length) {
+    listEl.innerHTML = '<div style="color:#666;font-size:12px;padding:8px;">フレンドがいません。</div>';
+    return;
+  }
+
+  listEl.innerHTML = "";
+  inviteFriendList.forEach((friend) => {
+    const status = inviteFriendStatusMap[friend] || {};
+    const isOnline = !!status.isOnline;
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "friend-invite-row" + (inviteSelectedFriend === friend ? " selected" : "");
+    row.innerHTML = `<span>${friend}</span><span class="friend-invite-status ${isOnline ? "online" : "offline"}">${isOnline ? "オンライン" : "オフライン"}</span>`;
+    row.addEventListener("click", () => {
+      inviteSelectedFriend = friend;
+      confirmBtn.disabled = false;
+      confirmBtn.dataset.friend = friend;
+      renderFriendInviteList();
+    });
+    listEl.appendChild(row);
   });
 }
 
@@ -855,4 +983,6 @@ window.addEventListener("beforeunload", async () => {
   roomListWatching = false;
   if (_chatListenerRef)    _chatListenerRef.off();
   if (_typingListenerRef)  _typingListenerRef.off();
+  if (inviteFriendStatusUnsub) inviteFriendStatusUnsub();
+  if (window.firebaseClient) firebaseClient.setOnlineStatus(false);
 });

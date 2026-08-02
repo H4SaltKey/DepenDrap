@@ -54,6 +54,186 @@
     margin-top: 8px; transition: all 0.2s; display: block;
   }
   .logout-btn:hover { background: rgba(199,179,119,0.2); }
+  #friendWidget {
+    margin-top: 8px;
+    border-top: 1px solid rgba(199,179,119,0.2);
+    padding-top: 8px;
+  }
+  #friendToggleBtn {
+    width: 100%;
+    background: rgba(199,179,119,0.1);
+    border: 1px solid rgba(199,179,119,0.45);
+    color: #e0d0a0;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  #friendPanel { margin-top: 8px; }
+  #friendPanel.hidden { display: none; }
+  #friendList {
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .friend-row {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(199,179,119,0.2);
+    color: #d8c58d;
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+  .friend-row.selected { border-color: #c7b377; background: rgba(199,179,119,0.16); }
+  .friend-icon { width: 18px; height: 18px; border-radius: 3px; }
+  .friend-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .friend-status.online { color: #70c070; }
+  .friend-status.offline { color: #8a8a8a; }
+  .friend-empty { font-size: 11px; color: #666; padding: 6px; }
+  .friend-req-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  .friend-req-text { flex: 1; color: #d0c090; }
+  .friend-mini-btn {
+    border: 1px solid rgba(199,179,119,0.5);
+    background: rgba(199,179,119,0.15);
+    color: #e0d0a0;
+    border-radius: 3px;
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+  }
+  .friend-mini-btn.danger {
+    border-color: rgba(255,120,120,0.7);
+    color: #ff9c9c;
+    background: rgba(130,40,40,0.35);
+  }
+  #friendAddBtn {
+    width: 100%;
+    font-size: 11px;
+    padding: 4px 6px;
+    border: 1px solid rgba(199,179,119,0.5);
+    color: #e0d0a0;
+    background: rgba(199,179,119,0.12);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #friendDmSection.hidden { display: none; }
+  #friendDmLog {
+    margin-top: 6px;
+    max-height: 120px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(199,179,119,0.2);
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 10px;
+  }
+  .friend-dm-line { margin-bottom: 3px; word-break: break-all; }
+  .friend-dm-line.mine { color: #c7b377; }
+  .friend-dm-line.other { color: #d8d8d8; }
+  #friendDmInputRow {
+    margin-top: 4px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px;
+  }
+  #friendDmInput {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(199,179,119,0.25);
+    color: #fff;
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+  #friendDmSendBtn {
+    border: 1px solid rgba(199,179,119,0.5);
+    background: rgba(199,179,119,0.15);
+    color: #e0d0a0;
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .friend-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 11000;
+  }
+  .friend-modal.hidden { display: none; }
+  .friend-modal-box {
+    width: min(420px, calc(100vw - 32px));
+    background: rgba(16,12,26,0.95);
+    border: 1px solid #5a4b27;
+    border-radius: 6px;
+    padding: 14px;
+    color: #e0d0a0;
+  }
+  .friend-modal-title { font-size: 16px; margin-bottom: 10px; }
+  .friend-modal-input-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  #friendSearchInput {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(199,179,119,0.3);
+    color: #fff;
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+  #friendSearchBtn, #friendRequestSendBtn, #friendAddCancelBtn, #roomInviteAcceptBtn, #roomInviteRejectBtn {
+    border: 1px solid rgba(199,179,119,0.5);
+    background: rgba(199,179,119,0.15);
+    color: #e0d0a0;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  #friendSearchResult {
+    border: 1px solid rgba(199,179,119,0.2);
+    border-radius: 4px;
+    min-height: 52px;
+    max-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    padding: 6px;
+  }
+  .friend-search-player {
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(199,179,119,0.3);
+    background: rgba(0,0,0,0.3);
+    color: #d8c58d;
+    border-radius: 4px;
+    padding: 6px;
+    cursor: pointer;
+    margin-bottom: 4px;
+  }
+  .friend-search-player.selected { border-color: #c7b377; background: rgba(199,179,119,0.18); }
+  .friend-modal-empty { font-size: 12px; color: #777; }
+  .friend-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+  }
   .title-content {
     display: flex; flex-direction: column; align-items: center;
     justify-content: center; min-height: 100dvh; text-align: center;
@@ -136,6 +316,22 @@
   <span id="usernameDisplay">Loading...</span>
   <span id="firebaseStatusBadge">● 未接続</span>
   <button onclick="logout()" class="logout-btn">ログアウト</button>
+  <div id="friendWidget">
+    <button id="friendToggleBtn" type="button">フレンド ▼</button>
+    <div id="friendPanel" class="hidden">
+      <div id="friendIncomingRequests"></div>
+      <div id="friendList"></div>
+      <button id="friendAddBtn" type="button">フレンドを追加</button>
+      <div id="friendDmSection" class="hidden">
+        <div style="font-size:11px;margin-top:8px;">チャット: <span id="friendDmTargetName">-</span></div>
+        <div id="friendDmLog"></div>
+        <div id="friendDmInputRow">
+          <input id="friendDmInput" type="text" maxlength="150" placeholder="メッセージを入力...">
+          <button id="friendDmSendBtn" type="button">送信</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="title-content">
@@ -152,12 +348,39 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<div id="friendAddModal" class="friend-modal hidden">
+  <div class="friend-modal-box">
+    <div class="friend-modal-title">フレンドを追加</div>
+    <div class="friend-modal-input-row">
+      <input id="friendSearchInput" type="text" maxlength="20" placeholder="フレンド名を入力">
+      <button id="friendSearchBtn" type="button">検索</button>
+    </div>
+    <div id="friendSearchResult"></div>
+    <div class="friend-modal-actions">
+      <button id="friendAddCancelBtn" type="button">キャンセル</button>
+      <button id="friendRequestSendBtn" type="button" disabled>フレンド申請を送信</button>
+    </div>
+  </div>
+</div>
+
+<div id="roomInviteModal" class="friend-modal hidden">
+  <div class="friend-modal-box">
+    <div class="friend-modal-title">ルーム招待</div>
+    <div id="roomInviteText" style="font-size:13px;margin-bottom:12px;"></div>
+    <div class="friend-modal-actions">
+      <button id="roomInviteRejectBtn" type="button">拒否</button>
+      <button id="roomInviteAcceptBtn" type="button">承諾</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK (Compat version for global firebase object) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 <script src="js/network/firebase-client.js?v=10"></script>
 <script src="js/network/messaging.js?v=1"></script>
+<script src="js/social/friends.js?v=1"></script>
 <script src="js/ui/menu.js?v=11"></script>
 
 <script>
@@ -180,10 +403,12 @@
   function logout() {
     if (!confirm("ログアウトしますか？")) return;
     
-    // オンライン状態をオフラインに設定（ネットワーク接続がある場合のみ）
-    // if (window.firebaseClient) {
-    //   firebaseClient.setOnlineStatus(false);
-    // }
+    if (window.firebaseClient) {
+      firebaseClient.setOnlineStatus(false);
+    }
+    if (typeof window.teardownSocialWatchers === "function") {
+      window.teardownSocialWatchers();
+    }
     
     // ゲーム状態のみ削除
     localStorage.removeItem("matchSetup");
@@ -235,6 +460,9 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    if (typeof window.initFriendUI === "function") {
+      window.initFriendUI();
+    }
     const confirmBtn = document.getElementById("devPassConfirm");
     const cancelBtn = document.getElementById("devPassCancel");
     const modal = document.getElementById("devPassModal");
@@ -265,8 +493,10 @@
       badge.textContent = "● オンライン";
       badge.classList.add("connected");
       
-      // オンライン状態を設定（ネットワーク接続がある場合のみ）
-      // firebaseClient.setOnlineStatus(true);
+      firebaseClient.setOnlineStatus(true);
+      if (typeof window.bindFirebaseSocialWatchers === "function") {
+        window.bindFirebaseSocialWatchers();
+      }
     } else {
       console.warn("[Index] ⚠️ Firebase 初期化失敗");
       badge.textContent = "● オフライン";
@@ -285,6 +515,15 @@
       badge.textContent = "● オフライン";
       badge.classList.remove("connected");
     });
+  });
+
+  window.addEventListener("beforeunload", () => {
+    if (window.firebaseClient) {
+      firebaseClient.setOnlineStatus(false);
+    }
+    if (typeof window.teardownSocialWatchers === "function") {
+      window.teardownSocialWatchers();
+    }
   });
 </script>
 

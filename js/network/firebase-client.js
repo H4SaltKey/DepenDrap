@@ -1045,6 +1045,176 @@ class FirebaseClient {
       sessionId: this.sessionId
     };
   }
+
+  normalizeChatPair(userA, userB) {
+    const a = String(userA || "").trim();
+    const b = String(userB || "").trim();
+    return [a, b].sort((x, y) => x.localeCompare(y, "ja")).join("__");
+  }
+
+  async findAccountByExactName(name) {
+    if (!this.db || !name) return null;
+    const query = this.db.ref("accounts").orderByKey().equalTo(String(name).trim());
+    const snap = await query.once("value");
+    if (!snap.exists()) return null;
+    const data = snap.val() || {};
+    const key = Object.keys(data)[0];
+    if (!key) return null;
+    return { username: key, profile: data[key] || {} };
+  }
+
+  watchFriendList(callback) {
+    if (!this.db || !this.username) return null;
+    const ref = this.db.ref(`friends/${this.username}`);
+    const listener = ref.on("value", snap => {
+      const val = snap.val() || {};
+      const list = Object.keys(val).map(name => ({ username: name, ...(val[name] || {}) }));
+      callback(list);
+    });
+    this.listeners.set(`friends:${this.username}`, { ref, listener });
+    return () => {
+      ref.off("value", listener);
+      this.listeners.delete(`friends:${this.username}`);
+    };
+  }
+
+  watchIncomingFriendRequests(callback) {
+    if (!this.db || !this.username) return null;
+    const ref = this.db.ref(`friendRequests/${this.username}/incoming`);
+    const listener = ref.on("value", snap => {
+      const val = snap.val() || {};
+      callback(Object.keys(val).map(from => ({ from, ...(val[from] || {}) })));
+    });
+    this.listeners.set(`friendReqIn:${this.username}`, { ref, listener });
+    return () => {
+      ref.off("value", listener);
+      this.listeners.delete(`friendReqIn:${this.username}`);
+    };
+  }
+
+  watchFriendStatuses(friendNames, callback) {
+    if (!this.db) return () => {};
+    const refs = [];
+    const unsubs = [];
+    const cache = {};
+    const names = Array.isArray(friendNames) ? friendNames.filter(Boolean) : [];
+    names.forEach(name => {
+      const ref = this.db.ref(`players/${name}/status`);
+      refs.push(ref);
+      const listener = ref.on("value", snap => {
+        cache[name] = snap.val() || { isOnline: false };
+        callback({ ...cache });
+      });
+      unsubs.push(() => ref.off("value", listener));
+    });
+    return () => unsubs.forEach(fn => fn());
+  }
+
+  async sendFriendRequest(targetName) {
+    if (!this.db || !this.username || !targetName) return false;
+    const from = this.username;
+    const to = String(targetName).trim();
+    if (!to || to === from) return false;
+    const ts = firebase.database.ServerValue.TIMESTAMP;
+    await this.db.ref(`friendRequests/${to}/incoming/${from}`).set({ from, ts, status: "pending" });
+    await this.db.ref(`friendRequests/${from}/outgoing/${to}`).set({ to, ts, status: "pending" });
+    return true;
+  }
+
+  async acceptFriendRequest(fromName) {
+    if (!this.db || !this.username || !fromName) return false;
+    const me = this.username;
+    const from = String(fromName).trim();
+    const ts = firebase.database.ServerValue.TIMESTAMP;
+    const updates = {};
+    updates[`friends/${me}/${from}`] = { username: from, addedAt: ts };
+    updates[`friends/${from}/${me}`] = { username: me, addedAt: ts };
+    updates[`friendRequests/${me}/incoming/${from}`] = null;
+    updates[`friendRequests/${from}/outgoing/${me}`] = null;
+    await this.db.ref().update(updates);
+    return true;
+  }
+
+  async rejectFriendRequest(fromName) {
+    if (!this.db || !this.username || !fromName) return false;
+    const me = this.username;
+    const from = String(fromName).trim();
+    const updates = {};
+    updates[`friendRequests/${me}/incoming/${from}`] = null;
+    updates[`friendRequests/${from}/outgoing/${me}`] = null;
+    await this.db.ref().update(updates);
+    return true;
+  }
+
+  watchDirectChat(targetName, callback) {
+    if (!this.db || !this.username || !targetName) return null;
+    const pairKey = this.normalizeChatPair(this.username, targetName);
+    const ref = this.db.ref(`directChats/${pairKey}`).orderByChild("ts").limitToLast(80);
+    const listener = ref.on("value", snap => {
+      const rows = [];
+      snap.forEach(child => rows.push({ id: child.key, ...(child.val() || {}) }));
+      callback(rows);
+    });
+    const key = `directChat:${pairKey}`;
+    this.listeners.set(key, { ref, listener });
+    return () => {
+      ref.off("value", listener);
+      this.listeners.delete(key);
+    };
+  }
+
+  async sendDirectChat(targetName, text, color = "#ffffff") {
+    if (!this.db || !this.username || !targetName || !text) return false;
+    const pairKey = this.normalizeChatPair(this.username, targetName);
+    await this.db.ref(`directChats/${pairKey}`).push({
+      from: this.username,
+      to: String(targetName).trim(),
+      text: String(text),
+      color,
+      ts: firebase.database.ServerValue.TIMESTAMP
+    });
+    return true;
+  }
+
+  async sendRoomInvite(targetName, roomName) {
+    if (!this.db || !this.username || !targetName || !roomName) return false;
+    const inviteId = this.db.ref(`roomInvites/${targetName}`).push().key;
+    if (!inviteId) return false;
+    await this.db.ref(`roomInvites/${targetName}/${inviteId}`).set({
+      id: inviteId,
+      roomName,
+      from: this.username,
+      to: String(targetName).trim(),
+      status: "pending",
+      ts: firebase.database.ServerValue.TIMESTAMP
+    });
+    return true;
+  }
+
+  watchRoomInvites(callback) {
+    if (!this.db || !this.username) return null;
+    const ref = this.db.ref(`roomInvites/${this.username}`).orderByChild("ts").limitToLast(20);
+    const listener = ref.on("value", snap => {
+      const list = [];
+      snap.forEach(child => list.push({ id: child.key, ...(child.val() || {}) }));
+      callback(list);
+    });
+    this.listeners.set(`roomInvites:${this.username}`, { ref, listener });
+    return () => {
+      ref.off("value", listener);
+      this.listeners.delete(`roomInvites:${this.username}`);
+    };
+  }
+
+  async respondRoomInvite(inviteId, status) {
+    if (!this.db || !this.username || !inviteId) return false;
+    const safeStatus = status === "accepted" ? "accepted" : "rejected";
+    await this.db.ref(`roomInvites/${this.username}/${inviteId}`).update({
+      status: safeStatus,
+      respondedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    return true;
+  }
 }
 
 // グローバルインスタンスを作成

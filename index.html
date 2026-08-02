@@ -152,6 +152,22 @@
     box-sizing: border-box;
   }
   #friendDmSection.hidden { display: none; }
+  #friendDmHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  #friendDmCloseBtn {
+    border: 1px solid rgba(199,179,119,0.5);
+    background: rgba(199,179,119,0.15);
+    color: #e0d0a0;
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
   #friendDmLog {
     margin-top: 6px;
     height: 140px;
@@ -179,6 +195,20 @@
     font-size: 10px;
     line-height: 1.3;
     padding: 4px 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  #friendDmEventLog {
+    margin-top: 4px;
+    border: 1px solid rgba(120,160,200,0.25);
+    background: rgba(0,0,0,0.22);
+    color: #9fb7d0;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1.3;
+    padding: 4px 6px;
+    max-height: 66px;
+    overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-all;
   }
@@ -365,9 +395,13 @@
 </div>
 
 <div id="friendDmSection" class="hidden">
-  <div style="font-size:11px;margin-top:2px;">チャット: <span id="friendDmTargetName">-</span></div>
+  <div id="friendDmHeader">
+    <div style="font-size:11px;">チャット: <span id="friendDmTargetName">-</span></div>
+    <button id="friendDmCloseBtn" type="button">閉じる</button>
+  </div>
   <div id="friendDmLog"></div>
   <div id="friendDmDebug"></div>
+  <div id="friendDmEventLog"></div>
   <div id="friendDmInputRow">
     <input id="friendDmInput" type="text" maxlength="150" placeholder="メッセージを入力...">
     <button id="friendDmSendBtn" type="button">送信</button>
@@ -419,7 +453,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 <script src="js/network/firebase-client.js?v=15"></script>
 <script src="js/network/messaging.js?v=1"></script>
-<script src="js/social/friends.js?v=7"></script>
+<script src="js/social/friends.js?v=8"></script>
 <script src="js/ui/menu.js?v=11"></script>
 
 <script>

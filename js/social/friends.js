@@ -24,7 +24,9 @@
       sendNg: 0,
       lastError: "",
       lastUpdate: ""
-    }
+    },
+    dmSeenIds: new Set(),
+    dmEventRows: []
   };
 
   function el(id) { return document.getElementById(id); }
@@ -36,6 +38,7 @@
     const sendReqBtn = el("friendRequestSendBtn");
     const dmSendBtn = el("friendDmSendBtn");
     const dmInput = el("friendDmInput");
+    const dmCloseBtn = el("friendDmCloseBtn");
 
     if (toggle) {
       toggle.addEventListener("click", () => {
@@ -49,6 +52,7 @@
     if (sendReqBtn) sendReqBtn.addEventListener("click", sendFriendRequestFromModal);
 
     if (dmSendBtn) dmSendBtn.addEventListener("click", sendDirectMessage);
+    if (dmCloseBtn) dmCloseBtn.addEventListener("click", closeDirectMessagePanel);
     if (dmInput) {
       dmInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendDirectMessage();
@@ -228,6 +232,9 @@
       if (state.chatUnsub) state.chatUnsub();
       state.chatUnsub = null;
       stopDirectChatPolling();
+      state.dmSeenIds = new Set();
+      state.dmEventRows = [];
+      renderDmEventLog();
       renderDirectChat([]);
       return;
     }
@@ -241,6 +248,9 @@
     state.dmDebug.renderCount = 0;
     state.dmDebug.lastError = "";
     state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
+    state.dmSeenIds = new Set();
+    state.dmEventRows = [];
+    appendDmEventLog(`相手「${name}」とのDMを開きました。`);
     renderDmDebug();
 
     if (state.chatUnsub) state.chatUnsub();
@@ -302,6 +312,10 @@
       return;
     }
     list.forEach((row) => {
+      const rowId = String(row.id || "");
+      const firstSeen = rowId && !state.dmSeenIds.has(rowId);
+      if (rowId) state.dmSeenIds.add(rowId);
+
       const line = document.createElement("div");
       line.className = `friend-dm-line ${row.from === state.myName ? "mine" : "other"}`;
       const color = typeof row.color === "string" ? row.color.trim().toLowerCase() : "";
@@ -311,6 +325,10 @@
       const time = ts ? new Date(ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "--:--";
       line.textContent = `[${time}] ${row.from}: ${row.text || ""}`;
       log.appendChild(line);
+
+      if (firstSeen && row.from !== state.myName) {
+        appendDmEventLog(`受信: ${row.from}: ${row.text || ""}`);
+      }
     });
     log.scrollTop = log.scrollHeight;
   }
@@ -334,6 +352,7 @@
         return;
       }
       state.dmDebug.sendOk += 1;
+      appendDmEventLog(`送信: ${state.myName}: ${text}`);
       const rows = await firebaseClient.fetchDirectChat(state.selectedFriend, 100);
       state.dmDebug.lastRows = rows.length;
       state.dmDebug.lastUpdate = new Date().toLocaleTimeString("ja-JP");
@@ -359,6 +378,28 @@
       `lastUpdate=${d.lastUpdate || "-"}`,
       `lastError=${d.lastError || "-"}`
     ].join("\n");
+  }
+
+  function appendDmEventLog(text) {
+    const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    state.dmEventRows.push(`[${time}] ${text}`);
+    if (state.dmEventRows.length > 24) state.dmEventRows.shift();
+    renderDmEventLog();
+  }
+
+  function renderDmEventLog() {
+    const box = el("friendDmEventLog");
+    if (!box) return;
+    if (!state.dmEventRows.length) {
+      box.textContent = "受信ログはここに表示されます。";
+      return;
+    }
+    box.textContent = state.dmEventRows.join("\n");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function closeDirectMessagePanel() {
+    selectFriend(null);
   }
 
   function renderIncomingRequests(list) {

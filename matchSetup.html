@@ -477,6 +477,25 @@ body {
   cursor: pointer;
 }
 
+#inviteDebugLog {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  width: min(420px, calc(100vw - 20px));
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10120;
+  border: 1px dashed rgba(120,180,255,0.5);
+  background: rgba(8,12,20,0.88);
+  color: #a9c7e8;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 #incomingRoomInviteModal {
   position: fixed;
   inset: 0;
@@ -623,6 +642,8 @@ body {
   </div>
 </div>
 
+<div id="inviteDebugLog">[INVITE DEBUG] waiting...</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
@@ -630,7 +651,7 @@ body {
 <script src="js/card/cardData.js?v=11"></script>
 
 <script src="js/deck/deckCode.js?v=11"></script>
-<script src="js/game/matchSetup.js?v=18"></script>
+<script src="js/game/matchSetup.js?v=19"></script>
 <script src="js/ui/passwordSaveGuard.js"></script>
 </body>
 </html>

@@ -21,6 +21,18 @@ let inviteSelectedFriend = null;
 let inviteFriendStatusUnsub = null;
 let incomingInviteUnsub = null;
 let latestIncomingInvite = null;
+let inviteDebugLines = [];
+
+function appendInviteDebug(text) {
+  const ts = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  inviteDebugLines.push(`[${ts}] ${text}`);
+  if (inviteDebugLines.length > 28) inviteDebugLines.shift();
+  const box = document.getElementById("inviteDebugLog");
+  if (box) {
+    box.textContent = inviteDebugLines.join("\n");
+    box.scrollTop = box.scrollHeight;
+  }
+}
 
 let selectedDeckId = null;
 let popupSelectedDeckId = null;
@@ -70,6 +82,7 @@ async function initMatchSetup() {
     setupFriendInviteModal();
     setupIncomingInviteWatcher();
     setupIncomingInviteModal();
+    appendInviteDebug("Firebase connected. invite watcher started.");
     addLog("system", "Firebase に接続しました。");
 
     const pendingInviteRoom = (localStorage.getItem("pendingInviteRoom") || "").trim().toUpperCase();
@@ -81,6 +94,7 @@ async function initMatchSetup() {
   } else {
     updateFirebaseStatus("接続エラー", false);
     addLog("system", "Firebase への接続に失敗しました。");
+    appendInviteDebug("Firebase connection failed.");
   }
   firebaseClient.on("connected",    () => { updateFirebaseStatus("Firebase 接続済み ✓", true);  addLog("system", "再接続しました。"); });
   firebaseClient.on("disconnected", () => { updateFirebaseStatus("切断", false); addLog("system", "接続が切断されました。"); });
@@ -648,13 +662,16 @@ function setupFriendInviteModal() {
       const ok = await firebaseClient.sendRoomInvite(target, roomName);
       if (!ok) {
         addLog("system", "ルーム招待の送信に失敗しました（送信条件不正）。");
+        appendInviteDebug(`SEND NG target=${target} room=${roomName} (invalid)`);
         return;
       }
       addLog("system", `「${target}」へルーム招待を送信しました。`);
+      appendInviteDebug(`SEND OK target=${target} room=${roomName}`);
       closeFriendInviteModal();
     } catch (e) {
       console.error("invite send failed", e);
       addLog("system", "ルーム招待の送信に失敗しました。");
+      appendInviteDebug(`SEND ERR target=${target} room=${roomName} err=${e?.message || e}`);
     }
   });
 
@@ -751,10 +768,14 @@ function setupIncomingInviteWatcher() {
   if (!firebaseClient?.watchRoomInvites) return;
   if (incomingInviteUnsub) incomingInviteUnsub();
   incomingInviteUnsub = firebaseClient.watchRoomInvites((list) => {
+    appendInviteDebug(`WATCH tick invites=${Array.isArray(list) ? list.length : 0}`);
     const pending = (list || [])
       .filter((inv) => inv && inv.status === "pending")
       .sort((a, b) => (b.ts || 0) - (a.ts || 0));
     latestIncomingInvite = pending[0] || null;
+    if (latestIncomingInvite) {
+      appendInviteDebug(`WATCH pending from=${latestIncomingInvite.from} room=${latestIncomingInvite.roomName} id=${latestIncomingInvite.id}`);
+    }
     renderIncomingInviteModal();
   });
 }
@@ -769,6 +790,7 @@ function setupIncomingInviteModal() {
 
   rejectBtn.addEventListener("click", async () => {
     if (!latestIncomingInvite?.id) return;
+    appendInviteDebug(`REJECT click id=${latestIncomingInvite.id}`);
     await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "rejected");
     latestIncomingInvite = null;
     renderIncomingInviteModal();
@@ -777,15 +799,18 @@ function setupIncomingInviteModal() {
   acceptBtn.addEventListener("click", async () => {
     if (!latestIncomingInvite?.id) return;
     const roomName = String(latestIncomingInvite.roomName || "").trim().toUpperCase();
+    appendInviteDebug(`ACCEPT click id=${latestIncomingInvite.id} room=${roomName}`);
     await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "accepted");
     latestIncomingInvite = null;
     renderIncomingInviteModal();
     if (!roomName) return;
 
     if (currentRoom && currentPlayerKey) {
+      appendInviteDebug(`ACCEPT leaving current room=${currentRoom}`);
       await leaveRoom();
     }
     document.getElementById("roomNameInput").value = roomName;
+    appendInviteDebug(`ACCEPT joining room=${roomName}`);
     await joinRoom();
   });
 
@@ -802,10 +827,12 @@ function renderIncomingInviteModal() {
   const text = document.getElementById("incomingRoomInviteText");
   if (!modal || !text) return;
   if (!latestIncomingInvite) {
+    appendInviteDebug("MODAL hidden (no pending invite)");
     modal.classList.add("hidden");
     return;
   }
   text.textContent = `${latestIncomingInvite.from} からルーム「${latestIncomingInvite.roomName}」への招待が届いています。`;
+  appendInviteDebug(`MODAL show from=${latestIncomingInvite.from} room=${latestIncomingInvite.roomName}`);
   modal.classList.remove("hidden");
 }
 

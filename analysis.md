@@ -7865,3 +7865,26 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/network/firebase-client.js`
+
+## Round 2026-08-03 (Hotfix 17) — 招待フローのデバッグログを再導入
+
+### 追加
+- `matchSetup.html`
+  - 右下に `#inviteDebugLog` を追加（常時表示）。
+
+- `js/game/matchSetup.js`
+  - `appendInviteDebug()` を追加。
+  - 招待関連イベントをログ出力:
+    - Firebase接続成否
+    - 招待送信 OK/NG/ERR
+    - 監視 tick 件数
+    - pending 招待検出
+    - モーダル表示/非表示
+    - 承諾/拒否クリック
+    - 承諾時の退室/参加
+
+- `matchSetup.html`
+  - `matchSetup.js` を `v=19` に更新。
+
+### 検証
+- `node --check js/game/matchSetup.js`

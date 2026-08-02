@@ -275,13 +275,13 @@
 
   <div class="input-group">
     <label for="nickname">Nickname</label>
-    <input type="text" id="nickname" autocomplete="off" spellcheck="false"
+    <input type="text" id="nickname" name="username" autocomplete="username" spellcheck="false"
            placeholder="ニックネームを入力" maxlength="20">
   </div>
 
   <div class="input-group">
     <label for="password">Password</label>
-    <input type="password" id="password" autocomplete="off" spellcheck="false"
+    <input type="password" id="password" name="password" autocomplete="current-password" spellcheck="false"
            placeholder="パスワードを入力" maxlength="20">
   </div>
 
@@ -300,7 +300,7 @@
     <div class="modalTitle">開発者モード</div>
     <div class="modalBody">
       <p>開発者モードのパスワードを入力してください。</p>
-      <input type="password" id="devPasswordInput" autocomplete="off" spellcheck="false" placeholder="パスワードを入力">
+      <input type="password" id="devPasswordInput" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" spellcheck="false" placeholder="パスワードを入力">
       <div class="modalError" id="devPassError"></div>
     </div>
     <div class="modalActions">
@@ -317,6 +317,7 @@
 
 <!-- Firebase Client -->
 <script src="js/network/firebase-client.js?v=10"></script>
+<script src="js/ui/passwordSaveGuard.js"></script>
 
 <script>
   const firebaseConfig = window.FIREBASE_CONFIG;

@@ -7552,3 +7552,80 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/social/friends.js`
+
+## Round 2026-08-02 (Hotfix 6) — DM不達の主因としてキャッシュ混在を解消
+
+### 観点
+- タイトルDMは `index.html` で読み込む `friends.js` / `firebase-client.js` の版不一致があると、
+  送受信キー仕様変更の片側適用で通信が噛み合わない可能性がある。
+
+### 対応
+- `index.html`
+  - `js/network/firebase-client.js?v=12`
+  - `js/social/friends.js?v=2`
+- `matchSetup.html`
+  - `js/network/firebase-client.js?v=12`
+  - `js/game/matchSetup.js?v=18`
+- `js/network/firebase-client.js`
+  - `watchDirectChat` に監視エラーコールバックを追加して、失敗時にコンソールへ明示出力。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`
+- `node --check js/game/matchSetup.js`
+
+---
+
+## Round 2026-08-02 — Chrome パスワード保存の誤発火抑止（ログイン時のみ有効化）
+
+### 要望
+
+- 不要なテキスト入力欄で Chrome のパスワード保存機能が発火してしまう。
+- パスワード保存の対象はログイン時のみとしたい。
+
+### 対応
+
+- `js/ui/passwordSaveGuard.js` を新規追加。
+  - 監視対象: すべての `input`（初期DOM + 動的追加DOMを `MutationObserver` で追従）
+  - 対象外（ログイン入力）:
+    - `#nickname`
+    - `#password`
+    - `name="username"`
+    - `name="password"`
+  - それ以外の text系 input は自動で抑止属性を付与:
+    - `autocomplete="off"`（`type=password` は `autocomplete="new-password"`）
+    - `autocorrect="off"`
+    - `autocapitalize="off"`
+    - `spellcheck="false"`
+    - `data-lpignore="true"`
+    - `data-1p-ignore="true"`
+
+- 全画面でガードを有効化（HTMLへ読み込み追加）
+  - `deck.html`
+  - `deckSelect.html`
+  - `dev.html`
+  - `game.html`
+  - `index.html`
+  - `login.html`
+  - `matchSetup.html`
+  - `patch-notes.html`
+  - `rule-engine-step1.html`
+  - `rule-engine-step2.html`
+  - `rule-engine-step3.html`
+  - `rule-engine-step4.html`
+
+- `login.html` のログイン入力を正規化
+  - `#nickname` に `name="username"` / `autocomplete="username"`
+  - `#password` に `name="password"` / `autocomplete="current-password"`
+  - 開発者モーダルの `#devPasswordInput` は `autocomplete="new-password"` + ignore属性を付与
+
+### 効果
+
+- ログイン欄以外でのパスワード保存提案を抑止。
+- ログイン欄はブラウザに「正規の認証入力」として明示し、必要時のみ保存提案される状態に統一。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/ui/passwordSaveGuard.js` -> `CHECK_passwordSaveGuard_OK`

@@ -1166,11 +1166,17 @@ class FirebaseClient {
     if (!this.db || !this.username || !targetName) return null;
     const pairKey = this.normalizeChatPair(this.username, targetName);
     const ref = this.db.ref(`directChats/${pairKey}`).orderByKey().limitToLast(100);
-    const listener = ref.on("value", snap => {
-      const rows = [];
-      snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
-      callback(rows);
-    });
+    const listener = ref.on(
+      "value",
+      (snap) => {
+        const rows = [];
+        snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
+        callback(rows);
+      },
+      (error) => {
+        console.error("[FirebaseClient] DM監視エラー:", error?.message || error);
+      }
+    );
     const key = `directChat:${pairKey}`;
     this.listeners.set(key, { ref, listener });
     return () => {

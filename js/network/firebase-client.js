@@ -1054,6 +1054,16 @@ class FirebaseClient {
     return a <= b ? `${a}__${b}` : `${b}__${a}`;
   }
 
+  encodeUserKey(username) {
+    return encodeURIComponent(String(username || "").trim());
+  }
+
+  getDirectChatInboxPath(ownerName, peerName) {
+    const owner = this.encodeUserKey(ownerName);
+    const peer = this.encodeUserKey(peerName);
+    return `friendDm/${owner}/${peer}`;
+  }
+
   async findAccountByExactName(name) {
     if (!this.db || !name) return null;
     const query = this.db.ref("accounts").orderByKey().equalTo(String(name).trim());
@@ -1164,8 +1174,10 @@ class FirebaseClient {
 
   watchDirectChat(targetName, callback) {
     if (!this.db || !this.username || !targetName) return null;
-    const pairKey = this.normalizeChatPair(this.username, targetName);
-    const ref = this.db.ref(`directChats/${pairKey}`).orderByKey().limitToLast(100);
+    const ref = this.db
+      .ref(this.getDirectChatInboxPath(this.username, targetName))
+      .orderByKey()
+      .limitToLast(100);
     const listener = ref.on(
       "value",
       (snap) => {
@@ -1177,7 +1189,7 @@ class FirebaseClient {
         console.error("[FirebaseClient] DM監視エラー:", error?.message || error);
       }
     );
-    const key = `directChat:${pairKey}`;
+    const key = `directChat:${this.username}:${targetName}`;
     this.listeners.set(key, { ref, listener });
     return () => {
       ref.off("value", listener);
@@ -1187,21 +1199,36 @@ class FirebaseClient {
 
   async sendDirectChat(targetName, text, color = "#ffffff") {
     if (!this.db || !this.username || !targetName || !text) return false;
-    const pairKey = this.normalizeChatPair(this.username, targetName);
-    await this.db.ref(`directChats/${pairKey}`).push({
-      from: this.username,
-      to: String(targetName).trim(),
+    const from = String(this.username).trim();
+    const to = String(targetName).trim();
+    if (!from || !to) return false;
+
+    const msgId = this.db.ref(this.getDirectChatInboxPath(from, to)).push().key;
+    if (!msgId) return false;
+
+    const payload = {
+      id: msgId,
+      from,
+      to,
       text: String(text),
       color,
       ts: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+
+    const updates = {};
+    updates[`${this.getDirectChatInboxPath(from, to)}/${msgId}`] = payload;
+    updates[`${this.getDirectChatInboxPath(to, from)}/${msgId}`] = payload;
+    await this.db.ref().update(updates);
     return true;
   }
 
   async fetchDirectChat(targetName, limit = 100) {
     if (!this.db || !this.username || !targetName) return [];
-    const pairKey = this.normalizeChatPair(this.username, targetName);
-    const snap = await this.db.ref(`directChats/${pairKey}`).orderByKey().limitToLast(limit).once("value");
+    const snap = await this.db
+      .ref(this.getDirectChatInboxPath(this.username, targetName))
+      .orderByKey()
+      .limitToLast(limit)
+      .once("value");
     if (!snap.exists()) return [];
     const rows = [];
     snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));

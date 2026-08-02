@@ -7655,3 +7655,39 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node --check js/network/firebase-client.js`
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 8) — DM保存方式を変更（共有ペアキー方式→各ユーザー受信箱方式）
+
+### 背景
+- タイトルDMが依然不安定だったため、保存パス設計を単純化し、
+  受信側が自分の inbox だけ読めば必ず表示される方式へ移行。
+
+### 変更
+- `js/network/firebase-client.js`
+  - 追加:
+    - `encodeUserKey(username)`
+    - `getDirectChatInboxPath(ownerName, peerName)`
+  - `watchDirectChat(targetName)`:
+    - `directChats/{pair}` 監視を廃止。
+    - `friendDm/{owner}/{peer}` 監視へ変更。
+  - `sendDirectChat(targetName, text, color)`:
+    - 1メッセージを multi-location update で双方 inbox に同時書き込み。
+      - `friendDm/{from}/{to}/{msgId}`
+      - `friendDm/{to}/{from}/{msgId}`
+  - `fetchDirectChat(targetName)`:
+    - 自分 inbox から取得する実装へ変更。
+
+- キャッシュバスター更新
+  - `index.html`:
+    - `firebase-client.js?v=14`
+    - `friends.js?v=4`
+  - `matchSetup.html`:
+    - `firebase-client.js?v=14`
+
+### 期待効果
+- 送受信パス不一致を回避。
+- 監視対象が「自分の inbox」に一本化され、表示経路を単純化。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`

@@ -293,7 +293,10 @@
       const ok = await firebaseClient.sendDirectChat(state.selectedFriend, text, color);
       if (!ok && window.showErrorMessage) {
         showErrorMessage("メッセージ送信に失敗しました。");
+        return;
       }
+      const rows = await firebaseClient.fetchDirectChat(state.selectedFriend, 100);
+      renderDirectChat(rows);
     } catch (e) {
       console.error("direct chat send failed", e);
       if (window.showErrorMessage) showErrorMessage("メッセージ送信に失敗しました。");

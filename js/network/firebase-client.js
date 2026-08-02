@@ -1203,22 +1203,23 @@ class FirebaseClient {
     const to = String(targetName).trim();
     if (!from || !to) return false;
 
-    const msgId = this.db.ref(this.getDirectChatInboxPath(from, to)).push().key;
-    if (!msgId) return false;
+    const senderRef = this.db.ref(this.getDirectChatInboxPath(from, to)).push();
+    const receiverRef = this.db.ref(this.getDirectChatInboxPath(to, from)).push();
+    if (!senderRef.key || !receiverRef.key) return false;
 
-    const payload = {
-      id: msgId,
+    const basePayload = {
       from,
       to,
       text: String(text),
       color,
+      clientTs: Date.now(),
       ts: firebase.database.ServerValue.TIMESTAMP
     };
 
-    const updates = {};
-    updates[`${this.getDirectChatInboxPath(from, to)}/${msgId}`] = payload;
-    updates[`${this.getDirectChatInboxPath(to, from)}/${msgId}`] = payload;
-    await this.db.ref().update(updates);
+    await Promise.all([
+      senderRef.set({ id: senderRef.key, ...basePayload }),
+      receiverRef.set({ id: receiverRef.key, ...basePayload })
+    ]);
     return true;
   }
 

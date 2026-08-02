@@ -7691,3 +7691,26 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node --check js/network/firebase-client.js`
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 9) — 「1通目のみ成功」対策
+
+### 症状
+- DM履歴が消え、1通目のみ送受信できる。
+
+### 対応
+- `js/network/firebase-client.js`
+  - `sendDirectChat()` の保存方式を multi-location `update` から、
+    双方 inbox への個別 `push().set()`（`Promise.all`）へ変更。
+  - 付加情報として `clientTs` を追加。
+
+- `js/social/friends.js`
+  - 送信成功後に `fetchDirectChat()` を即時実行して再描画。
+  - これにより監視遅延/不達時でも送信直後表示を担保。
+
+- キャッシュ更新
+  - `index.html`: `firebase-client.js?v=15`, `friends.js?v=5`
+  - `matchSetup.html`: `firebase-client.js?v=15`
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`

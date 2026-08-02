@@ -769,8 +769,23 @@ function setupIncomingInviteWatcher() {
   if (incomingInviteUnsub) incomingInviteUnsub();
   incomingInviteUnsub = firebaseClient.watchRoomInvites((list) => {
     appendInviteDebug(`WATCH tick invites=${Array.isArray(list) ? list.length : 0}`);
+    if (Array.isArray(list) && list.length > 0) {
+      const digest = list
+        .slice(0, 5)
+        .map((inv) => `${inv.id}:${String(inv.status || "(none)")}`)
+        .join(", ");
+      appendInviteDebug(`WATCH statuses ${digest}`);
+    }
+
+    const isPendingInvite = (inv) => {
+      if (!inv) return false;
+      const status = String(inv.status || "").trim().toLowerCase();
+      if (inv.respondedAt) return false;
+      return status === "" || status === "pending" || status === "p";
+    };
+
     const pending = (list || [])
-      .filter((inv) => inv && inv.status === "pending")
+      .filter((inv) => isPendingInvite(inv))
       .sort((a, b) => (b.ts || 0) - (a.ts || 0));
     latestIncomingInvite = pending[0] || null;
     if (latestIncomingInvite) {

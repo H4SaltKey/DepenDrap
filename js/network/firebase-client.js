@@ -1315,6 +1315,7 @@ class FirebaseClient {
       from,
       to,
       status: "pending",
+      clientTs: Date.now(),
       ts: firebase.database.ServerValue.TIMESTAMP
     };
 
@@ -1327,7 +1328,11 @@ class FirebaseClient {
     const encodedRef = this.db.ref(`roomInvites/${this.encodeUserKey(this.username)}`).limitToLast(100);
     const encodedListener = encodedRef.on("value", (snap) => {
       const list = [];
-      snap.forEach((child) => list.push({ id: child.key, ...(child.val() || {}) }));
+      snap.forEach((child) => {
+        const row = { id: child.key, ...(child.val() || {}) };
+        if (!row.status) row.status = "pending";
+        list.push(row);
+      });
       list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
       callback(list);
     });

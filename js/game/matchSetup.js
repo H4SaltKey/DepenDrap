@@ -806,7 +806,7 @@ function setupIncomingInviteModal() {
   rejectBtn.addEventListener("click", async () => {
     if (!latestIncomingInvite?.id) return;
     appendInviteDebug(`REJECT click id=${latestIncomingInvite.id}`);
-    await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "rejected");
+    await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "rejected", latestIncomingInvite.from || "");
     latestIncomingInvite = null;
     renderIncomingInviteModal();
   });
@@ -815,7 +815,7 @@ function setupIncomingInviteModal() {
     if (!latestIncomingInvite?.id) return;
     const roomName = String(latestIncomingInvite.roomName || "").trim().toUpperCase();
     appendInviteDebug(`ACCEPT click id=${latestIncomingInvite.id} room=${roomName}`);
-    await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "accepted");
+    await firebaseClient.respondRoomInvite(latestIncomingInvite.id, "accepted", latestIncomingInvite.from || "");
     latestIncomingInvite = null;
     renderIncomingInviteModal();
     if (!roomName) return;

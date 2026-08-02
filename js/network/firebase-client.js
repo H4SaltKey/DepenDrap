@@ -1344,13 +1344,56 @@ class FirebaseClient {
     };
   }
 
-  async respondRoomInvite(inviteId, status) {
+  async respondRoomInvite(inviteId, status, fromName = "") {
     if (!this.db || !this.username || !inviteId) return false;
-    const encodedPath = `roomInvites/${this.encodeUserKey(this.username)}/${inviteId}`;
-    await Promise.all([
-      this.db.ref(encodedPath).remove().catch(() => {}),
-      this.db.ref(`roomInvites/${this.username}/${inviteId}`).remove().catch(() => {})
+
+    const me = String(this.username).trim();
+    const meEncoded = this.encodeUserKey(me);
+    const from = String(fromName || "").trim();
+    const fromEncoded = from ? this.encodeUserKey(from) : "";
+
+    const encodedRootRef = this.db.ref(`roomInvites/${meEncoded}`);
+    const rawRootRef = this.db.ref(`roomInvites/${me}`);
+
+    const [encSnap, rawSnap] = await Promise.all([
+      encodedRootRef.once("value").catch(() => null),
+      rawRootRef.once("value").catch(() => null)
     ]);
+
+    const updates = {};
+
+    const collectRemovals = (snap, rootPath) => {
+      if (!snap || !snap.exists()) return;
+      snap.forEach((child) => {
+        const key = String(child.key || "");
+        const row = child.val() || {};
+        const rowId = String(row.id || "");
+        const rowFrom = String(row.from || "").trim();
+        const rowFromEncoded = rowFrom ? this.encodeUserKey(rowFrom) : "";
+
+        const isTargetByKey = key === String(inviteId);
+        const isTargetById = rowId && rowId === String(inviteId);
+        const isTargetByFrom = !!from && (rowFrom === from || rowFromEncoded === fromEncoded || key === fromEncoded);
+
+        if (isTargetByKey || isTargetById || isTargetByFrom) {
+          updates[`${rootPath}/${key}`] = null;
+        }
+      });
+    };
+
+    collectRemovals(encSnap, `roomInvites/${meEncoded}`);
+    collectRemovals(rawSnap, `roomInvites/${me}`);
+
+    if (Object.keys(updates).length === 0) {
+      updates[`roomInvites/${meEncoded}/${inviteId}`] = null;
+      updates[`roomInvites/${me}/${inviteId}`] = null;
+      if (fromEncoded) {
+        updates[`roomInvites/${meEncoded}/${fromEncoded}`] = null;
+        updates[`roomInvites/${me}/${fromEncoded}`] = null;
+      }
+    }
+
+    await this.db.ref().update(updates);
     return true;
   }
 }

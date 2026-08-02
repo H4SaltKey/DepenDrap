@@ -379,7 +379,7 @@
               .filter((inv) => inv.from === req.from && inv.status === "pending")
               .sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
             if (pendingFromSameUser?.roomName) {
-              await firebaseClient.respondRoomInvite(pendingFromSameUser.id, "accepted");
+              await firebaseClient.respondRoomInvite(pendingFromSameUser.id, "accepted", pendingFromSameUser.from || "");
               localStorage.setItem("pendingInviteRoom", pendingFromSameUser.roomName || "");
               location.href = "matchSetup.html";
             }
@@ -405,12 +405,12 @@
     el("roomInviteText").textContent = `${invite.from} からルーム「${invite.roomName}」への招待が届いています。`;
     modal.classList.remove("hidden");
     el("roomInviteAcceptBtn").onclick = async () => {
-      await firebaseClient.respondRoomInvite(invite.id, "accepted");
+      await firebaseClient.respondRoomInvite(invite.id, "accepted", invite.from || "");
       localStorage.setItem("pendingInviteRoom", invite.roomName || "");
       location.href = "matchSetup.html";
     };
     el("roomInviteRejectBtn").onclick = async () => {
-      await firebaseClient.respondRoomInvite(invite.id, "rejected");
+      await firebaseClient.respondRoomInvite(invite.id, "rejected", invite.from || "");
       modal.classList.add("hidden");
     };
   }

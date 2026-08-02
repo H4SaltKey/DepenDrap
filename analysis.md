@@ -7888,3 +7888,36 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/game/matchSetup.js`
+
+## Round 2026-08-03 (Hotfix 18) — 承諾/拒否後も招待が復活する問題の対処
+
+### 症状
+- 承諾または拒否後、ページ更新時に同じ招待が再表示される。
+
+### 原因想定
+- 旧形式データ（raw/encoded、id/key 不一致）が残存し、
+  単一パス/単一キーの削除だけでは取り切れていない。
+
+### 対応
+- `js/network/firebase-client.js`
+  - `respondRoomInvite(inviteId, status, fromName)` を強化。
+  - 受信者配下（encoded/raw）の招待を走査し、以下条件に一致する行を一括削除:
+    - key が `inviteId` と一致
+    - row.id が `inviteId` と一致
+    - from が指定送信者と一致（encoded含む）
+  - 走査でヒット0件の場合のフォールバック削除も維持。
+
+- 呼び出し側更新
+  - `js/game/matchSetup.js`:
+    - 承諾/拒否時に `fromName` を渡す。
+  - `js/social/friends.js`:
+    - 承諾/拒否時に `fromName` を渡す。
+
+- キャッシュ更新
+  - `index.html`: `firebase-client.js?v=23`, `friends.js?v=15`
+  - `matchSetup.html`: `firebase-client.js?v=23`, `matchSetup.js?v=21`
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/game/matchSetup.js`
+- `node --check js/social/friends.js`

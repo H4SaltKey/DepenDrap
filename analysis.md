@@ -7517,3 +7517,38 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node --check js/network/firebase-client.js`
 - `node --check js/game/matchSetup.js`
+
+## Round 2026-08-02 (Hotfix 4) — タイトルDM「表示されない/見切れる」問題へのUI対処
+
+### 対応
+- `index.html`
+  - `#userProfile` を固定幅・最大高・縦スクロール対応に変更。
+  - フレンドパネル/DMセクションを縦レイアウトで安定化。
+  - `#friendDmLog` を高さ拡大（140px）・行高調整・折返し改善・可読性向上。
+  - DM空状態メッセージ用スタイル (`.friend-dm-empty`) を追加。
+
+- `js/social/friends.js`
+  - DMが0件時に「メッセージはまだありません。」を表示。
+  - 文字色が黒 (`#000/#000000/black`) の場合は適用を避け、背景同化で見えなくなる問題を回避。
+
+### 目的
+- DMが描画済みでも見えない/画面外にはみ出す/暗色で読めないケースを軽減する。
+
+### 検証
+- `node --check js/social/friends.js`
+
+## Round 2026-08-02 (Hotfix 5) — フレンド検索を入力即時反映へ変更
+
+### 変更
+- `index.html`
+  - フレンド申請モーダルの検索ボタンを削除。
+  - 入力行レイアウトを1カラム化。
+
+- `js/social/friends.js`
+  - `friendSearchInput` の `input` イベントで自動検索（約140msデバウンス）。
+  - 入力/削除/変換のたびに候補を更新。
+  - Enterキー動作は維持（候補未選択なら再検索、選択済みなら申請送信）。
+  - 空入力時の案内文を「入力すると候補表示」に変更。
+
+### 検証
+- `node --check js/social/friends.js`

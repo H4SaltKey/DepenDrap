@@ -9,7 +9,8 @@
     friendReqUnsub: null,
     friendStatusUnsub: null,
     roomInviteUnsub: null,
-    myName: localStorage.getItem("username") || "Player"
+    myName: localStorage.getItem("username") || "Player",
+    searchTimer: null
   };
 
   function el(id) { return document.getElementById(id); }
@@ -18,7 +19,6 @@
     const toggle = el("friendToggleBtn");
     const addBtn = el("friendAddBtn");
     const closeAdd = el("friendAddCancelBtn");
-    const searchBtn = el("friendSearchBtn");
     const sendReqBtn = el("friendRequestSendBtn");
     const dmSendBtn = el("friendDmSendBtn");
     const dmInput = el("friendDmInput");
@@ -32,7 +32,6 @@
     }
     if (addBtn) addBtn.addEventListener("click", openFriendAddModal);
     if (closeAdd) closeAdd.addEventListener("click", closeFriendAddModal);
-    if (searchBtn) searchBtn.addEventListener("click", searchFriendByName);
     if (sendReqBtn) sendReqBtn.addEventListener("click", sendFriendRequestFromModal);
 
     if (dmSendBtn) dmSendBtn.addEventListener("click", sendDirectMessage);
@@ -44,6 +43,13 @@
 
     const searchInput = el("friendSearchInput");
     if (searchInput) {
+      searchInput.addEventListener("input", () => {
+        if (state.searchTimer) clearTimeout(state.searchTimer);
+        state.searchTimer = setTimeout(() => {
+          searchFriendByName();
+        }, 140);
+      });
+
       searchInput.addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
         e.preventDefault();
@@ -74,7 +80,7 @@
     if (!modal) return;
     modal.classList.remove("hidden");
     el("friendSearchInput").value = "";
-    el("friendSearchResult").innerHTML = "<div class='friend-modal-empty'>フレンド名を入力してください。</div>";
+    el("friendSearchResult").innerHTML = "<div class='friend-modal-empty'>フレンド名を入力すると候補が表示されます。</div>";
     el("friendRequestSendBtn").disabled = true;
     el("friendRequestSendBtn").dataset.target = "";
   }
@@ -93,7 +99,7 @@
     sendBtn.dataset.target = "";
 
     if (!name) {
-      resultEl.innerHTML = "<div class='friend-modal-empty'>フレンド名を入力してください。</div>";
+      resultEl.innerHTML = "<div class='friend-modal-empty'>フレンド名を入力すると候補が表示されます。</div>";
       return;
     }
     if (!window.firebaseClient?.db) {
@@ -224,10 +230,20 @@
     const log = el("friendDmLog");
     if (!log) return;
     log.innerHTML = "";
-    (rows || []).forEach((row) => {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) {
+      const empty = document.createElement("div");
+      empty.className = "friend-dm-empty";
+      empty.textContent = "メッセージはまだありません。";
+      log.appendChild(empty);
+      return;
+    }
+    list.forEach((row) => {
       const line = document.createElement("div");
       line.className = `friend-dm-line ${row.from === state.myName ? "mine" : "other"}`;
-      if (row.color) line.style.color = row.color;
+      const color = typeof row.color === "string" ? row.color.trim().toLowerCase() : "";
+      const isUnsafeDark = color === "#000" || color === "#000000" || color === "black";
+      if (color && !isUnsafeDark) line.style.color = color;
       const ts = typeof row.ts === "number" ? row.ts : null;
       const time = ts ? new Date(ts).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "--:--";
       line.textContent = `[${time}] ${row.from}: ${row.text || ""}`;

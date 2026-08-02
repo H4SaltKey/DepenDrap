@@ -40,6 +40,10 @@
     color: #e0d0a0; font-size: 15px; z-index: 10000;
     background: rgba(10,8,20,0.7); padding: 10px 15px;
     border: 1px solid #5a4b27; border-radius: 6px; backdrop-filter: blur(4px);
+    width: min(360px, calc(100vw - 22px));
+    max-height: calc(100vh - 22px);
+    overflow-y: auto;
+    box-sizing: border-box;
   }
   #usernameDisplay { font-weight: bold; letter-spacing: 1px; }
   #firebaseStatusBadge {
@@ -69,7 +73,7 @@
     padding: 5px 8px;
     cursor: pointer;
   }
-  #friendPanel { margin-top: 8px; }
+  #friendPanel { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
   #friendPanel.hidden { display: none; }
   #friendList {
     max-height: 180px;
@@ -130,21 +134,26 @@
     border-radius: 4px;
     cursor: pointer;
   }
+  #friendDmSection { display: flex; flex-direction: column; min-height: 0; }
   #friendDmSection.hidden { display: none; }
   #friendDmLog {
     margin-top: 6px;
-    height: 120px;
-    min-height: 120px;
+    height: 140px;
+    min-height: 140px;
     overflow-y: auto;
     background: rgba(0,0,0,0.35);
     border: 1px solid rgba(199,179,119,0.2);
     border-radius: 4px;
     padding: 4px;
-    font-size: 10px;
+    font-size: 11px;
+    line-height: 1.35;
+    position: relative;
+    z-index: 1;
   }
-  .friend-dm-line { margin-bottom: 3px; word-break: break-all; }
+  .friend-dm-line { margin-bottom: 4px; word-break: break-word; white-space: pre-wrap; text-shadow: 0 1px 2px rgba(0,0,0,0.65); }
   .friend-dm-line.mine { color: #c7b377; }
   .friend-dm-line.other { color: #d8d8d8; }
+  .friend-dm-empty { color: #777; font-size: 11px; padding: 6px 4px; }
   #friendDmInputRow {
     margin-top: 4px;
     display: grid;
@@ -189,7 +198,7 @@
   .friend-modal-title { font-size: 16px; margin-bottom: 10px; }
   .friend-modal-input-row {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr;
     gap: 6px;
     margin-bottom: 8px;
   }
@@ -200,7 +209,7 @@
     border-radius: 4px;
     padding: 6px 8px;
   }
-  #friendSearchBtn, #friendRequestSendBtn, #friendAddCancelBtn, #roomInviteAcceptBtn, #roomInviteRejectBtn {
+  #friendRequestSendBtn, #friendAddCancelBtn, #roomInviteAcceptBtn, #roomInviteRejectBtn {
     border: 1px solid rgba(199,179,119,0.5);
     background: rgba(199,179,119,0.15);
     color: #e0d0a0;
@@ -354,7 +363,6 @@
     <div class="friend-modal-title">フレンドを追加</div>
     <div class="friend-modal-input-row">
       <input id="friendSearchInput" type="text" maxlength="20" placeholder="フレンド名を入力">
-      <button id="friendSearchBtn" type="button">検索</button>
     </div>
     <div id="friendSearchResult"></div>
     <div class="friend-modal-actions">

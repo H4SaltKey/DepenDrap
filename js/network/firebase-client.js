@@ -1300,70 +1300,40 @@ class FirebaseClient {
 
   async sendRoomInvite(targetName, roomName) {
     if (!this.db || !this.username || !targetName || !roomName) return false;
+    const from = String(this.username).trim();
     const to = String(targetName).trim();
     const normalizedRoom = String(roomName).trim().toUpperCase();
-    if (!to || !normalizedRoom) return false;
+    if (!from || !to || !normalizedRoom) return false;
 
+    const fromKey = this.encodeUserKey(from);
     const encodedTo = this.encodeUserKey(to);
-    const inviteId = this.db.ref(`roomInvites/${encodedTo}`).push().key;
-    if (!inviteId) return false;
+    const inviteId = fromKey;
 
     const payload = {
       id: inviteId,
       roomName: normalizedRoom,
-      from: this.username,
+      from,
       to,
       status: "pending",
       ts: firebase.database.ServerValue.TIMESTAMP
     };
 
-    const updates = {};
-    updates[`roomInvites/${to}/${inviteId}`] = payload;
-    updates[`roomInvites/${encodedTo}/${inviteId}`] = payload;
-    await this.db.ref().update(updates);
+    await this.db.ref(`roomInvites/${encodedTo}/${inviteId}`).set(payload);
     return true;
   }
 
   watchRoomInvites(callback) {
     if (!this.db || !this.username) return null;
-    const rawRef = this.db.ref(`roomInvites/${this.username}`).limitToLast(100);
     const encodedRef = this.db.ref(`roomInvites/${this.encodeUserKey(this.username)}`).limitToLast(100);
-
-    let rawList = [];
-    let encodedList = [];
-    const emitMerged = () => {
-      const map = new Map();
-      [...rawList, ...encodedList].forEach((row) => {
-        const key = String(row.id || "");
-        if (!key) return;
-        map.set(key, row);
-      });
-      const merged = Array.from(map.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-      callback(merged);
-    };
-
-    const rawListener = rawRef.on("value", (snap) => {
-      const list = [];
-      snap.forEach((child) => list.push({ id: child.key, ...(child.val() || {}) }));
-      rawList = list;
-      emitMerged();
-    });
-
     const encodedListener = encodedRef.on("value", (snap) => {
       const list = [];
       snap.forEach((child) => list.push({ id: child.key, ...(child.val() || {}) }));
-      encodedList = list;
-      emitMerged();
+      list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      callback(list);
     });
 
-    this.listeners.set(`roomInvites:${this.username}`, {
-      rawRef,
-      encodedRef,
-      rawListener,
-      encodedListener
-    });
+    this.listeners.set(`roomInvites:${this.username}`, { encodedRef, encodedListener });
     return () => {
-      rawRef.off("value", rawListener);
       encodedRef.off("value", encodedListener);
       this.listeners.delete(`roomInvites:${this.username}`);
     };
@@ -1371,16 +1341,10 @@ class FirebaseClient {
 
   async respondRoomInvite(inviteId, status) {
     if (!this.db || !this.username || !inviteId) return false;
-    const safeStatus = status === "accepted" ? "accepted" : "rejected";
-    const updates = {
-      status: safeStatus,
-      respondedAt: firebase.database.ServerValue.TIMESTAMP
-    };
-    const rawPath = `roomInvites/${this.username}/${inviteId}`;
     const encodedPath = `roomInvites/${this.encodeUserKey(this.username)}/${inviteId}`;
     await Promise.all([
-      this.db.ref(rawPath).update(updates).catch(() => {}),
-      this.db.ref(encodedPath).update(updates).catch(() => {})
+      this.db.ref(encodedPath).remove().catch(() => {}),
+      this.db.ref(`roomInvites/${this.username}/${inviteId}`).remove().catch(() => {})
     ]);
     return true;
   }

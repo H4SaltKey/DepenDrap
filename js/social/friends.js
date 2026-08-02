@@ -370,7 +370,8 @@
       row.querySelector('[data-act="accept"]').addEventListener("click", async () => {
         await firebaseClient.acceptFriendRequest(req.from);
         try {
-          const snap = await firebaseClient.db.ref(`roomInvites/${state.myName}`).once("value");
+          const encodedMe = firebaseClient.encodeUserKey(state.myName);
+          const snap = await firebaseClient.db.ref(`roomInvites/${encodedMe}`).once("value");
           if (snap.exists()) {
             const invites = [];
             snap.forEach((child) => invites.push({ id: child.key, ...(child.val() || {}) }));

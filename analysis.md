@@ -7815,3 +7815,53 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/network/firebase-client.js`
 - `node --check js/social/friends.js`
 - `node --check js/game/matchSetup.js`
+
+## Round 2026-08-03 (Hotfix 15) — 招待の「1回目のみ」対策（DM同様の経路不整合を解消）
+
+### 問題仮説
+- 招待保存/監視を raw/encoded 二重化したことで、状態不整合や残留レコードが発生し、
+  2回目以降の表示/受信に影響している可能性。
+
+### 修正
+- `js/network/firebase-client.js`
+  - `sendRoomInvite()`:
+    - 正規経路を `roomInvites/{encodedUsername}` の1本化に戻す。
+  - `watchRoomInvites()`:
+    - 監視は `roomInvites/{encodedUsername}` のみを使用。
+  - `respondRoomInvite()`:
+    - 承諾/拒否時はステータス更新ではなく invite レコードを削除。
+    - 旧raw経路も保守的に同時削除（残骸クリア目的）。
+
+- `js/social/friends.js`
+  - フレンド承諾後に pending 招待を参照するパスを encoded に変更。
+
+- キャッシュ更新
+  - `index.html`: `firebase-client.js?v=20`, `friends.js?v=14`
+  - `matchSetup.html`: `firebase-client.js?v=20`
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`
+- `node --check js/game/matchSetup.js`
+
+## Round 2026-08-03 (Hotfix 16) — 招待を「送信元ごと最新1件」保持に変更
+
+### 要件対応
+- A→B / A→C / A→D など各ペアで、常に最新1件のみを保持。
+- 同じ送信元から同じ宛先へ再送した場合、古い招待を上書き（実質キャンセル）。
+
+### 実装
+- `js/network/firebase-client.js`
+  - `sendRoomInvite()`
+    - 招待IDを `push()` ではなく `fromKey(encodeUserKey(from))` 固定に変更。
+    - 保存先: `roomInvites/{toEncoded}/{fromEncoded}`
+    - 同一ペア再送時は同一キーに `set` されるため、旧レコードは置き換えられる。
+  - `respondRoomInvite()`
+    - 受信側の該当キーを削除（旧raw経路削除も互換で維持）。
+
+- キャッシュ更新
+  - `index.html`: `firebase-client.js?v=21`
+  - `matchSetup.html`: `firebase-client.js?v=21`
+
+### 検証
+- `node --check js/network/firebase-client.js`

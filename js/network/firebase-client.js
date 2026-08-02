@@ -1198,6 +1198,16 @@ class FirebaseClient {
     return true;
   }
 
+  async fetchDirectChat(targetName, limit = 100) {
+    if (!this.db || !this.username || !targetName) return [];
+    const pairKey = this.normalizeChatPair(this.username, targetName);
+    const snap = await this.db.ref(`directChats/${pairKey}`).orderByKey().limitToLast(limit).once("value");
+    if (!snap.exists()) return [];
+    const rows = [];
+    snap.forEach((child) => rows.push({ id: child.key, ...(child.val() || {}) }));
+    return rows;
+  }
+
   async sendRoomInvite(targetName, roomName) {
     if (!this.db || !this.username || !targetName || !roomName) return false;
     const to = String(targetName).trim();

@@ -5,6 +5,8 @@
     friendStatus: {},
     selectedFriend: null,
     chatUnsub: null,
+    chatPollTimer: null,
+    lastChatFingerprint: "",
     friendListUnsub: null,
     friendReqUnsub: null,
     friendStatusUnsub: null,
@@ -213,6 +215,7 @@
       panel.classList.add("hidden");
       if (state.chatUnsub) state.chatUnsub();
       state.chatUnsub = null;
+      stopDirectChatPolling();
       renderDirectChat([]);
       return;
     }
@@ -222,8 +225,34 @@
 
     if (state.chatUnsub) state.chatUnsub();
     state.chatUnsub = firebaseClient.watchDirectChat(name, (rows) => renderDirectChat(rows));
+    startDirectChatPolling(name);
     const input = el("friendDmInput");
     if (input) setTimeout(() => input.focus(), 0);
+  }
+
+  function startDirectChatPolling(targetName) {
+    stopDirectChatPolling();
+    const run = async () => {
+      if (!state.selectedFriend || state.selectedFriend !== targetName) return;
+      try {
+        const rows = await firebaseClient.fetchDirectChat(targetName, 100);
+        const fingerprint = rows.map((r) => r.id).join("|");
+        if (fingerprint !== state.lastChatFingerprint) {
+          renderDirectChat(rows);
+        }
+      } catch (e) {
+        console.warn("direct chat polling failed", e);
+      }
+    };
+    run();
+    state.chatPollTimer = setInterval(run, 1500);
+  }
+
+  function stopDirectChatPolling() {
+    if (state.chatPollTimer) {
+      clearInterval(state.chatPollTimer);
+      state.chatPollTimer = null;
+    }
   }
 
   function renderDirectChat(rows) {
@@ -231,6 +260,7 @@
     if (!log) return;
     log.innerHTML = "";
     const list = Array.isArray(rows) ? rows : [];
+    state.lastChatFingerprint = list.map((r) => r.id).join("|");
     if (!list.length) {
       const empty = document.createElement("div");
       empty.className = "friend-dm-empty";
@@ -336,6 +366,7 @@
 
   function teardownSocialWatchers() {
     if (state.chatUnsub) state.chatUnsub();
+    stopDirectChatPolling();
     if (state.friendListUnsub) state.friendListUnsub();
     if (state.friendReqUnsub) state.friendReqUnsub();
     if (state.friendStatusUnsub) state.friendStatusUnsub();

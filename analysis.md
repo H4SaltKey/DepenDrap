@@ -7629,3 +7629,29 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
 - リビルド相当チェック:
   - `node --check js/ui/passwordSaveGuard.js` -> `CHECK_passwordSaveGuard_OK`
+
+## Round 2026-08-03 (Hotfix 7) — タイトルDM表示の最終フォールバック追加
+
+### 対応方針
+- Realtime監視 (`on value`) が不安定な環境でもDMを表示できるよう、
+  `once('value')` ポーリングを併用。
+
+### 変更
+- `js/network/firebase-client.js`
+  - `fetchDirectChat(targetName, limit)` を追加。
+
+- `js/social/friends.js`
+  - フレンド選択時にリアルタイム監視 + 1.5秒ポーリングを開始。
+  - フレンド解除/画面離脱でポーリング停止。
+  - メッセージID列の fingerprint 比較で変更時のみ再描画。
+
+- `index.html` / `matchSetup.html`
+  - `firebase-client.js` を `v=13` に更新。
+  - `friends.js` を `v=3` に更新。
+
+### 期待効果
+- 監視コールバック不達でも、最大1.5秒遅延でDM表示が復元される。
+
+### 検証
+- `node --check js/network/firebase-client.js`
+- `node --check js/social/friends.js`

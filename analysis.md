@@ -7768,3 +7768,21 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ### 検証
 - `node --check js/social/friends.js`
+
+## Round 2026-08-03 (Hotfix 13) — DMパネルの画面比スケールとカラーパレットはみ出し対策
+
+### 変更
+- `index.html`
+  - `--friend-dm-scale` を導入し、DMパネル/ログ/色UIを画面幅に応じて縮尺。
+  - 小画面（`max-width: 560px`）ではDMパネルを下部固定へ切替。
+  - カラーパレット幅を画面依存にし、`align-right` クラスを追加。
+
+- `js/social/friends.js`
+  - カラーパレット表示時に画面右端はみ出しを検知し、`align-right` を自動付与。
+  - リサイズ時にも再計算。
+
+- `index.html`
+  - `friends.js` のキャッシュバスターを `v=11` に更新。
+
+### 検証
+- `node --check js/social/friends.js`

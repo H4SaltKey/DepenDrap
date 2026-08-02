@@ -60,9 +60,19 @@
     if (dmInput) dmInput.style.color = savedColor;
 
     if (dmColorBtn && dmColorPalette) {
+      const adjustPalettePosition = () => {
+        dmColorPalette.classList.remove("align-right");
+        const rect = dmColorPalette.getBoundingClientRect();
+        if (rect.right > window.innerWidth - 6) {
+          dmColorPalette.classList.add("align-right");
+        }
+      };
+
       dmColorBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        dmColorPalette.style.display = dmColorPalette.style.display === "grid" ? "none" : "grid";
+        const willOpen = dmColorPalette.style.display !== "grid";
+        dmColorPalette.style.display = willOpen ? "grid" : "none";
+        if (willOpen) setTimeout(adjustPalettePosition, 0);
       });
 
       dmColorPalette.querySelectorAll(".friend-dm-color-opt").forEach((opt) => {
@@ -78,6 +88,11 @@
         dmColorPalette.style.display = "none";
       });
       dmColorPalette.addEventListener("click", (e) => e.stopPropagation());
+      window.addEventListener("resize", () => {
+        if (dmColorPalette.style.display === "grid") {
+          setTimeout(adjustPalettePosition, 0);
+        }
+      });
     }
     if (dmInput) {
       dmInput.addEventListener("keydown", (e) => {

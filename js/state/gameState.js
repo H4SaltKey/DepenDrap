@@ -10,7 +10,7 @@ const BASE_INITIAL_STATE = {
   hp: 20,        hpMax: 20,
   shield: 0,      shieldMax: 5,
   defstack: 0,    defstackMax: 0, defstackOverMax: false,
-  atk: 1,        atkMax: 999,
+  atk: 0,        atkMax: 999,
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
   pp: 0,         ppMax: 2,

@@ -451,8 +451,8 @@ function load() {
     }
   } catch {}
   normalizeState();
-  applyLevelStats("player1");
-  applyLevelStats("player2");
+  applyLevelStats("player1", true);
+  applyLevelStats("player2", true);
 }
 
 // ===== サーバー同期ループ =====
@@ -479,8 +479,8 @@ async function syncLoop() {
     }
 
     normalizeState();
-    applyLevelStats("player1");
-    applyLevelStats("player2");
+    applyLevelStats("player1", true);
+    applyLevelStats("player2", true);
     if (typeof update === "function") {
       traceFlow("syncLoop", "call", "update");
       update();
@@ -566,7 +566,10 @@ let LEVEL_STATS = {
 async function loadLevelStats() {
   try {
     const res = await fetch("data/levelStats.json");
-    if (res.ok) LEVEL_STATS = await res.json();
+    if (res.ok) {
+      LEVEL_STATS = await res.json();
+      if (typeof window !== "undefined") window.LEVEL_STATS = LEVEL_STATS;
+    }
   } catch (e) { console.error("levelStats.json load failed", e); }
 }
 
@@ -577,8 +580,14 @@ async function saveLevelStats(stats) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ filename: "data/levelStats.json", data: stats })
     });
-    if (res.ok) { LEVEL_STATS = stats; addGameLog("レベルステータスがサーバーに保存されました。"); }
+    if (res.ok) {
+      LEVEL_STATS = stats;
+      if (typeof window !== "undefined") window.LEVEL_STATS = LEVEL_STATS;
+      if (typeof addGameLog === "function") addGameLog("レベルステータスがサーバーに保存されました。");
+      return true;
+    }
   } catch (e) { console.error("Save failed", e); }
+  return false;
 }
 
 // BASE値 + レベルボーナスで絶対値セット（加算ではない）
@@ -598,6 +607,14 @@ function applyLevelStats(owner, force = false) {
   }
   s.defstackMax = Number(s.def) || 0;
   s._lastAppliedLv = lv;
+}
+
+if (typeof window !== "undefined") {
+  window.LEVEL_MAX = LEVEL_MAX;
+  window.LEVEL_STATS = LEVEL_STATS;
+  window.loadLevelStats = loadLevelStats;
+  window.saveLevelStats = saveLevelStats;
+  window.applyLevelStats = applyLevelStats;
 }
 
 // ===== ログ =====

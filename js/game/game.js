@@ -2150,8 +2150,8 @@ async function handleReload(currentRoom, myKey, opKey) {
       }
 
       normalizeState();
-      applyLevelStats("player1");
-      applyLevelStats("player2");
+      applyLevelStats("player1", true);
+      applyLevelStats("player2", true);
 
       // 再開時は Firebase 側の進行ステータスを尊重し、上書きしない
       console.log("[initGame] 再開ステータスを維持:", state.matchData.status);

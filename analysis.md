@@ -7630,6 +7630,53 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - リビルド相当チェック:
   - `node --check js/ui/passwordSaveGuard.js` -> `CHECK_passwordSaveGuard_OK`
 
+---
+
+## Round 2026-08-09 — 管理者モード: レベルステータス調整ページ追加 / 基礎攻撃力 +1 補正除去
+
+### 要望
+
+- 管理者モードに「レベルアップごとのステータス」を調整するページを追加。
+- 対象ステータスは以下の3つ:
+  - 基礎攻撃力
+  - 基礎防御力
+  - 瞬間防御力
+- ゲーム画面で基礎攻撃力が本来値より 1 多くなっている挙動を排除。
+
+### 対応
+
+- `js/state/gameState.js`
+  - `BASE_INITIAL_STATE.atk` を `1` から `0` に変更。
+  - これにより `LEVEL_STATS.atk` の値がそのまま基礎攻撃力として表示/計算される。
+
+- `js/game/core.js`
+  - `saveLevelStats()` が保存成功時に `true`、失敗時に `false` を返すよう変更。
+  - `LEVEL_STATS` / `LEVEL_MAX` / `loadLevelStats` / `saveLevelStats` / `applyLevelStats` を `window` に公開。
+  - `load()` / `syncLoop()` の `applyLevelStats()` を `force=true` に変更し、保存済みローカル状態に古い `atk:1` が残っていても起動時に再計算されるよう修正。
+
+- `js/game/game.js`
+  - リロード復元後の `applyLevelStats()` を `force=true` に変更。
+
+- `dev.html`
+  - レベルステータス調整ページ用のテーブル/入力/メッセージ表示スタイルを追加。
+
+- `js/dev/cardEditorIDE.js`
+  - Developer Home に `レベルステータス調整` ボタンを追加。
+  - 専用ビュー `buildLevelStatsView()` を追加。
+  - Lv1〜Lv6 の基礎攻撃力/基礎防御力/瞬間防御力を表形式で編集可能化。
+  - 保存は既存 `saveLevelStats()` に接続。
+  - `/api/save-json` が使えない静的環境では `levelStats.json` をダウンロードするフォールバックを追加。
+  - 保存/出力後、ローカルの `LEVEL_STATS` と両プレイヤーのステータスを即時再適用。
+
+### リビルド
+
+- `package.json` 未検出のため `NO_BUILD_SCRIPT`（静的HTML/JS構成）。
+- リビルド相当チェック:
+  - `node --check js/state/gameState.js` -> OK
+  - `node --check js/game/core.js` -> OK
+  - `node --check js/game/game.js` -> OK
+  - `node --check js/dev/cardEditorIDE.js` -> OK
+
 ## Round 2026-08-03 (Hotfix 7) — タイトルDM表示の最終フォールバック追加
 
 ### 対応方針
@@ -7921,3 +7968,20 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/network/firebase-client.js`
 - `node --check js/game/matchSetup.js`
 - `node --check js/social/friends.js`
+
+---
+
+## Round 2026-08-09 — レベルステータス調整ページ追加と基礎攻撃力補正修正
+
+### 対応
+- 管理者モードの Developer Home に `レベルステータス調整` を追加。
+- Lv1〜Lv6 の `基礎攻撃力` / `基礎防御力` / `瞬間防御力` を専用ページで編集可能化。
+- `saveLevelStats()` に成功/失敗の戻り値を追加し、静的環境では `levelStats.json` ダウンロードにフォールバック。
+- `BASE_INITIAL_STATE.atk` を `1` から `0` に変更し、攻撃力0への勝手な +1 補正を除去。
+- 起動/同期/リロード復元時のレベルステータス適用を `force=true` にして、既存保存状態に残った古い攻撃力も再計算。
+
+### 検証
+- `node --check js/state/gameState.js`
+- `node --check js/game/core.js`
+- `node --check js/game/game.js`
+- `node --check js/dev/cardEditorIDE.js`

@@ -458,17 +458,18 @@
   function buildHomeView() {
     const root = document.createElement("div");
     root.className = "devHome";
-    root.innerHTML = `
-      <section class="devCard">
-        <h2>Developer Home</h2>
-        <p>カードエディタを専用IDEとして分離しました。既存資産を壊さず Visual Node / DSL / 旧ブロックを相互変換できます。</p>
-        <div class="actionRow">
-          <button id="openCardEditorBtn">カードエディタを開く</button>
-          <button id="openBatchBtn">カード一括作成プロトコル</button>
-          <button id="openPatchBtn">パッチノート管理</button>
-          <button id="openPresetBtn">ステータスプリセット管理</button>
-        </div>
-      </section>
+	    root.innerHTML = `
+	      <section class="devCard">
+	        <h2>Developer Home</h2>
+	        <p>カードエディタを専用IDEとして分離しました。既存資産を壊さず Visual Node / DSL / 旧ブロックを相互変換できます。</p>
+	        <div class="actionRow">
+	          <button id="openCardEditorBtn">カードエディタを開く</button>
+	          <button id="openBatchBtn">カード一括作成プロトコル</button>
+	          <button id="openLevelStatsBtn">レベルステータス調整</button>
+	          <button id="openPatchBtn">パッチノート管理</button>
+	          <button id="openPresetBtn">ステータスプリセット管理</button>
+	        </div>
+	      </section>
       <section class="devCard">
         <h3>運用メモ</h3>
         <p>旧ブロックシステムは互換レイヤーとして保持。メイン導線はNode/DSL編集です。</p>
@@ -552,30 +553,156 @@
       if (editArea) editArea.style.display = "block";
       renderEntryEditList("");
     });
-    root.querySelector("#entryEditSearch")?.addEventListener("input", (e) => {
-      renderEntryEditList(e.target.value || "");
-    });
-    root.querySelector("#openBatchBtn")?.addEventListener("click", () => {
-      if (typeof window.openCardBatchUploader === "function") window.openCardBatchUploader();
-      else log("openCardBatchUploader が未ロードです");
-    });
-    root.querySelector("#openPatchBtn")?.addEventListener("click", () => {
-      if (typeof window.openPatchNotesEditor === "function") window.openPatchNotesEditor();
-      else log("openPatchNotesEditor が未ロードです");
-    });
+	    root.querySelector("#entryEditSearch")?.addEventListener("input", (e) => {
+	      renderEntryEditList(e.target.value || "");
+	    });
+	    root.querySelector("#openBatchBtn")?.addEventListener("click", () => {
+	      if (typeof window.openCardBatchUploader === "function") window.openCardBatchUploader();
+	      else log("openCardBatchUploader が未ロードです");
+	    });
+	    root.querySelector("#openLevelStatsBtn")?.addEventListener("click", () => {
+	      mountView("levelStats");
+	    });
+	    root.querySelector("#openPatchBtn")?.addEventListener("click", () => {
+	      if (typeof window.openPatchNotesEditor === "function") window.openPatchNotesEditor();
+	      else log("openPatchNotesEditor が未ロードです");
+	    });
     root.querySelector("#openPresetBtn")?.addEventListener("click", () => {
       if (typeof window.openPresetStorageUI === "function") window.openPresetStorageUI();
       else log("openPresetStorageUI が未ロードです");
     });
 
-    return {
-      el: root,
-      mount() {},
-      unmount() {}
-    };
-  }
+	    return {
+	      el: root,
+	      mount() {},
+	      unmount() {}
+	    };
+	  }
 
-  function buildCardEditorView() {
+	  function getLevelStatsSnapshot() {
+	    const stats = (typeof LEVEL_STATS !== "undefined") ? LEVEL_STATS : (window.LEVEL_STATS || {});
+	    return {
+	      atk: Array.from({ length: 6 }, (_, i) => Number(stats.atk?.[i] || 0)),
+	      def: Array.from({ length: 6 }, (_, i) => Number(stats.def?.[i] || 0)),
+	      instantDef: Array.from({ length: 6 }, (_, i) => Number(stats.instantDef?.[i] || 0))
+	    };
+	  }
+
+	  function downloadLevelStats(stats) {
+	    const blob = new Blob([JSON.stringify(stats, null, 2) + "\n"], { type: "application/json" });
+	    const url = URL.createObjectURL(blob);
+	    const a = document.createElement("a");
+	    a.href = url;
+	    a.download = "levelStats.json";
+	    a.click();
+	    URL.revokeObjectURL(url);
+	  }
+
+	  function setLevelStatsLocal(stats) {
+	    if (typeof LEVEL_STATS !== "undefined") LEVEL_STATS = stats;
+	    window.LEVEL_STATS = stats;
+	  }
+
+	  function buildLevelStatsView() {
+	    const root = document.createElement("div");
+	    root.className = "levelStatsPage";
+	    root.innerHTML = `
+	      <section class="devCard">
+	        <div class="levelStatsHeader">
+	          <div>
+	            <h2>レベルステータス調整</h2>
+	            <p>各レベル到達時に適用される基礎攻撃力 / 基礎防御力 / 瞬間防御力を編集します。</p>
+	          </div>
+	          <div class="actionRow" style="margin-top:0;">
+	            <button id="backHomeFromLevelStatsBtn">Developer Home</button>
+	            <button id="reloadLevelStatsBtn">再読込</button>
+	            <button id="downloadLevelStatsBtn">JSON出力</button>
+	            <button id="saveLevelStatsBtn">保存</button>
+	          </div>
+	        </div>
+	      </section>
+	      <section class="devCard">
+	        <div class="levelStatsTableWrap">
+	          <table class="levelStatsTable">
+	            <thead>
+	              <tr>
+	                <th>Lv</th>
+	                <th>基礎攻撃力</th>
+	                <th>基礎防御力</th>
+	                <th>瞬間防御力</th>
+	              </tr>
+	            </thead>
+	            <tbody id="levelStatsEditorBody"></tbody>
+	          </table>
+	        </div>
+	        <div class="levelStatsMsg" id="levelStatsEditorMsg"></div>
+	      </section>
+	    `;
+
+	    const body = root.querySelector("#levelStatsEditorBody");
+	    const msg = root.querySelector("#levelStatsEditorMsg");
+
+	    function render() {
+	      const stats = getLevelStatsSnapshot();
+	      body.innerHTML = "";
+	      for (let lv = 1; lv <= 6; lv += 1) {
+	        const idx = lv - 1;
+	        const tr = document.createElement("tr");
+	        tr.innerHTML = `
+	          <td><strong>Lv${lv}</strong></td>
+	          <td><input type="number" min="0" step="1" data-key="atk" data-idx="${idx}" value="${stats.atk[idx]}"></td>
+	          <td><input type="number" min="0" step="1" data-key="def" data-idx="${idx}" value="${stats.def[idx]}"></td>
+	          <td><input type="number" min="0" step="1" data-key="instantDef" data-idx="${idx}" value="${stats.instantDef[idx]}"></td>
+	        `;
+	        body.appendChild(tr);
+	      }
+	    }
+
+	    function collect() {
+	      const stats = { atk: [], def: [], instantDef: [] };
+	      root.querySelectorAll("#levelStatsEditorBody input").forEach((input) => {
+	        const key = input.dataset.key;
+	        const idx = Number(input.dataset.idx || 0);
+	        stats[key][idx] = Math.max(0, Math.floor(Number(input.value || 0)));
+	      });
+	      return stats;
+	    }
+
+	    root.querySelector("#backHomeFromLevelStatsBtn")?.addEventListener("click", () => mountView("home"));
+	    root.querySelector("#reloadLevelStatsBtn")?.addEventListener("click", async () => {
+	      if (typeof window.loadLevelStats === "function") await window.loadLevelStats();
+	      render();
+	      if (msg) msg.textContent = "再読込しました";
+	    });
+	    root.querySelector("#downloadLevelStatsBtn")?.addEventListener("click", () => {
+	      downloadLevelStats(collect());
+	      if (msg) msg.textContent = "levelStats.json を出力しました";
+	    });
+	    root.querySelector("#saveLevelStatsBtn")?.addEventListener("click", async () => {
+	      const stats = collect();
+	      let saved = false;
+	      if (typeof window.saveLevelStats === "function") saved = await window.saveLevelStats(stats);
+	      if (!saved) setLevelStatsLocal(stats);
+	      if (typeof window.applyLevelStats === "function") {
+	        ["player1", "player2"].forEach((owner) => window.applyLevelStats(owner, true));
+	      }
+	      if (saved) {
+	        if (msg) msg.textContent = "保存しました";
+	      } else {
+	        downloadLevelStats(stats);
+	        if (msg) msg.textContent = "サーバー保存が使えないため JSON を出力しました";
+	      }
+	    });
+
+	    render();
+	    return {
+	      el: root,
+	      mount() {},
+	      unmount() {}
+	    };
+	  }
+
+	  function buildCardEditorView() {
     const root = document.createElement("div");
     root.className = "cardIde";
     root.innerHTML = `
@@ -2657,6 +2784,15 @@
       appRoot.appendChild(view.el);
       state.currentView = view;
       state.view = "cardEditor";
+      view.mount();
+      return;
+    }
+
+    if (name === "levelStats") {
+      const view = buildLevelStatsView();
+      appRoot.appendChild(view.el);
+      state.currentView = view;
+      state.view = "levelStats";
       view.mount();
       return;
     }

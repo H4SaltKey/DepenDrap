@@ -92,6 +92,55 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
+.levelStatsPage {
+  max-width: 980px;
+  margin: 18px auto;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.levelStatsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.levelStatsTableWrap {
+  overflow: auto;
+  border: 1px solid var(--ide-border);
+  border-radius: 8px;
+  background: rgba(8, 14, 24, 0.72);
+}
+.levelStatsTable {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+}
+.levelStatsTable th,
+.levelStatsTable td {
+  padding: 10px;
+  border-bottom: 1px solid var(--ide-border-soft);
+  text-align: left;
+}
+.levelStatsTable th {
+  background: rgba(11, 19, 33, 0.95);
+  color: #b9ceef;
+  font-size: 12px;
+}
+.levelStatsTable input {
+  width: 96px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ide-border);
+  background: #0b1424;
+  color: var(--ide-text);
+}
+.levelStatsMsg {
+  min-height: 20px;
+  color: var(--ide-accent-2);
+  font-size: 13px;
+}
 
 .cardIde {
   height: calc(100dvh - 54px);

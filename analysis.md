@@ -8007,3 +8007,25 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node -e` で `login.html` のインラインスクリプト構文チェック。
 - 結果: `CHECK_login_inline_scripts_OK`
+
+---
+
+## Round 2026-08-26 — ログイン処理の Firebase 初期化漏れ修正
+
+### 事象
+- `initializeFirebase()` が定義されているが、ログイン/登録の実行前に呼ばれていなかった。
+- そのため `db === null` のままになり、Firebase アカウントではなくローカルストレージ経路へ落ちる可能性があった。
+
+### 対応
+- `login.html`
+  - `initializeFirebase()` が成功/失敗を `boolean` で返すよう修正。
+  - `ensureLoginBackendReady()` を追加し、ログイン/登録送信前に Firebase 初期化を必ず試行。
+  - 初期化失敗時のみ既存どおりローカルアカウント経路へフォールバック。
+  - 送信中は `LOGIN/REGISTER` ボタンを一時的に disabled にし、二重送信を抑止。
+  - ログイン成功時に `firebaseClient.username` をログインユーザー名へ同期。
+  - Firebase ログイン成功時に `accounts/{nickname}.lastLogin` を更新。
+  - ローカルログイン成功時も `lastLogin` を更新。
+
+### 検証
+- `node -e` で `login.html` のインラインスクリプト構文チェック。
+- 結果: `CHECK_login_inline_scripts_OK`

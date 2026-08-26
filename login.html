@@ -401,19 +401,31 @@
   /**
    * Firebase を初期化
    */
-  async function initializeFirebase() {
-    console.log("[Login] Firebase 初期化中...");
-    
-    const success = await firebaseClient.initialize(firebaseConfig);
-    
-    if (success) {
-      db = firebaseClient.db;
-      console.log("[Login] ✅ Firebase 初期化成功");
-      console.log("[Login] Project ID:", firebaseConfig.projectId);
-    } else {
-      console.error("[Login] ❌ Firebase 初期化失敗");
-    }
-  }
+	  async function initializeFirebase() {
+	    if (db) return true;
+	    console.log("[Login] Firebase 初期化中...");
+	    
+	    const success = await firebaseClient.initialize(firebaseConfig);
+	    
+	    if (success) {
+	      db = firebaseClient.db;
+	      console.log("[Login] ✅ Firebase 初期化成功");
+	      console.log("[Login] Project ID:", firebaseConfig.projectId);
+	      return true;
+	    } else {
+	      console.error("[Login] ❌ Firebase 初期化失敗");
+	    }
+	    return false;
+	  }
+
+	  async function ensureLoginBackendReady() {
+	    if (db) return true;
+	    const ok = await initializeFirebase();
+	    if (!ok) {
+	      console.warn("[Login] Firebase 初期化に失敗したため、ローカルアカウントで続行します。");
+	    }
+	    return ok;
+	  }
 
   /**
    * メッセージをクリア
@@ -486,17 +498,22 @@
 	        return;
 	      }
 
-      const accountData = accounts[nickname];
-      
+	      const accountData = accounts[nickname];
+	      
 	      if (accountData.password !== password) {
 	        errorMsg.textContent = `アカウント名「${nickname}」は存在しますが、パスワードが異なります。`;
 	        return;
 	      }
 
-      // ログイン成功
-      localStorage.setItem("username", nickname);
-      localStorage.setItem("isOnline", "true");
-      localStorage.setItem("accountId", accountData.id);
+	      accountData.lastLogin = Date.now();
+	      accounts[nickname] = accountData;
+	      localStorage.setItem("accounts", JSON.stringify(accounts));
+
+	      // ログイン成功
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountData.id);
+	      firebaseClient.username = nickname;
       
       console.log("[Login] ✅ ログイン成功（ローカル）:", nickname);
       window.location.href = "index.html";
@@ -520,10 +537,12 @@
 	        return;
 	      }
 
-      // ログイン成功
-      localStorage.setItem("username", nickname);
-      localStorage.setItem("isOnline", "true");
-      localStorage.setItem("accountId", accountData.id);
+	      // ログイン成功
+	      await accountRef.update({ lastLogin: firebase.database.ServerValue.TIMESTAMP });
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountData.id);
+	      firebaseClient.username = nickname;
       
       console.log("[Login] ✅ ログイン成功:", nickname);
       window.location.href = "index.html";
@@ -587,10 +606,11 @@
       accounts[nickname] = accountData;
       localStorage.setItem("accounts", JSON.stringify(accounts));
 
-      // ログイン状態に設定
-      localStorage.setItem("username", nickname);
-      localStorage.setItem("isOnline", "true");
-      localStorage.setItem("accountId", accountId);
+	      // ログイン状態に設定
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountId);
+	      firebaseClient.username = nickname;
 
       successMsg.textContent = "アカウントを作成しました。ゲームを開始します...";
       console.log("[Login] ✅ アカウント作成成功（ローカル）:", nickname);
@@ -623,10 +643,11 @@
 
       await accountRef.set(accountData);
 
-      // ログイン状態に設定
-      localStorage.setItem("username", nickname);
-      localStorage.setItem("isOnline", "true");
-      localStorage.setItem("accountId", accountId);
+	      // ログイン状態に設定
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountId);
+	      firebaseClient.username = nickname;
 
       successMsg.textContent = "アカウントを作成しました。ゲームを開始します...";
       console.log("[Login] ✅ アカウント作成成功:", nickname);
@@ -643,13 +664,25 @@
   /**
    * フォーム送信
    */
-  function handleSubmit() {
-    if (isLoginMode) {
-      doLogin();
-    } else {
-      doRegister();
-    }
-  }
+	  async function handleSubmit() {
+	    if (submitBtn.disabled) return;
+	    submitBtn.disabled = true;
+	    toggleBtn.disabled = true;
+	    clearMessages();
+	    successMsg.textContent = "接続を確認しています...";
+	    try {
+	      await ensureLoginBackendReady();
+	      successMsg.textContent = "";
+	      if (isLoginMode) {
+	        await doLogin();
+	      } else {
+	        await doRegister();
+	      }
+	    } finally {
+	      submitBtn.disabled = false;
+	      toggleBtn.disabled = false;
+	    }
+	  }
 
   // イベントリスナー
 	  submitBtn.addEventListener("click", handleSubmit);

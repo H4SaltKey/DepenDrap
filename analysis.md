@@ -7985,3 +7985,25 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `node --check js/game/core.js`
 - `node --check js/game/game.js`
 - `node --check js/dev/cardEditorIDE.js`
+
+---
+
+## Round 2026-08-26 — ログイン画面の入力欄視認性 / パスワード表示切替 / エラー詳細化
+
+### 要望
+- アカウント名・パスワード入力欄の文字色を黒にし、白背景でも読めるようにする。
+- パスワード入力欄右端に目アイコンを追加し、表示/非表示を切り替えられるようにする。
+- ログイン失敗時に、アカウント名不存在かパスワード不一致かを明記する。
+
+### 対応
+- `login.html`
+  - メインログイン入力欄を白背景 + 黒文字に統一。
+  - Chrome autofill 時も黒文字/白背景を維持する CSS を追加。
+  - パスワード欄を `.password-field` で包み、右端に SVG の目アイコンボタンを追加。
+  - クリック時に `type="password"` / `type="text"` を切り替え、`aria-label` / `aria-pressed` も更新。
+  - ローカル/Firebase 両方のログイン処理で、存在しないアカウント名とパスワード不一致を別メッセージ化。
+  - 登録時に既存アカウント名を別パスワードで上書きしないよう、既存名エラーを明示。
+
+### 検証
+- `node -e` で `login.html` のインラインスクリプト構文チェック。
+- 結果: `CHECK_login_inline_scripts_OK`

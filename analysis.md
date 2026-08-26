@@ -8010,6 +8010,62 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 ---
 
+## Round 2026-08-26 — 未設定アカウントの初回パスワード設定フロー追加
+
+### 要望
+- 既存のログイン用パスワード未設定アカウントについて、次回ログイン時だけパスワード設定画面を出す。
+- アカウント名確認後、アカウント名入力済みでパスワードのみ設定できるようにする。
+
+### 対応
+- `login.html`
+  - `passwordSetupMode` / `passwordSetupAccount` を追加。
+  - ログイン時はパスワード入力前にアカウント存在確認できるよう順序を変更。
+  - アカウントは存在するが `password` 未設定の場合、`enterPasswordSetupMode()` へ遷移。
+  - アカウント名を入力済み/disabledにし、既存フォームを `SET PASSWORD` モードとして再利用。
+  - `doPasswordSetup()` を追加し、Firebase/ローカル両経路で既存 `decks` / `publicDeck` を保持したまま `id` / `nickname` / `password` / `passwordSetAt` / `lastLogin` を保存。
+  - 保存後は通常ログイン状態にして `index.html` へ遷移。
+  - 既にパスワードが設定されたアカウントは通常ログインに戻す。
+
+### 検証
+- `node -e` で `login.html` のインラインスクリプト構文チェック。
+- 結果: `CHECK_login_inline_scripts_OK`
+
+---
+
+## Round 2026-08-26 — Firebaseアカウント状態確認 / H4SaltKey補修
+
+### 確認
+- Firebase Realtime Database の `accounts` を確認。
+- `H4SaltKey` は存在したが、`password` / `id` / `nickname` がなく、デッキ保存用ノードだけが存在する状態だった。
+- 同様に、確認時点の全12アカウントがログイン用フィールド不足だった。
+
+### H4SaltKey補修
+- `accounts/H4SaltKey` に以下を追加。
+  - `id: "H4SaltKey"`
+  - `nickname: "H4SaltKey"`
+  - `password: "hashioki1234"`
+  - `lastLogin: null`
+- 既存の `decks` / `publicDeck` は保持。
+
+### ログイン画面追加修正
+- `login.html`
+  - `hasLoginPassword(accountData)` を追加。
+  - アカウントは存在するが `password` が未設定の場合、パスワード不一致ではなく「ログイン用パスワードが未設定」と表示。
+
+### 補修後確認
+- `H4SaltKey`
+  - `id`: あり
+  - `nickname`: あり
+  - `password`: あり
+  - `decks`: 8件保持
+  - `publicDeck`: 保持
+
+### 検証
+- `node -e` で `login.html` のインラインスクリプト構文チェック。
+- 結果: `CHECK_login_inline_scripts_OK`
+
+---
+
 ## Round 2026-08-26 — ログイン処理の Firebase 初期化漏れ修正
 
 ### 事象

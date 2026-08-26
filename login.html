@@ -377,9 +377,11 @@
 <script src="js/ui/passwordSaveGuard.js"></script>
 
 <script>
-  const firebaseConfig = window.FIREBASE_CONFIG;
-  let db = null;
-  let isLoginMode = true;
+	  const firebaseConfig = window.FIREBASE_CONFIG;
+	  let db = null;
+	  let isLoginMode = true;
+	  let passwordSetupMode = false;
+	  let passwordSetupAccount = null;
 
   // UI 要素
   const nicknameInput = document.getElementById("nickname");
@@ -427,6 +429,33 @@
 	    return ok;
 	  }
 
+	  function hasLoginPassword(accountData) {
+	    return typeof accountData?.password === "string" && accountData.password.length > 0;
+	  }
+
+	  function enterPasswordSetupMode(nickname) {
+	    passwordSetupMode = true;
+	    passwordSetupAccount = nickname;
+	    isLoginMode = false;
+	    clearMessages();
+	    modeTitle.textContent = "SET PASSWORD";
+	    submitBtn.textContent = "SET PASSWORD";
+	    toggleBtn.textContent = "LOGIN";
+	    toggleText.textContent = `アカウント名「${nickname}」は存在しますが、パスワードが未設定です。新しいパスワードを設定してください。`;
+	    nicknameInput.value = nickname;
+	    nicknameInput.disabled = true;
+	    passwordInput.value = "";
+	    passwordInput.placeholder = "設定するパスワードを入力";
+	    successMsg.textContent = "このアカウントは初回ログイン用のパスワード設定が必要です。";
+	    passwordInput.focus();
+	  }
+
+	  function exitPasswordSetupMode() {
+	    passwordSetupMode = false;
+	    passwordSetupAccount = null;
+	    nicknameInput.disabled = false;
+	  }
+
   /**
    * メッセージをクリア
    */
@@ -438,9 +467,22 @@
   /**
    * モードを切り替え
    */
-  function toggleMode() {
-    isLoginMode = !isLoginMode;
-    clearMessages();
+	  function toggleMode() {
+	    if (passwordSetupMode) {
+	      exitPasswordSetupMode();
+	      isLoginMode = true;
+	      clearMessages();
+	      modeTitle.textContent = "LOGIN";
+	      submitBtn.textContent = "LOGIN";
+	      toggleBtn.textContent = "REGISTER";
+	      toggleText.textContent = "アカウントをお持ちでない場合は「REGISTER」をクリック";
+	      passwordInput.value = "";
+	      passwordInput.placeholder = "パスワードを入力";
+	      return;
+	    }
+	    isLoginMode = !isLoginMode;
+	    clearMessages();
+	    nicknameInput.disabled = false;
     
     if (isLoginMode) {
       modeTitle.textContent = "LOGIN";
@@ -460,10 +502,10 @@
   /**
    * ログイン処理
    */
-  async function doLogin() {
-    clearMessages();
-    const nickname = nicknameInput.value.trim();
-    const password = passwordInput.value.trim();
+	  async function doLogin() {
+	    clearMessages();
+	    const nickname = nicknameInput.value.trim();
+	    const password = passwordInput.value.trim();
 
     // バリデーション
     if (!nickname) {
@@ -471,23 +513,13 @@
       return;
     }
 
-    if (!password) {
-      errorMsg.textContent = "パスワードを入力してください。";
-      return;
-    }
+	    if (nickname.length < 2) {
+	      errorMsg.textContent = "ニックネームは2文字以上で入力してください。";
+	      return;
+	    }
 
-    if (nickname.length < 2) {
-      errorMsg.textContent = "ニックネームは2文字以上で入力してください。";
-      return;
-    }
-
-    if (password.length < 4) {
-      errorMsg.textContent = "パスワードは4文字以上で入力してください。";
-      return;
-    }
-
-    // Firebase が初期化されていない場合
-    if (!db) {
+	    // Firebase が初期化されていない場合
+	    if (!db) {
       console.warn("[Login] Firebase が初期化されていません。ローカルストレージを使用します。");
       
       const accountsJson = localStorage.getItem("accounts");
@@ -498,9 +530,24 @@
 	        return;
 	      }
 
-	      const accountData = accounts[nickname];
-	      
-	      if (accountData.password !== password) {
+		      const accountData = accounts[nickname];
+
+		      if (!hasLoginPassword(accountData)) {
+		        enterPasswordSetupMode(nickname);
+		        return;
+		      }
+
+	      if (!password) {
+	        errorMsg.textContent = "パスワードを入力してください。";
+	        return;
+	      }
+
+	      if (password.length < 4) {
+	        errorMsg.textContent = "パスワードは4文字以上で入力してください。";
+	        return;
+	      }
+		      
+		      if (accountData.password !== password) {
 	        errorMsg.textContent = `アカウント名「${nickname}」は存在しますが、パスワードが異なります。`;
 	        return;
 	      }
@@ -530,9 +577,24 @@
 	        return;
 	      }
 
-      const accountData = snapshot.val();
-      
-	      if (accountData.password !== password) {
+		      const accountData = snapshot.val();
+
+		      if (!hasLoginPassword(accountData)) {
+		        enterPasswordSetupMode(nickname);
+		        return;
+		      }
+
+	      if (!password) {
+	        errorMsg.textContent = "パスワードを入力してください。";
+	        return;
+	      }
+
+	      if (password.length < 4) {
+	        errorMsg.textContent = "パスワードは4文字以上で入力してください。";
+	        return;
+	      }
+		      
+		      if (accountData.password !== password) {
 	        errorMsg.textContent = `アカウント名「${nickname}」は存在しますが、パスワードが異なります。`;
 	        return;
 	      }
@@ -555,7 +617,7 @@
   /**
    * アカウント作成処理
    */
-  async function doRegister() {
+	  async function doRegister() {
     clearMessages();
     const nickname = nicknameInput.value.trim();
     const password = passwordInput.value.trim();
@@ -658,12 +720,102 @@
     } catch (error) {
       console.error("[Login] アカウント作成エラー:", error.message);
       errorMsg.textContent = "アカウント作成中にエラーが発生しました。";
-    }
-  }
+	    }
+	  }
 
-  /**
-   * フォーム送信
-   */
+	  async function doPasswordSetup() {
+	    clearMessages();
+	    const nickname = (passwordSetupAccount || nicknameInput.value).trim();
+	    const password = passwordInput.value.trim();
+
+	    if (!nickname) {
+	      errorMsg.textContent = "パスワードを設定するアカウント名が確認できません。LOGINからやり直してください。";
+	      exitPasswordSetupMode();
+	      return;
+	    }
+
+	    if (!password) {
+	      errorMsg.textContent = "設定するパスワードを入力してください。";
+	      return;
+	    }
+
+	    if (password.length < 4) {
+	      errorMsg.textContent = "パスワードは4文字以上で入力してください。";
+	      return;
+	    }
+
+	    if (!db) {
+	      const accountsJson = localStorage.getItem("accounts");
+	      const accounts = accountsJson ? JSON.parse(accountsJson) : {};
+	      const accountData = accounts[nickname];
+
+	      if (!accountData) {
+	        errorMsg.textContent = `アカウント名「${nickname}」は存在しません。LOGINからやり直してください。`;
+	        exitPasswordSetupMode();
+	        return;
+	      }
+
+	      accountData.id = accountData.id || nickname;
+	      accountData.nickname = accountData.nickname || nickname;
+	      accountData.password = password;
+	      accountData.passwordSetAt = Date.now();
+	      accountData.lastLogin = Date.now();
+	      accounts[nickname] = accountData;
+	      localStorage.setItem("accounts", JSON.stringify(accounts));
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountData.id);
+	      firebaseClient.username = nickname;
+	      successMsg.textContent = "パスワードを設定しました。ゲームを開始します...";
+	      setTimeout(() => {
+	        window.location.href = "index.html";
+	      }, 800);
+	      return;
+	    }
+
+	    try {
+	      const accountRef = db.ref(`accounts/${nickname}`);
+	      const snapshot = await accountRef.once('value');
+
+	      if (!snapshot.exists()) {
+	        errorMsg.textContent = `アカウント名「${nickname}」は存在しません。LOGINからやり直してください。`;
+	        exitPasswordSetupMode();
+	        return;
+	      }
+
+	      const accountData = snapshot.val() || {};
+	      if (hasLoginPassword(accountData)) {
+	        errorMsg.textContent = `アカウント名「${nickname}」には既にパスワードが設定されています。LOGINからログインしてください。`;
+	        exitPasswordSetupMode();
+	        return;
+	      }
+
+	      const accountId = accountData.id || nickname;
+	      await accountRef.update({
+	        id: accountId,
+	        nickname,
+	        password,
+	        passwordSetAt: firebase.database.ServerValue.TIMESTAMP,
+	        lastLogin: firebase.database.ServerValue.TIMESTAMP
+	      });
+
+	      localStorage.setItem("username", nickname);
+	      localStorage.setItem("isOnline", "true");
+	      localStorage.setItem("accountId", accountId);
+	      firebaseClient.username = nickname;
+	      successMsg.textContent = "パスワードを設定しました。ゲームを開始します...";
+	      setTimeout(() => {
+	        window.location.href = "index.html";
+	      }, 800);
+	    } catch (error) {
+	      console.error("[Login] パスワード設定エラー:", error.message);
+	      errorMsg.textContent = "パスワード設定中にエラーが発生しました。";
+	    }
+	  }
+
+	  /**
+	   * フォーム送信
+	   */
 	  async function handleSubmit() {
 	    if (submitBtn.disabled) return;
 	    submitBtn.disabled = true;
@@ -673,7 +825,9 @@
 	    try {
 	      await ensureLoginBackendReady();
 	      successMsg.textContent = "";
-	      if (isLoginMode) {
+	      if (passwordSetupMode) {
+	        await doPasswordSetup();
+	      } else if (isLoginMode) {
 	        await doLogin();
 	      } else {
 	        await doRegister();

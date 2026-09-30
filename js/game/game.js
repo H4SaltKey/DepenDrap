@@ -2459,7 +2459,15 @@ function startTurnDraw() {
   const m = state.matchData || {};
   const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
-  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+  if (window.EffectEngine && typeof window.EffectEngine.expireGrantedEffectsAtTurnStart === "function") {
+    window.EffectEngine.expireGrantedEffectsAtTurnStart(me);
+  }
+  if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardDraw === "function") {
+    window.PlayerActionResolver.resolveCardDraw(me, 1, {
+      sourceCardId: String(rawId || ""),
+      source: "turn_draw"
+    });
+  } else if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
     try {
       window.CardEffectRuntimeV2.emitGameEvent("OnTurnStart", {
         owner: me,
@@ -2534,11 +2542,17 @@ function startTurnDraw() {
       console.warn("[startTurnDraw] OnDraw emit failed:", e);
     }
   }
+  if (!(window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardDraw === "function")
+    && window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+    window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onDraw", { amount: 1, source: "turn_draw" });
+    window.EffectEngine.triggerZoneCardEffects(me, "skill", "onDraw", { amount: 1, source: "turn_draw" });
+  }
 
   // PP +1（上限まで）
   const currentPp = Number(myState.pp) || 0;
   const maxPp = Number(myState.ppMax) || 2;
-  myState.pp = Math.min(currentPp + 1, maxPp);
+  if (typeof window.addVal === "function") window.addVal(me, "pp", 1);
+  else myState.pp = Math.min(currentPp + 1, maxPp);
 
   // 手札整列
   if (typeof window.organizeHands === "function") window.organizeHands();

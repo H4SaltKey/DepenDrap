@@ -87,7 +87,7 @@
     row.lastAt = now();
   }
 
-  function recordDelta(owner, statKey, before, after, mode) {
+  function recordDelta(owner, statKey, before, after, mode, requestedDelta = null) {
     const o = ensureOwner(owner);
     const key = String(statKey || "unknown");
     const b = Number(before);
@@ -99,18 +99,21 @@
     const globalGame = ensureStat(tracker.global.game, key);
     const globalTurn = ensureStat(tracker.global.turn, key);
 
-    const delta = a - b;
+    const actualDelta = a - b;
+    const requested = Number(requestedDelta);
+      const hasRequestedDelta = requestedDelta != null && Number.isFinite(requested);
+      const recordedDelta = mode === "add" && hasRequestedDelta ? requested : actualDelta;
     [ownerGame, ownerTurn, globalGame, globalTurn].forEach((node) => {
       node.lastBefore = b;
       node.lastAfter = a;
       node.lastAt = now();
       if (mode === "set") node.setCount += 1;
-      if (delta > 0) {
+        if (recordedDelta > 0) {
         node.incCount += 1;
-        node.incAmount += delta;
-      } else if (delta < 0) {
+          node.incAmount += recordedDelta;
+        } else if (recordedDelta < 0) {
         node.decCount += 1;
-        node.decAmount += Math.abs(delta);
+          node.decAmount += Math.abs(recordedDelta);
       }
     });
   }
@@ -216,7 +219,7 @@
         const result = original.apply(this, arguments);
         const after = Number(w.state?.[owner]?.[key]);
         if (Number.isFinite(before) && Number.isFinite(after)) {
-          recordDelta(owner, key, before, after, "add");
+          recordDelta(owner, key, before, after, "add", delta);
         }
         return result;
       };

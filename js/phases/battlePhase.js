@@ -61,6 +61,9 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     }
     window.EffectEngine.triggerZoneCardEffects(me, "attacker", "onTurnEnd", { targetOwner: me });
     window.EffectEngine.triggerZoneCardEffects(me, "skill", "onTurnEnd", { targetOwner: me });
+    if (typeof window.EffectEngine.expireGrantedEffectsAtTurnEnd === "function") {
+      window.EffectEngine.expireGrantedEffectsAtTurnEnd(me);
+    }
   }
 
   const op          = me === "player1" ? "player2" : "player1";

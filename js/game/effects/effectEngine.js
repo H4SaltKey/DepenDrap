@@ -1,5 +1,6 @@
 (function() {
   const DSL_FORMAT = "dependrap.dsl.v1";
+  const EFFECTS_FORMAT = "dependrap.effects.v1";
   const RUNTIME_QUEUE_LIMIT = 200;
   const runtimeQueues = {
     timelineQueue: [],
@@ -92,6 +93,11 @@
       return context?.event?.[key] ?? null;
     }
     const [scope, key] = refPath.split(".");
+    if (["thisCard", "sourceCard", "card"].includes(scope) && ["attack", "atk"].includes(key)) {
+      const base = Number(context?.sourceProfile?.attack || 0);
+      const bonus = Number(context?.sourceCard?.dataset?.attackBonus || 0);
+      return Math.max(0, base + bonus);
+    }
     const owner = scope === "opponent" ? context.opponent : context.owner;
     const state = getPlayer(owner);
     if (!state) return null;
@@ -433,9 +439,13 @@
         ? {
           mode: String(effect.duration.mode || "turn"),
           turns: Math.max(0, Number(effect.duration.turns || 0)),
-          counts: Math.max(0, Number(effect.duration.counts || 0))
+          counts: Math.max(0, Number(effect.duration.counts || 0)),
+          owner: String(effect.duration.owner || context.owner || targetOwner),
+          remainingUses: effect.duration.remainingUses == null
+            ? null
+            : Math.max(0, Number(effect.duration.remainingUses || 0))
         }
-        : { mode: "turn", turns: 1, counts: 0 },
+        : { mode: "turn", turns: 1, counts: 0, owner: String(context.owner || targetOwner) },
       grantedEffects: Array.isArray(effect.grantedEffects) ? effect.grantedEffects : [],
       createdAt: Date.now()
     };
@@ -479,13 +489,20 @@
     return {
       mode: String(src.mode || "turn"),
       turns: Math.max(0, Number(src.turns || 0)),
-      counts: Math.max(0, Number(src.counts || 0))
+      counts: Math.max(0, Number(src.counts || 0)),
+      owner: String(src.owner || ""),
+      remainingUses: src.remainingUses == null ? null : Math.max(0, Number(src.remainingUses || 0))
     };
   }
 
-  function shouldRunGrantedEffects(granted, eventName) {
+  function shouldRunGrantedEffects(granted, eventName, context) {
     const mode = String(granted?.duration?.mode || "turn");
     if (mode === "turn") return eventName === "onTurnStart";
+    if (mode === "nextAttack") {
+      return eventName === "onAttack"
+        && String(granted?.duration?.attackType || "skill") === "skill"
+        && String(context?.event?.attackType || "") === "skill";
+    }
     return true;
   }
 
@@ -509,7 +526,58 @@
     if (mode === "count") return counts <= 0;
     if (mode === "turn") return turns <= 0;
     if (mode === "both") return turns <= 0 || counts <= 0;
+    if (mode === "nextAttack") return Number(granted?.duration?.remainingUses ?? 1) <= 0;
     return false;
+  }
+
+  function expireGrantedEffectsAtTurnStart(turnOwner) {
+    const owner = String(turnOwner || "");
+    if (!owner || !window.state) return 0;
+    let removedCount = 0;
+    ["player1", "player2"].forEach((holder) => {
+      const state = getPlayer(holder);
+      if (!state || !Array.isArray(state.grantedEffects)) return;
+      const removed = state.grantedEffects.filter((effect) => (
+        String(effect?.duration?.mode || "") === "untilOwnTurnStart"
+        && String(effect?.duration?.owner || holder) === owner
+      ));
+      if (removed.length === 0) return;
+      state.grantedEffects = state.grantedEffects.filter((effect) => !removed.includes(effect));
+      removedCount += removed.length;
+      removed.forEach((effect) => emitGrantedEffectLifecycle("OnEffectRemoved", holder, effect, {
+        owner,
+        event: { name: "onTurnStart", zoneType: "turn" }
+      }));
+      if (typeof window.pushMyStateDebounced === "function" && holder === meRole()) {
+        window.pushMyStateDebounced();
+      }
+    });
+    return removedCount;
+  }
+
+  function expireGrantedEffectsAtTurnEnd(turnOwner) {
+    const owner = String(turnOwner || "");
+    if (!owner || !window.state) return 0;
+    let removedCount = 0;
+    ["player1", "player2"].forEach((holder) => {
+      const state = getPlayer(holder);
+      if (!state || !Array.isArray(state.grantedEffects)) return;
+      const removed = state.grantedEffects.filter((effect) => (
+        String(effect?.duration?.mode || "") === "thisTurn"
+        && String(effect?.duration?.owner || holder) === owner
+      ));
+      if (removed.length === 0) return;
+      state.grantedEffects = state.grantedEffects.filter((effect) => !removed.includes(effect));
+      removedCount += removed.length;
+      removed.forEach((effect) => emitGrantedEffectLifecycle("OnEffectRemoved", holder, effect, {
+        owner,
+        event: { name: "onTurnEnd", zoneType: "turn" }
+      }));
+      if (typeof window.pushMyStateDebounced === "function" && holder === meRole()) {
+        window.pushMyStateDebounced();
+      }
+    });
+    return removedCount;
   }
 
   function executeGrantedEffects(context) {
@@ -536,9 +604,10 @@
       }
 
       let didApply = false;
-      if (shouldRunGrantedEffects(granted, eventName)) {
+      if (shouldRunGrantedEffects(granted, eventName, context)) {
         const effects = Array.isArray(granted.grantedEffects) ? granted.grantedEffects : [];
         effects.forEach((effect, idx) => {
+          if (effect?.trigger && normalizeEffectTrigger(effect.trigger) !== normalizeEffectTrigger(eventName)) return;
           const localContext = {
             ...context,
             event: {
@@ -555,6 +624,10 @@
 
       if ((granted.duration.mode === "count" || granted.duration.mode === "both") && didApply) {
         granted.duration.counts = Math.max(0, Number(granted.duration.counts || 0) - 1);
+        changed = true;
+      }
+      if (granted.duration.mode === "nextAttack" && didApply) {
+        granted.duration.remainingUses = Math.max(0, Number(granted.duration.remainingUses ?? 1) - 1);
         changed = true;
       }
       if (shouldConsumeTurn(granted, context)) {
@@ -850,6 +923,17 @@
         });
         return { applied: true, type, changed };
       }
+      if (type === "CONSUME_PP") {
+        if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
+        const changed = [];
+        targetOwners.forEach((targetOwner) => {
+          const before = Number(getPlayer(targetOwner)?.pp || 0);
+          const consumed = Math.min(before, Math.max(0, amount));
+          if (consumed > 0 && typeof window.addVal === "function") window.addVal(targetOwner, "pp", -consumed);
+          changed.push({ owner: targetOwner, stat: "pp", before, after: Number(getPlayer(targetOwner)?.pp || before), consumed });
+        });
+        return { applied: true, type, changed };
+      }
       if (type === "SET_PP_MIN") {
         if (playerTarget.invalidReason) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: playerTarget.invalidReason };
         const changed = [];
@@ -858,8 +942,12 @@
           if (s) {
             const before = Number(s.pp || 0);
             const max = Number(s.ppMax || 2);
-            s.pp = Math.max(Number(s.pp || 0), Math.min(max, Math.max(0, amount)));
-            if (typeof window.pushMyStateDebounced === "function" && targetOwner === meRole()) window.pushMyStateDebounced();
+            const targetPp = Math.max(Number(s.pp || 0), Math.min(max, Math.max(0, amount)));
+            if (targetPp > Number(s.pp || 0) && typeof window.addVal === "function") {
+              window.addVal(targetOwner, "pp", targetPp - Number(s.pp || 0));
+            } else {
+              s.pp = targetPp;
+            }
             changed.push({ owner: targetOwner, stat: "pp", before, after: Number(s.pp || 0) });
           }
         });
@@ -1091,6 +1179,257 @@
     return currentZone !== originZoneType;
   }
 
+  function normalizeEffectTrigger(trigger) {
+    const value = String(trigger || "");
+    const aliases = {
+      summon: "onSummon",
+      onPlay: "onSummon",
+      OnPlay: "onSummon",
+      attack: "onAttack",
+      leave: "onLeave",
+      turnStart: "onTurnStart",
+      turnEnd: "onTurnEnd",
+      damage: "onDamage",
+      heal: "onHeal",
+      ppChange: "onPpChange",
+      OnPPChange: "onPpChange",
+      cardDraw: "onDraw",
+      cardUse: "onCardUse"
+    };
+    return aliases[value] || value;
+  }
+
+  function normalizeProgramAction(action) {
+    const aliases = {
+      damage: "DAMAGE",
+      heal: "HEAL",
+      addHp: "HEAL",
+      addAttack: "ADD_ATK",
+      addPP: "RECOVER_PP",
+      recoverPP: "RECOVER_PP",
+      consumePP: "CONSUME_PP",
+      setPPMin: "SET_PP_MIN",
+      addShield: "ADD_SHIELD",
+      draw: "DRAW",
+      copyCard: "DUPLICATE_SOURCE_TO_HAND",
+      grantEffect: "GRANT_EFFECT_BUNDLE",
+      removeEffect: "REMOVE_STATUS"
+    };
+    const rawType = String(action?.type || "");
+    const type = aliases[rawType] || rawType;
+    const normalized = {
+      ...action,
+      type,
+      amount: action?.amount ?? action?.value ?? 1
+    };
+    if (action?.condition != null) {
+      normalized.useCondition = true;
+      normalized.condition = action.condition;
+    }
+    if (!normalized.target) {
+      normalized.target = type === "DAMAGE" ? "current_target" : "self_player";
+    }
+    if (!normalized.targetType) {
+      if (["DRAW_CARD", "HEAL", "DAMAGE", "RECOVER_PP", "CONSUME_PP", "SET_PP_MIN", "ADD_SHIELD", "SET_HP"].includes(type)) {
+        normalized.targetType = "player";
+      } else if (["MOVE_SOURCE_TO_GRAVE", "MOVE_SOURCE_TO_HAND", "MOVE_SOURCE_TO_DECK", "DUPLICATE_SOURCE_TO_HAND", "FETCH_CARD", "PLAY_SOURCE_TO_FIELD", "REVEAL_CARD"].includes(type)) {
+        normalized.targetType = "card";
+        normalized.cardTarget = action?.cardTarget || action?.target || "this_card";
+      }
+    }
+    if (type === "ADD_ATK") {
+      normalized.atkMode = action?.mode || action?.atkMode || "increase";
+      normalized.atkTarget = action?.target || action?.atkTarget || "this_card";
+      normalized.target = action?.ownerTarget || "self_player";
+    }
+    if (type === "DUPLICATE_SOURCE_TO_HAND") {
+      normalized.cardTarget = action?.cardTarget || action?.target || "this_card";
+    }
+    if (type === "GRANT_EFFECT_BUNDLE" && action?.duration) {
+      normalized.duration = action.duration;
+    }
+    if (type === "GRANT_EFFECT_BUNDLE" && Array.isArray(action?.grantedEffects)) {
+      normalized.grantedEffects = action.grantedEffects.map((effect) => {
+        if (!effect?.action) return effect;
+        return {
+          ...normalizeProgramAction(effect.action),
+          trigger: effect.trigger ? normalizeEffectTrigger(effect.trigger) : undefined
+        };
+      });
+    }
+    return normalized;
+  }
+
+  function normalizeProgramDuration(duration, context) {
+    if (duration && typeof duration === "object") {
+      return { ...duration, owner: duration.owner || context?.owner || "" };
+    }
+    if (duration === "permanent") return { mode: "permanent", owner: context?.owner || "" };
+    if (duration === "thisTurn") return { mode: "thisTurn", owner: context?.owner || "" };
+    if (duration === "untilOwnTurnStart") {
+      return { mode: "untilOwnTurnStart", owner: context?.owner || "" };
+    }
+    if (duration === "nextAttack") {
+      return { mode: "nextAttack", remainingUses: 1, attackType: "skill", owner: context?.owner || "" };
+    }
+    return null;
+  }
+
+  function effectLimitState(sourceCard) {
+    if (!sourceCard || typeof sourceCard !== "object") return null;
+    if (!sourceCard.__effectLimitState) {
+      let saved = {};
+      try {
+        saved = JSON.parse(sourceCard.dataset?.effectLimits || "{}");
+      } catch (_) {}
+      sourceCard.__effectLimitState = {
+        used: {
+          once: Object.assign(Object.create(null), saved.used?.once || {}),
+          onceWhileOnField: Object.assign(Object.create(null), saved.used?.onceWhileOnField || {})
+        },
+        turnKeys: Object.assign(Object.create(null), saved.turnKeys || {})
+      };
+    }
+    return sourceCard.__effectLimitState;
+  }
+
+  function persistEffectLimitState(sourceCard, state) {
+    if (!sourceCard?.dataset) return;
+    const hasUsed = Object.values(state.used).some((values) => Object.keys(values).length > 0);
+    if (!hasUsed && Object.keys(state.turnKeys).length === 0) {
+      delete sourceCard.dataset.effectLimits;
+      return;
+    }
+    sourceCard.dataset.effectLimits = JSON.stringify(state);
+  }
+
+  function effectTurnKey(context) {
+    const match = window.state?.matchData || {};
+    return `${Number(match.round || 0)}:${Number(match.turn || 0)}:${String(context?.owner || match.turnPlayer || "")}`;
+  }
+
+  function clearCardEffectLimits(sourceCard, types = null) {
+    const state = effectLimitState(sourceCard);
+    if (!state) return;
+    const selected = types == null ? null : new Set(Array.isArray(types) ? types : [types]);
+    if (!selected || selected.has("once")) state.used.once = Object.create(null);
+    if (!selected || selected.has("onceWhileOnField")) state.used.onceWhileOnField = Object.create(null);
+    if (!selected || selected.has("oncePerTurn")) {
+      state.turnKeys = Object.create(null);
+    }
+    persistEffectLimitState(sourceCard, state);
+  }
+
+  function isEffectLimitReached(limit, index, context) {
+    const type = typeof limit === "string" ? limit : String(limit?.type || "");
+    if (!type) return false;
+    if (!["once", "oncePerTurn", "onceWhileOnField"].includes(type)) return false;
+    const state = effectLimitState(context?.sourceCard);
+    if (!state) return false;
+    if (type === "oncePerTurn") return state.turnKeys[index] === effectTurnKey(context);
+    return state.used[type][index] === true;
+  }
+
+  function consumeEffectLimit(limit, index, context) {
+    const type = typeof limit === "string" ? limit : String(limit?.type || "");
+    const state = effectLimitState(context?.sourceCard);
+    if (!state) return;
+    if (type === "oncePerTurn") state.turnKeys[index] = effectTurnKey(context);
+    else if (type === "once" || type === "onceWhileOnField") state.used[type][index] = true;
+    persistEffectLimitState(context?.sourceCard, state);
+  }
+
+  function executeCardEffects(program, context) {
+    if (!program || program.format !== EFFECTS_FORMAT || !Array.isArray(program.effects)) {
+      return { handled: false, effects: [], triggerReports: [] };
+    }
+    const eventName = normalizeEffectTrigger(context?.event?.name);
+    const matched = program.effects
+      .map((definition, index) => ({ definition, index }))
+      .filter(({ definition }) => normalizeEffectTrigger(definition?.trigger) === eventName);
+    const results = [];
+    const triggerReports = [];
+    const originZoneType = String(context?.event?.zoneType || context?.sourceCard?.dataset?.zoneType || "");
+
+    for (const { definition, index } of matched) {
+      const type = String(definition?.action?.type || "UNKNOWN");
+      const report = { on: eventName, effects: [] };
+      if (definition?.condition && !ConditionEvaluator.evaluateCondition(definition.condition, context, {})) {
+        const skipped = { applied: false, type, skippedByCondition: true };
+        results.push(skipped);
+        report.effects.push(skipped);
+        triggerReports.push(report);
+        continue;
+      }
+      const limitType = typeof definition?.limit === "string" ? definition.limit : String(definition?.limit?.type || "");
+      if (limitType && !["once", "oncePerTurn", "onceWhileOnField"].includes(limitType)) {
+        const skipped = { applied: false, type, skippedByUnsupportedLimit: true };
+        results.push(skipped);
+        report.effects.push(skipped);
+        triggerReports.push(report);
+        continue;
+      }
+      if (isEffectLimitReached(definition?.limit, index, context)) {
+        const skipped = { applied: false, type, skippedByLimit: true };
+        results.push(skipped);
+        report.effects.push(skipped);
+        triggerReports.push(report);
+        continue;
+      }
+
+      const action = normalizeProgramAction(definition.action);
+      let requestedDuration = definition.duration;
+      if (requestedDuration === "instant" && action.type !== "GRANT_EFFECT_BUNDLE") requestedDuration = null;
+      if (action.type === "GRANT_EFFECT_BUNDLE" && requestedDuration == null && action.duration == null) {
+        const skipped = { applied: false, type, skippedByMissingDuration: true };
+        results.push(skipped);
+        report.effects.push(skipped);
+        triggerReports.push(report);
+        continue;
+      }
+      if (requestedDuration == null && action.type === "GRANT_EFFECT_BUNDLE" && typeof action.duration === "string") {
+        requestedDuration = action.duration;
+      }
+      if (requestedDuration != null) {
+        if (action.type !== "GRANT_EFFECT_BUNDLE") {
+          const skipped = { applied: false, type, skippedByUnsupportedDuration: true };
+          results.push(skipped);
+          report.effects.push(skipped);
+          triggerReports.push(report);
+          continue;
+        }
+        const duration = action.duration && typeof action.duration === "object"
+          ? action.duration
+          : normalizeProgramDuration(requestedDuration, context);
+        if (!duration) {
+          const skipped = { applied: false, type, skippedByUnsupportedDuration: true };
+          results.push(skipped);
+          report.effects.push(skipped);
+          triggerReports.push(report);
+          continue;
+        }
+        action.duration = duration;
+      }
+      const localContext = {
+        ...context,
+        event: { ...(context?.event || {}), __chain: { executedOrders: [] }, __effectOrder: index + 1 }
+      };
+      let result;
+      try {
+        result = EffectExecutor.executeEffect(action, localContext, {});
+      } catch (error) {
+        result = { applied: false, type: action.type, error: String(error?.message || error || "unknown-error") };
+      }
+      if (result?.applied) consumeEffectLimit(definition?.limit, index, context);
+      results.push(result);
+      report.effects.push(result);
+      triggerReports.push(report);
+      if (result?.flowBreak || shouldBreakBySourceZone(localContext, originZoneType)) break;
+    }
+
+    return { handled: true, effects: results, triggerReports };
+  }
+
   function notifyDebug(context, payload) {
     const reporter = context?.debugReporter;
     if (typeof reporter === "function") {
@@ -1113,6 +1452,7 @@
   }
 
   function execute(cardDsl, context) {
+    if (cardDsl?.format === EFFECTS_FORMAT) return executeCardEffects(cardDsl, context);
     if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [], triggerReports: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
     notifyDebug(context, {
@@ -1334,10 +1674,13 @@
     cards.forEach((cardEl) => {
       const profile = window.CardCombatData?.getResolvedCardData?.(cardEl.dataset.id);
       if (!profile) return;
-      const dsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
-        ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
-        : profile?.effectDsl;
-      if (!dsl || dsl.format !== DSL_FORMAT || !Array.isArray(dsl.triggers)) return;
+      const definition = Array.isArray(profile.effects) && profile.effects.length > 0
+        ? { format: EFFECTS_FORMAT, effects: profile.effects }
+        : (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
+          ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
+          : profile?.effectDsl;
+      if (!definition || (definition.format !== DSL_FORMAT && definition.format !== EFFECTS_FORMAT)) return;
+      if (definition.format === DSL_FORMAT && !Array.isArray(definition.triggers)) return;
       const context = {
         game: window.state,
         sourceCard: cardEl,
@@ -1347,17 +1690,21 @@
         dslSource: "runtime.resolveCardDsl",
         event: { name: eventName, zoneType, ...(extraEvent || {}) }
       };
-      execute(dsl, context);
+      execute(definition, context);
     });
   }
 
   window.EffectEngine = {
     DSL_FORMAT,
+    EFFECTS_FORMAT,
     TriggerSystem,
     ConditionEvaluator,
     EffectExecutor,
     VariableResolver,
     execute,
+    clearCardEffectLimits,
+    expireGrantedEffectsAtTurnStart,
+    expireGrantedEffectsAtTurnEnd,
     triggerZoneCardEffects,
     executeGrantedEffects,
     getRuntimeQueues() {

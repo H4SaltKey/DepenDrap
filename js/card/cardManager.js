@@ -1840,6 +1840,7 @@ window.getFieldData = function() {
       zoneOwner: card.dataset.zoneOwner || "",
       zoneOrder: Number(card.dataset.zoneOrder || 0),
       handOrder: Number(card.dataset.handOrder || 0),
+      effectLimits: card.dataset.effectLimits || "",
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
@@ -2059,6 +2060,11 @@ window.applyFieldCardsFromServer = function(data){
     const isTempStr = item.isTemp ? "true" : "false";
     if(el.dataset.isTemp !== isTempStr){
       el.dataset.isTemp = isTempStr;
+    }
+
+    if(item.effectLimits !== undefined && item.effectLimits !== el.dataset.effectLimits){
+      if(item.effectLimits) el.dataset.effectLimits = item.effectLimits;
+      else delete el.dataset.effectLimits;
     }
 
     // 相手のカードかどうかを判定

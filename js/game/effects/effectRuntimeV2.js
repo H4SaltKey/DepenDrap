@@ -6,6 +6,7 @@
 
   const EVENT_NAMES = [
     "OnPlay",
+    "OnCardUse",
     "OnAttack",
     "OnDirectAttack",
     "OnSkillUse",
@@ -16,6 +17,7 @@
     "OnLeaveField",
     "OnReturnHand",
     "OnDamage",
+    "OnPPChange",
     "OnHeal",
     "OnShieldGain",
     "OnPenetrateDamage",
@@ -49,6 +51,8 @@
     if (raw.startsWith("On")) return raw;
     const map = {
       onSummon: "OnPlay",
+      cardUse: "OnCardUse",
+      onCardUse: "OnCardUse",
       onAttack: "OnAttack",
       onDirectAttack: "OnDirectAttack",
       onSkillUse: "OnSkillUse",
@@ -60,6 +64,8 @@
       onDraw: "OnDraw",
       onDiscard: "OnDiscard",
       onDamage: "OnDamage",
+      ppChange: "OnPPChange",
+      onPpChange: "OnPPChange",
       onHeal: "OnHeal",
       onShieldGain: "OnShieldGain",
       onEffectAdded: "OnEffectAdded",
@@ -835,6 +841,7 @@
     const n = normalizeEventName(name);
     const map = {
       OnPlay: "onSummon",
+      OnCardUse: "onCardUse",
       OnAttack: "onAttack",
       OnDirectAttack: "onDirectAttack",
       OnSkillUse: "onSkillUse",
@@ -846,6 +853,7 @@
       OnDraw: "onDraw",
       OnDiscard: "onDiscard",
       OnDamage: "onDamage",
+      OnPPChange: "onPpChange",
       OnHeal: "onHeal",
       OnShieldGain: "onShieldGain",
       OnPenetrateDamage: "onDamage",
@@ -885,6 +893,7 @@
     const raw = String(on || "onSummon");
     const map = {
       onSummon: "OnPlay",
+      onCardUse: "OnCardUse",
       onAttack: "OnAttack",
       onDirectAttack: "OnDirectAttack",
       onSkillUse: "OnSkillUse",
@@ -896,6 +905,7 @@
       onDraw: "OnDraw",
       onDiscard: "OnDiscard",
       onDamage: "OnDamage",
+      onPpChange: "OnPPChange",
       onHeal: "OnHeal",
       onShieldGain: "OnShieldGain",
       onEffectAdded: "OnEffectAdded",

@@ -20,7 +20,8 @@
     enabled: true,
     lastResolvedInstanceKey: "",
     damageHookDepth: 0,
-    addValHookDepth: 0
+    addValHookDepth: 0,
+    drawHookDepth: 0
   };
 
   function logFlow(message) {
@@ -175,6 +176,16 @@
     return markSource({ format: "dependrap.dsl.v1", triggers: [] }, "empty");
   }
 
+  function resolveCardEffectDefinition(profile) {
+    if (Array.isArray(profile?.effects) && profile.effects.length > 0) {
+      return {
+        format: window.EffectEngine?.EFFECTS_FORMAT || "dependrap.effects.v1",
+        effects: profile.effects
+      };
+    }
+    return resolveEffectiveDsl(profile);
+  }
+
   function hasOtherAttackerOnField(owner, sourceCard) {
     if (typeof window.getZoneCards !== "function") return false;
     const cards = window.getZoneCards(owner, "attacker") || [];
@@ -192,10 +203,8 @@
       return true;
     }
     if (costPolicy === "all_in") {
-      player.pp = 0;
-      if (typeof window.pushMyStateDebounced === "function" && owner === getMyRoleSafe()) {
-        window.pushMyStateDebounced();
-      }
+      if (currentPp > 0 && typeof window.addVal === "function") window.addVal(owner, "pp", -currentPp);
+      else player.pp = 0;
       logFlow(`COST_RULE all_in: PP無視・全消費 (${currentPp} -> 0)`);
       return true;
     }
@@ -207,10 +216,8 @@
       }
       return false;
     }
-    player.pp = currentPp - cost;
-    if (typeof window.pushMyStateDebounced === "function" && owner === getMyRoleSafe()) {
-      window.pushMyStateDebounced();
-    }
+    if (typeof window.addVal === "function") window.addVal(owner, "pp", -cost);
+    else player.pp = currentPp - cost;
     return true;
   }
 
@@ -278,10 +285,12 @@
     if (typeof window.EffectEngine.executeGrantedEffects === "function") {
       window.EffectEngine.executeGrantedEffects(context);
     }
-    const dsl = resolveEffectiveDsl(profile);
-    context.dslSource = String(dsl?.__dslSource || "");
-    if (!dsl || dsl.format !== window.EffectEngine.DSL_FORMAT) return { handled: true, effects: [] };
-    const result = window.EffectEngine.execute(dsl, context);
+    const definition = resolveCardEffectDefinition(profile);
+    context.dslSource = String(definition?.__dslSource || "");
+    if (!definition || (definition.format !== window.EffectEngine.DSL_FORMAT && definition.format !== window.EffectEngine.EFFECTS_FORMAT)) {
+      return { handled: true, effects: [] };
+    }
+    const result = window.EffectEngine.execute(definition, context);
     if (typeof cardEl?._debugOnEngineResult === "function") {
       try {
         cardEl._debugOnEngineResult({
@@ -320,6 +329,20 @@
       targetOwner: opponentOf(owner),
       attackType: "skill"
     });
+    if (typeof window.EffectEngine.executeGrantedEffects === "function") {
+      window.EffectEngine.executeGrantedEffects({
+        game: window.state,
+        owner,
+        opponent: opponentOf(owner),
+        event: {
+          name: "onAttack",
+          zoneType: "attacker",
+          targetOwner: opponentOf(owner),
+          bySkillCardId: sourceSkillCard?.dataset?.id || null,
+          attackType: "skill"
+        }
+      });
+    }
     window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onAttack", {
       targetOwner: opponentOf(owner),
       bySkillCardId: sourceSkillCard?.dataset?.id || null
@@ -401,6 +424,46 @@
       };
       window.EffectEngine.triggerZoneCardEffects(targetOwner, "attacker", "onShieldGain", extraEvent);
       window.EffectEngine.triggerZoneCardEffects(targetOwner, "skill", "onShieldGain", extraEvent);
+    }
+  }
+
+  function resolveOnPpChangeEvent(owner, delta, options = {}) {
+    const targetOwner = String(owner || "");
+    const requested = Number(delta);
+    if (!targetOwner || !Number.isFinite(requested) || requested === 0) return;
+    const payload = {
+      owner: targetOwner,
+      sourceCardId: String(options.sourceCardId || "pp_change"),
+      targetOwner,
+      amount: Math.abs(requested),
+      delta: requested,
+      direction: requested > 0 ? "gain" : "loss",
+      before: Number(options.before),
+      after: Number(options.after),
+      source: String(options.source || "addVal")
+    };
+    emitV2Event("OnPPChange", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "attacker", "onPpChange", payload);
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "skill", "onPpChange", payload);
+    }
+  }
+
+  function resolveOnDrawEvent(owner, amount, options = {}) {
+    const targetOwner = String(owner || "");
+    const requested = Math.max(0, Number(amount || 0));
+    if (!targetOwner || requested <= 0) return;
+    const payload = {
+      owner: targetOwner,
+      sourceCardId: String(options.sourceCardId || "draw"),
+      targetOwner,
+      amount: requested,
+      source: String(options.source || "drawToHand")
+    };
+    emitV2Event("OnDraw", payload);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "attacker", "onDraw", payload);
+      window.EffectEngine.triggerZoneCardEffects(targetOwner, "skill", "onDraw", payload);
     }
   }
 
@@ -494,6 +557,18 @@
       const policy = String(profile.cardCostPolicy || "normal");
       const policyLabel = policy === "joker" ? "ジョーカー" : (policy === "all_in" ? "オールイン" : "通常");
       window.addGameLog(`[ACTION] ${cardName} を使用 (PP:${profile.cost || 0}, CostRule:${policyLabel})`);
+    }
+
+    const cardUseEvent = {
+      owner,
+      sourceCardId: cardId,
+      zoneType,
+      cardKind: effectiveKind
+    };
+    emitV2Event("OnCardUse", cardUseEvent);
+    if (window.EffectEngine && typeof window.EffectEngine.triggerZoneCardEffects === "function") {
+      window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onCardUse", cardUseEvent);
+      window.EffectEngine.triggerZoneCardEffects(owner, "skill", "onCardUse", cardUseEvent);
     }
 
     if (effectiveKind === "skill") {
@@ -604,7 +679,7 @@
       zoneType: options.zoneType || "grave",
       didDirectAttack: cardEl.dataset.didDirectAttack === "1"
     });
-    const dsl = resolveEffectiveDsl(profile);
+    const definition = resolveCardEffectDefinition(profile);
     const engine = window.EffectEngine;
     const context = {
       game: window.state,
@@ -626,8 +701,9 @@
     let engineResult = null;
     cardEl.dataset.onLeaveResolving = "1";
     try {
-      engineResult = (engine && typeof engine.execute === "function" && dsl && dsl.format === engine.DSL_FORMAT)
-        ? engine.execute(dsl, context)
+      engineResult = (engine && typeof engine.execute === "function" && definition
+        && (definition.format === engine.DSL_FORMAT || definition.format === engine.EFFECTS_FORMAT))
+        ? engine.execute(definition, context)
         : null;
     } finally {
       delete cardEl.dataset.onLeaveResolving;
@@ -738,6 +814,13 @@
         }
       }
       const result = original.apply(this, arguments);
+      if (cardEl && window.EffectEngine && typeof window.EffectEngine.clearCardEffectLimits === "function") {
+        if (zoneType === "grave" || zoneType === "deck") {
+          window.EffectEngine.clearCardEffectLimits(cardEl, ["once", "onceWhileOnField"]);
+        } else if (isFromBattleField && !isToBattleField) {
+          window.EffectEngine.clearCardEffectLimits(cardEl, "onceWhileOnField");
+        }
+      }
       try {
         resolveCardOnPlay(cardEl, zoneType);
       } catch (e) {
@@ -782,12 +865,14 @@
       try {
         if (runtime.addValHookDepth > 12) return result;
         runtime.addValHookDepth += 1;
-        const after = Number(window.state?.[owner]?.[key]);
-        const diff = Number.isFinite(before) && Number.isFinite(after) ? (after - before) : 0;
-        if (String(key || "") === "hp" && diff > 0) {
-          resolveOnHealEvent(owner, diff, { source: "addVal" });
-        } else if (String(key || "") === "shield" && diff > 0) {
-          resolveOnShieldGainEvent(owner, diff, { source: "addVal" });
+        const requested = Number(delta);
+        if (String(key || "") === "hp" && requested > 0) {
+          resolveOnHealEvent(owner, requested, { source: "addVal" });
+        } else if (String(key || "") === "shield" && requested > 0) {
+          resolveOnShieldGainEvent(owner, requested, { source: "addVal" });
+        } else if (String(key || "") === "pp" && requested !== 0) {
+          const after = Number(window.state?.[owner]?.[key]);
+          resolveOnPpChangeEvent(owner, requested, { before, after, source: "addVal" });
         }
       } catch (error) {
         console.warn("[PlayerActionResolver] addVal emit failed:", error);
@@ -800,10 +885,31 @@
     window.addVal = wrapped;
   }
 
+  function installDrawHook() {
+    if (typeof window.drawToHand !== "function" || window.drawToHand._playerActionResolverWrapped) return;
+    const original = window.drawToHand;
+    const wrapped = function(amount) {
+      const result = original.apply(this, arguments);
+      try {
+        if (runtime.drawHookDepth > 12) return result;
+        runtime.drawHookDepth += 1;
+        resolveOnDrawEvent(getMyRoleSafe(), amount, { source: "drawToHand" });
+      } catch (error) {
+        console.warn("[PlayerActionResolver] onDraw emit failed:", error);
+      } finally {
+        runtime.drawHookDepth = Math.max(0, runtime.drawHookDepth - 1);
+      }
+      return result;
+    };
+    wrapped._playerActionResolverWrapped = true;
+    window.drawToHand = wrapped;
+  }
+
   function init() {
     installPlaceCardHook();
     installDamageHook();
     installAddValHook();
+    installDrawHook();
     if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installPlaceCardHook)) {
       window._afterUpdateHooks.push(installPlaceCardHook);
     }
@@ -813,6 +919,9 @@
     if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installAddValHook)) {
       window._afterUpdateHooks.push(installAddValHook);
     }
+    if (Array.isArray(window._afterUpdateHooks) && !window._afterUpdateHooks.includes(installDrawHook)) {
+      window._afterUpdateHooks.push(installDrawHook);
+    }
   }
 
   window.PlayerActionResolver = {
@@ -820,7 +929,8 @@
     init,
     resolveCardOnPlay,
     resolveCardOnLeave,
-    resolveDirectAttack
+    resolveDirectAttack,
+    resolveCardDraw: resolveOnDrawEvent
   };
 
   init();

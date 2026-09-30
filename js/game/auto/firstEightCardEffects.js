@@ -139,11 +139,15 @@
     const resolvedDsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
       ? window.CardEffectRuntimeV2.resolveCardDsl(cardRow || profile)
       : profile?.effectDsl;
-    const hasOnAttackDsl = !!(
+    const canonicalEffects = Array.isArray((cardRow || profile)?.effects) ? (cardRow || profile).effects : [];
+    const canonicalDefinition = canonicalEffects.length > 0
+      ? { format: window.EffectEngine?.EFFECTS_FORMAT || "dependrap.effects.v1", effects: canonicalEffects }
+      : null;
+    const hasOnAttackDsl = !!(canonicalDefinition?.effects.some((effect) => ["attack", "onAttack"].includes(String(effect?.trigger || ""))) || (
       resolvedDsl?.format === "dependrap.dsl.v1"
       && Array.isArray(resolvedDsl?.triggers)
       && resolvedDsl.triggers.some((t) => String(t?.on || "") === "onAttack")
-    );
+    ));
     if (hasOnAttackDsl && window.EffectEngine && typeof window.EffectEngine.execute === "function") {
       const context = {
         game: window.state,
@@ -157,7 +161,7 @@
       if (typeof window.EffectEngine.executeGrantedEffects === "function") {
         window.EffectEngine.executeGrantedEffects(context);
       }
-      window.EffectEngine.execute(resolvedDsl, context);
+      window.EffectEngine.execute(canonicalDefinition || resolvedDsl, context);
       return;
     }
     const self = getPlayer(owner);
@@ -203,6 +207,7 @@
 
   function hasEngineBackedEffects(card) {
     if (!card || typeof card !== "object") return false;
+    if (Array.isArray(card.effects) && card.effects.length > 0) return true;
     const v2 = window.CardEffectRuntimeV2;
     if (v2 && typeof v2.hasCommittedDslV1 === "function" && v2.hasCommittedDslV1(card)) return true;
     if (v2 && typeof v2.hasLegacyEffectBlocks === "function" && v2.hasLegacyEffectBlocks(card)) return true;

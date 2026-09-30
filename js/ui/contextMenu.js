@@ -603,7 +603,10 @@ function cloneCard(card){
     placeCard(field, newCard, { x: nx, y: ny });
   }
   if(typeof saveFieldCards === "function") saveFieldCards();
+  return newCard;
 }
+
+window.duplicateCard = cloneCard;
 
 // ===== デッキ右クリック =====
 function openDeckMenu(deck, x, y){

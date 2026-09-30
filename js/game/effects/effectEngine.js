@@ -92,6 +92,15 @@
       const key = refPath.slice(6);
       return context?.event?.[key] ?? null;
     }
+    if (refPath.startsWith("history.")) {
+      const parts = refPath.slice(8).split(".");
+      const scope = ["game", "turn", "last"].includes(parts[0]) ? parts.shift() : "turn";
+      const path = parts.join(".");
+      return window.CardEffectRuntimeV2?.historyStore?.get?.(path, scope) ?? 0;
+    }
+    if (/^(game|turn)\./.test(refPath) && window.GameStatTracker?.resolvePath) {
+      return Number(window.GameStatTracker.resolvePath(refPath, context?.owner) || 0);
+    }
     const [scope, key] = refPath.split(".");
     if (["thisCard", "sourceCard", "card"].includes(scope) && ["attack", "atk"].includes(key)) {
       const base = Number(context?.sourceProfile?.attack || 0);
@@ -162,6 +171,62 @@
       if (condition.and) return (condition.and || []).every((c) => this.evaluateCondition(c, context, vars));
       if (condition.or) return (condition.or || []).some((c) => this.evaluateCondition(c, context, vars));
       if (condition.not) return !this.evaluateCondition(condition.not, context, vars);
+      if (condition.effectLimitUnused) {
+        const check = condition.effectLimitUnused;
+        const index = Number(check.effectIndex);
+        const limit = String(check.type || "once");
+        if (isEffectLimitReached(limit, index, context)) return false;
+      }
+
+      if (condition.whileOnField === true) {
+        const zone = String(context?.sourceCard?.dataset?.zoneType || "");
+        if (zone !== "attacker" && zone !== "skill") return false;
+      }
+      if (condition.directAttackEnabled === true
+        && Boolean(context?.event?.didDirectAttack) !== (condition.directAttackValue === true)) return false;
+      if (condition.directAttack === "did" && context?.event?.didDirectAttack !== true) return false;
+      if (condition.directAttack === "not" && context?.event?.didDirectAttack !== false) return false;
+      if (condition.byAttackerEffect === true) {
+        const isAttacker = context?.sourceProfile?.cardKind === "attacker"
+          || context?.sourceCard?.dataset?.zoneType === "attacker";
+        if (!isAttacker || String(context?.event?.name || "") !== String(condition.attackerTriggerT || "onAttack")) return false;
+      }
+      if (condition.bySkillEffect === true) {
+        const isSkill = context?.sourceProfile?.cardKind === "skill"
+          || context?.sourceCard?.dataset?.zoneType === "skill";
+        if (!isSkill) return false;
+      }
+      if (condition.inSameChain === true && !context?.event?.__chain?.executedOrders?.length) return false;
+      if (Array.isArray(condition.requiredExecutedOrder) && condition.requiredExecutedOrder.length > 0) {
+        const executed = new Set(context?.event?.__chain?.executedOrders || []);
+        const required = condition.requiredExecutedOrder.map(Number);
+        const matches = condition.requiredExecutedOrderMode === "all"
+          ? required.every((order) => executed.has(order))
+          : required.some((order) => executed.has(order));
+        if (!matches) return false;
+      }
+      if (condition.useTrackerCheck !== false && condition.trackerCheck) {
+        const check = condition.trackerCheck;
+        const stat = String(check.stat || "hp");
+        const ownerType = String(check.owner || "self");
+        const owner = ["target", "target_player"].includes(ownerType)
+          ? String(context?.event?.targetOwner || context?.opponent || "")
+          : String(context?.owner || "");
+        const scope = check.scope === "game" ? "game" : "turn";
+        let field = "lastAfter";
+        if (check.metric === "count") field = check.direction === "dec" ? "decCount" : "incCount";
+        else if (check.direction === "dec") field = "decAmount";
+        else if (check.direction === "inc") field = "incAmount";
+        const value = Number(window.GameStatTracker?.resolvePath?.(`${scope}.${stat}.${field}`, owner) || 0);
+        const target = Number(check.value || 0);
+        const operator = String(check.op || (String(check.mode || "").endsWith("_lte") ? "lte" : String(check.mode || "").endsWith("_eq") ? "eq" : "gte"));
+        const passes = operator === "eq" ? value === target
+          : operator === "lte" ? value <= target
+            : operator === "lt" ? value < target
+              : operator === "gt" ? value > target
+                : value >= target;
+        if (!passes) return false;
+      }
 
       if (Object.prototype.hasOwnProperty.call(condition, "left")) {
         const left = VariableResolver.resolveValue(condition.left, context, vars);
@@ -1009,9 +1074,9 @@
               movedByOnLeave = String(card.dataset?.zoneType || "") !== prevZoneType;
             } else {
               const profile = window.CardCombatData?.getResolvedCardData?.(card.dataset?.id, owner) || null;
-              const dsl = profile?.effectDsl;
-              if (dsl && dsl.format === DSL_FORMAT && Array.isArray(dsl.triggers) && dsl.triggers.some((t) => String(t?.on || "") === "onLeave")) {
-                execute(dsl, {
+              const effects = Array.isArray(profile?.effects) ? profile.effects : [];
+              if (effects.some((effect) => normalizeEffectTrigger(effect?.trigger) === "onLeave")) {
+                execute({ format: EFFECTS_FORMAT, effects }, {
                   game: window.state,
                   sourceCard: card,
                   sourceProfile: profile,
@@ -1076,13 +1141,19 @@
           resolvedCards: cards.map((c) => cardDebugName(c))
         });
         if (cards.length === 0) return { applied: false, type, skippedByInvalidTarget: true, skippedReason: "card-target-not-found" };
+        const duplicateCard = window.duplicateCard || window.cloneCard;
+        if (typeof duplicateCard !== "function") {
+          return { applied: false, type, error: "card-copy-handler-unavailable" };
+        }
+        const duplicated = [];
         cards.forEach((card) => {
-          if (typeof window.duplicateCard === "function") {
-            const dup = window.duplicateCard(card);
-            moveCardToHand(dup, card.dataset.owner || context.owner);
-          }
+          const copy = duplicateCard(card);
+          if (!copy) return;
+          moveCardToHand(copy, card.dataset.owner || context.owner);
+          duplicated.push(copy);
         });
-        return { applied: true, type };
+        return duplicated.length > 0 ? { applied: true, type, duplicated: duplicated.length }
+          : { applied: false, type, error: "card-copy-failed" };
       }
       if (type === "REVEAL_CARD") {
         const cards = resolveCardTargets(effect, context);
@@ -1183,18 +1254,45 @@
     const value = String(trigger || "");
     const aliases = {
       summon: "onSummon",
+      onSummon: "onSummon",
       onPlay: "onSummon",
       OnPlay: "onSummon",
       attack: "onAttack",
+      OnAttack: "onAttack",
+      directAttack: "onDirectAttack",
+      OnDirectAttack: "onDirectAttack",
+      cardUse: "onCardUse",
+      OnCardUse: "onCardUse",
+      OnSkillUse: "onSkillUse",
+      OnBeforeAttackEffect: "onSkillBeforeAttackEffect",
+      OnAfterAttackEffect: "onSkillAfterAttackEffect",
       leave: "onLeave",
+      OnLeaveField: "onLeave",
       turnStart: "onTurnStart",
+      OnTurnStart: "onTurnStart",
       turnEnd: "onTurnEnd",
+      OnTurnEnd: "onTurnEnd",
       damage: "onDamage",
+      OnDamage: "onDamage",
       heal: "onHeal",
+      OnHeal: "onHeal",
       ppChange: "onPpChange",
       OnPPChange: "onPpChange",
       cardDraw: "onDraw",
-      cardUse: "onCardUse"
+      OnDraw: "onDraw",
+      discard: "onDiscard",
+      OnDiscard: "onDiscard",
+      shieldGain: "onShieldGain",
+      OnShieldGain: "onShieldGain",
+      skillUse: "onSkillUse",
+      skillBeforeAttack: "onSkillBeforeAttackEffect",
+      skillAfterAttack: "onSkillAfterAttackEffect",
+      onSkillBeforeAttackEffect: "onSkillBeforeAttackEffect",
+      onSkillAfterAttackEffect: "onSkillAfterAttackEffect",
+      effectAdded: "onEffectAdded",
+      effectRemoved: "onEffectRemoved",
+      OnEffectAdded: "onEffectAdded",
+      OnEffectRemoved: "onEffectRemoved"
     };
     return aliases[value] || value;
   }
@@ -1208,6 +1306,7 @@
       addPP: "RECOVER_PP",
       recoverPP: "RECOVER_PP",
       consumePP: "CONSUME_PP",
+      addHand: "ADD_HAND",
       setPPMin: "SET_PP_MIN",
       addShield: "ADD_SHIELD",
       draw: "DRAW",
@@ -1230,7 +1329,7 @@
       normalized.target = type === "DAMAGE" ? "current_target" : "self_player";
     }
     if (!normalized.targetType) {
-      if (["DRAW_CARD", "HEAL", "DAMAGE", "RECOVER_PP", "CONSUME_PP", "SET_PP_MIN", "ADD_SHIELD", "SET_HP"].includes(type)) {
+      if (["DRAW_CARD", "DRAW", "ADD_HAND", "HEAL", "DAMAGE", "RECOVER_PP", "CONSUME_PP", "SET_PP_MIN", "ADD_SHIELD", "SET_HP"].includes(type)) {
         normalized.targetType = "player";
       } else if (["MOVE_SOURCE_TO_GRAVE", "MOVE_SOURCE_TO_HAND", "MOVE_SOURCE_TO_DECK", "DUPLICATE_SOURCE_TO_HAND", "FETCH_CARD", "PLAY_SOURCE_TO_FIELD", "REVEAL_CARD"].includes(type)) {
         normalized.targetType = "card";
@@ -1239,7 +1338,7 @@
     }
     if (type === "ADD_ATK") {
       normalized.atkMode = action?.mode || action?.atkMode || "increase";
-      normalized.atkTarget = action?.target || action?.atkTarget || "this_card";
+      normalized.atkTarget = action?.atkTarget || action?.target || "this_card";
       normalized.target = action?.ownerTarget || "self_player";
     }
     if (type === "DUPLICATE_SOURCE_TO_HAND") {
@@ -1350,11 +1449,16 @@
     const results = [];
     const triggerReports = [];
     const originZoneType = String(context?.event?.zoneType || context?.sourceCard?.dataset?.zoneType || "");
+    const chain = { executedOrders: [] };
 
     for (const { definition, index } of matched) {
       const type = String(definition?.action?.type || "UNKNOWN");
       const report = { on: eventName, effects: [] };
-      if (definition?.condition && !ConditionEvaluator.evaluateCondition(definition.condition, context, {})) {
+      const localContext = {
+        ...context,
+        event: { ...(context?.event || {}), __chain: chain, __effectOrder: index + 1 }
+      };
+      if (definition?.condition && !ConditionEvaluator.evaluateCondition(definition.condition, localContext, {})) {
         const skipped = { applied: false, type, skippedByCondition: true };
         results.push(skipped);
         report.effects.push(skipped);
@@ -1410,17 +1514,16 @@
         }
         action.duration = duration;
       }
-      const localContext = {
-        ...context,
-        event: { ...(context?.event || {}), __chain: { executedOrders: [] }, __effectOrder: index + 1 }
-      };
       let result;
       try {
         result = EffectExecutor.executeEffect(action, localContext, {});
       } catch (error) {
         result = { applied: false, type: action.type, error: String(error?.message || error || "unknown-error") };
       }
-      if (result?.applied) consumeEffectLimit(definition?.limit, index, context);
+      if (result?.applied) {
+        chain.executedOrders.push(index + 1);
+        consumeEffectLimit(definition?.limit, index, context);
+      }
       results.push(result);
       report.effects.push(result);
       triggerReports.push(report);
@@ -1452,7 +1555,12 @@
   }
 
   function execute(cardDsl, context) {
-    if (cardDsl?.format === EFFECTS_FORMAT) return executeCardEffects(cardDsl, context);
+    if (cardDsl?.format !== EFFECTS_FORMAT) {
+      return { handled: false, effects: [], triggerReports: [], error: "legacy-effect-format-disabled" };
+    }
+    return executeCardEffects(cardDsl, context);
+
+    /* Legacy DSL v1 execution is intentionally unreachable. */
     if (!cardDsl || cardDsl.format !== DSL_FORMAT) return { handled: false, effects: [], triggerReports: [] };
     const matched = TriggerSystem.getMatchedTriggers(cardDsl, context?.event?.name);
     notifyDebug(context, {
@@ -1674,13 +1782,9 @@
     cards.forEach((cardEl) => {
       const profile = window.CardCombatData?.getResolvedCardData?.(cardEl.dataset.id);
       if (!profile) return;
-      const definition = Array.isArray(profile.effects) && profile.effects.length > 0
-        ? { format: EFFECTS_FORMAT, effects: profile.effects }
-        : (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
-          ? window.CardEffectRuntimeV2.resolveCardDsl(profile)
-          : profile?.effectDsl;
-      if (!definition || (definition.format !== DSL_FORMAT && definition.format !== EFFECTS_FORMAT)) return;
-      if (definition.format === DSL_FORMAT && !Array.isArray(definition.triggers)) return;
+      const effects = Array.isArray(profile.effects) ? profile.effects : [];
+      if (effects.length === 0) return;
+      const definition = { format: EFFECTS_FORMAT, effects };
       const context = {
         game: window.state,
         sourceCard: cardEl,
@@ -1695,9 +1799,7 @@
   }
 
   window.EffectEngine = {
-    DSL_FORMAT,
     EFFECTS_FORMAT,
-    TriggerSystem,
     ConditionEvaluator,
     EffectExecutor,
     VariableResolver,

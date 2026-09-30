@@ -191,7 +191,7 @@ async function uploadCardsToServerFromBlocks(blockFolders) {
           type: "アタッカー",
           attack: 0,
           effectText: "",
-          effectDsl: null,
+          effects: [],
           tags: []
         };
         cardData.push(newCard);

@@ -1,21 +1,4 @@
 (function() {
-  const KNOWN_EFFECT_TYPES = new Set([
-    "DRAW",
-    "ADD_HAND",
-    "DRAW_CARD",
-    "DAMAGE",
-    "HEAL",
-    "DESTROY",
-    "DISCARD",
-    "SEARCH",
-    "SUMMON",
-    "BUFF",
-    "DEBUFF",
-    "JOKER",
-    "ALL_IN",
-    "UNKNOWN"
-  ]);
-
   const runtime = {
     enabled: true,
     lastResolvedInstanceKey: "",
@@ -144,52 +127,29 @@
     return profile;
   }
 
-  function resolveEffectiveDsl(profile) {
-    function markSource(dsl, source) {
-      if (!dsl || dsl.format !== "dependrap.dsl.v1" || !Array.isArray(dsl.triggers)) return null;
-      if (!Object.prototype.hasOwnProperty.call(dsl, "__dslSource")) {
-        dsl.__dslSource = source;
-      }
-      return dsl;
-    }
-    if (
-      window.CardEffectRuntimeV2
-      && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
-    ) {
-      const resolved = window.CardEffectRuntimeV2.resolveCardDsl(profile);
-      if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
-        return markSource(resolved, "resolveCardDsl");
-      }
-    }
-    if (
-      profile?.effectBlocks
-      && Array.isArray(profile.effectBlocks.timings)
-      && window.CardEffectBlockCompiler
-      && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
-    ) {
-      const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(profile.effectBlocks);
-      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) return markSource(compiled, "effectBlocks.timings");
-    }
-    if (profile?.effectDsl && profile.effectDsl.format === "dependrap.dsl.v1" && Array.isArray(profile.effectDsl.triggers)) {
-      return markSource(profile.effectDsl, "effectDsl.triggers");
-    }
-    return markSource({ format: "dependrap.dsl.v1", triggers: [] }, "empty");
-  }
-
   function resolveCardEffectDefinition(profile) {
-    if (Array.isArray(profile?.effects) && profile.effects.length > 0) {
-      return {
-        format: window.EffectEngine?.EFFECTS_FORMAT || "dependrap.effects.v1",
-        effects: profile.effects
-      };
-    }
-    return resolveEffectiveDsl(profile);
+    return {
+      format: window.EffectEngine?.EFFECTS_FORMAT || "dependrap.effects.v1",
+      effects: Array.isArray(profile?.effects) ? profile.effects : []
+    };
   }
 
   function hasOtherAttackerOnField(owner, sourceCard) {
     if (typeof window.getZoneCards !== "function") return false;
     const cards = window.getZoneCards(owner, "attacker") || [];
     return cards.some((c) => c && c !== sourceCard);
+  }
+
+  function getAttackerEventData(owner) {
+    if (typeof window.getZoneCards !== "function") return {};
+    const attacker = (window.getZoneCards(owner, "attacker") || []).slice(-1)[0];
+    const id = String(attacker?.dataset?.id || "");
+    const data = id && typeof window.getCardData === "function" ? window.getCardData(id) : null;
+    return {
+      attackerCardId: id,
+      attackerAttribute: String(data?.attribute || ""),
+      attackerAttack: Number(data?.attack || 0)
+    };
   }
 
   function spendCardCost(owner, card) {
@@ -221,46 +181,7 @@
     return true;
   }
 
-  function applyKnownEffect(effect, owner) {
-    const op = owner === "player1" ? "player2" : "player1";
-    const amount = Math.max(0, Number(effect?.amount || 1));
-    const type = String(effect?.type || "UNKNOWN");
-
-    if (!KNOWN_EFFECT_TYPES.has(type)) return;
-
-    if (type === "DRAW" || type === "ADD_HAND") {
-      if (typeof window.drawToHand === "function") window.drawToHand(amount || 1);
-      return;
-    }
-    if (type === "DRAW_CARD") {
-      if (typeof window.drawToHand === "function") window.drawToHand(amount || 1);
-      if (typeof window.addVal === "function") window.addVal(owner, "pp", amount || 1);
-      return;
-    }
-    if (type === "HEAL") {
-      if (typeof window.addVal === "function") window.addVal(owner, "hp", amount || 1);
-      return;
-    }
-    if (type === "DAMAGE") {
-      if (typeof window.applyCalculatedDamage === "function") {
-        window.applyCalculatedDamage(op, "damage", "normal", amount || 1, false, {
-          source: "player_action",
-          sourceOwner: owner
-        });
-      }
-      return;
-    }
-    if (type === "BUFF") {
-      if (typeof window.addVal === "function") window.addVal(owner, "atk", amount || 1);
-      return;
-    }
-    if (type === "DEBUFF") {
-      if (typeof window.addVal === "function") window.addVal(op, "atk", -(amount || 1));
-      return;
-    }
-  }
-
-  function resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName) {
+  function resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName, eventData = {}) {
     if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") return null;
     const context = {
       game: window.state,
@@ -269,7 +190,7 @@
       owner,
       opponent: owner === "player1" ? "player2" : "player1",
       target: owner === "player1" ? "player2" : "player1",
-      event: { name: triggerName, zoneType },
+      event: { name: triggerName, zoneType, ...eventData },
       dslSource: "",
       debugReporter: typeof cardEl?._debugReporter === "function" ? cardEl._debugReporter : null
     };
@@ -287,7 +208,7 @@
     }
     const definition = resolveCardEffectDefinition(profile);
     context.dslSource = String(definition?.__dslSource || "");
-    if (!definition || (definition.format !== window.EffectEngine.DSL_FORMAT && definition.format !== window.EffectEngine.EFFECTS_FORMAT)) {
+    if (!definition || definition.format !== window.EffectEngine.EFFECTS_FORMAT) {
       return { handled: true, effects: [] };
     }
     const result = window.EffectEngine.execute(definition, context);
@@ -304,8 +225,8 @@
     return result;
   }
 
-  function runEngineForTrigger(profile, cardEl, owner, zoneType, triggerName) {
-    const r = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
+  function runEngineForTrigger(profile, cardEl, owner, zoneType, triggerName, eventData = {}) {
+    const r = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName, eventData);
     if (!r || !r.handled) return;
     const cardId = profile.id || cardEl.dataset.id || "unknown";
     (r.effects || []).forEach((item) => {
@@ -345,7 +266,9 @@
     }
     window.EffectEngine.triggerZoneCardEffects(owner, "attacker", "onAttack", {
       targetOwner: opponentOf(owner),
-      bySkillCardId: sourceSkillCard?.dataset?.id || null
+      bySkillCardId: sourceSkillCard?.dataset?.id || null,
+      attackType: "skill",
+      ...getAttackerEventData(owner)
     });
   }
 
@@ -587,10 +510,8 @@
     }
 
     if (!preventDefaultDsl) {
-      const dsl = resolveEffectiveDsl(profile);
-      if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
-        logFlow(`EFFECT_CHECK ${flowId} dsl=empty (DSL未実装)`);
-      }
+      const effectDefinitions = Array.isArray(profile.effects) ? profile.effects : [];
+      if (effectDefinitions.length === 0) logFlow(`EFFECT_CHECK ${flowId} effects[]=empty`);
       let resolvedEffects = 0;
       let knownEffects = 0;
       const engineResult = resolveWithEffectEngine(profile, cardEl, owner, zoneType, triggerName);
@@ -607,24 +528,8 @@
         } else {
           logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (engine-no-match)`);
         }
-      } else if (dsl && Array.isArray(dsl.triggers)) {
-        const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
-        matched.forEach((t) => {
-          (t.effects || []).forEach((effect) => {
-            resolvedEffects += 1;
-            const effectType = String(effect?.type || "UNKNOWN");
-            if (KNOWN_EFFECT_TYPES.has(effectType)) knownEffects += 1;
-            trackEffectActivation(owner, cardId, triggerName, effectType);
-            applyKnownEffect(effect, owner);
-          });
-        });
-        if (resolvedEffects > 0) {
-          logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=${resolvedEffects} known=${knownEffects} unknown=${Math.max(0, resolvedEffects - knownEffects)}`);
-        } else {
-          logFlow(`EFFECT_CHECK ${flowId} trigger=${triggerName} effects=0 (定義なし)`);
-        }
       } else {
-        logFlow(`EFFECT_CHECK ${flowId} dsl=none`);
+        logFlow(`EFFECT_CHECK ${flowId} effects[]=unavailable`);
       }
     } else if (preventDefaultDsl) {
       logFlow(`EFFECT_CHECK ${flowId} scripted=first8`);
@@ -632,13 +537,13 @@
     }
 
     if (effectiveKind === "skill") {
-      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillBeforeAttackEffect");
+      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillBeforeAttackEffect", getAttackerEventData(owner));
     }
     if (effectiveKind === "skill") {
       resolveAttackerOnAttack(owner, cardEl);
     }
     if (effectiveKind === "skill") {
-      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillAfterAttackEffect");
+      runEngineForTrigger(profile, cardEl, owner, zoneType, "onSkillAfterAttackEffect", getAttackerEventData(owner));
     }
 
     runtime.lastResolvedInstanceKey = instanceKey;
@@ -702,7 +607,7 @@
     cardEl.dataset.onLeaveResolving = "1";
     try {
       engineResult = (engine && typeof engine.execute === "function" && definition
-        && (definition.format === engine.DSL_FORMAT || definition.format === engine.EFFECTS_FORMAT))
+        && definition.format === engine.EFFECTS_FORMAT)
         ? engine.execute(definition, context)
         : null;
     } finally {
@@ -768,7 +673,6 @@
       targetInfo: targetInfo || {}
     });
 
-    const dsl = resolveEffectiveDsl(profile);
     const engineResult = resolveWithEffectEngine(profile, cardEl, owner || me, "attacker", triggerName);
     if (engineResult && engineResult.handled) {
       (engineResult.effects || []).forEach((item) => {
@@ -778,16 +682,6 @@
       return;
     }
 
-    if (dsl && Array.isArray(dsl.triggers)) {
-      const matched = dsl.triggers.filter((t) => normalizeTrigger(t.on) === triggerName);
-      matched.forEach((t) => {
-        (t.effects || []).forEach((effect) => {
-          const effectType = String(effect?.type || "UNKNOWN");
-          trackEffectActivation(owner || me, cardId, triggerName, effectType);
-          applyKnownEffect(effect, owner || me);
-        });
-      });
-    }
   }
 
   function installPlaceCardHook() {

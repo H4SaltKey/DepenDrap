@@ -80,6 +80,8 @@
   function triggerLeaveEffects(cardEl, owner) {
     if (!cardEl) return;
     const id = String(cardEl.dataset.id || "");
+    const card = typeof window.getCardData === "function" ? window.getCardData(id) : null;
+    if (hasEngineBackedEffects(card)) return { consumed: false };
     const didDirectAttack = cardEl.dataset.didDirectAttack === "1";
 
     // cd001-001 退場時: 直接攻撃していないなら 自身HP-1 / PPを1まで回復 / 手札へ戻る
@@ -136,19 +138,12 @@
     const id = attacker.dataset.id;
     const profile = window.CardCombatData?.getResolvedCardData?.(id);
     const cardRow = (typeof window.getCardData === "function") ? window.getCardData(id) : profile;
-    const resolvedDsl = (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function")
-      ? window.CardEffectRuntimeV2.resolveCardDsl(cardRow || profile)
-      : profile?.effectDsl;
     const canonicalEffects = Array.isArray((cardRow || profile)?.effects) ? (cardRow || profile).effects : [];
     const canonicalDefinition = canonicalEffects.length > 0
       ? { format: window.EffectEngine?.EFFECTS_FORMAT || "dependrap.effects.v1", effects: canonicalEffects }
       : null;
-    const hasOnAttackDsl = !!(canonicalDefinition?.effects.some((effect) => ["attack", "onAttack"].includes(String(effect?.trigger || ""))) || (
-      resolvedDsl?.format === "dependrap.dsl.v1"
-      && Array.isArray(resolvedDsl?.triggers)
-      && resolvedDsl.triggers.some((t) => String(t?.on || "") === "onAttack")
-    ));
-    if (hasOnAttackDsl && window.EffectEngine && typeof window.EffectEngine.execute === "function") {
+    const hasOnAttackEffects = !!canonicalDefinition?.effects.some((effect) => ["attack", "onAttack"].includes(String(effect?.trigger || "")));
+    if (hasOnAttackEffects && window.EffectEngine && typeof window.EffectEngine.execute === "function") {
       const context = {
         game: window.state,
         sourceCard: attacker,
@@ -161,7 +156,7 @@
       if (typeof window.EffectEngine.executeGrantedEffects === "function") {
         window.EffectEngine.executeGrantedEffects(context);
       }
-      window.EffectEngine.execute(canonicalDefinition || resolvedDsl, context);
+      window.EffectEngine.execute(canonicalDefinition, context);
       return;
     }
     const self = getPlayer(owner);
@@ -208,10 +203,6 @@
   function hasEngineBackedEffects(card) {
     if (!card || typeof card !== "object") return false;
     if (Array.isArray(card.effects) && card.effects.length > 0) return true;
-    const v2 = window.CardEffectRuntimeV2;
-    if (v2 && typeof v2.hasCommittedDslV1 === "function" && v2.hasCommittedDslV1(card)) return true;
-    if (v2 && typeof v2.hasLegacyEffectBlocks === "function" && v2.hasLegacyEffectBlocks(card)) return true;
-    if (card.effectGraph && Array.isArray(card.effectGraph.nodes) && card.effectGraph.nodes.length > 0) return true;
     return false;
   }
 

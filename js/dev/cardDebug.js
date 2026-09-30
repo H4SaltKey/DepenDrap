@@ -33,53 +33,16 @@
 
   function createCardObj(cardData, owner) {
     const resolved = window.CardCombatData?.getResolvedCardData?.(cardData.id) || cardData;
-    const dsl = resolveCardDslForDebug(resolved);
+    const effects = Array.isArray(resolved.effects) ? resolved.effects : [];
     return {
       id: cardData.id,
       name: cardData.name || cardData.id,
       // インスタンス単位で調整できるよう浅いコピーを持つ
-      profile: { ...resolved, effectDsl: dsl },
-      _debugCardData: { ...resolved, effectDsl: dsl },
+      profile: { ...resolved, effects },
+      _debugCardData: { ...resolved, effects },
       dataset: { id: cardData.id, owner, zoneType: "", didDirectAttack: "0", instanceId: `dbg-${Date.now()}-${debugInstanceSeq++}` },
       style: {}
     };
-  }
-
-  function createEmptyDsl() {
-    return { format: "dependrap.dsl.v1", triggers: [] };
-  }
-
-  function resolveCardDslForDebug(cardLike) {
-    if (
-      window.CardEffectRuntimeV2
-      && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
-    ) {
-      const resolved = window.CardEffectRuntimeV2.resolveCardDsl(cardLike || {});
-      if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
-        return resolved;
-      }
-    }
-    if (
-      cardLike?.effectBlocks
-      && Array.isArray(cardLike.effectBlocks.timings)
-      && window.CardEffectBlockCompiler
-      && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
-    ) {
-      const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(cardLike.effectBlocks);
-      if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) {
-        return compiled;
-      }
-      return createEmptyDsl();
-    }
-    if (
-      cardLike?.effectDsl
-      && typeof cardLike.effectDsl === "object"
-      && String(cardLike.effectDsl.format || "") === "dependrap.dsl.v1"
-      && Array.isArray(cardLike.effectDsl.triggers)
-    ) {
-      return cardLike.effectDsl;
-    }
-    return createEmptyDsl();
   }
 
   function createDefaultDebugState() {
@@ -112,7 +75,7 @@
         attribute: c.attribute || "近接",
         type: c.type || "アタッカー",
         attack: Number(c.attack || 0),
-        effectDsl: c.effectDsl || null,
+        effects: Array.isArray(c.effects) ? c.effects : [],
         tags: Array.isArray(c.tags) ? c.tags : String(c.tags || "").split(",").map((x) => x.trim()).filter(Boolean)
       }));
     }
@@ -356,20 +319,19 @@
 
     function runCardEvent(card, eventName, extra = {}) {
       if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") return;
-      const dsl = resolveCardDslForDebug(card.profile || {});
-      card.profile.effectDsl = dsl;
-      if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+      const effects = Array.isArray(card.profile?.effects) ? card.profile.effects : [];
+      if (effects.length === 0) {
         const row = {
           cardId: card.id,
           cardName: card.name,
           trigger: eventName,
-          dslUnimplemented: true,
+          effectsUnimplemented: true,
           triggerReports: [],
           effects: [],
           error: null
         };
         debug.lastExecution = row;
-        log(`[DSL] ${card.name} はDSL未実装（効果なしとして扱い）`);
+        log(`[Effect] ${card.name} はeffects[]未設定です`);
         return;
       }
       withPatchedRuntime(() => {
@@ -406,7 +368,10 @@
           window.EffectEngine.executeGrantedEffects(context);
         }
         try {
-          res = window.EffectEngine.execute(dsl, context);
+          res = window.EffectEngine.execute({
+            format: window.EffectEngine.EFFECTS_FORMAT || "dependrap.effects.v1",
+            effects
+          }, context);
         } catch (error) {
           caught = error;
         }
@@ -414,7 +379,7 @@
           cardId: card.id,
           cardName: card.name,
           trigger: eventName,
-          dslUnimplemented: false,
+          effectsUnimplemented: false,
           triggerReports: Array.isArray(res?.triggerReports) ? res.triggerReports : [],
           effects: Array.isArray(res?.effects) ? res.effects : [],
           debugEvents,
@@ -448,7 +413,7 @@
           cardId: payload?.cardId || card.id,
           cardName: payload?.cardName || card.name,
           trigger: payload?.trigger || "unknown",
-          dslUnimplemented: false,
+          effectsUnimplemented: false,
           triggerReports: Array.isArray(payload?.result?.triggerReports) ? payload.result.triggerReports : [],
           effects: Array.isArray(payload?.result?.effects) ? payload.result.effects : [],
           debugEvents: Array.isArray(card._debugEvents) ? card._debugEvents : [],
@@ -456,11 +421,8 @@
         };
         card._debugEvents = [];
         if ((row.triggerReports || []).length === 0 && (!row.effects || row.effects.length === 0)) {
-          const dsl = resolveCardDslForDebug(card.profile || {});
-          if (!dsl || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
-            row.dslUnimplemented = true;
-            log(`[DSL] ${card.name} はDSL未実装（効果なしとして扱い）`);
-          }
+          row.effectsUnimplemented = !Array.isArray(card.profile?.effects) || card.profile.effects.length === 0;
+          if (row.effectsUnimplemented) log(`[Effect] ${card.name} はeffects[]未設定です`);
         }
         debug.lastExecution = row;
       };
@@ -488,7 +450,7 @@
         cardId: card?.id || "unknown",
         cardName: card?.name || "unknown",
         trigger: trigger || "unknown",
-        dslUnimplemented: false,
+        effectsUnimplemented: false,
         triggerReports: [],
         effects: [],
         debugEvents: [],
@@ -566,11 +528,15 @@
       log(`[FLOW] resolver fallback executed for ${card.name} zone=${zoneType}`);
     }
 
-    function summarizeDsl(card) {
-      const dsl = resolveCardDslForDebug(card?.profile || card || {});
-      const triggers = Array.isArray(dsl?.triggers) ? dsl.triggers : [];
-      if (triggers.length === 0) return "DSL未実装";
-      return triggers.map((t) => `${String(t.on || "?")}(${Array.isArray(t.effects) ? t.effects.length : 0})`).join(" / ");
+    function summarizeEffects(card) {
+      const effects = Array.isArray(card?.profile?.effects || card?.effects) ? (card.profile?.effects || card.effects) : [];
+      if (effects.length === 0) return "effects[]未設定";
+      const counts = Object.create(null);
+      effects.forEach((effect) => {
+        const trigger = String(effect?.trigger || "?");
+        counts[trigger] = Number(counts[trigger] || 0) + 1;
+      });
+      return Object.entries(counts).map(([trigger, count]) => `${trigger}(${count})`).join(" / ");
     }
 
     function esc(v) {
@@ -607,8 +573,8 @@
       const row = debug.lastExecution;
       if (!row) {
         execEl.innerHTML = `<div style="font-size:12px;color:#94a3b8;">まだ効果実行はありません。</div>`;
-      } else if (row.dslUnimplemented) {
-        execEl.innerHTML = `<div style="font-size:12px;color:#fcd34d;">このカードはDSL未実装（効果なし）</div>`;
+      } else if (row.effectsUnimplemented) {
+        execEl.innerHTML = `<div style="font-size:12px;color:#fcd34d;">このカードにはeffects[]がありません</div>`;
       } else {
         const triggerRows = (row.triggerReports || []).map((t) => {
           const effects = (t.effects || []).map((e) => {
@@ -754,7 +720,7 @@
       el.innerHTML = `
         <div style="font-size:12px;font-weight:700;color:#f8fafc;">${card.name}</div>
         <div style="font-size:11px;color:#94a3b8;">${card.id}</div>
-        <div style="font-size:10px;color:#93c5fd;line-height:1.35;margin-top:2px;">DSL: ${esc(summarizeDsl(card))}</div>
+        <div style="font-size:10px;color:#93c5fd;line-height:1.35;margin-top:2px;">Effects: ${esc(summarizeEffects(card))}</div>
         <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">${controls.map(([act, label]) => `<button data-act="${act}" style="padding:3px 6px;font-size:11px;background:#334155;color:#fff;border:0;border-radius:4px;cursor:pointer;">${label}</button>`).join("")}</div>
       `;
       el.querySelectorAll("button").forEach((btn) => {
@@ -1032,7 +998,7 @@
               <div style="font-size:11px;color:#93c5fd;">${c.id}</div>
               <div>
                 <div style="font-size:12px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.name || "(名前なし)"}</div>
-                <div style="font-size:10px;color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(summarizeDsl({ profile: c }))}</div>
+                <div style="font-size:10px;color:#93c5fd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(summarizeEffects({ profile: c }))}</div>
               </div>
               <div style="display:grid;grid-template-columns:30px 1fr 30px 44px;gap:4px;align-items:center;">
                 <button type="button" data-card-minus="${c.id}" style="height:30px;border:1px solid #334155;border-radius:6px;background:#1f2937;color:#fff;cursor:pointer;">-</button>

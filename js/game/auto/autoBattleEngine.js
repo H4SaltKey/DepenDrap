@@ -151,7 +151,7 @@
       sourceCardId: attacker?.dataset?.id || ""
     });
     attacker.dataset.didDirectAttack = "1";
-    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && profile?.effectDsl) {
+    if (window.EffectEngine && typeof window.EffectEngine.execute === "function" && Array.isArray(profile?.effects)) {
       const context = {
         game: window.state,
         sourceCard: attacker,
@@ -164,7 +164,10 @@
       if (typeof window.EffectEngine.executeGrantedEffects === "function") {
         window.EffectEngine.executeGrantedEffects(context);
       }
-      window.EffectEngine.execute(profile.effectDsl, context);
+      window.EffectEngine.execute({
+        format: window.EffectEngine.EFFECTS_FORMAT || "dependrap.effects.v1",
+        effects: profile.effects
+      }, context);
     }
     runtime.lastDirectAttackKey = attackKey;
     log(`直接攻撃 ${amount} ダメージ (基礎${myAtkBase} + カード${cardAtkBase}${cardAtkBonus ? (cardAtkBonus > 0 ? `+${cardAtkBonus}` : `${cardAtkBonus}`) : ""})`);

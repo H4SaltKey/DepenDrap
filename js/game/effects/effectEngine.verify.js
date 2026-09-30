@@ -33,12 +33,14 @@ function createEffectEngineContext() {
   };
   ctx.window.getMyRole = () => "player1";
   ctx.window.myRole = "player1";
+  ctx.window.damageCalls = [];
   ctx.window.addVal = (owner, stat, delta) => {
     const s = ctx.window.state[owner];
     if (!s) return;
     s[stat] = Math.max(0, Number(s[stat] || 0) + Number(delta || 0));
   };
-  ctx.window.applyCalculatedDamage = (owner, type, _subType, amount) => {
+  ctx.window.applyCalculatedDamage = (owner, type, subType, amount, isEvoDmg, options) => {
+    ctx.window.damageCalls.push({ owner, type, subType, amount, isEvoDmg, options });
     const s = ctx.window.state[owner];
     if (!s) return;
     const hits = Math.max(0, Number(amount || 0));
@@ -105,6 +107,21 @@ function runActionTests(EffectEngine, windowRef) {
   );
   assert(dmg.applied === true, "DAMAGE applied");
   assert(windowRef.state.player2.hp === 7, "DAMAGE reduced opponent hp");
+  assert(windowRef.damageCalls.at(-1).type === "hp_reduce", "DAMAGE delegates to shared damage rules");
+  assert(windowRef.damageCalls.at(-1).isEvoDmg === false, "card damage remains eligible for evolution path rules");
+
+  const copySource = { dataset: { id: "COPY_SOURCE", owner: "player1" }, style: {} };
+  const cardCopy = { dataset: {}, style: {} };
+  windowRef.duplicateCard = (card) => card === copySource ? cardCopy : null;
+  windowRef.clearZoneMarker = () => {};
+  windowRef.organizeHands = () => {};
+  const copied = EffectExecutor.executeEffect(
+    { type: "DUPLICATE_SOURCE_TO_HAND", targetType: "card", cardTarget: "this_card" },
+    { ...context, sourceCard: copySource },
+    {}
+  );
+  assert(copied.applied === true && copied.duplicated === 1, "COPY_CARD delegates to the shared card clone handler");
+  assert(cardCopy.dataset.owner === "player1", "copied cards are placed into their owner's hand");
 
   windowRef.drawToHand = () => {};
   const ppBeforeDraw = windowRef.state.player1.pp;
@@ -165,6 +182,20 @@ function runCanonicalEffectTests(EffectEngine, windowRef) {
   const afterReset = EffectEngine.execute(program, context);
   assert(afterReset.effects[0].applied === true, "once limit can be reset on deck/grave movement");
   assert(windowRef.state.player1.hp === 6, "reset once limit allows the action again");
+
+  const chainProgram = {
+    format: EffectEngine.EFFECTS_FORMAT,
+    effects: [
+      { trigger: "summon", action: { type: "heal", amount: 1 } },
+      {
+        trigger: "summon",
+        condition: { requiredExecutedOrder: [1] },
+        action: { type: "heal", amount: 1 }
+      }
+    ]
+  };
+  const chainResult = EffectEngine.execute(chainProgram, context);
+  assert(chainResult.effects[1].applied === true, "conditions can observe earlier actions in the same trigger chain");
 
   const perTurnCard = { dataset: { id: "PER_TURN_TEST", zoneType: "attacker" } };
   const perTurnContext = { ...context, sourceCard: perTurnCard };
@@ -323,15 +354,46 @@ function runResolvePriorityTests() {
   const ctx = { window: {}, console, document: { baseURI: `file://${ROOT}/` } };
   ctx.window = ctx.window;
   vm.createContext(ctx);
-  loadIIFE("js/dev/cardEffectBlockCompiler.js", ctx);
   loadIIFE("js/game/effects/effectRuntimeV2.js", ctx);
   const cards = JSON.parse(fs.readFileSync(path.join(ROOT, "data/cards.json"), "utf8"));
   const c001 = cards.find((c) => c.id === "cd001-001");
-  const c003 = cards.find((c) => c.id === "cd001-003");
-  const r1 = ctx.window.CardEffectRuntimeV2.resolveCardDsl(c001);
-  const r3 = ctx.window.CardEffectRuntimeV2.resolveCardDsl(c003);
-  assert(r1.triggers.some((t) => t.on === "onLeave"), "cd001-001 should use effectBlocks (onLeave present)");
-  assert(r3.triggers.length === 0, "cd001-003 should not use auto effectDslText");
+  const c002 = cards.find((c) => c.id === "cd001-002");
+  assert(c001.effects.some((effect) => effect.trigger === "leave"), "cd001-001 leave effect is in canonical data");
+  assert(c001.effects.some((effect) => effect.trigger === "directAttack"), "cd001-001 direct attack effect is in canonical data");
+  assert(c002.effects.every((effect) => effect.trigger === "skillAfterAttack"), "cd001-002 effects use the post-skill trigger");
+  assert(c002.effects[0].condition.left.ref === "event.attackerAttribute", "cd001-002 preserves the magic attacker condition");
+  const migratedRoundTrip = ctx.window.CardEffectRuntimeV2.compileAstToEffects(
+    ctx.window.CardEffectRuntimeV2.parseDslText(ctx.window.CardEffectRuntimeV2.effectsToDslText(c002.effects))
+  );
+  assert(migratedRoundTrip[0].action.cardTarget === "attacker_zone_card", "migrated card target survives editing round trip");
+  assert(migratedRoundTrip[2].action.type === "ADD_HAND", "ADD_HAND remains distinct from draw in editor round trip");
+  assert(cards.every((card) => !["effectDsl", "effectDslText", "effectGraph", "effectBlocks"].some((key) => Object.hasOwn(card, key))), "legacy card effect fields are removed from cards.json");
+
+  const runtime = ctx.window.CardEffectRuntimeV2;
+  assert(runtime.resolveCardDsl === undefined, "legacy CardEffectRuntimeV2 DSL resolver is removed");
+  const ast = runtime.parseDslText([
+    "trigger OnPlay",
+    "if self.hp <= 5",
+    "target self",
+    "effect heal 1 limit=once",
+    "end",
+    "trigger OnAttack",
+    "target opponent",
+    "effect damage 2 damageType=arcana duration=thisTurn limit=oncePerTurn",
+    "end"
+  ].join("\n"));
+  const effects = runtime.compileAstToEffects(ast);
+  assert(effects.length === 2, "DSL compiles to individual effects[] rows");
+  assert(effects[0].trigger === "summon", "OnPlay maps to canonical summon trigger");
+  assert(effects[0].condition.left.ref === "self.hp", "DSL condition is retained");
+  assert(effects[0].action.type === "HEAL" && effects[0].limit === "once", "heal Action and limit compile");
+  assert(effects[1].action.type === "DAMAGE", "damage compiles to shared DAMAGE Action");
+  assert(effects[1].action.damageType === "arcana", "damage type is retained");
+  assert(effects[1].duration === "thisTurn" && effects[1].limit === "oncePerTurn", "duration and limit compile");
+  const roundTrip = runtime.compileAstToEffects(runtime.parseDslText(runtime.effectsToDslText(effects)));
+  assert(roundTrip.length === 2, "canonical effects can be reopened in the DSL editor");
+  assert(roundTrip[1].action.damageType === "arcana", "DSL round trip retains damage type");
+  assert(roundTrip[1].duration === "thisTurn" && roundTrip[1].limit === "oncePerTurn", "DSL round trip retains duration and limit");
 }
 
 function runCatalogAmountTests() {
@@ -400,16 +462,184 @@ function runCatalogAmountTests() {
   );
 }
 
+async function runCardDataLegacyStripTests() {
+  const ctx = {
+    window: {},
+    console,
+    URL,
+    document: { baseURI: `file://${ROOT}/` },
+    fetch: async () => ({
+      ok: true,
+      json: async () => [{
+        id: "LEGACY_DATA_TEST",
+        effectDsl: { format: "dependrap.dsl.v1", triggers: [{ on: "onSummon", effects: [] }] },
+        effectDslText: "trigger OnPlay\neffect heal 1",
+        effectGraph: { format: "dependrap.effectgraph.v2", nodes: [], edges: [] },
+        effectBlocks: { format: "dependrap.effectblocks.v1", timings: [] },
+        useEffectDslText: true,
+        effects: [{ trigger: "summon", action: { type: "HEAL", amount: 1 } }]
+      }]
+    })
+  };
+  ctx.window = ctx.window;
+  ctx.window.CardEffectRuntimeV2 = {
+    resolveCardDsl() { throw new Error("legacy resolver must not be called"); }
+  };
+  vm.createContext(ctx);
+  loadIIFE("js/card/cardData.js", ctx);
+  await ctx.loadCardData();
+  const loaded = ctx.getCardData("LEGACY_DATA_TEST");
+  assert(loaded.effects.length === 1, "card loader retains canonical effects[]");
+  assert(
+    ["effectDsl", "effectDslText", "effectGraph", "effectBlocks", "useEffectDslText"].every((key) => !Object.hasOwn(loaded, key)),
+    "card loader strips all legacy effect fields"
+  );
+}
+
+function runLiveResolverIntegrationTests() {
+  const cards = JSON.parse(fs.readFileSync(path.join(ROOT, "data/cards.json"), "utf8"));
+  const summonCard = cards.find((card) => card.id === "cd001-001");
+  const ctx = {
+    window: {},
+    console,
+    document: { baseURI: `file://${ROOT}/` }
+  };
+  ctx.window = ctx.window;
+  ctx.window.state = {
+    matchData: { turn: 1, round: 1, turnPlayer: "player1", status: "playing" },
+    player1: { hp: 10, pp: 2, ppMax: 2, shield: 0, atk: 0, grantedEffects: [] },
+    player2: { hp: 20, pp: 2, ppMax: 2, shield: 0, atk: 0, grantedEffects: [] }
+  };
+  ctx.window.myRole = "player1";
+  ctx.window.getMyRole = () => "player1";
+  const magicAttackerData = { id: "test-magic-attacker", name: "Magic Attacker", attribute: "魔法", type: "アタッカー", attack: 1, effects: [] };
+  const cardById = new Map(cards.map((card) => [card.id, card]));
+  cardById.set(magicAttackerData.id, magicAttackerData);
+  ctx.window.getCardData = (id) => cardById.get(id) || null;
+  ctx.window.CardCombatData = { getResolvedCardData: (id) => ctx.window.getCardData(id) };
+  const cardElement = {
+    dataset: { id: summonCard.id, owner: "player1", zoneType: "attacker", instanceId: "live-summon-test" },
+    style: {}
+  };
+  const zones = { attacker: [cardElement], skill: [], grave: [] };
+  ctx.window.getZoneCards = (owner, zone) => owner === "player1" ? (zones[zone] || []) : [];
+  ctx.window.placeCardInZone = (card, _owner, zone) => {
+    Object.keys(zones).forEach((key) => {
+      zones[key] = zones[key].filter((item) => item !== card);
+    });
+    card.dataset.zoneType = zone;
+    (zones[zone] || (zones[zone] = [])).push(card);
+    return card;
+  };
+  ctx.window.CardEffectRuntimeV2 = { emitGameEvent() {} };
+  ctx.window.GameStatTracker = {
+    resolvePath(path) { return path.endsWith("decCount") ? 1 : 0; },
+    recordEffectActivation(row) { ctx.window.activations.push(row); },
+    bumpCustom() {}
+  };
+  ctx.window.activations = [];
+  ctx.window.addVal = (owner, key, delta) => {
+    const player = ctx.window.state[owner];
+    const max = key === "pp" ? player.ppMax : Infinity;
+    player[key] = Math.min(max, Number(player[key] || 0) + Number(delta || 0));
+  };
+  ctx.window.applyCalculatedDamage = (owner, _type, _subType, amount) => {
+    ctx.window.state[owner].hp = Math.max(0, ctx.window.state[owner].hp - Number(amount || 0));
+  };
+  ctx.window.drawn = 0;
+  ctx.window.drawToHand = (amount) => { ctx.window.drawn += Number(amount || 0); };
+  ctx.window.addGameLog = () => {};
+  ctx.window.pushMyStateDebounced = () => {};
+  ctx.window.saveAllImmediate = () => {};
+  ctx.window.update = () => {};
+  ctx.window.organizeHands = () => {};
+  ctx.window.organizeBattleZones = () => {};
+  ctx.window.clearZoneMarker = () => {};
+
+  vm.createContext(ctx);
+  loadIIFE("js/game/effects/effectEngine.js", ctx);
+  loadIIFE("js/game/auto/firstEightCardEffects.js", ctx);
+  loadIIFE("js/game/auto/playerActionResolver.js", ctx);
+  ctx.window.PlayerActionResolver.resolveCardOnPlay(cardElement, "attacker");
+
+  assert(ctx.window.state.player1.hp === 9, "real card effects[] executes automatically through PlayerActionResolver");
+  assert(ctx.window.activations.some((row) => row.effectType === "DAMAGE"), "automatic resolver reports the migrated damage Action");
+
+  const fieldAttacker = {
+    dataset: { id: magicAttackerData.id, owner: "player1", zoneType: "attacker", instanceId: "magic-attacker-test" },
+    style: {}
+  };
+  zones.attacker.push(fieldAttacker);
+  const skillCard = {
+    dataset: { id: "cd001-002", owner: "player1", zoneType: "skill", instanceId: "live-skill-test" },
+    style: {}
+  };
+  zones.skill.push(skillCard);
+  ctx.window.state.player1.hp = 20;
+  ctx.window.drawn = 0;
+  ctx.window.PlayerActionResolver.resolveCardOnPlay(skillCard, "skill");
+  assert(fieldAttacker.dataset.zoneType === "grave", "migrated skill effect moves the field attacker to grave");
+  assert(ctx.window.state.player1.hp === 19, "migrated skill effect applies its HP reduction after grave movement");
+  assert(ctx.window.drawn === 1, "migrated skill effect draws after damage");
+
+  const wanderer = cards.find((card) => card.id === "cd001-003");
+  const wandererElement = {
+    dataset: { id: wanderer.id, owner: "player1", zoneType: "attacker", instanceId: "wanderer-test" },
+    style: {}
+  };
+  zones.attacker.push(wandererElement);
+  ctx.window.state.player1.hp = 20;
+  ctx.window.state.player1.pp = 2;
+  ctx.window.state.player1.shield = 0;
+  ctx.window.state.player2.hp = 20;
+  ctx.window.drawn = 0;
+  ctx.window.PlayerActionResolver.resolveCardOnPlay(wandererElement, "attacker");
+  assert(ctx.window.drawn === 1 && ctx.window.state.player1.pp === 2, "wanderer summon draw and PP condition execute from effects[]");
+  ctx.window.state.player1.hp = 10;
+  ctx.window.EffectEngine.triggerZoneCardEffects("player1", "attacker", "onAttack", { attackType: "skill" });
+  assert(ctx.window.state.player1.hp === 11 && ctx.window.state.player1.shield === 1, "wanderer attack heal and shield execute from effects[]");
+  ctx.window.EffectEngine.triggerZoneCardEffects("player1", "attacker", "onTurnStart", { targetOwner: "player1" });
+  assert(ctx.window.state.player2.hp === 17, "wanderer turn-start amount resolves from current shield count");
+  assert(wandererElement.dataset.zoneType === "grave", "wanderer moves itself to grave after its turn-start effect");
+
+  const creator = cards.find((card) => card.id === "cd001-005");
+  const creatorElement = {
+    dataset: { id: creator.id, owner: "player1", zoneType: "attacker", instanceId: "creator-test" },
+    style: {}
+  };
+  zones.attacker.push(creatorElement);
+  ctx.window.state.player1.hp = 5;
+  ctx.window.state.player2.hp = 20;
+  ctx.window.addVal("player1", "hp", 1);
+  assert(ctx.window.state.player2.hp === 21, "creator healing trigger heals opponent through OnHeal event");
+  ctx.window.EffectEngine.triggerZoneCardEffects("player1", "attacker", "onAttack", {});
+  assert(ctx.window.state.player1.hp === 8, "creator onceWhileOnField heal executes once");
+  const creatorHpAfterFirstAttack = ctx.window.state.player1.hp;
+  ctx.window.EffectEngine.triggerZoneCardEffects("player1", "attacker", "onAttack", {});
+  assert(ctx.window.state.player1.hp === creatorHpAfterFirstAttack, "creator onceWhileOnField limit blocks later attack heals");
+}
+
 function main() {
   const ctx = createEffectEngineContext();
   runConditionTests(ctx.window.EffectEngine);
   runActionTests(ctx.window.EffectEngine, ctx.window);
+  const legacyProgram = ctx.window.EffectEngine.execute({
+    format: "dependrap.dsl.v1",
+    triggers: [{ on: "onSummon", effects: [{ type: "HEAL", amount: 1 }] }]
+  }, { owner: "player1", opponent: "player2", event: { name: "onSummon" } });
+  assert(legacyProgram.handled === false, "legacy DSL v1 is rejected by the live EffectEngine");
   runCanonicalEffectTests(ctx.window.EffectEngine, ctx.window);
   runCanonicalZoneTriggerTests(ctx.window.EffectEngine, ctx.window);
   runDurationTests(ctx.window.EffectEngine, ctx.window);
   runResolvePriorityTests();
   runCatalogAmountTests();
-  console.log("effectEngine.verify.js: all checks passed");
+  runLiveResolverIntegrationTests();
+  runCardDataLegacyStripTests().then(() => {
+    console.log("effectEngine.verify.js: all checks passed");
+  }).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }
 
 main();

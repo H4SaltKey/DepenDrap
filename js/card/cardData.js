@@ -7,19 +7,21 @@ async function loadCardData(){
   if(!res.ok) throw new Error("cards.json の読み込みに失敗しました");
   const cards = await res.json();
 
-  CARD_DB = cards.map(card => ({
-    ...card,
-    name: card.name || "",
-    attribute: card.attribute || "近接",
-    type: card.type || "アタッカー",
-    attack: normalizeCardAttack(card.attack),
-    effectText: String(card.effectText || "").trim(),
-    effectDsl: resolveCardEffectDsl(card),
-    effectDslText: normalizeCardEffectDslText(card.effectDslText),
-    effectGraph: normalizeCardEffectGraph(card.effectGraph),
-    tags: normalizeCardTags(card.tags),
-    image: normalizeCardImagePath(card.image || "")
-  }));
+  CARD_DB = cards.map(card => {
+    const normalized = {
+      ...card,
+      name: card.name || "",
+      attribute: card.attribute || "近接",
+      type: card.type || "アタッカー",
+      attack: normalizeCardAttack(card.attack),
+      effectText: String(card.effectText || "").trim(),
+      effects: normalizeCardEffects(card.effects),
+      tags: normalizeCardTags(card.tags),
+      image: normalizeCardImagePath(card.image || "")
+    };
+    ["effectDsl", "effectDslText", "effectGraph", "effectBlocks", "useEffectDslText"].forEach((key) => delete normalized[key]);
+    return normalized;
+  });
   CARD_INDEX = Object.fromEntries(CARD_DB.map(card => [card.id, card]));
 }
 
@@ -52,68 +54,8 @@ function normalizeCardAttack(attack) {
   return Math.max(0, Math.floor(val));
 }
 
-function createEmptyEffectDsl() {
-  return {
-    format: "dependrap.dsl.v1",
-    triggers: []
-  };
-}
-
-function normalizeCardEffectDslText(effectDslText) {
-  return String(effectDslText || "").trim();
-}
-
-function normalizeCardEffectGraph(effectGraph) {
-  if (
-    effectGraph
-    && typeof effectGraph === "object"
-    && String(effectGraph.format || "") === "dependrap.effectgraph.v2"
-    && Array.isArray(effectGraph.nodes)
-    && Array.isArray(effectGraph.edges)
-  ) {
-    return effectGraph;
-  }
-  return null;
-}
-
-function normalizeCardEffectDsl(effectDsl) {
-  if (
-    effectDsl
-    && typeof effectDsl === "object"
-    && String(effectDsl.format || "") === "dependrap.dsl.v1"
-    && Array.isArray(effectDsl.triggers)
-  ) {
-    return effectDsl;
-  }
-  return createEmptyEffectDsl();
-}
-
-function resolveCardEffectDsl(card) {
-  if (
-    window.CardEffectRuntimeV2
-    && typeof window.CardEffectRuntimeV2.resolveCardDsl === "function"
-  ) {
-    const resolved = window.CardEffectRuntimeV2.resolveCardDsl(card);
-    if (resolved && resolved.format === "dependrap.dsl.v1" && Array.isArray(resolved.triggers)) {
-      return resolved;
-    }
-  }
-
-  const rawBlocks = card?.effectBlocks;
-  if (
-    rawBlocks
-    && typeof rawBlocks === "object"
-    && Array.isArray(rawBlocks.timings)
-    && window.CardEffectBlockCompiler
-    && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function"
-  ) {
-    const compiled = window.CardEffectBlockCompiler.compileProgramToDsl(rawBlocks);
-    if (compiled && compiled.format === "dependrap.dsl.v1" && Array.isArray(compiled.triggers)) {
-      return compiled;
-    }
-    return createEmptyEffectDsl();
-  }
-  return normalizeCardEffectDsl(card?.effectDsl);
+function normalizeCardEffects(effects) {
+  return Array.isArray(effects) ? effects : [];
 }
 
 function getCardIds(){

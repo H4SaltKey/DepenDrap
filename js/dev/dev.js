@@ -843,10 +843,7 @@ async function initDev() {
       name: c.name || "",
       attack: Number.isFinite(Number(c.attack)) ? Number(c.attack) : 0,
       effectText: String(c.effectText || ""),
-      effectDsl: c.effectDsl || null,
-      effectDslText: String(c.effectDslText || ""),
-      effectGraph: c.effectGraph || null,
-      effectBlocks: c.effectBlocks || null,
+      effects: Array.isArray(c.effects) ? c.effects : [],
       attribute: c.attribute || "近接",
       type: c.type || "アタッカー",
       tags: Array.isArray(c.tags) ? c.tags.join(", ") : (typeof c.tags === "string" ? c.tags : "")
@@ -907,10 +904,7 @@ document.getElementById("addCardBtn").addEventListener("click", () => {
     name: "",
     attack: 0,
     effectText: "",
-    effectDsl: null,
-    effectDslText: "",
-    effectGraph: null,
-    effectBlocks: null,
+    effects: [],
     attribute: "近接",
     type: "アタッカー",
     tags: ""
@@ -1315,15 +1309,6 @@ document.getElementById("doneBtn").addEventListener("click", () => {
     const studioPayload = (window.CardEffectNodeEditor && typeof window.CardEffectNodeEditor.collectCardPayload === "function" && c.id === selectedId)
       ? window.CardEffectNodeEditor.collectCardPayload(c)
       : null;
-    const effectiveDslText = String(studioPayload?.effectDslText || c.effectDslText || "").trim();
-    const effectiveGraph = studioPayload?.effectGraph || c.effectGraph || null;
-    const fromBlocks = (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function")
-      ? window.CardEffectBlockCompiler.compileProgramToDsl(c.effectBlocks)
-      : null;
-    const compiledDsl = studioPayload?.effectDsl || fromBlocks || {
-      format: (window.CardEffectBlockCompiler && window.CardEffectBlockCompiler.DSL_FORMAT) || "dependrap.dsl.v1",
-      triggers: []
-    };
     const entry = {
       id: c.id,
       image: c.image || "",
@@ -1332,14 +1317,11 @@ document.getElementById("doneBtn").addEventListener("click", () => {
       type: c.type || "アタッカー",
       attack: Math.max(0, Math.floor(Number(c.attack) || 0)),
       effectText,
-      effectDsl: compiledDsl,
-      effectDslText: effectiveDslText,
-      effectGraph: effectiveGraph,
+      effects: Array.isArray(studioPayload?.effects)
+        ? studioPayload.effects
+        : (Array.isArray(c.effects) ? c.effects : []),
       tags: normalizeTags(c.tags)
     };
-    if (c.effectBlocks && Array.isArray(c.effectBlocks.timings)) {
-      entry.effectBlocks = c.effectBlocks;
-    }
     return entry;
   });
 

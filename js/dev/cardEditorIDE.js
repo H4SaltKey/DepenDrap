@@ -34,36 +34,41 @@
 
   const NODE_LIBRARY = [
     { type: "trigger", category: "トリガー", label: "トリガー：登場時", data: { event: "OnPlay" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：カード使用後", data: { event: "OnCardUse" } },
     { type: "trigger", category: "トリガー", label: "トリガー：攻撃時", data: { event: "OnAttack" } },
     { type: "trigger", category: "トリガー", label: "トリガー：直接攻撃時", data: { event: "OnDirectAttack" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：スキル攻撃後", data: { event: "OnAfterAttackEffect" } },
     { type: "trigger", category: "トリガー", label: "トリガー：ダメージ時", data: { event: "OnDamage" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：回復時", data: { event: "OnHeal" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：PP変化時", data: { event: "OnPPChange" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：ドロー時", data: { event: "OnDraw" } },
+    { type: "trigger", category: "トリガー", label: "トリガー：離脱時", data: { event: "OnLeaveField" } },
     { type: "trigger", category: "トリガー", label: "トリガー：ターン開始時", data: { event: "OnTurnStart" } },
     { type: "trigger", category: "トリガー", label: "トリガー：ターン終了時", data: { event: "OnTurnEnd" } },
-    { type: "condition", category: "条件", label: "条件分岐", data: { left: "event.damage", op: ">", right: "0", expression: "event.damage > 0" } },
-    { type: "condition", category: "条件", label: "条件分岐：このターン中の回数", data: { left: "history.event.OnAttack.count", op: ">=", right: "1", expression: "history.event.OnAttack.count >= 1" } },
-    { type: "condition", category: "条件", label: "条件分岐：発動済みフラグ", data: { left: "flag.used_on_attack", op: "==", right: "1", expression: "flag.used_on_attack == 1" } },
+    { type: "condition", category: "条件", label: "条件分岐：HP", data: { left: "self.hp", op: "<=", right: "5", expression: "self.hp <= 5" } },
+    { type: "condition", category: "条件", label: "条件分岐：イベント量", data: { left: "event.amount", op: ">=", right: "1", expression: "event.amount >= 1" } },
     { type: "target", category: "対象", label: "対象指定", data: { target: "current_target" } },
     { type: "effect", category: "効果", label: "効果実行", data: { action: "draw", args: ["1"] } },
+    { type: "effect", category: "効果", label: "効果実行：回復", data: { action: "heal", args: ["1"] } },
+    { type: "effect", category: "効果", label: "効果実行：ダメージ", data: { action: "damage", args: ["1", "damageType=damage"] } },
+    { type: "effect", category: "効果", label: "効果実行：PP消費", data: { action: "consume_pp", args: ["1"] } },
+    { type: "effect", category: "効果", label: "効果実行：PP回復", data: { action: "add_pp", args: ["1"] } },
+    { type: "effect", category: "効果", label: "効果実行：シールド付与", data: { action: "add_shield", args: ["1"] } },
     { type: "effect", category: "効果", label: "効果実行：攻撃時効果を再発動", data: { action: "trigger_attack_effect", args: [] } },
-    { type: "effect", category: "効果", label: "効果実行：効果を付与", data: { action: "add_effect", args: ["Shield", "turns=1"] } },
+    { type: "effect", category: "効果", label: "効果実行：効果を付与", data: { action: "add_effect", args: ["Shield", "duration=untilOwnTurnStart"] } },
     { type: "effect", category: "効果", label: "効果実行：効果を削除", data: { action: "remove_effect", args: ["Shield"] } },
     { type: "effect", category: "効果", label: "効果実行：攻撃力増減", data: { action: "add_atk", args: ["1", "atkMode=increase", "atkTarget=this_card"] } },
-    { type: "modifier", category: "修飾", label: "効果修飾：追加効果付与", data: { action: "add_effect", args: ["Shield", "turns=1"] } },
-    { type: "modifier", category: "修飾", label: "効果修飾：追加効果削除", data: { action: "remove_effect", args: ["Shield"] } },
-    { type: "modifier", category: "修飾", label: "効果修飾：攻撃時効果再発動", data: { action: "trigger_attack_effect", args: [] } },
+    { type: "effect", category: "効果", label: "効果実行：この場で1回", data: { action: "heal", args: ["1", "limit=onceWhileOnField"] } },
+    { type: "effect", category: "効果", label: "効果実行：ターン1回", data: { action: "heal", args: ["1", "limit=oncePerTurn"] } },
     { type: "end", category: "フロー", label: "終了", data: {} },
-    { type: "variable", category: "変数", label: "変数", data: { name: "x", value: "0" } },
-    { type: "variable", category: "変数", label: "変数：加算", data: { name: "x", value: "x+1" } },
-    { type: "history", category: "履歴", label: "履歴参照", data: { expression: "history.event.OnDraw.count >= 1" } },
-    { type: "math", category: "計算", label: "数式", data: { expression: "add 1 2" } },
-    { type: "custom", category: "カスタム", label: "カスタム", data: { note: "" } }
   ];
 
   const DSL_KEYWORDS = [
     "trigger", "if", "target", "effect", "modifier", "end",
     "OnPlay", "OnAttack", "OnDirectAttack", "OnSkillUse", "OnBeforeAttackEffect", "OnAfterAttackEffect",
-    "OnDamage", "OnPenetrateDamage", "OnHeal", "OnDraw", "OnDiscard", "OnLeaveField", "OnReturnHand", "OnTurnStart", "OnTurnEnd", "OnEffectAdded", "OnEffectRemoved",
-    "draw", "add_hand_to_min", "damage", "hp_reduce", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "set_hp", "add_pp", "set_pp_min", "add_shield", "add_atk",
+    "OnCardUse", "OnDamage", "OnPenetrateDamage", "OnPPChange", "OnHeal", "OnDraw", "OnDiscard", "OnLeaveField", "OnReturnHand", "OnTurnStart", "OnTurnEnd", "OnEffectAdded", "OnEffectRemoved",
+    "draw", "add_hand_to_min", "damage", "hp_reduce", "penetrate_damage", "extra_damage", "extra_penetrate_damage", "heal", "set_hp", "add_pp", "consume_pp", "set_pp_min", "add_shield", "add_atk",
+    "damageType", "subType", "duration", "limit", "instant", "permanent", "thisTurn", "untilOwnTurnStart", "nextAttack", "once", "oncePerTurn", "onceWhileOnField",
     "move_to_grave", "return_to_hand", "return_to_deck", "duplicate_to_hand", "reveal_card", "fetch_card", "play_to_field", "trigger_attack_effect",
     "add_effect", "remove_effect", "remove_status",
     "self", "opponent", "current_target", "self_and_current_target", "this_card", "target_card", "attacker_zone_card", "target_attacker_zone_card", "self_skill_card", "target_skill_card"
@@ -223,8 +228,8 @@
       lines.push(`exception: ${compactText(exec.error.message || exec.error)}`);
       return lines.join("\n");
     }
-    if (exec.dslUnimplemented) {
-      lines.push("dsl: 未実装");
+    if (exec.effectsUnimplemented) {
+      lines.push("effects[]未設定");
       return lines.join("\n");
     }
     lines.push(`trigger: ${compactText(exec.triggerName)} (${compactText(exec.triggerEvent)})`);
@@ -291,30 +296,7 @@
 
   function ensureV2ForCard(card) {
     if (!card || !runtime()) return;
-
-    if ((!card.effectGraph || !Array.isArray(card.effectGraph.nodes)) && card.effectBlocks) {
-      const migrated = runtime().migrateLegacyBlocks(card.effectBlocks);
-      if (migrated?.ok) {
-        card.effectGraph = migrated.graph;
-        if (!String(card.effectDslText || "").trim()) card.effectDslText = migrated.dslText;
-        log(`旧ブロックを移行: ${card.id}`);
-      }
-    }
-
-    if ((!card.effectGraph || !Array.isArray(card.effectGraph.nodes)) && String(card.effectDslText || "").trim()) {
-      const ast = runtime().parseDslText(card.effectDslText);
-      card.effectGraph = runtime().astToGraph(ast);
-    }
-
-    if (!String(card.effectDslText || "").trim() && card.effectGraph && Array.isArray(card.effectGraph.nodes)) {
-      const ast = runtime().graphToAst(card.effectGraph);
-      card.effectDslText = runtime().toDslText(ast);
-    }
-
-    if (!card.effectGraph || !Array.isArray(card.effectGraph.nodes)) {
-      card.effectGraph = { format: runtime().GRAPH_FORMAT, nodes: [], edges: [] };
-    }
-    if (!card.effectDslText) card.effectDslText = "";
+    if (!Array.isArray(card.effects)) card.effects = [];
   }
 
   function pushUndo(reason) {
@@ -376,7 +358,7 @@
       state.dslText = runtime().toDslText(ast);
       state.dslError = "";
       const c = selectedCard();
-      if (c) c.effectDslText = state.dslText;
+      if (c) c.effects = runtime().compileAstToEffects(ast);
     } catch (e) {
       state.dslError = `Graph変換エラー: ${String(e?.message || e)}`;
     }
@@ -392,7 +374,7 @@
       state.selectedNodeIds = new Set();
       state.selectedEdgeIds = new Set();
       const c = selectedCard();
-      if (c) c.effectGraph = clone(next);
+      if (c) c.effects = runtime().compileAstToEffects(ast);
     } catch (e) {
       state.dslError = `DSL解析エラー: ${String(e?.message || e)}`;
     }
@@ -401,8 +383,8 @@
   function applyCardToEditor(card) {
     if (!card) return;
     ensureV2ForCard(card);
-    state.graph = clone(card.effectGraph);
-    state.dslText = String(card.effectDslText || "");
+    state.dslText = runtime().effectsToDslText(card.effects);
+    state.graph = runtime().astToGraph(runtime().parseDslText(state.dslText));
     state.selectedNodeIds = new Set();
     state.selectedEdgeIds = new Set();
     state.undoStack = [];
@@ -411,14 +393,16 @@
   }
 
   function saveEditorToCard(card) {
-    if (!card || !runtime()) return;
-    card.effectGraph = clone(state.graph);
-    card.effectDslText = String(state.dslText || "").trim();
+    if (!card || !runtime()) return false;
     try {
-      const ast = runtime().parseDslText(card.effectDslText);
-      card.effectDsl = runtime().compileAstToDslV1(ast);
-    } catch (_) {
-      // DSLエラー時は既存 effectDsl を維持
+      const ast = runtime().parseDslText(String(state.dslText || "").trim());
+      card.effects = runtime().compileAstToEffects(ast);
+      state.dslError = "";
+      return true;
+    } catch (error) {
+      state.dslError = `DSLコンパイルエラー: ${String(error?.message || error)}`;
+      log(state.dslError);
+      return false;
     }
   }
 
@@ -447,10 +431,7 @@
       cost: 0,
       causalRate: 0,
       effectText: "",
-      effectDslText: "",
-      effectGraph: { format: runtime()?.GRAPH_FORMAT || "dependrap.effectgraph.v2", nodes: [], edges: [] },
-      effectDsl: { format: "dependrap.dsl.v1", triggers: [] },
-      effectBlocks: null,
+      effects: [],
       tags: []
     };
   }
@@ -461,7 +442,7 @@
 	    root.innerHTML = `
 	      <section class="devCard">
 	        <h2>Developer Home</h2>
-	        <p>カードエディタを専用IDEとして分離しました。既存資産を壊さず Visual Node / DSL / 旧ブロックを相互変換できます。</p>
+          <p>カード効果はTrigger・Condition・Action・Duration・Limitを組み合わせて編集します。</p>
 	        <div class="actionRow">
 	          <button id="openCardEditorBtn">カードエディタを開く</button>
 	          <button id="openBatchBtn">カード一括作成プロトコル</button>
@@ -472,7 +453,7 @@
 	      </section>
       <section class="devCard">
         <h3>運用メモ</h3>
-        <p>旧ブロックシステムは互換レイヤーとして保持。メイン導線はNode/DSL編集です。</p>
+        <p>保存データはeffects[]形式です。旧DSL/Block/Graphは読み込みません。</p>
       </section>
       <div id="cardEditorEntryModal" style="display:none;position:fixed;inset:0;background:rgba(1,6,14,0.84);z-index:80;align-items:center;justify-content:center;padding:20px;">
         <div style="width:min(920px, 100%);max-height:88vh;overflow:auto;background:#102038;border:1px solid #355985;border-radius:12px;padding:14px;">
@@ -1901,17 +1882,6 @@
         .replace(/\b(\d+)\b/g, '<span style="color:#ffcf7a;">$1</span>');
     }
 
-    function renderLegacyBlocks() {
-      const box = root.querySelector("#legacyBlocksText");
-      const card = selectedCard();
-      if (!box) return;
-      if (!card?.effectBlocks) {
-        box.value = "{}";
-        return;
-      }
-      box.value = JSON.stringify(card.effectBlocks, null, 2);
-    }
-
     function renderEventPanels() {
       const eventViewer = root.querySelector("#eventEngineViewer");
       const runtimeView = root.querySelector("#runtimeInspectorView");
@@ -1989,7 +1959,6 @@
       renderCardList();
       renderCardInfo();
       renderNodeLibrary();
-      renderLegacyBlocks();
       renderEventPanels();
       renderSimulatorResult();
       renderOutputPreview();
@@ -2572,7 +2541,7 @@
         const card = selectedCard();
         if (card) {
           saveFormToCard(card);
-          saveEditorToCard(card);
+          if (!saveEditorToCard(card)) return;
         }
         downloadCardsJson();
       });
@@ -2580,7 +2549,7 @@
         const card = selectedCard();
         if (card) {
           saveFormToCard(card);
-          saveEditorToCard(card);
+          if (!saveEditorToCard(card)) return;
         }
         downloadCardsJson();
       });
@@ -2693,13 +2662,12 @@
     function downloadCardsJson() {
       const out = state.cards.map((c) => {
         const row = clone(c);
-        if (!runtime()) return row;
-        try {
-          const ast = runtime().parseDslText(String(c.effectDslText || ""));
-          row.effectDsl = runtime().compileAstToDslV1(ast);
-        } catch (_) {
-          row.effectDsl = c.effectDsl || { format: "dependrap.dsl.v1", triggers: [] };
-        }
+        [
+          "effectDsl", "effectDslText", "effectGraph", "effectBlocks", "useEffectDslText",
+          "effectActions", "effectKey", "effectTiming", "_combatEnriched",
+          "cardKind", "resolvedRole", "cost", "cardCostPolicy"
+        ].forEach((key) => delete row[key]);
+        row.effects = Array.isArray(c.effects) ? clone(c.effects) : [];
         row.tags = Array.isArray(row.tags) ? row.tags : String(row.tags || "").split(/[,、\s]+/).map((x) => x.trim()).filter(Boolean);
         return row;
       });

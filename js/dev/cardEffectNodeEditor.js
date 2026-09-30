@@ -81,45 +81,20 @@
     }
 
     if (!runtime) {
-      dslInput.value = safeString(card.effectDslText || "");
-      graphInput.value = prettyJson(card.effectGraph || {});
+      dslInput.value = "";
+      graphInput.value = "{}";
       status.textContent = "CardEffectRuntimeV2 が未ロードです";
-      renderPathPreview(card.effectGraph || null);
+      renderPathPreview(null);
       return;
     }
 
-    const migrated = card.effectGraph
-      ? { ok: true, graph: card.effectGraph, dslText: safeString(card.effectDslText || "") }
-      : card.effectBlocks
-        ? runtime.migrateLegacyBlocks(card.effectBlocks)
-        : { ok: false };
-
-    let graph = card.effectGraph;
-    let dslText = safeString(card.effectDslText || "");
-
-    if ((!graph || !Array.isArray(graph.nodes)) && migrated?.ok) {
-      graph = migrated.graph;
-      if (!dslText) dslText = migrated.dslText;
-      card.effectGraph = graph;
-      card.effectDslText = dslText;
-    }
-
-    if ((!graph || !Array.isArray(graph.nodes)) && dslText.trim()) {
-      const ast = runtime.parseDslText(dslText);
-      graph = runtime.astToGraph(ast);
-      card.effectGraph = graph;
-    }
-
-    if (!dslText.trim() && graph && Array.isArray(graph.nodes)) {
-      const ast = runtime.graphToAst(graph);
-      dslText = runtime.toDslText(ast);
-      card.effectDslText = dslText;
-    }
-
+    const effects = Array.isArray(card.effects) ? card.effects : [];
+    const dslText = runtime.effectsToDslText(effects);
+    const graph = runtime.astToGraph(runtime.parseDslText(dslText));
     dslInput.value = dslText;
-    graphInput.value = prettyJson(graph || { format: runtime.GRAPH_FORMAT, nodes: [], edges: [] });
-    status.textContent = migrated?.ok ? "旧block資産を移行済み" : "同期準備完了";
-    renderPathPreview(graph || null);
+    graphInput.value = prettyJson(graph);
+    status.textContent = "effects[] 同期準備完了";
+    renderPathPreview(graph);
   }
 
   function syncFromDsl() {
@@ -180,12 +155,10 @@
     if (!graphParsed.ok) return null;
 
     const ast = runtime.parseDslText(dslInput.value || "");
-    const dslV1 = runtime.compileAstToDslV1(ast);
+    const effects = runtime.compileAstToEffects(ast);
 
     return {
-      effectDslText: dslInput.value || "",
-      effectGraph: graphParsed.value,
-      effectDsl: dslV1
+      effects
     };
   }
 

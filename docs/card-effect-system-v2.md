@@ -1,26 +1,24 @@
-# Card Effect System V2 (Node + DSL + Event Runtime)
+# Card Effect System (Trigger / Condition / Action / Duration / Limit)
 
 ## 目的
 
-- Scratch風 `effectBlocks` の新規依存を止める。
-- 全カードを同一ランタイムで処理し、カード固有分岐を禁止する。
-- 段階移行で既存資産 (`effectBlocks`, `effectDsl`) を破壊しない。
+- `effects[]` をカード能力の唯一の実行データとする。
+- 新DSLは直接 `effects[]` にコンパイルし、旧DSL v1/Block/Graphは実行しない。
+- 複雑なカードだけは明確な専用Action/処理として保持する。
 
 ## 新しい正規データ
 
-1. `effectGraph` (`dependrap.effectgraph.v2`)
-2. `effectDslText` (`dependrap.dsltext.v2`)
-3. `effectDsl` (`dependrap.dsl.v1`) ※実行互換のためのコンパイル成果物
+`effects[]` (`dependrap.effects.v1` 相当) を保存・実行形式とする。
 
-保存時は `effectGraph/effectDslText` から `effectDsl` を再生成する。
+各要素は `trigger`, `condition`, `action`, `duration`, `limit` を持つ。即時Actionのdurationと無制限のlimitは省略できる。
 
 ## サブシステム
 
 ### 1. Visual Editor
 
 - ノード種別: `trigger`, `condition`, `target`, `effect`, `modifier`, `end`
-- `effectGraph.nodes/edges` で自由接続可能。
-- 発動経路は `trigger -> ... -> end` を解析してプレビュー表示。
+- ノードグラフは編集中の可視化にのみ使い、カードJSONへ保存しない。
+- 保存されるのはコンパイル済み `effects[]` のみ。
 
 ### 2. DSL Editor
 
@@ -36,8 +34,9 @@ modifier once_per_turn
 end
 ```
 
-- `DSL -> Graph`: `parseDslText` + `astToGraph`
-- `Graph -> DSL`: `graphToAst` + `toDslText`
+- `DSL -> effects[]`: `parseDslText` + `compileAstToEffects`
+- `effects[] -> DSL`: `effectsToDslText`
+- 保存結果を再度DSLへ開き、Trigger/Action/Condition/Duration/Limitを保てることをテストする。
 
 ### 3. Event Engine
 
@@ -93,49 +92,39 @@ end
 
 ### 9. Migration
 
-- `migrateLegacyBlocks(effectBlocks)` により
-  - `effectBlocks -> dsl.v1 -> ast -> effectGraph/effectDslText`
-- 旧データは保持しつつ新データへ変換。
+- 旧 `effectDsl`, `effectDslText`, `effectGraph`, `effectBlocks` は `cards.json` から削除済み。
+- ローダーは旧フィールドを破棄し、旧DSL v1はライブEffectEngineで拒否する。
+- 未移行カードの表示文 `effectText` は保持するが、効果データがないカードは自動発動しない。
 
 ### 10. 禁止事項の担保
 
 - ルール層にカード名分岐を入れない。
-- `CardEffectRuntimeV2.resolveCardDsl()` を単一入口にして、
-  - `effectGraph` / `effectDslText` / `effectBlocks` / `effectDsl`
-  の順で一般化処理する。
+- ゲーム実行入口は `effects[]` のみを受け付ける。
+- DSLエディターのコンパイラ以外でカード効果を別形式へ再解釈しない。
 
 ## 実装済み統合ポイント
 
 - `js/game/effects/effectRuntimeV2.js` 新規
 - `js/card/cardData.js`
-  - V2ランタイム経由でDSL解決
-  - `effectDslText/effectGraph` 正規化
+  - `effects[]` のみをカードランタイムへ渡す
+  - 旧DSL/Block/Graphフィールドを破棄
 - `js/game/auto/playerActionResolver.js`
-  - `OnPlay/OnLeaveField/OnDirectAttack` のイベント送出
-  - V2 DSL解決を優先
+  - ゲームイベントから `effects[]` を実行
 - `dev.html` + `js/dev/cardEffectNodeEditor.js`
-  - Node/DSL双方向同期UI
-  - 発動経路プレビュー
+  - DSLと可視グラフを同期し、保存時は `effects[]` を生成
 - `deck.html`, `deckSelect.html`, `game.html`
   - V2ランタイム読み込み
 
-## 段階移行フェーズ
+## Migration Status
 
-1. **Phase A (現在)**
-   - 新規カードは `effectGraph + effectDslText` を主に編集
-   - 既存カードはロード時に旧形式を自動変換可能
-2. **Phase B**
-   - `effectBlocks` のUI導線を読み取り専用化
-   - バッチ移行で cards.json 全件に `effectGraph/effectDslText` を付与
-3. **Phase C**
-   - `effectBlocks` の実行依存を削除
-   - `effectDsl.v2` 直接実行へ移行
-4. **Phase D**
-   - 旧形式フィールドをアーカイブ化し、新規保存から除外
+- `cd001-001` 黒魔術師、`cd001-002` 黒魔術、`cd001-003` 放浪の魔法使い、`cd001-005` 創世の賢者を `effects[]` へ移行済み。
+- 旧データフィールドは122枚すべてから削除済み。
+- `effects[]` が未設定のカード能力は新EffectEngineでは自動発動しない。初期8枚のうち未移行の旅路の到達点、生命力操作、紅の魔術師、吸血は既存の明示的な専用処理を維持している。
+- その他の未移行カード能力は `effectText` 表示のみで、新EffectEngineでは未実装。複雑な効果はテキストと実ルールを照合して段階移行する。
 
 ## Incremental Runtime Adapter
 
-The live `EffectEngine` accepts a staged `dependrap.effects.v1` program through a card's `effects` array. Existing `cards.json` entries are not migrated by this adapter; legacy DSL, effect blocks, and card-specific fallbacks remain available.
+The live `EffectEngine` accepts `dependrap.effects.v1` through a card's `effects` array. Runtime card loading strips the former `effectDsl`, `effectDslText`, `effectGraph`, and `effectBlocks` fields. Legacy DSL v1 programs are rejected by the live `EffectEngine`.
 
 ```json
 {
@@ -153,9 +142,11 @@ The live `EffectEngine` accepts a staged `dependrap.effects.v1` program through 
 
 Supported trigger aliases include summon, cardUse, attack, direct attack, leave, turnStart, turnEnd, damage, heal, PP change, and card draw. Conditions use the existing JSON condition evaluator; numeric action values also accept the existing value expressions, including `thisCard.attack`.
 
-The adapter reuses the existing action executor for damage, heal, attack changes, PP gain/consumption, PP floor recovery, shield, draw, card copy, and granted-effect operations. `draw` is a pure draw and does not imply PP recovery. Damage keeps its existing `damageType` rules.
+The engine reuses the existing action executor for damage, heal, attack changes, PP gain/consumption, PP floor recovery, shield, draw, card copy, and granted-effect operations. `draw` is a pure draw and does not imply PP recovery. Damage keeps its existing `applyCalculatedDamage` path, so evolution-path modifications, shield/defense resolution, and damage event hooks still apply.
 
 Limits currently supported are `once`, `oncePerTurn`, and `onceWhileOnField`. Usage is stored with the card's synchronized field data; `once` resets when the card enters the deck or grave, while `onceWhileOnField` resets when it leaves the field.
 
-For `grantEffect`, duration must be explicit. `permanent`, `thisTurn`, `untilOwnTurnStart`, and `nextAttack` are supported. `thisTurn` expires after own turn-end effects and immediately before control passes to the opponent. `untilOwnTurnStart` expires at the earliest own-turn-start stage, before turn-start card effects and draw. `nextAttack` currently means the next skill-induced attack only; normal and direct attacks do not consume it. `stackLimit` is reported as unsupported rather than silently changing behavior. These records are not yet populated into the existing card catalog.
+For `grantEffect`, duration must be explicit. `permanent`, `thisTurn`, `untilOwnTurnStart`, and `nextAttack` are supported. `thisTurn` expires after own turn-end effects and immediately before control passes to the opponent. `untilOwnTurnStart` expires at the earliest own-turn-start stage, before turn-start card effects and draw. `nextAttack` currently means the next skill-induced attack only; normal and direct attacks do not consume it. `stackLimit` is reported as unsupported rather than silently changing behavior.
+
+The first two cards that used effect blocks have been migrated to `effects[]`. Other cards without a migrated `effects[]` definition have no automatic ability execution. Their display-only `effectText` remains intact; complex rules and card-specific operations must be migrated explicitly before old scripted branches can be removed.
 

@@ -2,7 +2,6 @@
   const DSL_TEXT_FORMAT = "dependrap.dsltext.v2";
   const DSL_JSON_FORMAT = "dependrap.dsl.v2";
   const GRAPH_FORMAT = "dependrap.effectgraph.v2";
-  const DSL_V1_FORMAT = "dependrap.dsl.v1";
 
   const EVENT_NAMES = [
     "OnPlay",
@@ -708,11 +707,14 @@
   function mapEffectAction(action, args, target) {
     const a = String(action || "noop").toLowerCase();
     const n = Math.max(0, toNumber(args?.[0], 1));
-    const mappedTarget = mapTarget(target);
     const kv = parseKeyValueArgs(args);
+    const mappedTarget = mapTarget(kv.target || target);
 
     if (a === "draw") {
       return { type: "DRAW_CARD", target: mappedTarget, targetType: "player", amount: n || 1 };
+    }
+    if (a === "add_hand") {
+      return { type: "ADD_HAND", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
     if (a === "add_hand_to_min") {
       return { type: "ADD_HAND_TO_MIN", target: mappedTarget, targetType: "player", amount: n || 1 };
@@ -731,6 +733,9 @@
     }
     if (a === "add_pp") {
       return { type: "RECOVER_PP", target: mappedTarget, targetType: "player", amount: n || 1 };
+    }
+    if (a === "consume_pp") {
+      return { type: "CONSUME_PP", target: mappedTarget, targetType: "player", amount: n || 1 };
     }
     if (a === "set_pp" || a === "set_pp_min") {
       return { type: "SET_PP_MIN", target: mappedTarget, targetType: "player", amount: n || 1 };
@@ -810,108 +815,183 @@
     };
   }
 
-  function compileAstToDslV1(ast) {
-    const rules = safeArray(ast?.rules);
-    const triggers = rules.map((rule) => {
-      const effects = [
-        ...safeArray(rule.effects).map((effect) => mapEffectAction(effect.action, effect.args, rule.target)),
-        ...safeArray(rule.modifiers).map((effect) => mapEffectAction(effect.action, effect.args, rule.target))
+  function compileDslValue(raw, fallback) {
+    const text = String(raw == null ? "" : raw).trim();
+    if (!text) return fallback;
+    const numeric = Number(text);
+    if (Number.isFinite(numeric)) return numeric;
+    try {
+      const value = JSON.parse(text);
+      if (value && typeof value === "object") return value;
+    } catch (_) {}
+    throw new Error(`数値またはJSON値ではありません: ${text}`);
+  }
+
+  function mapTriggerToEffects(name) {
+    const normalized = normalizeEventName(name);
+    const map = {
+      OnPlay: "summon",
+      OnCardUse: "cardUse",
+      OnAttack: "attack",
+      OnDirectAttack: "directAttack",
+      OnSkillUse: "skillUse",
+      OnBeforeAttackEffect: "skillBeforeAttack",
+      OnAfterAttackEffect: "skillAfterAttack",
+      OnLeaveField: "leave",
+      OnTurnStart: "turnStart",
+      OnTurnEnd: "turnEnd",
+      OnDraw: "cardDraw",
+      OnDiscard: "discard",
+      OnDamage: "damage",
+      OnPPChange: "ppChange",
+      OnHeal: "heal",
+      OnShieldGain: "shieldGain",
+      OnEffectAdded: "effectAdded",
+      OnEffectRemoved: "effectRemoved"
+    };
+    const trigger = map[normalized];
+    if (!trigger) throw new Error(`未対応のTriggerです: ${name}`);
+    return trigger;
+  }
+
+  function compileEffectAction(effect, target) {
+    const args = safeArray(effect?.args);
+    const actionName = String(effect?.action || "noop").toLowerCase();
+    const kv = parseKeyValueArgs(args);
+    const numericActions = new Set([
+      "draw", "add_hand_to_min", "damage", "penetrate_damage", "extra_damage",
+      "extra_penetrate_damage", "hp_reduce", "heal", "set_hp", "add_pp",
+      "consume_pp", "set_pp", "set_pp_min", "add_shield", "add_atk"
+    ]);
+    const amount = numericActions.has(actionName)
+      ? compileDslValue(args.find((arg) => !String(arg).includes("=")), actionName === "set_hp" ? 0 : 1)
+      : 1;
+    const mappedTarget = mapTarget(kv.target || target);
+    const legacy = mapEffectAction(actionName, args, mappedTarget);
+    if (legacy.type === "UNKNOWN") throw new Error(`未対応のActionです: ${actionName}`);
+
+    const action = { ...legacy };
+    delete action.raw;
+    delete action.duration;
+    if (Object.prototype.hasOwnProperty.call(action, "amount")) action.amount = amount;
+
+    if (legacy.type === "DRAW_CARD") action.type = "DRAW";
+    if (legacy.type === "DAMAGE") {
+      if (action.damageType === "penetrate_damage") action.damageType = "pierce";
+      if (action.damageType === "damage" && actionName === "damage" && kv.damagetype) {
+        action.damageType = String(kv.damagetype);
+      }
+      if (kv.subtype) action.subType = String(kv.subtype);
+      if (["extra_damage", "extra_penetrate_damage"].includes(actionName)) action.subType = "additional";
+      if (action.damageType === "pierce" && actionName === "penetrate_damage") action.subType = "none";
+    }
+    if (legacy.type === "ADD_ATK") {
+      action.target = String(kv.atktarget || "this_card");
+      action.mode = String(kv.atkmode || kv.mode || "increase");
+      action.ownerTarget = mappedTarget;
+      delete action.atkMode;
+      delete action.atkTarget;
+    }
+    if (legacy.type === "GRANT_EFFECT_BUNDLE") {
+      const duration = kv.duration || (kv.turns ? "thisTurn" : "");
+      if (duration) action.duration = duration;
+      action.limit = kv.limit || null;
+    }
+    return action;
+  }
+
+  function compileAstToEffects(ast) {
+    const effects = [];
+    safeArray(ast?.rules).forEach((rule) => {
+      const trigger = mapTriggerToEffects(rule?.trigger);
+      const conditions = safeArray(rule?.conditions).map(parseConditionText).filter(Boolean);
+      const condition = conditions.length === 1
+        ? conditions[0]
+        : conditions.length > 1
+          ? { and: conditions }
+          : null;
+      const operations = [
+        ...safeArray(rule?.effects),
+        ...safeArray(rule?.modifiers)
       ];
-      const conditions = safeArray(rule.conditions).map(parseConditionText).filter(Boolean);
-      const trigger = {
-        on: mapTriggerToV1(rule.trigger),
-        effects
-      };
-      if (conditions.length === 1) {
-        trigger.useCondition = true;
-        trigger.condition = conditions[0];
-      } else if (conditions.length > 1) {
-        trigger.useCondition = true;
-        trigger.condition = { and: conditions };
-      }
-      return trigger;
+
+      operations.forEach((operation) => {
+        const action = compileEffectAction(operation, rule?.target);
+        const args = safeArray(operation?.args);
+        const kv = parseKeyValueArgs(args);
+        const definition = { trigger, action };
+        if (condition) definition.condition = condition;
+        if (kv.duration) definition.duration = kv.duration;
+        if (kv.limit) definition.limit = kv.limit;
+        effects.push(definition);
+      });
     });
-    return {
-      format: DSL_V1_FORMAT,
-      triggers
-    };
+    return effects;
   }
 
-  function mapTriggerToV1(name) {
-    const n = normalizeEventName(name);
-    const map = {
-      OnPlay: "onSummon",
-      OnCardUse: "onCardUse",
-      OnAttack: "onAttack",
-      OnDirectAttack: "onDirectAttack",
-      OnSkillUse: "onSkillUse",
-      OnBeforeAttackEffect: "onSkillBeforeAttackEffect",
-      OnAfterAttackEffect: "onSkillAfterAttackEffect",
-      OnLeaveField: "onLeave",
-      OnTurnStart: "onTurnStart",
-      OnTurnEnd: "onTurnEnd",
-      OnDraw: "onDraw",
-      OnDiscard: "onDiscard",
-      OnDamage: "onDamage",
-      OnPPChange: "onPpChange",
-      OnHeal: "onHeal",
-      OnShieldGain: "onShieldGain",
-      OnPenetrateDamage: "onDamage",
-      OnEffectAdded: "onEffectAdded",
-      OnEffectRemoved: "onEffectRemoved"
+  function effectsToDslText(effects) {
+    const triggerNames = {
+      summon: "OnPlay",
+      cardUse: "OnCardUse",
+      attack: "OnAttack",
+      directAttack: "OnDirectAttack",
+      skillUse: "OnSkillUse",
+      skillBeforeAttack: "OnBeforeAttackEffect",
+      skillAfterAttack: "OnAfterAttackEffect",
+      leave: "OnLeaveField",
+      turnStart: "OnTurnStart",
+      turnEnd: "OnTurnEnd",
+      cardDraw: "OnDraw",
+      discard: "OnDiscard",
+      damage: "OnDamage",
+      ppChange: "OnPPChange",
+      heal: "OnHeal",
+      shieldGain: "OnShieldGain",
+      effectAdded: "OnEffectAdded",
+      effectRemoved: "OnEffectRemoved"
     };
-    return map[n] || "manual";
-  }
-
-  function dslV1ToAst(dslV1) {
-    const triggers = safeArray(dslV1?.triggers);
-    const rules = triggers.map((trigger) => {
-      const effects = safeArray(trigger.effects).map((e) => ({
-        action: mapEffectTypeToAction(e?.type),
-        args: Number.isFinite(Number(e?.amount)) ? [String(Number(e.amount))] : []
-      }));
-      const conditions = [];
-      if (trigger?.condition && typeof trigger.condition === "object") {
-        conditions.push(stringifyCondition(trigger.condition));
+    const lines = [];
+    safeArray(effects).forEach((definition) => {
+      const action = definition?.action || {};
+      const actionName = mapEffectTypeToAction(action.type);
+      if (actionName === "unknown") throw new Error(`DSLへ戻せないActionです: ${action.type}`);
+      lines.push(`trigger ${triggerNames[definition.trigger] || normalizeEventName(definition.trigger)}`);
+      const condition = definition.condition ? stringifyCondition(definition.condition) : "";
+      if (condition) lines.push(`if ${condition}`);
+      const ownerTarget = action.ownerTarget || action.target || "self";
+      if (ownerTarget) lines.push(`target ${ownerTarget}`);
+      const args = [];
+      if (Object.prototype.hasOwnProperty.call(action, "amount")) {
+        const amount = action.amount;
+        args.push(typeof amount === "object" ? JSON.stringify(amount) : String(amount));
       }
-      return {
-        trigger: normalizeEventName(mapTriggerFromV1(trigger.on)),
-        conditions,
-        target: String(trigger?.effects?.[0]?.target || "self_player"),
-        effects,
-        modifiers: []
-      };
+      if (action.type === "DAMAGE") {
+        args.push(`damageType=${action.damageType || "damage"}`);
+        if (action.subType && action.subType !== "none") args.push(`subType=${action.subType}`);
+      }
+      if (action.type === "ADD_ATK") {
+        args.push(`mode=${action.mode || action.atkMode || "increase"}`);
+        args.push(`atkTarget=${action.atkTarget || action.target || "this_card"}`);
+      }
+      if (["MOVE_SOURCE_TO_GRAVE", "MOVE_SOURCE_TO_HAND", "MOVE_SOURCE_TO_DECK", "DUPLICATE_SOURCE_TO_HAND", "FETCH_CARD", "PLAY_SOURCE_TO_FIELD", "REVEAL_CARD"].includes(action.type)) {
+        args.push(`target=${action.cardTarget || action.target || "this_card"}`);
+      }
+      if (action.effectName) args.push(`effectName=${action.effectName}`);
+      if (definition.duration) args.push(`duration=${definition.duration}`);
+      if (definition.limit) {
+        const limit = typeof definition.limit === "string" ? definition.limit : definition.limit.type;
+        args.push(`limit=${limit}`);
+      }
+      if (action.type === "GRANT_EFFECT_BUNDLE") {
+        const name = String(action.effectName || "Status");
+        if (args.length && args[0].startsWith("effectName=")) args.shift();
+        lines.push(["effect", actionName, name, ...args].join(" "));
+      } else {
+        lines.push(["effect", actionName, ...args].join(" "));
+      }
+      lines.push("end", "");
     });
-
-    return {
-      format: DSL_TEXT_FORMAT,
-      rules
-    };
-  }
-
-  function mapTriggerFromV1(on) {
-    const raw = String(on || "onSummon");
-    const map = {
-      onSummon: "OnPlay",
-      onCardUse: "OnCardUse",
-      onAttack: "OnAttack",
-      onDirectAttack: "OnDirectAttack",
-      onSkillUse: "OnSkillUse",
-      onSkillBeforeAttackEffect: "OnBeforeAttackEffect",
-      onSkillAfterAttackEffect: "OnAfterAttackEffect",
-      onLeave: "OnLeaveField",
-      onTurnStart: "OnTurnStart",
-      onTurnEnd: "OnTurnEnd",
-      onDraw: "OnDraw",
-      onDiscard: "OnDiscard",
-      onDamage: "OnDamage",
-      onPpChange: "OnPPChange",
-      onHeal: "OnHeal",
-      onShieldGain: "OnShieldGain",
-      onEffectAdded: "OnEffectAdded",
-      onEffectRemoved: "OnEffectRemoved"
-    };
-    return map[raw] || "OnPlay";
+    return lines.join("\n").trim();
   }
 
   function mapEffectTypeToAction(type) {
@@ -954,84 +1034,6 @@
     if (cond.left && Object.prototype.hasOwnProperty.call(cond, "neq")) return `${cond.left.ref || "value"} != ${cond.neq}`;
     if (Array.isArray(cond.and)) return cond.and.map(stringifyCondition).filter(Boolean).join(" && ");
     return JSON.stringify(cond);
-  }
-
-  function migrateLegacyBlocks(effectBlocks) {
-    if (!effectBlocks || typeof effectBlocks !== "object") {
-      return {
-        ok: false,
-        reason: "effectBlocks not found"
-      };
-    }
-    let dslV1 = null;
-    if (window.CardEffectBlockCompiler && typeof window.CardEffectBlockCompiler.compileProgramToDsl === "function") {
-      dslV1 = window.CardEffectBlockCompiler.compileProgramToDsl(effectBlocks);
-    }
-    if (!dslV1 || String(dslV1.format || "") !== DSL_V1_FORMAT) {
-      dslV1 = { format: DSL_V1_FORMAT, triggers: [] };
-    }
-    const ast = dslV1ToAst(dslV1);
-    const graph = astToGraph(ast);
-    const dslText = toDslText(ast);
-    return {
-      ok: true,
-      graph,
-      dslText,
-      dslV1
-    };
-  }
-
-  function hasCommittedDslV1(card) {
-    return !!(
-      card?.effectDsl
-      && String(card.effectDsl.format || "") === DSL_V1_FORMAT
-      && Array.isArray(card.effectDsl.triggers)
-      && card.effectDsl.triggers.length > 0
-    );
-  }
-
-  function hasLegacyEffectBlocks(card) {
-    return !!(
-      card?.effectBlocks
-      && typeof card.effectBlocks === "object"
-      && Array.isArray(card.effectBlocks.timings)
-      && card.effectBlocks.timings.length > 0
-    );
-  }
-
-  /**
-   * 実行用 DSL の解決順（上ほど正規ソース）。
-   * effectDslText は自動生成プレビュー用のため、blocks / 確定済み effectDsl より後。
-   */
-  function resolveCardDsl(card) {
-    if (!card || typeof card !== "object") {
-      return { format: DSL_V1_FORMAT, triggers: [] };
-    }
-
-    if (card.effectGraph && Array.isArray(card.effectGraph.nodes) && Array.isArray(card.effectGraph.edges)) {
-      const ast = graphToAst(card.effectGraph);
-      return compileAstToDslV1(ast);
-    }
-
-    if (hasCommittedDslV1(card)) {
-      return card.effectDsl;
-    }
-
-    if (hasLegacyEffectBlocks(card)) {
-      const migrated = migrateLegacyBlocks(card.effectBlocks);
-      if (migrated.ok) return migrated.dslV1;
-    }
-
-    if (card.useEffectDslText === true && typeof card.effectDslText === "string" && card.effectDslText.trim()) {
-      const ast = parseDslText(card.effectDslText);
-      return compileAstToDslV1(ast);
-    }
-
-    if (card.effectDsl && String(card.effectDsl.format || "") === DSL_V1_FORMAT && Array.isArray(card.effectDsl.triggers)) {
-      return card.effectDsl;
-    }
-
-    return { format: DSL_V1_FORMAT, triggers: [] };
   }
 
   const eventBus = createEventBus();
@@ -1188,8 +1190,7 @@
   }
 
   function toEngineTrigger(eventName) {
-    const normalized = normalizeEventName(eventName);
-    return mapTriggerToV1(normalized);
+    return normalizeEventName(eventName);
   }
 
   function simulateCardExecution(cardLike, options) {
@@ -1199,11 +1200,11 @@
     const triggerEvent = String(options?.eventName || "OnPlay");
     const triggerName = toEngineTrigger(triggerEvent);
     const sourceCardId = String(card?.id || options?.sourceCardId || "sim-card");
-    const dsl = resolveCardDsl(card);
-    if (!dsl || String(dsl.format || "") !== DSL_V1_FORMAT || !Array.isArray(dsl.triggers) || dsl.triggers.length === 0) {
+    const effects = safeArray(card.effects);
+    if (effects.length === 0) {
       return {
         ok: true,
-        dslUnimplemented: true,
+        effectsUnimplemented: true,
         triggerEvent: normalizeEventName(triggerEvent),
         triggerName,
         cardId: sourceCardId,
@@ -1216,7 +1217,7 @@
     if (!window.EffectEngine || typeof window.EffectEngine.execute !== "function") {
       return {
         ok: false,
-        dslUnimplemented: false,
+        effectsUnimplemented: false,
         triggerEvent: normalizeEventName(triggerEvent),
         triggerName,
         cardId: sourceCardId,
@@ -1324,7 +1325,7 @@
       if (typeof window.EffectEngine.executeGrantedEffects === "function") {
         window.EffectEngine.executeGrantedEffects(context);
       }
-      executeResult = window.EffectEngine.execute(dsl, context);
+      executeResult = window.EffectEngine.execute({ format: "dependrap.effects.v1", effects }, context);
     } catch (error) {
       caught = {
         message: String(error?.message || error || "simulate-execute-error"),
@@ -1346,7 +1347,7 @@
 
     return {
       ok: !caught,
-      dslUnimplemented: false,
+      effectsUnimplemented: false,
       triggerEvent: normalizeEventName(triggerEvent),
       triggerName,
       cardId: sourceCardId,
@@ -1363,7 +1364,6 @@
     DSL_TEXT_FORMAT,
     DSL_JSON_FORMAT,
     GRAPH_FORMAT,
-    DSL_V1_FORMAT,
     EVENT_NAMES,
     eventBus,
     historyStore,
@@ -1374,12 +1374,8 @@
     toDslText,
     astToGraph,
     graphToAst,
-    compileAstToDslV1,
-    dslV1ToAst,
-    migrateLegacyBlocks,
-    hasCommittedDslV1,
-    hasLegacyEffectBlocks,
-    resolveCardDsl,
+    compileAstToEffects,
+    effectsToDslText,
     emitGameEvent,
     createCardSimulator,
     simulateCardExecution

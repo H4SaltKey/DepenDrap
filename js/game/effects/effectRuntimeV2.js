@@ -971,6 +971,28 @@
     };
   }
 
+  function hasCommittedDslV1(card) {
+    return !!(
+      card?.effectDsl
+      && String(card.effectDsl.format || "") === DSL_V1_FORMAT
+      && Array.isArray(card.effectDsl.triggers)
+      && card.effectDsl.triggers.length > 0
+    );
+  }
+
+  function hasLegacyEffectBlocks(card) {
+    return !!(
+      card?.effectBlocks
+      && typeof card.effectBlocks === "object"
+      && Array.isArray(card.effectBlocks.timings)
+      && card.effectBlocks.timings.length > 0
+    );
+  }
+
+  /**
+   * 実行用 DSL の解決順（上ほど正規ソース）。
+   * effectDslText は自動生成プレビュー用のため、blocks / 確定済み effectDsl より後。
+   */
   function resolveCardDsl(card) {
     if (!card || typeof card !== "object") {
       return { format: DSL_V1_FORMAT, triggers: [] };
@@ -981,14 +1003,18 @@
       return compileAstToDslV1(ast);
     }
 
-    if (typeof card.effectDslText === "string" && card.effectDslText.trim()) {
-      const ast = parseDslText(card.effectDslText);
-      return compileAstToDslV1(ast);
+    if (hasCommittedDslV1(card)) {
+      return card.effectDsl;
     }
 
-    if (card.effectBlocks) {
+    if (hasLegacyEffectBlocks(card)) {
       const migrated = migrateLegacyBlocks(card.effectBlocks);
       if (migrated.ok) return migrated.dslV1;
+    }
+
+    if (card.useEffectDslText === true && typeof card.effectDslText === "string" && card.effectDslText.trim()) {
+      const ast = parseDslText(card.effectDslText);
+      return compileAstToDslV1(ast);
     }
 
     if (card.effectDsl && String(card.effectDsl.format || "") === DSL_V1_FORMAT && Array.isArray(card.effectDsl.triggers)) {
@@ -1341,6 +1367,8 @@
     compileAstToDslV1,
     dslV1ToAst,
     migrateLegacyBlocks,
+    hasCommittedDslV1,
+    hasLegacyEffectBlocks,
     resolveCardDsl,
     emitGameEvent,
     createCardSimulator,

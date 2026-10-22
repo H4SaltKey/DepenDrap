@@ -731,9 +731,26 @@ function renderCatalogGrid(cardsDiv, cardIds) {
   cardIds.forEach(id => {
     const match = String(id).match(/^(cd\d+)-(\d+)$/);
     const setLayoutDisabled = /^(?:cd002|cd003)-/.test(String(id));
-    const setKey = match
-      ? `${match[1]}-${setLayoutDisabled ? "catalog" : Math.ceil(Number(match[2]) / 2)}`
-      : id;
+    let setKey = id;
+    if (match && setLayoutDisabled) {
+      setKey = `${match[1]}-catalog`;
+    } else if (match) {
+      const block = match[1];
+      const number = Number(match[2]);
+      const card = getCardData(id);
+      let pairedId = "";
+      if (card?.type === "アタッカー") {
+        const candidate = `${block}-${String(number + 1).padStart(match[2].length, "0")}`;
+        if (getCardData(candidate)?.type === "スキル") pairedId = candidate;
+      } else if (card?.type === "スキル" && number > 1) {
+        const candidate = `${block}-${String(number - 1).padStart(match[2].length, "0")}`;
+        if (getCardData(candidate)?.type === "アタッカー") pairedId = candidate;
+      }
+      if (pairedId) {
+        const smallerNumber = Math.min(number, Number(pairedId.match(/-(\d+)$/)?.[1] || number));
+        setKey = `${block}-pair-${String(smallerNumber).padStart(match[2].length, "0")}`;
+      }
+    }
     if (!groups.has(setKey)) groups.set(setKey, []);
     groups.get(setKey).push(id);
   });

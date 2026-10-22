@@ -345,6 +345,7 @@ window._getMyStateForSync = function() {
     diceValue: Number(s.diceValue ?? -1),
     evolutionPath: s.evolutionPath || null,
     evoContinuousDmgCount: Number(s.evoContinuousDmgCount || 0),
+    evoContinuousDamageTotal: Number(s.evoContinuousDamageTotal || 0),
     evoBackwaterExpGained: !!s.evoBackwaterExpGained,
     statusBlocks: Array.isArray(s.statusBlocks) ? s.statusBlocks : [],
     deck,

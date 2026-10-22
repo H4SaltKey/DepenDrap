@@ -230,7 +230,7 @@ function renderOwnerUI(owner) {
     ">
       <div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#aaa; letter-spacing:1px; margin-bottom:4px;">進化の道</div>
       <div class="evoPanelTitle" data-owner="${owner}" style="font-size:${owner === myRole ? "18px" : "14px"}; font-weight:bold; color:#f0d080; text-align:center; cursor:pointer; letter-spacing:0.3px;" title="クリックで拡大表示">${s.evolutionPath}</div>
-      ${s.evolutionPath === '継続の道' ? `<div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div>` : ""}
+      ${s.evolutionPath === '継続の道' ? `<div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:4px;">今ターン発動: ${s.evoContinuousDmgCount || 0}回</div><div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:2px;">累計: ${(s.evoContinuousDamageTotal || 0) % 6}/6回</div>` : ""}
       ${s.evolutionPath === '背水の道' ? `<div style="font-size:${owner === myRole ? "12px" : "10px"}; color:#ddd; margin-top:4px;">追加EXP: ${s.evoBackwaterExpGained ? '<span style="color:#f88;">獲得済</span>' : '<span style="color:#8f8;">未獲得</span>'}</div>` : ""}
     </div>
     <div class="evoPopup" style="

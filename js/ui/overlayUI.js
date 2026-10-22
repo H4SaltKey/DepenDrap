@@ -45,11 +45,11 @@ function getEvolutionPathHTML(owner) {
     tableHTML = `x = [0, 1, 3, 4]`;
   } else if (s.evolutionPath === '継続の道') {
     const y = param;
-    desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。<br>さらに追加で、それぞれ3回目の発動に限り、<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br><span style="font-size:12px; color:#aaa;">※：この効果によるものは含まない</span>`;
+    desc = `ターン毎に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${y}</span> 回まで、1以上のダメージを与える度(※)、<span style="color:${colorAction}">1のダメージ</span>を与える。3回目の発動時は追加で<span style="color:${colorAction}">1の貫通ダメージ</span>を与える。<br>この効果で累計6回ダメージを与える度、<span style="color:${colorAction}">経験値を1獲得</span>する。<br><span style="font-size:12px; color:#aaa;">※：この効果によるダメージは発動条件に含まない</span>`;
     tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
     const z = param;
-    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与える。`;
+    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与え、<span style="color:${colorAction}">${2 + z}の経験値</span>を獲得する。`;
     tableHTML = `z = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '背水の道') {
     const t = param;

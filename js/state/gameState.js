@@ -16,7 +16,8 @@ const BASE_INITIAL_STATE = {
   pp: 0,         ppMax: 2,
   deck: [],
   backImage: null,
-  statusBlocks: []
+  statusBlocks: [],
+  evoContinuousDamageTotal: 0
 };
 
 function makeCharState() {
@@ -51,6 +52,7 @@ const SYNC_PLAYER_STATE_KEYS = [
   "statusBlocks",
   "evolutionPath",
   "evoContinuousDmgCount",
+  "evoContinuousDamageTotal",
   "evoBackwaterExpGained"
 ];
 

@@ -108,13 +108,13 @@ window.updateEvolutionPhaseUI = function() {
           <!-- 継続の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('継続の道')">
             <div class="evo-path-title">継続の道</div>
-            <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。<br>さらに追加で、それぞれ3回目の発動に限り、1の貫通ダメージを与える。<br><span style="font-size:11px; color:#aaa;">※：この効果によるものは含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
+            <div class="evo-path-desc">ターン毎にy回まで、1以上のダメージを与える度(※)、1のダメージを与える。さらに3回目の発動時は追加で1の貫通ダメージを与える。<br>この効果で累計6回ダメージを与える度、経験値を1獲得する。<br><span style="font-size:11px; color:#aaa;">※：この効果によるダメージは発動条件に含まない</span><br><span class="evo-path-val">y=[1/3/4/6]</span></div>
           </button>
 
           <!-- 奇撃の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('奇撃の道')">
             <div class="evo-path-title">奇撃の道</div>
-            <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与える。<br><span class="evo-path-val">z=[1/3/4/6]</span></div>
+            <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与え、2+zの経験値を獲得する。<br><span class="evo-path-val">z=[1/3/4/6]</span></div>
           </button>
 
           <!-- 背水の道 -->

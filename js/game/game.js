@@ -1659,6 +1659,7 @@ async function executeReset(syncShared = true) {
     s.diceValue = -1; // ダイス値を確実にリセット
     s.evolutionPath = null; // 進化の道リセット
     s.evoContinuousDmgCount = 0; // 継続の道: ターン中の発動回数
+    s.evoContinuousDamageTotal = 0;
     s.evoBackwaterExpGained = false; // 背水の道: ターン中の経験値獲得フラグ
     if (typeof applyLevelStats === "function") applyLevelStats(owner, true);
   });

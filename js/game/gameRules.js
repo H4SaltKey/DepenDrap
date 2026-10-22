@@ -103,3 +103,20 @@ function getEvolutionPathParam(path, level) {
   }
 }
 window.getEvolutionPathParam = getEvolutionPathParam;
+
+window.recordContinuousEvolutionDamage = function(owner) {
+  const player = window.state?.[owner];
+  if (!player) return 0;
+  player.evoContinuousDamageTotal = Math.max(0, Number(player.evoContinuousDamageTotal) || 0) + 1;
+  const total = player.evoContinuousDamageTotal;
+  const myRole = window.getMyRole?.() || window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (owner === myRole) window.pushMyStateDebounced?.();
+  else window.sendChangeRequest?.(owner, "evoContinuousDamageTotal", "set", total);
+  if (total % 6 === 0) {
+    if (typeof window.addVal === "function") window.addVal(owner, "exp", 1);
+    if (typeof window.addGameLog === "function") {
+      window.addGameLog(`[EVOLUTION] 「継続の道」の累計ダメージが6回に達し、${player.username || owner} が経験値1を獲得しました。`);
+    }
+  }
+  return total;
+};

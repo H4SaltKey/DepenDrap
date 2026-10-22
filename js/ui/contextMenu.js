@@ -1119,12 +1119,6 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
     const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     const canApplyEvolution = targetOwner !== meRole;
 
-    // 奇撃の道（旧: 瞬発の道）: 本ダメージ前に脆弱ダメージ
-    if (canApplyEvolution && actualAmount >= 6 && (me.evolutionPath === "奇撃の道" || me.evolutionPath === "瞬発の道")) {
-      const z = window.getEvolutionPathParam("奇撃の道", me.level);
-      applyHit("fragile", z);
-    }
-
     // 背水の道: 直接攻撃時の追加
     if (canApplyEvolution && type === "direct_attack" && me.evolutionPath === "背水の道") {
       const handCount = window.prevMyHandCount !== undefined ? window.prevMyHandCount : 0;
@@ -1133,6 +1127,11 @@ function showDamagePopup(targetOwner, type, subType, options = {}) {
         const t = window.getEvolutionPathParam("背水の道", me.level);
         actualAmount += t;
       }
+    }
+
+    if (canApplyEvolution && actualAmount >= 6 && (me.evolutionPath === "奇撃の道" || me.evolutionPath === "瞬発の道")) {
+      const z = window.getEvolutionPathParam("奇撃の道", me.level);
+      applyHit("fragile", z);
     }
 
     // 本ダメージ
@@ -1382,19 +1381,9 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   
   let actualAmount = amount;
   
-  // 奇撃の道（旧: 瞬発の道）: 一撃で6以上のダメージを与える時、その直前にzの脆弱ダメージ
   const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const myState = state[meRole];
   const canApplyEvolution = targetOwner !== meRole;
-  if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && (myState.evolutionPath === '奇撃の道' || myState.evolutionPath === '瞬発の道')) {
-    const z = window.getEvolutionPathParam("奇撃の道", myState.level);
-    
-    s.defstack = Math.max(0, s.defstack - z);
-    if (typeof addGameLog === "function") {
-      addGameLog(`[EVOLUTION] ${actor} の「奇撃の道」効果！ 直前に ${z} の脆弱ダメージを与えた！`);
-    }
-  }
-
   // 「直接攻撃」の処理と、背水の道効果の適用
   if (canApplyEvolution && type === "direct_attack") {
     const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
@@ -1423,6 +1412,14 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
         }
       }
     }
+  }
+
+  // 奇撃の道: 本ダメージの直前に脆弱ダメージを与え、2+z EXPを獲得
+  if (canApplyEvolution && !isEvoDmg && actualAmount >= 6 && myState && (myState.evolutionPath === '奇撃の道' || myState.evolutionPath === '瞬発の道')) {
+    const z = window.getEvolutionPathParam("奇撃の道", myState.level);
+    window.applyCalculatedDamage(targetOwner, "fragile", "additional", z, true, options);
+    if (typeof window.addVal === "function") window.addVal(meRole, "exp", 2 + z);
+    if (typeof addGameLog === "function") addGameLog(`[EVOLUTION] ${actor} の「奇撃の道」効果！ ${z}の脆弱ダメージを与え、経験値${2 + z}を獲得しました。`);
   }
   
   const next = applyDamageByRule({
@@ -1467,8 +1464,10 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
       }
       // 通常1ダメージを付与し、3回目のみ追加で1貫通ダメージを付与
       window.applyCalculatedDamage(targetOwner, "damage", "additional", 1, true, options);
+      window.recordContinuousEvolutionDamage?.(meRole);
       if (isThird) {
         window.applyCalculatedDamage(targetOwner, "pierce", "additional", 1, true, options);
+        window.recordContinuousEvolutionDamage?.(meRole);
       }
     }
   }

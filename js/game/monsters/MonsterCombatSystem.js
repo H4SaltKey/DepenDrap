@@ -14,10 +14,37 @@ window.MonsterCombatSystem = (function() {
    * @param rawDmg 攻撃力
    * @param dmgType "damage" | "pierce" | "fragile" | "arcana" | "hp_reduce" | "direct_attack"（デフォルト: "damage"）
    */
-  function playerAttackMonster(attackerKey, slotIndex, rawDmg, dmgType = "damage") {
+  function playerAttackMonster(attackerKey, slotIndex, rawDmg, dmgType = "damage", isEvolutionDamage = false) {
     if (!window.MonsterManager) return;
 
+    const attacker = window.state?.[attackerKey];
+    let kikiExperience = 0;
+    if (!isEvolutionDamage && rawDmg >= 6 && attacker && (attacker.evolutionPath === "奇撃の道" || attacker.evolutionPath === "瞬発の道")) {
+      const z = window.getEvolutionPathParam("奇撃の道", attacker.level);
+      window.MonsterManager.dealDamage(slotIndex, z, attackerKey, "fragile");
+      kikiExperience = 2 + z;
+    }
+
     const result = window.MonsterManager.dealDamage(slotIndex, rawDmg, attackerKey, dmgType);
+    if (kikiExperience > 0) {
+      if (typeof window.addVal === "function") window.addVal(attackerKey, "exp", kikiExperience);
+      if (typeof window.addGameLog === "function") window.addGameLog(`[EVOLUTION] ${attacker.username || attackerKey} の「奇撃の道」効果！経験値${kikiExperience}を獲得しました。`);
+    }
+
+    if (!isEvolutionDamage && rawDmg >= 1 && attacker?.evolutionPath === "継続の道") {
+      const limit = window.getEvolutionPathParam("継続の道", attacker.level);
+      if ((attacker.evoContinuousDmgCount || 0) < limit) {
+        attacker.evoContinuousDmgCount = (attacker.evoContinuousDmgCount || 0) + 1;
+        const isThird = attacker.evoContinuousDmgCount === 3;
+        if (typeof window.addGameLog === "function") window.addGameLog(`[EVOLUTION] ${attacker.username || attackerKey} の「継続の道」効果発動（${attacker.evoContinuousDmgCount}回目）！`);
+        window.MonsterManager.dealDamage(slotIndex, 1, attackerKey, "damage");
+        if (window.MonsterManager.getSlot(slotIndex)) window.recordContinuousEvolutionDamage?.(attackerKey);
+        if (isThird && window.MonsterManager.getSlot(slotIndex)) {
+          window.MonsterManager.dealDamage(slotIndex, 1, attackerKey, "pierce");
+          if (window.MonsterManager.getSlot(slotIndex)) window.recordContinuousEvolutionDamage?.(attackerKey);
+        }
+      }
+    }
 
     if (result.defeated) {
       _handleDefeat(slotIndex, attackerKey, result);

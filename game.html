@@ -79,8 +79,8 @@
 <script src="js/state/syncState.js"></script>
 <script src="js/card/damageCalc.js?v=5"></script>
 <script src="js/game/gameRules.js"></script>
-<script src="js/game/core.js?v=12"></script>
-<script src="js/card/cardManager.js?v=22"></script>
+<script src="js/game/core.js?v=13"></script>
+<script src="js/card/cardManager.js?v=23"></script>
 <script src="js/ui/dragManager.js"></script>
 <script src="js/ui/drag.js"></script>
 <script src="js/ui/statusBlocks.js"></script>
@@ -89,9 +89,9 @@
 <script src="js/statusBlocks/statusBlockPresets.js"></script>
 <script src="js/statusBlocks/statusBlockPresetModal.js"></script>
 <script src="js/game/phases/dicePhase.js?v=2"></script>
-<script src="js/game/phases/firstDrawPhase.js?v=2"></script>
-<script src="js/phases/setupPhase.js?v=2"></script>
-<script src="js/phases/battlePhase.js"></script>
+<script src="js/game/phases/firstDrawPhase.js?v=3"></script>
+<script src="js/phases/setupPhase.js?v=3"></script>
+<script src="js/phases/battlePhase.js?v=2"></script>
 <script src="js/watchers/watcherRegistry.js"></script>
 <script src="js/network/timerSync.js"></script>
 <script src="js/ui/timerUI.js"></script>
@@ -104,7 +104,7 @@
 <script src="js/ui/effectChoiceUI.js?v=1"></script>
 <script src="js/ui/animationUI.js"></script>
 <script src="js/ui/chatUI.js"></script>
-<script src="js/game/game.js?v=54"></script>
+<script src="js/game/game.js?v=55"></script>
 <script src="js/ui/deckViewer.js"></script>
 <script src="js/ui/menu.js?v=10"></script>
 <script src="js/dev/devTools.js?v=3"></script>
@@ -149,7 +149,7 @@
   </div>
 </div>
 
-<script src="js/ui/contextMenu.js?v=23"></script>
+<script src="js/ui/contextMenu.js?v=24"></script>
 <script>
   (async () => {
     await initCards();
@@ -163,6 +163,17 @@
       if (!gameRoomName || !gamePlayerKey) {
         console.warn("[Game] gameRoom/gamePlayerKey が未設定。matchSetup へリダイレクト。");
         location.href = "matchSetup.html";
+        return;
+      }
+
+      if (localStorage.getItem("soloMode") === "true") {
+        window._soloHotSeat = true;
+        window._soloStartMode = true;
+        window.notifySyncGate?.("firebaseReady", true);
+        window.notifySyncGate?.("roomWatcherReady", true);
+        window.notifySyncGate?.("playersReady", true);
+        window.notifySyncGate?.("phaseReady", true);
+        document.dispatchEvent(new Event("firebaseJoined"));
         return;
       }
 

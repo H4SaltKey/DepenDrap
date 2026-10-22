@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プレイモード | DepenDrap</title>
+<link rel="icon" href="assets/System/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=9">
+<style>
+body.playModePage{min-height:100vh;display:grid;place-items:center;background:#0c0b12;color:#f4f1d6}
+.playModePanel{width:min(92vw,560px);padding:32px;border:1px solid #8e7c58;border-radius:14px;background:rgba(20,17,30,.96);text-align:center;box-sizing:border-box}
+.playModeChoices{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
+.playModeChoices button{min-height:86px;font-size:20px}
+@media(max-width:520px){.playModeChoices{grid-template-columns:1fr}}
+</style>
+</head>
+<body class="playModePage">
+<main class="playModePanel">
+  <button class="back-btn-inline" onclick="location.href='index.html'">タイトルへ戻る</button>
+  <h1>プレイモード選択</h1>
+  <div class="playModeChoices">
+    <button class="lorBtn" onclick="location.href='matchSetup.html'">マルチプレイ</button>
+    <button class="lorBtn" onclick="location.href='soloSetup.html'">ソロプレイ</button>
+  </div>
+</main>
+</body>
+</html>

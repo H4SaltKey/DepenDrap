@@ -91,7 +91,7 @@ function updateDicePhaseUI() {
       const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
       p1Color = winnerIsMe ? "#4fc3f7" : "#e24a4a"; p2Color = "#fff";
       resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p1Label}の勝利！</h2>`;
-      if (playerKey === "player1") {
+      if (playerKey === "player1" || window._soloHotSeat) {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
           <div class="dice-choice-group">
@@ -110,7 +110,7 @@ function updateDicePhaseUI() {
       const winColor = winnerIsMe ? "#4fc3f7" : "#e24a4a";
       p1Color = "#fff"; p2Color = winnerIsMe ? "#4fc3f7" : "#e24a4a";
       resultTitle = `<h2 class="dice-title" style="color:${winColor};animation:titleGlow 1s ease-in-out infinite;">${p2Label}の勝利！</h2>`;
-      if (playerKey === "player2") {
+      if (playerKey === "player2" || window._soloHotSeat) {
         resultMsg = `
           <p class="dice-subtitle" style="color:#fff;margin-top:30px;">先攻・後攻を選択してください</p>
           <div class="dice-choice-group">
@@ -207,7 +207,8 @@ function updateDicePhaseUI() {
   if (p2Btn) p2Btn.style.display = "none";
   // 中央ボタン
   const centerBtn = document.getElementById("dice-btn-center");
-  if (centerBtn) centerBtn.style.display = (myDice === -1) ? "inline-block" : "none";
+  if (centerBtn) centerBtn.style.display = (window._soloHotSeat ? (p1Dice < 0 || p2Dice < 0) : myDice === -1) ? "inline-block" : "none";
+  if (window._soloHotSeat && centerBtn) centerBtn.textContent = p1Dice < 0 ? "プレイヤー1が振る" : "プレイヤー2が振る";
 
   // ステータスメッセージ
   if (statusMsg) {
@@ -236,7 +237,10 @@ async function handleDiceRoll() {
     console.warn("[handleDiceRoll] 接続待ち中のため操作不可");
     return;
   }
-  const playerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const defaultPlayerKey = localStorage.getItem("gamePlayerKey") || (window.myRole || "player1");
+  const playerKey = window._soloHotSeat
+    ? (state.player1.diceValue < 0 ? "player1" : "player2")
+    : defaultPlayerKey;
 
   console.log("[handleDiceRoll] 開始 playerKey:", playerKey,
     "diceValue:", state[playerKey]?.diceValue,
@@ -263,7 +267,7 @@ async function handleDiceRoll() {
     });
     return;
   }
-  if (!firebaseClient?.db) {
+  if (!window._soloHotSeat && !firebaseClient?.db) {
     if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "failure", "firebase db missing");
     console.warn("[handleDiceRoll] firebaseClient.db が null です。isConnected:", firebaseClient?.isConnected);
     return;
@@ -289,14 +293,18 @@ async function handleDiceRoll() {
   update();
 
   // Firebase: playerDice パスにのみ書く（相手のパスは触らない）
-  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "setPlayerDice");
-  await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
-  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "setPlayerDice");
+  if (!window._soloHotSeat) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "setPlayerDice");
+    await firebaseClient.setPlayerDice(gameRoom, playerKey, roll);
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "setPlayerDice");
+  }
   
   // 初回ゲーム時のデッキ枚数同期漏れを防ぐため、ダイスロール直後に自分の状態を同期する
-  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "writeMyState");
-  await firebaseClient.writeMyState(gameRoom, playerKey, _getMyStateForSync());
-  if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "writeMyState");
+  if (!window._soloHotSeat) {
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "await", "writeMyState");
+    await firebaseClient.writeMyState(gameRoom, playerKey, _getMyStateForSync());
+    if (typeof window.traceFlow === "function") window.traceFlow("handleDiceRoll", "success", "writeMyState");
+  }
 }
 
 function showDiceRollingAnimation() {
@@ -309,7 +317,7 @@ function showDiceRollingAnimation() {
 
 async function handleResetDice() {
   const gameRoom = localStorage.getItem("gameRoom");
-  if (!gameRoom || !firebaseClient) return;
+  if (!gameRoom || (!window._soloHotSeat && !firebaseClient)) return;
 
   // ローカルでリセット
   state.player1.diceValue = -1;
@@ -319,7 +327,7 @@ async function handleResetDice() {
   update();
 
   // Firebaseでリセット
-  await firebaseClient.resetPlayerDice(gameRoom);
+  if (!window._soloHotSeat) await firebaseClient.resetPlayerDice(gameRoom);
 
   // UI更新
   updateDicePhaseUI();

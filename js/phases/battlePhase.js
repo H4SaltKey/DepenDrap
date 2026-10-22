@@ -10,10 +10,10 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
 
   if (window.isGameInteractionLocked()) return;
   const m  = state.matchData;
-  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+  const me = window._soloHotSeat ? m.turnPlayer : (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
 
   if (m.status !== "playing") return;
-  if (m.turnPlayer !== me) return;
+  if (m.turnPlayer !== me && !window._soloHotSeat) return;
   if (m.winner) return;
 
   // 手札枚数上限のチェック

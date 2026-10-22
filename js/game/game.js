@@ -1,5 +1,6 @@
 let gameReady = false;
-window._soloStartMode = false;
+window._soloHotSeat = localStorage.getItem("soloMode") === "true";
+window._soloStartMode = window._soloHotSeat;
 window._lastAppliedResetSeq = Number(window._lastAppliedResetSeq || 0);
 let lastTurnDrawKey = sessionStorage.getItem("lastTurnDrawKey") || "";
 let lastTurnExpKey = sessionStorage.getItem("lastTurnExpKey") || "";
@@ -295,13 +296,15 @@ function createDeckObject(forceResetPos = false) {
         })());
 
     // 相手のデッキには一切イベントを付けず、座標も固定
-    if (isMe) {
+    if (isMe || window._soloHotSeat) {
       wrapper.addEventListener("dblclick", () => {
         if (!gameReady) return;
-        if (typeof window.drawCards === "function") window.drawCards(1);
+        if (typeof window.drawCards === "function") window.drawCards(1, { owner });
       });
       enablePointerDrag(wrapper);
+    }
 
+    if (isMe) {
       const myLayoutOffsetX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
         ? window.getMonsterFieldLayoutOffsetX(owner)
         : 0;
@@ -497,6 +500,16 @@ let _pendingChangeLock = false;
 async function sendChangeRequest(owner, key, type, value) {
   const gameRoom = localStorage.getItem("gameRoom");
   const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
+  if (window._soloHotSeat) {
+    const target = state[owner];
+    if (!target) return;
+    if (key === "_bulk" && value && typeof value === "object") Object.assign(target, value);
+    else if (type === "add") target[key] = (Number(target[key]) || 0) + (Number(value) || 0);
+    else target[key] = value;
+    update();
+    save();
+    return;
+  }
   if (!gameRoom || !firebaseClient?.db) return;
 
   // 送信中は新しいリクエストを上書き（最後の値が勝つ）
@@ -956,7 +969,7 @@ function handleMatchStateTransitions() {
 
   // ターゲット選択フェーズの割り込み処理
   if (isDicePhaseComplete && m.status === "playing" && m.targetSelectionPending && !m.winner) {
-    if (m.turnPlayer === meRole) {
+    if (m.turnPlayer === meRole || window._soloHotSeat) {
       const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
       if (opOverlay) opOverlay.remove();
 
@@ -1020,7 +1033,7 @@ function handleMatchStateTransitions() {
 
   // ターン開始ドローの取りこぼし防止:
   // 同期順序で turnChanged 判定を逃しても「自分ターンなら1回だけ」必ず実行する。
-  if (isDicePhaseComplete && m.turnPlayer === meRole && !m.winner) {
+  if (isDicePhaseComplete && (m.turnPlayer === meRole || window._soloHotSeat) && !m.winner) {
     const drawKey = `${m.round}-${m.turn}-${m.turnPlayer}`;
     // R1T1 でファーストドローフェーズ（3枚選択）が未完了なら通常ドローをスキップする
     const shouldSkipNormalDrawInR1T1 = (m.round === 1 && m.turn === 1 && m.firstDrawDone !== true);
@@ -1088,9 +1101,10 @@ function updateMatchUI() {
     document.body.appendChild(info);
   }
 
-  const isMyTurn = (m.turnPlayer === window.myRole);
-  const turnColor = isMyTurn ? '#00ffcc' : '#e24a4a';
-  const turnLabel = isMyTurn ? 'あなたのターン' : '相手のターン';
+  const isActiveRoleTurn = m.turnPlayer === window.myRole;
+  const canEndTurn = isActiveRoleTurn || window._soloHotSeat;
+  const turnColor = isActiveRoleTurn ? '#00ffcc' : '#e24a4a';
+  const turnLabel = isActiveRoleTurn ? 'あなたのターン' : '相手のターン';
 
   // コンパクト表示: 「1-1 相手のターン」
   const compactText = `${m.round}-${m.turn}`;
@@ -1142,9 +1156,9 @@ function updateMatchUI() {
     };
     document.body.appendChild(endBtn);
   }
-  endBtn.style.opacity = isMyTurn ? "1" : "0.3";
-  endBtn.style.pointerEvents = isMyTurn ? "auto" : "none";
-  endBtn.style.transform = `translateY(-50%) scale(${isMyTurn ? 1 : 0.9})`;
+  endBtn.style.opacity = canEndTurn ? "1" : "0.3";
+  endBtn.style.pointerEvents = canEndTurn ? "auto" : "none";
+  endBtn.style.transform = `translateY(-50%) scale(${canEndTurn ? 1 : 0.9})`;
 
   // 3. リザルト表示ボタン（勝者が決まっていて、リザルトが閉じられている場合のみ表示）
   let resultBtn = document.getElementById("showResultBtn");
@@ -2054,11 +2068,21 @@ async function handleFreshStart(currentRoom, myKey) {
   })();
   state[myKey].username  = matchSetupData.username || matchSetupData.self || localStorage.getItem("username") || myKey;
   state[myKey].backImage = getBackImage() || null;
+  if (window._soloHotSeat) {
+    const opponentKey = myKey === "player1" ? "player2" : "player1";
+    state[opponentKey].username = `${state[myKey].username} (2P)`;
+    state[opponentKey].backImage = state[myKey].backImage;
+    try { state[opponentKey].deck = decodeDeck(matchSetupData.deckCode || localStorage.getItem("deckCode") || "empty"); } catch { state[opponentKey].deck = []; }
+    for (let i = state[opponentKey].deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [state[opponentKey].deck[i], state[opponentKey].deck[j]] = [state[opponentKey].deck[j], state[opponentKey].deck[i]];
+    }
+  }
 
   // matchData を初期状態にリセット
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1",
-    status: "ready_check", winner: null, winnerSetAt: null, firstPlayer: null,
+    status: window._soloHotSeat ? "setup_dice" : "ready_check", winner: null, winnerSetAt: null, firstPlayer: null,
     resetSeq: Number(window._lastAppliedResetSeq || 0)
   };
 
@@ -2260,7 +2284,7 @@ async function initGame() {
     }
 
     // ── 3. 接続プレイヤー数を確認して操作ロック解除判定 ──
-    if (firebaseClient?.db) {
+    if (firebaseClient?.db && !window._soloHotSeat) {
       try {
         const playersSnap = await firebaseClient.db.ref(`rooms/${currentRoom}/players`).once('value');
         const players = playersSnap.val() || {};
@@ -2345,14 +2369,14 @@ async function initGame() {
     } else {
       traceGame("initGame.setupGameUiEnhancements", "missing");
     }
-    if (typeof setupRoomWatcher === "function") {
+    if (!window._soloHotSeat && typeof setupRoomWatcher === "function") {
       invokeGuarded("initGame.setupRoomWatcher", () => setupRoomWatcher());
     } else {
       traceGame("initGame.setupRoomWatcher", "missing");
     }
 
     // ── 7. 自分の最新状態を Firebase に送信（整合性担保） ──
-    if (firebaseClient?.db) {
+    if (firebaseClient?.db && !window._soloHotSeat) {
       traceGame("initGame", "await", "writeMyState");
       await firebaseClient.writeMyState(currentRoom, myKey, _getMyStateForSync());
       traceGame("initGame", "success", "writeMyState");
@@ -2457,13 +2481,13 @@ function startR1T1() {
 
 function startTurnDraw() {
   const m = state.matchData || {};
-  const me = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-  if (m.status !== "playing" || m.turnPlayer !== me || m.winner) return;
+  const me = window._soloHotSeat ? m.turnPlayer : (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+  if (m.status !== "playing" || (m.turnPlayer !== me && !window._soloHotSeat) || m.winner) return;
   if (window.EffectEngine && typeof window.EffectEngine.expireGrantedEffectsAtTurnStart === "function") {
-    window.EffectEngine.expireGrantedEffectsAtTurnStart(me);
+    window.EffectEngine.expireGrantedEffectsAtTurnStart(window._soloHotSeat ? m.turnPlayer : me);
   }
   if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardDraw === "function") {
-    window.PlayerActionResolver.resolveCardDraw(me, 1, {
+    window.PlayerActionResolver.resolveCardDraw(window._soloHotSeat ? m.turnPlayer : me, 1, {
       sourceCardId: String(rawId || ""),
       source: "turn_draw"
     });

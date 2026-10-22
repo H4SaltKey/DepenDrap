@@ -100,7 +100,7 @@ function canShowSingleTapPreview(cardEl) {
   if (state?.matchData?.status === "setup_first_draw") return false;
   const myRole = (window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
   const owner = cardEl.dataset.owner || "";
-  if (owner === myRole) return true;
+  if (owner === myRole || window._soloHotSeat) return true;
   return (cardEl.dataset.visibility || "both") === "both";
 }
 
@@ -300,7 +300,7 @@ function scheduleZoneHoverHide() {
 function beginZoneHoverCardDrag(card, startEvent) {
   if (!card || !startEvent || startEvent.button !== 0) return;
   const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-  if (card.dataset.owner !== myRole) return;
+  if (!window.canControlPlayer?.(card.dataset.owner) && card.dataset.owner !== myRole) return;
   if ((card.dataset.zoneType === "skill" || card.dataset.zoneType === "grave") && !isTopZoneCard(card)) return;
 
   startEvent.preventDefault();
@@ -503,7 +503,7 @@ window.organizeBattleZones = function() {
 
 window.sendZoneCardsToGrave = function(owner, fromType) {
   const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-  if (owner !== myRole) return;
+  if (!window.canControlPlayer?.(owner) && owner !== myRole) return;
   const fromCards = getZoneCards(owner, fromType);
   if (fromType === "attacker") {
     const top = fromCards[fromCards.length - 1];
@@ -769,6 +769,7 @@ function getBackImageSrc(){
 }
 
 function canViewerSeeCardFront(viewerId, ownerId, visibility) {
+  if (window._soloHotSeat) return visibility !== "none";
   if (visibility === "both") return true;
   if (visibility === "none") return false;
   if (visibility === "self") return viewerId === ownerId;
@@ -1115,7 +1116,7 @@ function clearHandReorderGuides() {
 function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   clearHandReorderGuides();
   const myRole2 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-  if (!dragEl || dragEl.dataset.owner !== myRole2) return;
+  if (!dragEl || (!window.canControlPlayer?.(dragEl.dataset.owner) && dragEl.dataset.owner !== myRole2)) return;
 
   const handLineY = FIELD_H - CARD_H - 20;
   let inHandDrop = fieldY >= HAND_ZONE_Y_MIN - 20;
@@ -1317,7 +1318,7 @@ function enablePointerDrag(el){
   el.addEventListener("pointerdown", (e)=>{
     if(e.button !== 0) return;
     const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-    if (el.dataset.owner !== myRole) return;
+    if (!window.canControlPlayer?.(el.dataset.owner) && el.dataset.owner !== myRole) return;
     if ((el.dataset.zoneType === "skill" || el.dataset.zoneType === "grave") && !isTopZoneCard(el)) return;
     if (el.dataset.zoneType === "attacker" && !isTopZoneCard(el)) return;
     e.stopPropagation();
@@ -1616,7 +1617,7 @@ function enablePointerDrag(el){
 
   el.addEventListener("pointerenter", () => {
     const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-    if (el.dataset.owner !== myRole || el.classList.contains("deckObject")) return;
+    if ((!window.canControlPlayer?.(el.dataset.owner) && el.dataset.owner !== myRole) || el.classList.contains("deckObject")) return;
     if (Number(el.dataset.y) >= HAND_ZONE_Y_MIN) {
       el.classList.add("handCardLift");
       window._lastHandHoverEl = el;
@@ -2069,7 +2070,7 @@ window.applyFieldCardsFromServer = function(data){
 
     // 相手のカードかどうかを判定
     const myRole = window.myRole || window.getMyRole?.() || localStorage.getItem("gamePlayerKey");
-    if(item.owner && item.owner !== myRole && myRole !== null){
+    if(item.owner && !window.canControlPlayer?.(item.owner) && item.owner !== myRole && myRole !== null){
       if(!el.classList.contains("opponent-card")){
         el.classList.add("opponent-card");
       }

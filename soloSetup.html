@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ソロプレイ | DepenDrap</title>
+<link rel="icon" href="assets/System/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=9">
+<script src="js/ui/responsiveScale.js"></script>
+<style>
+body.soloSetupPage{min-height:100vh;overflow:auto;background:#0c0b12;color:#f4f1d6}
+.soloSetup{width:min(1100px,96vw);margin:0 auto;padding:24px;box-sizing:border-box}
+.soloSetup header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.soloDeckGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin:24px 0}
+.soloDeck{min-height:190px;padding:12px;border:2px solid #5a4b27;border-radius:8px;background:#171421;color:inherit;cursor:pointer;text-align:left}
+.soloDeck.selected{border-color:#2f80ed;box-shadow:0 0 0 3px #2f80ed55}
+.soloDeck strong,.soloDeck span{display:block;margin-top:8px}
+.soloStart{display:block;margin:20px auto;padding:12px 32px;font-size:18px}
+#soloDeckMessage{text-align:center;color:#f88}
+</style>
+</head>
+<body class="soloSetupPage">
+<main class="soloSetup">
+  <header><button class="back-btn-inline" onclick="location.href='playMode.html'">戻る</button><h1>ソロプレイ</h1><span></span></header>
+  <p>使用するデッキを選択してください。対戦中はプレイヤー1・2の両方を操作できます。</p>
+  <div id="soloDeckGrid" class="soloDeckGrid"></div>
+  <div id="soloDeckMessage"></div>
+  <button id="soloStartButton" class="lorBtn soloStart" type="button">ゲーム開始</button>
+</main>
+<script src="js/game/effects/effectRuntimeV2.js?v=2"></script>
+<script src="js/card/cardData.js?v=9"></script>
+<script src="js/deck/deckCode.js?v=8"></script>
+<script src="js/shared/deckImageDB.js"></script>
+<script src="js/deck/soloSetup.js?v=1"></script>
+</body>
+</html>

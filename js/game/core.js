@@ -6,6 +6,10 @@ const GAME_STARTED_KEY = "gameStarted";
 const GAME_STARTED_ROOM_KEY = "gameStartedRoom";
 window.myRole     = null;
 window.myUsername = null;
+window._soloHotSeat = localStorage.getItem("soloMode") === "true";
+window.canControlPlayer = function(owner) {
+  return !!window._soloHotSeat || owner === (window.getMyRole?.() || window.myRole || "player1");
+};
 
 try {
   const setup = JSON.parse(localStorage.getItem("matchSetup") || "null");

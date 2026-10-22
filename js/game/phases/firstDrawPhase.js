@@ -72,7 +72,9 @@ function updateFirstDrawPhaseUI() {
 
   startFirstDrawPhase();
 
-  const me = window.myRole || "player1";
+  const me = window._soloHotSeat
+    ? (!m.firstDrawP1Ready ? "player1" : "player2")
+    : (window.myRole || "player1");
   const pickN = getFirstDrawRevealCount(me, m);
   const p1r = !!m.firstDrawP1Ready;
   const p2r = !!m.firstDrawP2Ready;
@@ -288,6 +290,12 @@ function updateFirstDrawPhaseUI() {
     }
     state.matchData[readyKey] = true;
 
+    if (window._soloHotSeat && !state.matchData[me === "player1" ? "firstDrawP2Ready" : "firstDrawP1Ready"]) {
+      window._firstDrawPhaseStarted = false;
+      delete overlay.dataset.cardsBound;
+      delete overlay.dataset.localFirstDrawLocked;
+    }
+
     overlay.dataset.cardsBound = "1";
     if (gameRoom && firebaseClient?.db) {
       await firebaseClient.writeMyState(gameRoom, me, _getMyStateForSync()).catch(() => {});
@@ -316,7 +324,9 @@ function insertCardIntoDeckAtRandom(owner, storeId) {
 function startFirstDrawPhase() {
   const m = state.matchData;
   if (m.status !== "setup_first_draw" || window._firstDrawPhaseStarted) return;
-  const me = window.myRole || "player1";
+  const me = window._soloHotSeat
+    ? (!m.firstDrawP1Ready ? "player1" : "player2")
+    : (window.myRole || "player1");
   const myReady = me === "player1" ? !!m.firstDrawP1Ready : !!m.firstDrawP2Ready;
   if (myReady) {
     window._firstDrawPhaseStarted = true;
@@ -366,7 +376,7 @@ function startFirstDrawPhase() {
 
   const n = getFirstDrawRevealCount(me, m);
   console.log(`[FirstDraw] takeOut(${n}) を呼び出します。デッキ枚数: ${state[me]?.deck?.length}`);
-  window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true });
+  window.takeOut(n, { visibility: "self", hideSelfVisibilityLabel: true, owner: me });
   // takeOut() 末尾で update(true) が呼ばれるため、ここでの重複呼び出しは不要。
   // （以前は resetLastStateJson + update(true) を呼んでいたが、
   //   takeOut → update(true) → updateFirstDrawPhaseUI のループを助長していたため削除）

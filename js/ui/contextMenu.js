@@ -665,11 +665,10 @@ function openDeckMenu(deck, x, y){
   buildMenu(items, x, y, deck);
 }
 
-function drawCards(count){
-  if(typeof getMyState === "undefined" || !getMyState()) return;
-  const dState = getMyState();
-  
-  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+function drawCards(count, opts = {}){
+  const me = opts.owner || (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+  const dState = (opts.owner && typeof state !== "undefined") ? state[opts.owner] : (typeof getMyState === "undefined" ? null : getMyState());
+  if (!dState) return;
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
   
@@ -888,10 +887,9 @@ function takeOut(count, opts){
   opts = opts || {};
   const visMode = opts.visibility === "self" ? "self" : "none";
   const hideSelfLabel = !!opts.hideSelfVisibilityLabel && visMode === "self";
-  if(typeof getMyState === "undefined" || !getMyState()) return;
-  const dState = getMyState();
-  
-  const me = (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+  const me = opts.owner || (typeof window.getMyRole === "function" ? window.getMyRole() : (window.getMyRole ? window.getMyRole() : window.myRole || "player1"));
+  const dState = opts.owner && typeof state !== "undefined" ? state[opts.owner] : (typeof getMyState === "undefined" ? null : getMyState());
+  if (!dState) return;
   const content = (typeof getFieldContent === "function") ? getFieldContent() : null;
   const deckObj = content ? content.querySelector(`.deckObject[data-owner="${me}"]`) : null;
   

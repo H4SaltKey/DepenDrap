@@ -16,7 +16,9 @@ window.updateEvolutionPhaseUI = function() {
     return;
   }
 
-  const me = window.myRole || "player1";
+  const me = window._soloHotSeat
+    ? (!state.player1?.evolutionPath ? "player1" : "player2")
+    : (window.myRole || "player1");
   const op = me === "player1" ? "player2" : "player1";
   
   const myPath = state[me]?.evolutionPath;
@@ -24,7 +26,7 @@ window.updateEvolutionPhaseUI = function() {
 
   // 両方とも選択済みなら playing に移行
   if (myPath && opPath) {
-    if (m.turnPlayer === me && !window._evoPhaseTransitioning) {
+    if ((window._soloHotSeat || m.turnPlayer === me) && !window._evoPhaseTransitioning) {
       window._evoPhaseTransitioning = true;
       setTimeout(async () => {
         try {
@@ -74,7 +76,7 @@ window.updateEvolutionPhaseUI = function() {
   overlay.style.opacity = "1";
 
   // 自分が選択済みの場合は待機画面
-  if (myPath) {
+  if (myPath && !window._soloHotSeat) {
     overlay.innerHTML = `
       <div class="evoPhaseShell" style="text-align:center; transform: scale(var(--phase-scale, 1)); transform-origin: center center;">
         <h2 style="color:#c7b377; font-size:clamp(18px, 2.4vw, 24px);">相手の選択を待っています...</h2>
@@ -131,7 +133,9 @@ window.updateEvolutionPhaseUI = function() {
 
 window.selectEvolutionPath = async function(pathName) {
   if (window.isGameInteractionLocked()) return;
-  const me = window.myRole || "player1";
+  const me = window._soloHotSeat
+    ? (!state.player1?.evolutionPath ? "player1" : "player2")
+    : (window.myRole || "player1");
   state[me].evolutionPath = pathName;
   addGameLog(`[EVOLUTION] ${window.myUsername || state[me]?.username || me} が「${pathName}」を選択しました。`);
   

@@ -748,7 +748,12 @@ function renderCatalogGrid(cardsDiv, cardIds) {
     ids.forEach(id => {
       const card = getCardData(id);
       const element = createCardElement(id, 0, "cards");
-      if (!setLayoutDisabled) {
+      if (setLayoutDisabled) {
+        const packedIndex = laneColumns.top + laneColumns.bottom;
+        element.style.gridRow = packedIndex % 2 === 0 ? "1" : "2";
+        element.style.gridColumn = String(Math.floor(packedIndex / 2) + 1);
+        laneColumns.top += 1;
+      } else {
         const lane = card?.type === "スキル" ? "bottom" : "top";
         const layout = window.DECK_CATALOG_CARD_LAYOUT?.[id] || {};
         const gridRow = lane === "bottom" ? "2" : "1";

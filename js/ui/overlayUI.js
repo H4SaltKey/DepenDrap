@@ -49,7 +49,7 @@ function getEvolutionPathHTML(owner) {
     tableHTML = `y = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '奇撃の道' || s.evolutionPath === '瞬発の道') {
     const z = param;
-    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与え、<span style="color:${colorAction}">${2 + z}の経験値</span>を獲得する。`;
+    desc = `一撃で6以上のダメージを与える時、そのダメージ判定の直前に <span style="color:${colorLevel}; font-size:18px; font-weight:bold;">${z}</span> の<span style="color:${colorAction}">脆弱ダメージ</span>を与え、<span style="color:${colorAction}">${2 + z}の経験値</span>を獲得する。<br><span style="font-size:12px; color:#aaa;">※："一撃"とは、一つの[効果/行動]の中での合計値であり、ダメージソースが異なる場合も合算可能。</span>`;
     tableHTML = `z = [1, 3, 4, 6]`;
   } else if (s.evolutionPath === '背水の道') {
     const t = param;

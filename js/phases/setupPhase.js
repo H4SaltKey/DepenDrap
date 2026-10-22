@@ -114,7 +114,7 @@ window.updateEvolutionPhaseUI = function() {
           <!-- 奇撃の道 -->
           <button class="evo-path-btn" onclick="selectEvolutionPath('奇撃の道')">
             <div class="evo-path-title">奇撃の道</div>
-            <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与え、2+zの経験値を獲得する。<br><span class="evo-path-val">z=[1/3/4/6]</span></div>
+            <div class="evo-path-desc">一撃で6以上のダメージを与える時、そのダメージ判定の直前にzの脆弱ダメージを与え、2+zの経験値を獲得する。<br><span style="font-size:11px; color:#aaa;">※："一撃"とは、一つの[効果/行動]の中での合計値であり、ダメージソースが異なる場合も合算可能。</span><br><span class="evo-path-val">z=[1/3/4/6]</span></div>
           </button>
 
           <!-- 背水の道 -->

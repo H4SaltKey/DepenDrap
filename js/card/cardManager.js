@@ -98,10 +98,7 @@ function restoreCardDragZIndex(cardEl) {
 function canShowSingleTapPreview(cardEl) {
   if (!cardEl || cardEl.classList.contains("deckObject")) return false;
   if (state?.matchData?.status === "setup_first_draw") return false;
-  const myRole = (window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1";
-  const owner = cardEl.dataset.owner || "";
-  if (owner === myRole || window._soloHotSeat) return true;
-  return (cardEl.dataset.visibility || "both") === "both";
+  return true;
 }
 
 function isCardInHandArea(cardEl) {
@@ -118,12 +115,23 @@ function isCardInHandArea(cardEl) {
 
 function showCardHoverPreview(cardEl, clientX, clientY) {
   if (!canShowSingleTapPreview(cardEl)) return;
-  const img = cardEl?.querySelector?.("img");
+  const img = Array.from(cardEl?.querySelectorAll?.("img") || []).find(candidate => {
+    const style = window.getComputedStyle(candidate);
+    return style.display !== "none" && style.visibility !== "hidden";
+  });
   if (!img) return;
   const cardId = String(cardEl?.dataset?.id || "");
-  const cardData = (typeof window.getCardData === "function" && cardId) ? (window.getCardData(cardId) || {}) : {};
-  const cardName = String(cardData?.name || cardId || "カード");
-  const effectText = String(cardData?.effectText || "").trim();
+  const isFaceVisible = cardEl.dataset.visibility === "both"
+    || canViewerSeeCardFront(
+      (window.getMyRole ? window.getMyRole() : window.myRole) || localStorage.getItem("gamePlayerKey") || "player1",
+      cardEl.dataset.owner || "",
+      cardEl.dataset.visibility || "both"
+    );
+  const cardData = isFaceVisible && typeof window.getCardData === "function" && cardId
+    ? (window.getCardData(cardId) || {})
+    : {};
+  const cardName = String(cardData?.name || (isFaceVisible ? cardId || "カード" : "非公開カード"));
+  const effectText = isFaceVisible ? String(cardData?.effectText || "").trim() : "";
   if (!cardHoverPreviewEl) {
     cardHoverPreviewEl = document.createElement("div");
     cardHoverPreviewEl.id = "cardHoverPreview";
@@ -1764,11 +1772,11 @@ async function initCards(){
   document.addEventListener("pointerdown", (e) => {
     // 右クリック等の副ボタン操作では単押し→拡大遷移を行わない
     if (typeof e.button === "number" && e.button !== 0) return;
-    if (!cardHoverPreviewEl || cardHoverPreviewEl.style.display === "none") return;
     if (e.target?.closest?.("#cardHoverPreview")) return;
     const clickedCard = e.target.closest(".card");
     const clickedCardId = clickedCard?.dataset?.instanceId || "";
-    if (clickedCardId && clickedCardId === cardHoverPreviewCardId) {
+    const previewIsOpen = cardHoverPreviewEl && cardHoverPreviewEl.style.display !== "none";
+    if (previewIsOpen && clickedCardId && clickedCardId === cardHoverPreviewCardId) {
       if (typeof window.showCardZoomById === "function" && clickedCard?.dataset?.id) {
         window.showCardZoomById(clickedCard.dataset.id);
       }
@@ -1778,7 +1786,7 @@ async function initCards(){
       showCardHoverPreview(clickedCard, e.clientX, e.clientY);
       return;
     }
-    hideCardHoverPreview();
+    if (previewIsOpen) hideCardHoverPreview();
   });
 
   restoreFieldCards();

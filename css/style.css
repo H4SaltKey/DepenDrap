@@ -2046,6 +2046,24 @@ body.deckPage{
     grid-template-rows: repeat(2, max-content);
 }
 
+#cards.cardRow.catalogSetRows {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    width: max-content;
+}
+
+#cards .catalogSetRow {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 var(--cards-card-width, 80px);
+    gap: 8px;
+    padding-right: 10px;
+    border-right: 1px solid rgba(255,255,255,0.14);
+    box-sizing: content-box;
+}
+
 /* カード一覧の空スロット（列同期用） */
 #cards.cardRow .cardSlotEmpty {
     width: var(--cards-card-width, 108px);

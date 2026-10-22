@@ -6,6 +6,11 @@ let cardFilters = {
 };
 const DECK_MIN_SIZE = 30;
 const DECK_MAX_SIZE = 40;
+let deckPreviewSource = "cards";
+let deckPreviewCardId = "";
+window.DECK_CATALOG_CARD_LAYOUT = window.DECK_CATALOG_CARD_LAYOUT || {
+  // カードIDごとに leadingSlots / trailingSlots を指定し、一覧上だけ空き位置を追加できます。
+};
 
 // Firebase 初期化
 window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
@@ -351,6 +356,30 @@ function createCardElement(id, count, source) {
   el.draggable = true;
   el.dataset.id = id;
   el.dataset.source = source;
+  el.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let dragged = false;
+    const onDragStart = () => { dragged = true; };
+    const onPointerUp = (upEvent) => {
+      document.removeEventListener("dragstart", onDragStart, true);
+      document.removeEventListener("pointerup", onPointerUp, true);
+      if (dragged) return;
+      const dx = upEvent.clientX - startX;
+      const dy = upEvent.clientY - startY;
+      if (Math.abs(dx) > 24 || Math.abs(dy) < 12 || Math.abs(dy) > 90) return;
+      if (source === "cards" && dy > 0) {
+        el.dataset.skipNextClick = "true";
+        addCard(id);
+      } else if (source === "deck" && dy < 0) {
+        el.dataset.skipNextClick = "true";
+        removeCard(id);
+      }
+    };
+    document.addEventListener("dragstart", onDragStart, true);
+    document.addEventListener("pointerup", onPointerUp, true);
+  });
 
   const imageSrc = card.image ? encodeURI(card.image) : "assets/System/404.png";
   if (window.CardVisualLayout && typeof window.CardVisualLayout.buildDeckCardInnerHtml === "function") {
@@ -439,6 +468,11 @@ function createCardElement(id, count, source) {
   });
 
   el.addEventListener("click", (e) => {
+    if (el.dataset.skipNextClick === "true") {
+      delete el.dataset.skipNextClick;
+      e.preventDefault();
+      return;
+    }
     if (e.button !== 0) return;
     const deckRow = document.getElementById("deck");
     const cardsRow = document.getElementById("cards");
@@ -472,15 +506,17 @@ function createCardElement(id, count, source) {
   });
 
   el.addEventListener("mouseenter", () => {
+    deckPreviewSource = source;
+    deckPreviewCardId = id;
     updateDeckCardPreview(id);
   });
 
   el.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     if (source === "cards") {
-      openDeckContextMenu(e.pageX, e.pageY, id, "add", el);
+      openDeckContextMenu(e.clientX, e.clientY, id, "add", el);
     } else {
-      openDeckContextMenu(e.pageX, e.pageY, id, "remove", el);
+      openDeckContextMenu(e.clientX, e.clientY, id, "remove", el);
     }
   });
 
@@ -492,7 +528,6 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
   if (!menu) return;
   const options = action === "add" ? [1, 2, 3] : [1, 2, 3];
   menu.innerHTML = `<div class="context-item" data-action="zoom">拡大表示</div>` +
-    `<div class="context-item" data-action="shuffle">デッキをシャッフルする</div>` +
     options.map(count => {
       const label = action === "add" ? `+${count}枚追加` : `-${count}枚削除`;
       return `<div class="context-item" data-count="${count}">${label}</div>`;
@@ -500,8 +535,8 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
 
   menu.classList.remove("hidden");
   menu.style.display = "block";
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
+  menu.style.left = "0px";
+  menu.style.top = "0px";
   menu.style.minWidth = "140px";
   menu.style.color = "#f4f1d6";
   menu.style.fontSize = "13px";
@@ -511,6 +546,10 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
   menu.style.backdropFilter = "blur(10px)";
   menu.style.padding = "4px 0";
   menu.style.boxSizing = "border-box";
+  const viewportPadding = 8;
+  const menuRect = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(viewportPadding, Math.min(x, window.innerWidth - menuRect.width - viewportPadding))}px`;
+  menu.style.top = `${Math.max(viewportPadding, Math.min(y, window.innerHeight - menuRect.height - viewportPadding))}px`;
 
   Array.from(menu.children).forEach(item => {
     item.style.padding = "8px 12px";
@@ -523,8 +562,6 @@ function openDeckContextMenu(x, y, id, action, sourceEl = null) {
       const actionType = item.dataset.action || "count";
       if (actionType === "zoom") {
         showCardZoom(id);
-      } else if (actionType === "shuffle") {
-        shuffleCurrentDeck();
       } else {
         const count = Number(item.dataset.count);
         const performAction = () => {
@@ -649,6 +686,18 @@ function updateDeckCardPreview(id) {
   if (previewCardEl && window.CardVisualLayout && typeof window.CardVisualLayout.syncScale === "function") {
     requestAnimationFrame(() => window.CardVisualLayout.syncScale(previewCardEl));
   }
+  requestAnimationFrame(syncPreviewEffectScroll);
+}
+
+function syncPreviewEffectScroll(sourceEffectText = null) {
+  const sourceSelector = deckPreviewSource === "deck" ? "#deck" : "#cards";
+  const source = sourceEffectText || document.querySelector(`${sourceSelector} .deckCard[data-id="${deckPreviewCardId}"] .cvEffectText`);
+  const effectText = document.querySelector("#deckCardPreview .cvEffectText");
+  if (!source || !effectText) return;
+  const sourceRange = source.scrollHeight - source.clientHeight;
+  const effectRange = effectText.scrollHeight - effectText.clientHeight;
+  const progress = sourceRange > 0 ? source.scrollTop / sourceRange : 0;
+  effectText.scrollTop = effectRange * progress;
 }
 
 window.addEventListener("keydown", (e) => {
@@ -675,55 +724,37 @@ window.addEventListener("resize", hideDeckContextMenu);
 function renderCatalogGrid(cardsDiv, cardIds) {
   if (!cardsDiv) return;
   cardsDiv.innerHTML = "";
-  cardsDiv.classList.remove("catalogSingleRow", "catalogTwoRow");
+  cardsDiv.classList.remove("catalogSingleRow", "catalogTwoRow", "catalogSetRows");
 
-  // タイプで分類
-  const topIds = [];   // アタッカー / サポート
-  const botIds = [];   // スキル
-
+  const groups = new Map();
   cardIds.forEach(id => {
-    const card = getCardData(id);
-    const type = card?.type || "アタッカー";
-    if (type === "スキル") {
-      botIds.push(id);
-    } else {
-      topIds.push(id);
-    }
+    const match = String(id).match(/^(cd\d+)-(\d+)$/);
+    const setKey = match ? `${match[1]}-${Math.ceil(Number(match[2]) / 2)}` : id;
+    if (!groups.has(setKey)) groups.set(setKey, []);
+    groups.get(setKey).push(id);
   });
-
-  // フィルターで片方が空の場合は通常の1段グリッドとして扱う
-  const useTwoRow = topIds.length > 0 && botIds.length > 0;
-
-  if (!useTwoRow) {
-    // 1段: 全カードをそのまま並べる
-    const allIds = topIds.length > 0 ? topIds : botIds;
-    allIds.forEach(id => cardsDiv.appendChild(createCardElement(id, 0, "cards")));
-    cardsDiv.classList.add("catalogSingleRow");
-    return;
-  }
-
-  // 2段: 列数 = max(topIds.length, botIds.length)
-  cardsDiv.classList.add("catalogTwoRow");
-  const colCount = Math.max(topIds.length, botIds.length);
-
-  for (let col = 0; col < colCount; col++) {
-    // 上段
-    if (col < topIds.length) {
-      cardsDiv.appendChild(createCardElement(topIds[col], 0, "cards"));
-    } else {
-      const empty = document.createElement("div");
-      empty.className = "cardSlotEmpty";
-      cardsDiv.appendChild(empty);
+  cardsDiv.classList.add("catalogSetRows");
+  groups.forEach((ids) => {
+    const row = document.createElement("div");
+    row.className = "catalogSetRow";
+    const ordered = ids.slice().sort((a, b) => {
+      const aSkill = getCardData(a)?.type === "スキル";
+      const bSkill = getCardData(b)?.type === "スキル";
+      return Number(aSkill) - Number(bSkill);
+    });
+    ordered.forEach(id => row.appendChild(createCardElement(id, 0, "cards")));
+    if (ordered.length === 1 && !window.DECK_CATALOG_CARD_LAYOUT?.[ordered[0]]) {
+      row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
     }
-    // 下段
-    if (col < botIds.length) {
-      cardsDiv.appendChild(createCardElement(botIds[col], 0, "cards"));
-    } else {
-      const empty = document.createElement("div");
-      empty.className = "cardSlotEmpty";
-      cardsDiv.appendChild(empty);
+    const layout = window.DECK_CATALOG_CARD_LAYOUT?.[ids[0]];
+    if (layout?.leadingSlots) {
+      for (let i = 0; i < layout.leadingSlots; i++) row.prepend(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
     }
-  }
+    if (layout?.trailingSlots) {
+      for (let i = 0; i < layout.trailingSlots; i++) row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
+    }
+    cardsDiv.appendChild(row);
+  });
 }
 
 function render() {
@@ -946,6 +977,16 @@ function setupDeckBuilder() {
       flashScrollbar(deckDiv);
     });
   }
+
+  [cardsDiv, deckDiv].filter(Boolean).forEach((row) => {
+    row.addEventListener("scroll", (event) => {
+      const effectText = event.target;
+      if (!effectText.matches?.(".cvEffectText")) return;
+      const cardElement = effectText.closest(".deckCard");
+      if (!cardElement || cardElement.dataset.source !== deckPreviewSource || cardElement.dataset.id !== deckPreviewCardId) return;
+      syncPreviewEffectScroll(effectText);
+    }, true);
+  });
 
   window.addEventListener("resize", () => {
     updateCardsScrollButtons();

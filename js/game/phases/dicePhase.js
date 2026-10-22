@@ -358,6 +358,15 @@ async function handleChooseOrder(goFirst) {
   state[me].evolutionPath = null;
   state[me].evoContinuousDmgCount = 0;
   state[me].evoBackwaterExpGained = false;
+  if (window._soloHotSeat) {
+    state[op].evolutionPath = state[op].evolutionPath || "忍耐の道";
+    state[op].evoContinuousDmgCount = 0;
+    state[op].evoBackwaterExpGained = false;
+    state.matchData.orderChoice = {
+      [me]: goFirst ? 1 : 2,
+      [op]: goFirst ? 2 : 1
+    };
+  }
 
   const gameRoom = localStorage.getItem("gameRoom");
   if (gameRoom && firebaseClient?.db) {

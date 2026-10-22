@@ -19,7 +19,7 @@ body.playModePage{min-height:100vh;display:grid;place-items:center;background:#0
   <button class="back-btn-inline" onclick="location.href='index.html'">タイトルへ戻る</button>
   <h1>プレイモード選択</h1>
   <div class="playModeChoices">
-    <button class="lorBtn" onclick="location.href='matchSetup.html'">マルチプレイ</button>
+    <button class="lorBtn" onclick="localStorage.removeItem('soloMode'); location.href='matchSetup.html'">マルチプレイ</button>
     <button class="lorBtn" onclick="location.href='soloSetup.html'">ソロプレイ</button>
   </div>
 </main>

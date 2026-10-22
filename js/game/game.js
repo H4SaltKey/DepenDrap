@@ -1,5 +1,8 @@
 let gameReady = false;
-window._soloHotSeat = localStorage.getItem("soloMode") === "true";
+window._soloHotSeat = (() => {
+  try { return JSON.parse(localStorage.getItem("matchSetup") || "null")?.mode === "solo"; }
+  catch { return false; }
+})();
 window._soloStartMode = window._soloHotSeat;
 window._lastAppliedResetSeq = Number(window._lastAppliedResetSeq || 0);
 let lastTurnDrawKey = sessionStorage.getItem("lastTurnDrawKey") || "";

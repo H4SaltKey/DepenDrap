@@ -1055,6 +1055,7 @@ function watchTyping(roomName) {
 
 async function startGame() {
   isStartingGame = true;
+  localStorage.removeItem("soloMode");
   const deck = selectedDeck();
   localStorage.setItem("gameRoom",      currentRoom);
   localStorage.setItem("gamePlayerKey", currentPlayerKey);

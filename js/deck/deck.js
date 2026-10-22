@@ -732,21 +732,23 @@ function renderCatalogGrid(cardsDiv, cardIds) {
   cardIds.forEach(id => {
     const match = String(id).match(/^(cd\d+)-(\d+)$/);
     const setLayoutDisabled = /^(?:cd002|cd003)-/.test(String(id));
-    const setKey = match && !setLayoutDisabled ? `${match[1]}-${Math.ceil(Number(match[2]) / 2)}` : id;
+    const setKey = match
+      ? `${match[1]}-${setLayoutDisabled ? "catalog" : Math.ceil(Number(match[2]) / 2)}`
+      : id;
     if (!groups.has(setKey)) groups.set(setKey, []);
     groups.get(setKey).push(id);
   });
   cardsDiv.classList.add("catalogSetRows");
   groups.forEach((ids) => {
     const row = document.createElement("div");
-    row.className = "catalogSetRow";
-    const ordered = ids.slice().sort((a, b) => {
+    const setLayoutDisabled = ids.every(id => /^(?:cd002|cd003)-/.test(String(id)));
+    row.className = setLayoutDisabled ? "catalogSetRow catalogSetRowPacked" : "catalogSetRow";
+    const ordered = setLayoutDisabled ? ids : ids.slice().sort((a, b) => {
       const aSkill = getCardData(a)?.type === "スキル";
       const bSkill = getCardData(b)?.type === "スキル";
       return Number(aSkill) - Number(bSkill);
     });
     ordered.forEach(id => row.appendChild(createCardElement(id, 0, "cards")));
-    const setLayoutDisabled = ordered.every(id => /^(?:cd002|cd003)-/.test(String(id)));
     if (ordered.length === 1 && !setLayoutDisabled && !window.DECK_CATALOG_CARD_LAYOUT?.[ordered[0]]) {
       row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
     }

@@ -8187,3 +8187,7 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `js/deck/deck.js` の `window.DECK_CATALOG_CARD_LAYOUT` に `"cdxxx-xxx": { trailingSlots: 1 }` を例として追加。
 - 例示用IDなので実カードには影響せず、実IDへ差し替えると右側に1枠空けて一覧表示する。
+
+### cd002/cd003の一覧レイアウト補足
+
+- `cd002-*` / `cd003-*` は各セットの行分けを維持したまま、セット内は2段ペア化せず左上から順に詰めて配置する。

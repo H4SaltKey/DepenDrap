@@ -2064,6 +2064,12 @@ body.deckPage{
     box-sizing: content-box;
 }
 
+#cards .catalogSetRowPacked {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    flex: 0 0 max-content;
+}
+
 /* カード一覧の空スロット（列同期用） */
 #cards.cardRow .cardSlotEmpty {
     width: var(--cards-card-width, 108px);

@@ -646,6 +646,9 @@
   }
 
   function executeGrantedEffects(context) {
+    if (isCardDslExecutionDisabled()) {
+      return { handled: true, effects: [], disabled: true };
+    }
     const owner = context?.owner;
     const s = getPlayer(owner);
     if (!owner || !s || !Array.isArray(s.grantedEffects) || s.grantedEffects.length === 0) {
@@ -1554,7 +1557,22 @@
     window.addGameLog(`[DSL] ${cardName}(${cardId}) trigger=${trigger} status=${status} effects=${applied}/${total}${suffix}`);
   }
 
+  function isCardDslExecutionDisabled() {
+    try {
+      if (typeof window.getGameSetting === "function") {
+        return window.getGameSetting("disableCardDsl", false) === true;
+      }
+      const settings = JSON.parse(localStorage.getItem("settings") || "{}");
+      return settings.disableCardDsl === true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function execute(cardDsl, context) {
+    if (isCardDslExecutionDisabled()) {
+      return { handled: true, effects: [], triggerReports: [], disabled: true };
+    }
     if (cardDsl?.format !== EFFECTS_FORMAT) {
       return { handled: false, effects: [], triggerReports: [], error: "legacy-effect-format-disabled" };
     }

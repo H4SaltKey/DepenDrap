@@ -4,7 +4,8 @@
     se: 0.5,
     timeLimitEnabled: true,
     ppCostModalEnabled: false,
-    autoPlayEnabled: false
+    autoPlayEnabled: false,
+    disableCardDsl: false
   };
   const settings = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem("settings")) || {});
   localStorage.setItem("settings", JSON.stringify(settings));
@@ -55,6 +56,10 @@
         <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
           <input type="checkbox" id="autoPlayEnabled">
           オートプレイ
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+          <input type="checkbox" id="disableCardDsl">
+          カードDSLの実行を無効化
         </label>
 
         <div class="optionFooter">
@@ -400,6 +405,8 @@
     if (ppCb) ppCb.checked = !!settings.ppCostModalEnabled;
     const autoCb = document.getElementById("autoPlayEnabled");
     if (autoCb) autoCb.checked = !!settings.autoPlayEnabled;
+    const disableDslCb = document.getElementById("disableCardDsl");
+    if (disableDslCb) disableDslCb.checked = !!settings.disableCardDsl;
   };
 
   document.getElementById("closeOpt").onclick = ()=>{
@@ -446,6 +453,7 @@
     if(e.target.id === "seVolume") settings.se = e.target.value;
     if(e.target.id === "ppCostModalEnabled") settings.ppCostModalEnabled = !!e.target.checked;
     if(e.target.id === "autoPlayEnabled") settings.autoPlayEnabled = !!e.target.checked;
+    if(e.target.id === "disableCardDsl") settings.disableCardDsl = !!e.target.checked;
     localStorage.setItem("settings", JSON.stringify(settings));
   });
   document.addEventListener("change", (e)=>{

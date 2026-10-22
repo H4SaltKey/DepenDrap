@@ -2055,9 +2055,11 @@ body.deckPage{
 }
 
 #cards .catalogSetRow {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 var(--cards-card-width, 80px);
+    display: grid;
+    grid-template-rows: repeat(2, max-content);
+    grid-auto-columns: var(--cards-card-width, 80px);
+    grid-auto-flow: column;
+    flex: 0 0 max-content;
     gap: 8px;
     padding-right: 10px;
     border-right: 1px solid rgba(255,255,255,0.14);
@@ -2065,6 +2067,7 @@ body.deckPage{
 }
 
 #cards .catalogSetRowPacked {
+    display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     flex: 0 0 max-content;

@@ -12,6 +12,7 @@ window.DECK_CATALOG_CARD_LAYOUT = window.DECK_CATALOG_CARD_LAYOUT || {
   // カードIDごとに (多い)leadingSlots / (ない)trailingSlots を指定し、一覧上だけ空き位置を追加できます。
   //"cdxxx-xxx": { trailingSlots: 1 },
   "cd005-007": { leadingSlots: 1 },
+  "cd005-020": { trailingSlots: 1 },
 };
 
 // Firebase 初期化
@@ -743,22 +744,35 @@ function renderCatalogGrid(cardsDiv, cardIds) {
     const row = document.createElement("div");
     const setLayoutDisabled = ids.every(id => /^(?:cd002|cd003)-/.test(String(id)));
     row.className = setLayoutDisabled ? "catalogSetRow catalogSetRowPacked" : "catalogSetRow";
-    const ordered = setLayoutDisabled ? ids : ids.slice().sort((a, b) => {
-      const aSkill = getCardData(a)?.type === "スキル";
-      const bSkill = getCardData(b)?.type === "スキル";
-      return Number(aSkill) - Number(bSkill);
+    const laneColumns = { top: 0, bottom: 0 };
+    ids.forEach(id => {
+      const card = getCardData(id);
+      const element = createCardElement(id, 0, "cards");
+      if (!setLayoutDisabled) {
+        const lane = card?.type === "スキル" ? "bottom" : "top";
+        const layout = window.DECK_CATALOG_CARD_LAYOUT?.[id] || {};
+        const gridRow = lane === "bottom" ? "2" : "1";
+        const leadingSlots = Math.max(0, Math.floor(Number(layout.leadingSlots) || 0));
+        const trailingSlots = Math.max(0, Math.floor(Number(layout.trailingSlots) || 0));
+        for (let slot = 0; slot < leadingSlots; slot++) {
+          const empty = Object.assign(document.createElement("div"), { className: "cardSlotEmpty" });
+          empty.style.gridRow = gridRow;
+          empty.style.gridColumn = String(++laneColumns[lane]);
+          row.appendChild(empty);
+        }
+        element.style.gridRow = gridRow;
+        element.style.gridColumn = String(++laneColumns[lane]);
+        row.appendChild(element);
+        for (let slot = 0; slot < trailingSlots; slot++) {
+          const empty = Object.assign(document.createElement("div"), { className: "cardSlotEmpty" });
+          empty.style.gridRow = gridRow;
+          empty.style.gridColumn = String(++laneColumns[lane]);
+          row.appendChild(empty);
+        }
+        return;
+      }
+      row.appendChild(element);
     });
-    ordered.forEach(id => row.appendChild(createCardElement(id, 0, "cards")));
-    if (ordered.length === 1 && !setLayoutDisabled && !window.DECK_CATALOG_CARD_LAYOUT?.[ordered[0]]) {
-      row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
-    }
-    const layout = setLayoutDisabled ? null : window.DECK_CATALOG_CARD_LAYOUT?.[ids[0]];
-    if (layout?.leadingSlots) {
-      for (let i = 0; i < layout.leadingSlots; i++) row.prepend(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
-    }
-    if (layout?.trailingSlots) {
-      for (let i = 0; i < layout.trailingSlots; i++) row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
-    }
     cardsDiv.appendChild(row);
   });
 }

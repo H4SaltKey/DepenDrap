@@ -340,6 +340,8 @@ function createDeckObject(forceResetPos = false) {
       const globalY = (owner === "player1") ? 1547 : 0;
       wrapper.style.left = toLocalX(globalX) + "px";
       wrapper.style.top = toLocalY(globalY) + "px";
+      wrapper.dataset.x = wrapper.style.left.replace("px", "");
+      wrapper.dataset.y = wrapper.style.top.replace("px", "");
     }
     content.appendChild(wrapper);
   });
@@ -966,6 +968,27 @@ function handleMatchStateTransitions() {
   // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
   const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+
+  if (window._soloHotSeat && isDicePhaseComplete && m.status === "playing" && m.turnPlayer === "player2" && !m.winner) {
+    if (!window._soloOpponentTurnSkipPending) {
+      window._soloOpponentTurnSkipPending = true;
+      setTimeout(() => {
+        try {
+          if (state.matchData?.status !== "playing" || state.matchData.turnPlayer !== "player2" || state.matchData.winner) return;
+          const nextTurn = window.calcNextTurn?.(state.matchData);
+          if (!nextTurn) return;
+          Object.assign(state.matchData, nextTurn, { targetSelectionPending: true });
+          addGameLog("[SOLO] プレイヤー2のターンをスキップしました。");
+          update();
+        } finally {
+          window._soloOpponentTurnSkipPending = false;
+        }
+      }, 0);
+    }
+    document.getElementById("opponentTargetWaitingOverlay")?.remove();
+    document.getElementById("turnStartTargetPanel")?.remove();
+    return;
+  }
 
   // ターゲット選択フェーズの割り込み処理
   if (isDicePhaseComplete && m.status === "playing" && m.targetSelectionPending && !m.winner) {
@@ -2072,6 +2095,7 @@ async function handleFreshStart(currentRoom, myKey) {
     const opponentKey = myKey === "player1" ? "player2" : "player1";
     state[opponentKey].username = `${state[myKey].username} (2P)`;
     state[opponentKey].backImage = state[myKey].backImage;
+    state[opponentKey].evolutionPath = "忍耐の道";
     try { state[opponentKey].deck = decodeDeck(matchSetupData.deckCode || localStorage.getItem("deckCode") || "empty"); } catch { state[opponentKey].deck = []; }
     for (let i = state[opponentKey].deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -2082,7 +2106,7 @@ async function handleFreshStart(currentRoom, myKey) {
   // matchData を初期状態にリセット
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1",
-    status: window._soloHotSeat ? "setup_dice" : "ready_check", winner: null, winnerSetAt: null, firstPlayer: null,
+    status: window._soloHotSeat ? "setup_evolution" : "ready_check", winner: null, winnerSetAt: null, firstPlayer: window._soloHotSeat ? "player1" : null,
     resetSeq: Number(window._lastAppliedResetSeq || 0)
   };
 

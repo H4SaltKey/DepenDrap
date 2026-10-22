@@ -34,7 +34,11 @@ window.updateEvolutionPhaseUI = function() {
           m.status = "setup_first_draw";
           m.firstDrawDone = false;
           m.firstDrawP1Ready = false;
-          m.firstDrawP2Ready = false;
+          m.firstDrawP2Ready = !!window._soloHotSeat;
+          if (window._soloHotSeat && typeof window.takeOut === "function") {
+            window._firstDrawPhaseStarted = true;
+            window.takeOut(3, { visibility: "self", hideSelfVisibilityLabel: true, owner: "player2" });
+          }
           window._firstDrawPhaseStarted = false;
           window._firstDrawAdvanceSent = false;
           addGameLog(`[MATCH] 進化選択が完了しました。ファーストドローフェーズに移行します。`);

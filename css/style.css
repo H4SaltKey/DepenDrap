@@ -76,6 +76,10 @@ svg {
   scale: calc(var(--hud-scale) * 1.2);
 }
 
+html.is-fullscreen-viewport #gameUiPlayerInner {
+  transform-origin: left bottom;
+}
+
 #menuButton,
 #menuPanel {
   scale: calc(var(--hud-scale) * 1.14);

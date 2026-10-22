@@ -27,6 +27,9 @@
     }
 
     const root = document.documentElement;
+    const isFullscreenViewport = !!document.fullscreenElement || (
+      window.screen && Math.abs(window.screen.width - vw) <= 2 && Math.abs(window.screen.height - vh) <= 2
+    );
     root.style.setProperty("--ui-scale", uiScale.toFixed(4));
     root.style.setProperty("--hud-scale", hudScale.toFixed(4));
     root.style.setProperty("--window-scale", windowScale.toFixed(4));
@@ -35,6 +38,7 @@
     root.style.setProperty("--title-scale", titleScale.toFixed(4));
     root.style.setProperty("--deck-scale", clamp(uiScale * (isPortrait ? 0.88 : 0.96), 0.62, 1.0).toFixed(4));
     root.classList.toggle("is-mobile-viewport", isPortrait || vw < 980);
+    root.classList.toggle("is-fullscreen-viewport", isFullscreenViewport);
   }
 
   window.applyResponsiveScale = applyResponsiveScale;

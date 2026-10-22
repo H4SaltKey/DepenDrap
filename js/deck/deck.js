@@ -9,7 +9,9 @@ const DECK_MAX_SIZE = 40;
 let deckPreviewSource = "cards";
 let deckPreviewCardId = "";
 window.DECK_CATALOG_CARD_LAYOUT = window.DECK_CATALOG_CARD_LAYOUT || {
-  // カードIDごとに leadingSlots / trailingSlots を指定し、一覧上だけ空き位置を追加できます。
+  // カードIDごとに (多い)leadingSlots / (ない)trailingSlots を指定し、一覧上だけ空き位置を追加できます。
+  //"cdxxx-xxx": { trailingSlots: 1 },
+  
 };
 
 // Firebase 初期化
@@ -729,7 +731,8 @@ function renderCatalogGrid(cardsDiv, cardIds) {
   const groups = new Map();
   cardIds.forEach(id => {
     const match = String(id).match(/^(cd\d+)-(\d+)$/);
-    const setKey = match ? `${match[1]}-${Math.ceil(Number(match[2]) / 2)}` : id;
+    const setLayoutDisabled = /^(?:cd002|cd003)-/.test(String(id));
+    const setKey = match && !setLayoutDisabled ? `${match[1]}-${Math.ceil(Number(match[2]) / 2)}` : id;
     if (!groups.has(setKey)) groups.set(setKey, []);
     groups.get(setKey).push(id);
   });
@@ -743,10 +746,11 @@ function renderCatalogGrid(cardsDiv, cardIds) {
       return Number(aSkill) - Number(bSkill);
     });
     ordered.forEach(id => row.appendChild(createCardElement(id, 0, "cards")));
-    if (ordered.length === 1 && !window.DECK_CATALOG_CARD_LAYOUT?.[ordered[0]]) {
+    const setLayoutDisabled = ordered.every(id => /^(?:cd002|cd003)-/.test(String(id)));
+    if (ordered.length === 1 && !setLayoutDisabled && !window.DECK_CATALOG_CARD_LAYOUT?.[ordered[0]]) {
       row.appendChild(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
     }
-    const layout = window.DECK_CATALOG_CARD_LAYOUT?.[ids[0]];
+    const layout = setLayoutDisabled ? null : window.DECK_CATALOG_CARD_LAYOUT?.[ids[0]];
     if (layout?.leadingSlots) {
       for (let i = 0; i < layout.leadingSlots; i++) row.prepend(Object.assign(document.createElement("div"), { className: "cardSlotEmpty" }));
     }

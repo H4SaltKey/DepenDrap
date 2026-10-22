@@ -8165,3 +8165,25 @@ grep 結果: game.js に window.startSoloGame が定義されている
 
 - `node --check js/deck/deck.js`
 - `git diff --check`
+
+---
+
+## Round 2026-10-22 — cd002/cd003のセット配置を無効化
+
+### 対応
+
+- `js/deck/deck.js`
+  - `cd002-*` / `cd003-*` はカードID連番によるセットまとめを行わず、個別表示。
+  - 自動の相方用空き枠とカードID別の配置枠設定もこれらのカードでは適用しない。
+
+### 検証
+
+- `node --check js/deck/deck.js`
+- `git diff --check`
+
+---
+
+## Round 2026-10-22 — セット相手なしカードの配置例
+
+- `js/deck/deck.js` の `window.DECK_CATALOG_CARD_LAYOUT` に `"cdxxx-xxx": { trailingSlots: 1 }` を例として追加。
+- 例示用IDなので実カードには影響せず、実IDへ差し替えると右側に1枠空けて一覧表示する。

@@ -1508,7 +1508,7 @@
     "attribute": "魔法",
     "type": "アタッカー",
     "attack": 1,
-    "effectText": "【これはオールインを持つ。】\n\n継続：これが場にいる間、与えるダメージが全て脆弱ダメージになる。\n登場時：手札を1枚増やす。\n退場時：後述の効果を上から順に全て発動する。\n①：自身のHPが10以下なら、自身に重複しない効果、『次に場へ出すアタッカーカードの攻撃力を、”登場時”効果発動前に+xする(1回)。』を付与する。\nx= (これの攻撃力) \n②：自身のHPが5以下なら、自身のPPを1回復する。\n③：自身のHPが1以下なら、自身のPPを1回復する。",
+    "effectText": "【これはオールインを持つ。】\n\n継続：これが場にいる間、与えるダメージが全て脆弱ダメージになる。\n登場時：手札を1枚増やす。\n退場時：後述の効果を上から順に全て発動する。\n①：自身のHPが10以下なら、自身に重複しない効果、『次に場へ出すアタッカーカードの攻撃力を、”登場時”効果発動前に+xする(1回)。』を付与付与する。\nx= (これの攻撃力) \n②：自身のHPが5以下なら、自身のPPを1回復する。\n③：自身のHPが1以下なら、自身のPPを1回復する。",
     "tags": []
   },
   {
@@ -1520,7 +1520,289 @@
     "attack": 0,
     "effectText": "魔法の場合、\n後述の効果を上から順に全て発動する。\n①：次の自身のターン開始時まで、「ちょっと甘めの誘惑」を付与する。\n②：自身のHPを2減らす。\n③：自身のHPが5以下なら、自身のPPを1回復する。\n④：自身のHPが1以下なら、手札を1枚増やす。\n「ちょっと甘めの誘惑」 は重複せず、『継続：自身のターン中、自身のHPは1を下回らない。また、自身の使用したカード効果によってHPが参照される際、後述の効果を全て発動する。\n①：自身のHPが[7 / 6]なら、5とみなされる。\n②：自身のHPが[3 / 2]なら、1とみなされる。 』を付与する。",
     "tags": []
-  }
+  },
+  {
+    "id": "cd007-003",
+    "image": "assets/cards/block007/スライド3.png",
+    "name": "ロイヤルデーモン\nイ・フド=ガーラ",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-004",
+    "image": "assets/cards/block007/スライド4.png",
+    "name": "ファイナルフェーズ",
+    "attribute": "魔法",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-005",
+    "image": "assets/cards/block007/スライド5.png",
+    "name": "絶対速度\n土下裕樹",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-006",
+    "image": "assets/cards/block007/スライド6.png",
+    "name": "瞬間移動",
+    "attribute": "魔法",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-007",
+    "image": "assets/cards/block007/スライド7.png",
+    "name": "アンデットメイジ\nクワイエット",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-008",
+    "image": "assets/cards/block007/スライド8.png",
+    "name": "死の静寂",
+    "attribute": "魔法",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-009",
+    "image": "assets/cards/block007/スライド9.png",
+    "name": "杉見 輝一",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-010",
+    "image": "assets/cards/block007/スライド10.png",
+    "name": "支配",
+    "attribute": "魔法",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-011",
+    "image": "assets/cards/block007/スライド11.png",
+    "name": "春宵一刻の裁定者\nトウカ",
+    "attribute": "魔法",
+    "type": "アタッカー",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-012",
+    "image": "assets/cards/block007/スライド12.png",
+    "name": "クロノトリガー",
+    "attribute": "魔法",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-013",
+    "image": "assets/cards/block007/スライド13.png",
+    "name": "ルールブレイカー\nヴィサリアス",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "attack": 2,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-014",
+    "image": "assets/cards/block007/スライド14.png",
+    "name": "虚栄を裂く真実",
+    "attribute": "近接",
+    "type": "スキル",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-015",
+    "image": "assets/cards/block007/スライド15.png",
+    "name": "瀬川 雪菜",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-016",
+    "image": "assets/cards/block007/スライド16.png",
+    "name": "無欠の投擲",
+    "attribute": "近接",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-017",
+    "image": "assets/cards/block007/スライド17.png",
+    "name": "尊厳簒奪のメタトロン\nアオ",
+    "attribute": "近接",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-018",
+    "image": "assets/cards/block007/スライド18.png",
+    "name": "ゴシック・オートメーション",
+    "attribute": "近接",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-019",
+    "image": "assets/cards/block007/スライド19.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-020",
+    "image": "assets/cards/block007/スライド20.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-021",
+    "image": "assets/cards/block007/スライド21.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-022",
+    "image": "assets/cards/block007/スライド22.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-023",
+    "image": "assets/cards/block007/スライド23.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-024",
+    "image": "assets/cards/block007/スライド24.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-025",
+    "image": "assets/cards/block007/スライド25.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-026",
+    "image": "assets/cards/block007/スライド26.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-027",
+    "image": "assets/cards/block007/スライド27.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-028",
+    "image": "assets/cards/block007/スライド28.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-029",
+    "image": "assets/cards/block007/スライド29.png",
+    "name": "",
+    "attribute": "",
+    "type": "アタッカー",
+    "attack": 1,
+    "effectText": "",
+    "tags": []
+  },
+  {
+    "id": "cd007-030",
+    "image": "assets/cards/block007/スライド30.png",
+    "name": "",
+    "attribute": "",
+    "type": "スキル",
+    "attack": 0,
+    "effectText": "",
+    "tags": []
+  },
+
+
 
 
 ]

@@ -8085,3 +8085,46 @@ grep 結果: game.js に window.startSoloGame が定義されている
 ### 検証
 - `node -e` で `login.html` のインラインスクリプト構文チェック。
 - 結果: `CHECK_login_inline_scripts_OK`
+
+---
+
+## Round 2026-10-22 — カード効果テキストのサイズ調整と全文表示
+
+### 問題
+
+- カード効果欄は高さがカードの40%に固定され、さらに8行でクランプされていた。
+- `overflow: hidden` により、長い効果テキストの後半を読めなかった。
+
+### 対応
+
+- `css/style.css`
+  - `--card-effect-font-size` を追加し、カード効果テキストの文字サイズをCSS変数で調整可能化（初期値 `10px`）。
+  - 行クランプを撤去し、折返しを有効にしたうえで効果欄内スクロールに変更。
+  - 効果欄の `box-sizing: border-box` を指定し、パディングによる実寸超過を防止。
+
+### 検証
+
+- 静的サイトのため専用ビルド設定なし。CSS差分を確認。
+
+---
+
+## Round 2026-10-22 — 属性文字をSystemアイコンへ復元
+
+### 原因
+
+- 共通カード表示の `js/card/cardVisualLayout.js` が属性アイコンを `N/R/M` の文字で生成していた。
+- 開発用カードプレビューだけは既に `assets/System/cdtIcon_0.png` 〜 `cdtIcon_2.png` を使っていた。
+
+### 対応
+
+- 共通カード表示を属性別画像へ変更。
+  - 近接: `cdtIcon_1.png`
+  - 遠隔: `cdtIcon_2.png`
+  - 魔法: `cdtIcon_0.png`
+- アイコンを属性表示枠に合わせて表示するCSSを追加。
+- `game.html` / `deck.html` / `dev.html` のスクリプトキャッシュバスターを更新。
+
+### 検証
+
+- `node --check js/card/cardVisualLayout.js`
+- 参照先の3画像ファイルが存在することを確認。

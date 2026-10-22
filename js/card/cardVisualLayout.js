@@ -21,9 +21,9 @@
 
   function normalizeAttribute(card) {
     const a = String(card?.attribute || "近接");
-    if (a.includes("遠隔")) return { key: "ranged", label: "遠隔", short: "R" };
-    if (a.includes("魔法")) return { key: "magic", label: "魔法", short: "M" };
-    return { key: "melee", label: "近接", short: "N" };
+    if (a.includes("遠隔")) return { key: "ranged", label: "遠隔", icon: "cdtIcon_2.png" };
+    if (a.includes("魔法")) return { key: "magic", label: "魔法", icon: "cdtIcon_0.png" };
+    return { key: "melee", label: "近接", icon: "cdtIcon_1.png" };
   }
 
   function buildLayoutHtml(card, options) {
@@ -39,7 +39,7 @@
       : `<div class="cvAttack ${type === "skill" ? "cvAttackCircle" : "cvAttackFlat"}">${Number.isFinite(attack) ? attack : 0}</div>`;
 
     const attrHtml = (type === "attacker" || type === "support")
-      ? `<div class="cvAttribute cvAttr-${attr.key}" title="${escapeHtml(attr.label)}">${attr.short}</div>`
+      ? `<div class="cvAttribute cvAttr-${attr.key}" title="${escapeHtml(attr.label)}"><img src="assets/System/${attr.icon}" alt="${escapeHtml(attr.label)}" draggable="false"></div>`
       : "";
 
     const countHtml = showCount ? `<div class="deckCardCount">×${Number(options.count)}</div>` : "";

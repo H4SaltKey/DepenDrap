@@ -8188,6 +8188,13 @@ grep 結果: game.js に window.startSoloGame が定義されている
 - `js/deck/deck.js` の `window.DECK_CATALOG_CARD_LAYOUT` に `"cdxxx-xxx": { trailingSlots: 1 }` を例として追加。
 - 例示用IDなので実カードには影響せず、実IDへ差し替えると右側に1枠空けて一覧表示する。
 
+### 空き枠が残る場合の原因と対策
+
+- 現行描画コードで空きカード枠を作るのは、ID別 `leadingSlots` / `trailingSlots` のみ。
+- 設定オブジェクトの初期化が `window.DECK_CATALOG_CARD_LAYOUT || {}` だったため、同じページ実行環境で以前設定されたグローバル値を保持する余地があった。
+- `deck.html` の `deck.js` にキャッシュバスターがなかったため、ブラウザが旧版を保持する可能性もあった。
+- 設定を毎回明示的に初期化し、スクリプトURLを `?v=2` に更新。
+
 ---
 
 ## Round 2026-10-22 — カードタイプを基準に一覧段を固定

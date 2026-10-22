@@ -8,7 +8,7 @@ const DECK_MIN_SIZE = 30;
 const DECK_MAX_SIZE = 40;
 let deckPreviewSource = "cards";
 let deckPreviewCardId = "";
-window.DECK_CATALOG_CARD_LAYOUT = window.DECK_CATALOG_CARD_LAYOUT || {
+window.DECK_CATALOG_CARD_LAYOUT = {
   // カードIDごとに (多い)leadingSlots / (ない)trailingSlots を指定し、一覧上だけ空き位置を追加できます。
   //"cdxxx-xxx": { trailingSlots: 1 },
 };

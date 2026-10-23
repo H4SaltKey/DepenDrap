@@ -311,6 +311,21 @@ class FirebaseClient {
     }
   }
 
+  async updateRoomClockSettings(roomName, clockSettings) {
+    if (!this.db || !roomName) return false;
+    try {
+      const roomRef = this.db.ref(`rooms/${roomName}`);
+      const snapshot = await roomRef.once("value");
+      const roomData = snapshot.val();
+      if (!roomData || roomData.status === "playing" || roomData.phase === "playing") return false;
+      await roomRef.child("clockSettings").set(clockSettings);
+      return true;
+    } catch (error) {
+      console.error("[FirebaseClient] 対局時計設定の更新に失敗:", error.message);
+      return false;
+    }
+  }
+
   /**
    * ルームに参加
    */

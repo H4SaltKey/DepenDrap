@@ -42,6 +42,14 @@ let popupSelectedDeckId = null;
 async function initMatchSetup() {
   currentUser = localStorage.getItem("username") || "Player";
   document.getElementById("myPlayerDisplay").textContent = currentUser;
+  try {
+    const savedClockSettings = JSON.parse(localStorage.getItem("matchClockSettings") || "null");
+    if (savedClockSettings) applyRoomClockSettings(savedClockSettings);
+  } catch {}
+  ["clockInitialSeconds", "clockIncrementSeconds", "clockCarryoverPercent"].forEach(id => {
+    const input = document.getElementById(id);
+    input?.addEventListener("change", saveRoomClockSettings);
+  });
 
   // カードデータを先にロード（decodeDeck が CARD_DB に依存するため）
   try {
@@ -351,10 +359,37 @@ function applyRoomClockSettings(settings) {
     incrementSeconds: numeric("incrementSeconds", 20, 0, 36000),
     carryoverPercent: numeric("carryoverPercent", 30, 0, 100)
   };
-  document.getElementById("clockInitialSeconds").value = normalized.initialSeconds;
-  document.getElementById("clockIncrementSeconds").value = normalized.incrementSeconds;
-  document.getElementById("clockCarryoverPercent").value = normalized.carryoverPercent;
+  const inputValues = {
+    clockInitialSeconds: normalized.initialSeconds,
+    clockIncrementSeconds: normalized.incrementSeconds,
+    clockCarryoverPercent: normalized.carryoverPercent
+  };
+  Object.entries(inputValues).forEach(([id, value]) => {
+    const input = document.getElementById(id);
+    if (input && document.activeElement !== input) input.value = value;
+  });
   localStorage.setItem("matchClockSettings", JSON.stringify(normalized));
+}
+
+async function saveRoomClockSettings() {
+  if (isStartingGame) return;
+  let settings;
+  try {
+    settings = getClockSettingsFromForm();
+  } catch (error) {
+    const hint = document.getElementById("clockSettingsHint");
+    if (hint) hint.textContent = error.message;
+    return;
+  }
+  applyRoomClockSettings(settings);
+  const hint = document.getElementById("clockSettingsHint");
+  if (!currentRoom || !currentPlayerKey) {
+    if (hint) hint.textContent = "基本値：300秒 / +20秒 / 30%。ルーム参加後も変更できます。";
+    return;
+  }
+  const saved = await firebaseClient.updateRoomClockSettings(currentRoom, settings);
+  if (hint) hint.textContent = saved ? "ルーム設定に保存しました。ゲーム開始まで変更できます。" : "設定を保存できませんでした。ルーム状態を確認してください。";
+  if (!saved) applyRoomClockSettings(settings);
 }
 
 function setClockSettingsDisabled(disabled) {
@@ -362,6 +397,8 @@ function setClockSettingsDisabled(disabled) {
     const input = document.getElementById(id);
     if (input) input.disabled = !!disabled;
   });
+  const hint = document.getElementById("clockSettingsHint");
+  if (hint && disabled) hint.textContent = "ゲーム開始後は設定が確定します。";
 }
 
 async function createRoom() {
@@ -540,7 +577,7 @@ function updateUIForRoom() {
   document.getElementById("cancelBtn").style.display = "block";
   document.getElementById("startBtn").disabled = false;
   document.getElementById("roomNameInput").value = currentRoom || "";
-  setClockSettingsDisabled(true);
+  setClockSettingsDisabled(isStartingGame);
   updateReadyUI();
 }
 
@@ -553,6 +590,8 @@ function resetRoom() {
   document.getElementById("startBtn").disabled = true;
   document.getElementById("startBtn").classList.remove("isReady");
   setClockSettingsDisabled(false);
+  const hint = document.getElementById("clockSettingsHint");
+  if (hint) hint.textContent = "基本値：300秒 / +20秒 / 30%。ゲーム開始まで変更できます。";
   updateOpponentUI(null, false, false, null);
   updateReadyUI();
   if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
@@ -1104,6 +1143,7 @@ function watchTyping(roomName) {
 
 async function startGame() {
   isStartingGame = true;
+  setClockSettingsDisabled(true);
   localStorage.removeItem("soloMode");
   const deck = selectedDeck();
   localStorage.setItem("gameRoom",      currentRoom);

@@ -214,10 +214,15 @@ body {
 }
 #roomNameInput:focus { outline: none; border-color: #c7b377; }
 #msRoomBtns { display: flex; gap: 6px; }
-.clockSettingsGrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-.clockSettingsGrid label { display:flex; flex-direction:column; gap:3px; color:#9a8a63; font-size:10px; }
-.clockSettingsGrid input { width:100%; min-width:0; box-sizing:border-box; padding:5px; background:rgba(0,0,0,.5); border:1px solid #3a321a; border-radius:4px; color:#eee; }
-.clockSettingsHint { color:#777; font-size:9px; }
+.clockSettingsPanel { padding:10px; background:linear-gradient(145deg,rgba(28,23,12,.72),rgba(0,0,0,.36)); border:1px solid rgba(199,179,119,.24); border-radius:7px; box-shadow:0 4px 14px rgba(0,0,0,.2); }
+.clockSettingsHeading { display:flex; align-items:center; gap:7px; margin-bottom:8px; color:#d5bd7c; font-size:11px; font-weight:700; letter-spacing:.5px; }
+.clockSettingsHeading::before { content:"◷"; font-size:15px; color:#c7b377; }
+.clockSettingsGrid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.clockSettingsGrid label { display:flex; flex-direction:column; gap:4px; color:#a99769; font-size:10px; }
+.clockSettingsGrid input { width:100%; min-width:0; box-sizing:border-box; padding:7px 8px; background:rgba(0,0,0,.48); border:1px solid rgba(199,179,119,.25); border-radius:5px; color:#f4e8c3; font-size:13px; font-weight:600; }
+.clockSettingsGrid input:focus { outline:none; border-color:#c7b377; box-shadow:0 0 0 2px rgba(199,179,119,.12); }
+.clockSettingsGrid input:disabled { opacity:.58; }
+.clockSettingsHint { color:#777; font-size:9px; line-height:1.5; margin-top:7px; }
 .msRoomBtn {
   flex: 1; padding: 8px 6px; font-size: 12px; font-weight: bold;
   border-radius: 4px; cursor: pointer; transition: all 0.2s;
@@ -564,13 +569,6 @@ body {
         <button class="msRoomBtn" id="createRoomBtn">ルームを作成</button>
         <button class="msRoomBtn" id="joinRoomBtn">ルーム名で参加</button>
       </div>
-      <div class="sec-label" style="margin:4px 0 0;">対局時計設定（ルーム作成時）</div>
-      <div class="clockSettingsGrid">
-        <label>初期持ち時間（秒）<input id="clockInitialSeconds" type="number" min="1" max="36000" step="1" value="300"></label>
-        <label>毎ターン追加（秒）<input id="clockIncrementSeconds" type="number" min="0" max="36000" step="1" value="20"></label>
-        <label>残り時間の持越し（%）<input id="clockCarryoverPercent" type="number" min="0" max="100" step="1" value="30"></label>
-      </div>
-      <div class="clockSettingsHint">基本値：300秒 / +20秒 / 30%。作成後は変更できません。</div>
     </div>
 
     <div id="msRoomListWrap">
@@ -602,6 +600,15 @@ body {
         <img id="opponentDeckThumb" src="assets/System/favicon.png" alt="">
         <div id="opponentDeckName">デッキ未選択</div>
       </div>
+    </div>
+    <div id="clockSettingsPanel" class="clockSettingsPanel">
+      <div class="clockSettingsHeading">このルームの対局時計</div>
+      <div class="clockSettingsGrid">
+        <label>初期持ち時間（秒）<input id="clockInitialSeconds" type="number" min="1" max="36000" step="1" value="300"></label>
+        <label>毎ターン追加（秒）<input id="clockIncrementSeconds" type="number" min="0" max="36000" step="1" value="20"></label>
+        <label>持越し率（%）<input id="clockCarryoverPercent" type="number" min="0" max="100" step="1" value="30"></label>
+      </div>
+      <div class="clockSettingsHint" id="clockSettingsHint">基本値：300秒 / +20秒 / 30%。ゲーム開始まで変更できます。</div>
     </div>
   </div>
 
@@ -658,11 +665,11 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/network/firebase-client.js?v=24"></script>
+<script src="js/network/firebase-client.js?v=25"></script>
 <script src="js/card/cardData.js?v=12"></script>
 
 <script src="js/deck/deckCode.js?v=11"></script>
-<script src="js/game/matchSetup.js?v=23"></script>
+<script src="js/game/matchSetup.js?v=24"></script>
 <script src="js/ui/passwordSaveGuard.js"></script>
 <script src="js/audio/bgmManager.js?v=1"></script>
 </body>

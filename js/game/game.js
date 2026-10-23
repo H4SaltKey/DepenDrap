@@ -1620,7 +1620,7 @@ function checkGameResult() {
 async function executeReset(syncShared = true) {
   if (window.BgmManager) window.BgmManager.playScene("game");
   const clockSettings = window.TurnClock?.normalizeSettings(state.matchData?.clockSettings)
-    || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 };
+    || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 };
   // 盤面リセット中フラグを立てる
   window._isResetting = true;
   
@@ -2118,7 +2118,7 @@ async function handleFreshStart(currentRoom, myKey) {
     status: window._soloHotSeat ? "setup_evolution" : "ready_check", winner: null, winnerSetAt: null, firstPlayer: window._soloHotSeat ? "player1" : null,
     resetSeq: Number(window._lastAppliedResetSeq || 0),
     clockSettings: window.TurnClock?.normalizeSettings(matchSetupData.clockSettings)
-      || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }
+      || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 }
   };
 
   // 各種フラグをクリア
@@ -2169,7 +2169,7 @@ async function handleReload(currentRoom, myKey, opKey) {
         const { winner: _w, winnerSetAt: _ws, ...mdRest } = md;
         state.matchData = { ...state.matchData, ...mdRest };
         state.matchData.clockSettings = window.TurnClock?.normalizeSettings(state.matchData.clockSettings)
-          || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 };
+          || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 };
         console.log("[initGame] matchData 復元:", state.matchData.status);
       }
 

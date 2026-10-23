@@ -1,5 +1,5 @@
 (function() {
-  const DEFAULTS = Object.freeze({ initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 });
+  const DEFAULTS = Object.freeze({ initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 });
 
   function normalizeSettings(settings) {
     const source = settings || {};

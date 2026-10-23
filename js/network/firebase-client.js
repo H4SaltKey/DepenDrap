@@ -285,7 +285,7 @@ class FirebaseClient {
 
       const roomData = {
         name: finalName,
-        clockSettings: clockSettings || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 },
+        clockSettings: clockSettings || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 },
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         updatedAt: firebase.database.ServerValue.TIMESTAMP,
         active: true,

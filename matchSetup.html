@@ -605,10 +605,10 @@ body {
       <div class="clockSettingsHeading">このルームの対局時計</div>
       <div class="clockSettingsGrid">
         <label>初期持ち時間（秒）<input id="clockInitialSeconds" type="number" min="1" max="36000" step="1" value="300"></label>
-        <label>毎ターン追加（秒）<input id="clockIncrementSeconds" type="number" min="0" max="36000" step="1" value="20"></label>
-        <label>持越し率（%）<input id="clockCarryoverPercent" type="number" min="0" max="100" step="1" value="30"></label>
+        <label>毎ターン追加（秒）<input id="clockIncrementSeconds" type="number" min="0" max="36000" step="1" value="5"></label>
+        <label>持越し率（%）<input id="clockCarryoverPercent" type="number" min="0" max="100" step="1" value="5"></label>
       </div>
-      <div class="clockSettingsHint" id="clockSettingsHint">基本値：300秒 / +20秒 / 30%。ゲーム開始まで変更できます。</div>
+      <div class="clockSettingsHint" id="clockSettingsHint">基本値：300秒 / +5秒 / 5%。ゲーム開始まで変更できます。</div>
     </div>
   </div>
 
@@ -665,11 +665,11 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/network/firebase-client.js?v=25"></script>
+<script src="js/network/firebase-client.js?v=26"></script>
 <script src="js/card/cardData.js?v=12"></script>
 
 <script src="js/deck/deckCode.js?v=11"></script>
-<script src="js/game/matchSetup.js?v=24"></script>
+<script src="js/game/matchSetup.js?v=25"></script>
 <script src="js/ui/passwordSaveGuard.js"></script>
 <script src="js/audio/bgmManager.js?v=1"></script>
 </body>

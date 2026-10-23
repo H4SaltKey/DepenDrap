@@ -356,8 +356,8 @@ function applyRoomClockSettings(settings) {
   };
   const normalized = {
     initialSeconds: numeric("initialSeconds", 300, 1, 36000),
-    incrementSeconds: numeric("incrementSeconds", 20, 0, 36000),
-    carryoverPercent: numeric("carryoverPercent", 30, 0, 100)
+    incrementSeconds: numeric("incrementSeconds", 5, 0, 36000),
+    carryoverPercent: numeric("carryoverPercent", 5, 0, 100)
   };
   const inputValues = {
     clockInitialSeconds: normalized.initialSeconds,
@@ -384,7 +384,7 @@ async function saveRoomClockSettings() {
   applyRoomClockSettings(settings);
   const hint = document.getElementById("clockSettingsHint");
   if (!currentRoom || !currentPlayerKey) {
-    if (hint) hint.textContent = "基本値：300秒 / +20秒 / 30%。ルーム参加後も変更できます。";
+    if (hint) hint.textContent = "基本値：300秒 / +5秒 / 5%。ルーム参加後も変更できます。";
     return;
   }
   const saved = await firebaseClient.updateRoomClockSettings(currentRoom, settings);
@@ -474,7 +474,7 @@ function watchRoom(roomName) {
 
   roomUnsubscribe = firebaseClient.watchRoom(roomName, (roomData) => {
     if (!roomData) { addLog("system", "ルームが削除されました。"); resetRoom(); return; }
-    applyRoomClockSettings(roomData.clockSettings || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 });
+    applyRoomClockSettings(roomData.clockSettings || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 });
 
     const players = roomData.players || {};
     const myData  = players[currentPlayerKey];
@@ -591,7 +591,7 @@ function resetRoom() {
   document.getElementById("startBtn").classList.remove("isReady");
   setClockSettingsDisabled(false);
   const hint = document.getElementById("clockSettingsHint");
-  if (hint) hint.textContent = "基本値：300秒 / +20秒 / 30%。ゲーム開始まで変更できます。";
+  if (hint) hint.textContent = "基本値：300秒 / +5秒 / 5%。ゲーム開始まで変更できます。";
   updateOpponentUI(null, false, false, null);
   updateReadyUI();
   if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
@@ -1156,8 +1156,8 @@ async function startGame() {
     role: currentPlayerKey, self: currentUser, username: currentUser,
     deckCode: deck?.code || "empty", deckId: deck?.id || "",
     clockSettings: (() => {
-      try { return JSON.parse(localStorage.getItem("matchClockSettings") || "null") || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }; }
-      catch { return { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }; }
+      try { return JSON.parse(localStorage.getItem("matchClockSettings") || "null") || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 }; }
+      catch { return { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 }; }
     })()
   }));
   setTimeout(() => { location.href = "game.html"; }, 1000);

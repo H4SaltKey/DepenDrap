@@ -214,6 +214,10 @@ body {
 }
 #roomNameInput:focus { outline: none; border-color: #c7b377; }
 #msRoomBtns { display: flex; gap: 6px; }
+.clockSettingsGrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.clockSettingsGrid label { display:flex; flex-direction:column; gap:3px; color:#9a8a63; font-size:10px; }
+.clockSettingsGrid input { width:100%; min-width:0; box-sizing:border-box; padding:5px; background:rgba(0,0,0,.5); border:1px solid #3a321a; border-radius:4px; color:#eee; }
+.clockSettingsHint { color:#777; font-size:9px; }
 .msRoomBtn {
   flex: 1; padding: 8px 6px; font-size: 12px; font-weight: bold;
   border-radius: 4px; cursor: pointer; transition: all 0.2s;
@@ -560,6 +564,13 @@ body {
         <button class="msRoomBtn" id="createRoomBtn">ルームを作成</button>
         <button class="msRoomBtn" id="joinRoomBtn">ルーム名で参加</button>
       </div>
+      <div class="sec-label" style="margin:4px 0 0;">対局時計設定（ルーム作成時）</div>
+      <div class="clockSettingsGrid">
+        <label>初期持ち時間（秒）<input id="clockInitialSeconds" type="number" min="1" max="36000" step="1" value="300"></label>
+        <label>毎ターン追加（秒）<input id="clockIncrementSeconds" type="number" min="0" max="36000" step="1" value="20"></label>
+        <label>残り時間の持越し（%）<input id="clockCarryoverPercent" type="number" min="0" max="100" step="1" value="30"></label>
+      </div>
+      <div class="clockSettingsHint">基本値：300秒 / +20秒 / 30%。作成後は変更できません。</div>
     </div>
 
     <div id="msRoomListWrap">
@@ -647,11 +658,12 @@ body {
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="js/network/firebase-client.js?v=23"></script>
+<script src="js/network/firebase-client.js?v=24"></script>
 <script src="js/card/cardData.js?v=12"></script>
 
 <script src="js/deck/deckCode.js?v=11"></script>
-<script src="js/game/matchSetup.js?v=22"></script>
+<script src="js/game/matchSetup.js?v=23"></script>
 <script src="js/ui/passwordSaveGuard.js"></script>
+<script src="js/audio/bgmManager.js?v=1"></script>
 </body>
 </html>

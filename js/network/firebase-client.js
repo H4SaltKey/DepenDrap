@@ -265,7 +265,7 @@ class FirebaseClient {
   /**
    * ルームを作成
    */
-  async createRoom(roomName) {
+  async createRoom(roomName, clockSettings) {
     if (!this.db || !this.isConnected) {
       console.error("[FirebaseClient] Firebase に接続していません");
       return null;
@@ -285,6 +285,7 @@ class FirebaseClient {
 
       const roomData = {
         name: finalName,
+        clockSettings: clockSettings || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 },
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         updatedAt: firebase.database.ServerValue.TIMESTAMP,
         active: true,

@@ -1,5 +1,5 @@
 /**
- * matchSetup.js v6.0
+ * matchSetup.js v6.1
  */
 
 // ===== 状態 =====
@@ -326,10 +326,56 @@ function confirmDeckSelect() {
 
 // ===== ルーム操作 =====
 
+function getClockSettingsFromForm() {
+  const values = {
+    initialSeconds: Number(document.getElementById("clockInitialSeconds")?.value),
+    incrementSeconds: Number(document.getElementById("clockIncrementSeconds")?.value),
+    carryoverPercent: Number(document.getElementById("clockCarryoverPercent")?.value)
+  };
+  if (!Number.isInteger(values.initialSeconds) || values.initialSeconds < 1 || values.initialSeconds > 36000
+    || !Number.isInteger(values.incrementSeconds) || values.incrementSeconds < 0 || values.incrementSeconds > 36000
+    || !Number.isInteger(values.carryoverPercent) || values.carryoverPercent < 0 || values.carryoverPercent > 100) {
+    throw new Error("対局時計設定の値を範囲内で入力してください。");
+  }
+  return values;
+}
+
+function applyRoomClockSettings(settings) {
+  const source = settings || {};
+  const numeric = (key, fallback, min, max) => {
+    const value = Number(source[key]);
+    return Number.isFinite(value) ? Math.max(min, Math.min(max, Math.floor(value))) : fallback;
+  };
+  const normalized = {
+    initialSeconds: numeric("initialSeconds", 300, 1, 36000),
+    incrementSeconds: numeric("incrementSeconds", 20, 0, 36000),
+    carryoverPercent: numeric("carryoverPercent", 30, 0, 100)
+  };
+  document.getElementById("clockInitialSeconds").value = normalized.initialSeconds;
+  document.getElementById("clockIncrementSeconds").value = normalized.incrementSeconds;
+  document.getElementById("clockCarryoverPercent").value = normalized.carryoverPercent;
+  localStorage.setItem("matchClockSettings", JSON.stringify(normalized));
+}
+
+function setClockSettingsDisabled(disabled) {
+  ["clockInitialSeconds", "clockIncrementSeconds", "clockCarryoverPercent"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.disabled = !!disabled;
+  });
+}
+
 async function createRoom() {
   const roomName = document.getElementById("roomNameInput").value.trim().toUpperCase() || undefined;
-  const result = await firebaseClient.createRoom(roomName);
+  let clockSettings;
+  try {
+    clockSettings = getClockSettingsFromForm();
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+  const result = await firebaseClient.createRoom(roomName, clockSettings);
   if (!result) { addLog("system", "ルーム作成に失敗しました。"); return; }
+  applyRoomClockSettings(clockSettings);
   
   // ルーム作成成功：作成者として参加
   currentRoom = result;
@@ -391,6 +437,7 @@ function watchRoom(roomName) {
 
   roomUnsubscribe = firebaseClient.watchRoom(roomName, (roomData) => {
     if (!roomData) { addLog("system", "ルームが削除されました。"); resetRoom(); return; }
+    applyRoomClockSettings(roomData.clockSettings || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 });
 
     const players = roomData.players || {};
     const myData  = players[currentPlayerKey];
@@ -493,6 +540,7 @@ function updateUIForRoom() {
   document.getElementById("cancelBtn").style.display = "block";
   document.getElementById("startBtn").disabled = false;
   document.getElementById("roomNameInput").value = currentRoom || "";
+  setClockSettingsDisabled(true);
   updateReadyUI();
 }
 
@@ -504,6 +552,7 @@ function resetRoom() {
   document.getElementById("cancelBtn").style.display = "none";
   document.getElementById("startBtn").disabled = true;
   document.getElementById("startBtn").classList.remove("isReady");
+  setClockSettingsDisabled(false);
   updateOpponentUI(null, false, false, null);
   updateReadyUI();
   if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; }
@@ -1065,7 +1114,11 @@ async function startGame() {
   // matchSetup には deckId のみ保存（backImage は IndexedDB から読み込む）
   localStorage.setItem("matchSetup", JSON.stringify({
     role: currentPlayerKey, self: currentUser, username: currentUser,
-    deckCode: deck?.code || "empty", deckId: deck?.id || ""
+    deckCode: deck?.code || "empty", deckId: deck?.id || "",
+    clockSettings: (() => {
+      try { return JSON.parse(localStorage.getItem("matchClockSettings") || "null") || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }; }
+      catch { return { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }; }
+    })()
   }));
   setTimeout(() => { location.href = "game.html"; }, 1000);
 }

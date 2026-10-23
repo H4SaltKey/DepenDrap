@@ -50,6 +50,9 @@ function showResultScreen(winner) {
   
   const isWin = (window.myRole === winner);
   const isDraw = (winner === 'draw');
+  if (window.BgmManager) {
+    window.BgmManager.playScene(isDraw ? "game" : isWin ? "resultWin" : "resultLose");
+  }
   const div = document.createElement('div');
   div.id = 'gameResultOverlay';
 

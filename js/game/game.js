@@ -971,6 +971,7 @@ function handleMatchStateTransitions() {
   // 条件: status が 'playing' かつ firstPlayer が設定されている（ダイスロール完了の証拠）
   const isDicePhaseComplete = m.status === 'playing' && m.firstPlayer;
   const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+  if (isDicePhaseComplete && window.TurnClock) window.TurnClock.ensureStarted(m);
 
   if (window._soloHotSeat && isDicePhaseComplete && m.status === "playing" && m.turnPlayer === "player2" && !m.winner) {
     if (!window._soloOpponentTurnSkipPending) {
@@ -1617,6 +1618,9 @@ function checkGameResult() {
 
 
 async function executeReset(syncShared = true) {
+  if (window.BgmManager) window.BgmManager.playScene("game");
+  const clockSettings = window.TurnClock?.normalizeSettings(state.matchData?.clockSettings)
+    || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 };
   // 盤面リセット中フラグを立てる
   window._isResetting = true;
   
@@ -1683,7 +1687,8 @@ async function executeReset(syncShared = true) {
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1", status: "ready_check",
     winner: null, winnerSetAt: null, firstPlayer: null,
-    resetSeq: Number(state.matchData?.resetSeq || window._lastAppliedResetSeq || 0)
+    resetSeq: Number(state.matchData?.resetSeq || window._lastAppliedResetSeq || 0),
+    clockSettings
   };
   const nextResetSeq = Math.max(Number(state.matchData.resetSeq || 0), Number(window._lastAppliedResetSeq || 0)) + 1;
   state.matchData.resetSeq = nextResetSeq;
@@ -2111,7 +2116,9 @@ async function handleFreshStart(currentRoom, myKey) {
   state.matchData = {
     round: 1, turn: 1, turnPlayer: "player1",
     status: window._soloHotSeat ? "setup_evolution" : "ready_check", winner: null, winnerSetAt: null, firstPlayer: window._soloHotSeat ? "player1" : null,
-    resetSeq: Number(window._lastAppliedResetSeq || 0)
+    resetSeq: Number(window._lastAppliedResetSeq || 0),
+    clockSettings: window.TurnClock?.normalizeSettings(matchSetupData.clockSettings)
+      || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 }
   };
 
   // 各種フラグをクリア
@@ -2161,6 +2168,8 @@ async function handleReload(currentRoom, myKey, opKey) {
         // winner は復元しない（再判定させる）
         const { winner: _w, winnerSetAt: _ws, ...mdRest } = md;
         state.matchData = { ...state.matchData, ...mdRest };
+        state.matchData.clockSettings = window.TurnClock?.normalizeSettings(state.matchData.clockSettings)
+          || { initialSeconds: 300, incrementSeconds: 20, carryoverPercent: 30 };
         console.log("[initGame] matchData 復元:", state.matchData.status);
       }
 

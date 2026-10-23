@@ -15,6 +15,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   if (m.status !== "playing") return;
   if (m.turnPlayer !== me && !window._soloHotSeat) return;
   if (m.winner) return;
+  if (window.TurnClock?.expire(m)) return;
 
   // 手札枚数上限のチェック
   if (!skipHandLimitCheck) {
@@ -37,6 +38,8 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
       try { fn(); } catch (e) { console.warn("[beforeTurnEndHook] error:", e); }
     }
   }
+
+  if (window.TurnClock?.expire(m)) return;
 
   // DSL/V2: ターン終了時イベントを統一発火
   if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
@@ -96,6 +99,12 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
       }
     }
     m.targetSelectionPending = true;
+  }
+
+  if (window.TurnClock) {
+    const nextClock = window.TurnClock.settleAndStartNext(m, me, m);
+    if (nextClock) m.turnClock = nextClock;
+    if (m.winner) return;
   }
 
   const nextPlayerName = m.turnPlayer === "player1"

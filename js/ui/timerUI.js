@@ -6,6 +6,7 @@
 let lastStatusHtml = "";
 
 window.onTimerTick = function() {
+  if (window.TurnClock) window.TurnClock.render();
   if (typeof GameTimer === "undefined") return;
 
   const diceRemaining = GameTimer.getRemainingMs('dice');

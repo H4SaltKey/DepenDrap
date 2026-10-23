@@ -71,7 +71,8 @@
       player1: Math.max(0, Number(clock.remaining?.player1) || 0),
       player2: Math.max(0, Number(clock.remaining?.player2) || 0)
     };
-    remaining[currentPlayer] = Math.floor(currentRemaining * settings.carryoverPercent / 100);
+    const carryBonus = Math.floor(currentRemaining * settings.carryoverPercent / 100);
+    remaining[currentPlayer] = Math.floor(currentRemaining) + carryBonus;
     const nextPlayer = nextMatchData?.turnPlayer;
     remaining[nextPlayer] = Math.max(0, remaining[nextPlayer]) + settings.incrementSeconds;
     return {
@@ -111,7 +112,7 @@
     if (!display) {
       display = document.createElement("div");
       display.id = "turnClockDisplay";
-      display.style.cssText = "position:fixed;top:max(52px,calc(env(safe-area-inset-top,0px) + 48px));left:50%;transform:translateX(-50%);z-index:5301;padding:5px 12px;border:1px solid rgba(199,179,119,.45);border-radius:8px;background:rgba(8,6,18,.9);color:#eee;font:700 13px/1.35 system-ui,sans-serif;white-space:nowrap;pointer-events:none;";
+      display.style.cssText = "position:fixed;top:50%;right:140px;z-index:5301;min-width:132px;padding:7px 10px;border:1px solid rgba(199,179,119,.45);border-radius:8px;background:rgba(8,6,18,.9);color:#eee;font:700 13px/1.5 system-ui,sans-serif;white-space:nowrap;pointer-events:none;";
       document.body.appendChild(display);
     }
     const myRole = window.getMyRole ? window.getMyRole() : window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
@@ -125,8 +126,14 @@
       const marker = active ? " ▶" : "";
       return `<span style="color:${color}">${player === myRole ? "自分" : "相手"} ${minutes}:${rest}${marker}</span>`;
     };
-    display.innerHTML = `${label(myRole)}　|　${label(opponent)}`;
+    display.innerHTML = `<div>${label(myRole)}</div><div>${label(opponent)}</div>`;
     display.style.display = "block";
+    const turnEndButton = document.getElementById("turnEndBtn");
+    if (turnEndButton) {
+      const buttonRect = turnEndButton.getBoundingClientRect();
+      display.style.right = `${Math.max(8, window.innerWidth - buttonRect.right)}px`;
+      display.style.top = `${Math.max(8, buttonRect.top - display.offsetHeight - 8)}px`;
+    }
     if (!matchData.winner) expire(matchData);
   }
 

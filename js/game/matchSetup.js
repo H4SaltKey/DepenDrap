@@ -44,7 +44,14 @@ async function initMatchSetup() {
   document.getElementById("myPlayerDisplay").textContent = currentUser;
   try {
     const savedClockSettings = JSON.parse(localStorage.getItem("matchClockSettings") || "null");
-    if (savedClockSettings) applyRoomClockSettings(savedClockSettings);
+    if (savedClockSettings) {
+      const isPreviousDefault = Number(savedClockSettings.initialSeconds) === 300
+        && Number(savedClockSettings.incrementSeconds) === 20
+        && Number(savedClockSettings.carryoverPercent) === 30;
+      applyRoomClockSettings(isPreviousDefault
+        ? { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 }
+        : savedClockSettings);
+    }
   } catch {}
   ["clockInitialSeconds", "clockIncrementSeconds", "clockCarryoverPercent"].forEach(id => {
     const input = document.getElementById(id);

@@ -1618,6 +1618,7 @@ function checkGameResult() {
 
 
 async function executeReset(syncShared = true) {
+  if (window._isResetting) return false;
   if (window.BgmManager) window.BgmManager.playScene("game");
   const clockSettings = window.TurnClock?.normalizeSettings(state.matchData?.clockSettings)
     || { initialSeconds: 300, incrementSeconds: 5, carryoverPercent: 5 };
@@ -1780,6 +1781,8 @@ async function executeReset(syncShared = true) {
   
   // リセット完了後、フラグを解除
   window._isResetting = false;
+  window._rematchResetStarted = false;
+  return true;
 }
 
 

@@ -50,6 +50,7 @@ function showResultScreen(winner) {
   
   const isWin = (window.myRole === winner);
   const isDraw = (winner === 'draw');
+  const isSolo = !!window._soloHotSeat;
   if (window.BgmManager) {
     window.BgmManager.playScene(isDraw ? "game" : isWin ? "resultWin" : "resultLose");
   }
@@ -77,16 +78,16 @@ function showResultScreen(winner) {
         <h1 class="result-title" style="color: ${color}; text-shadow: 0 0 30px ${color}66;">${title}</h1>
       </div>
       <p class="result-subtext">${subText}</p>
-      <div id="rematchStatus" style="min-height:28px;margin-bottom:10px;font-size:13px;color:#aaa;letter-spacing:1px;"></div>
+      <div id="rematchStatus" style="min-height:28px;margin-bottom:10px;font-size:13px;color:#aaa;letter-spacing:1px;">${isSolo ? "ソロプレイ" : ""}</div>
       <div class="result-actions">
-        <button class="result-btn" id="rematchBtn" onclick="requestRematch()" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
-          再戦を申し込む
+        <button class="result-btn" id="rematchBtn" onclick="${isSolo ? "returnToSoloSetup()" : "requestRematch()"}" style="background: ${color}; box-shadow: 0 0 20px ${color}44;">
+          ${isSolo ? "ソロ設定に戻る" : "再戦を申し込む"}
         </button>
         <button class="result-btn secondary" onclick="closeResultScreen()" style="border-color:rgba(255,255,255,0.2);">
           閉じる
         </button>
-        <button class="result-btn secondary" onclick="location.href='index.html'">
-          退室
+        <button class="result-btn secondary" onclick="leaveGameToTitle()">
+          タイトルへ戻る
         </button>
       </div>
     </div>
@@ -94,10 +95,24 @@ function showResultScreen(winner) {
   document.body.appendChild(div);
 
   // 相手からの再戦リクエストを監視（まだ監視していない場合のみ開始）
-  if (!_rematchWatcher) {
+  if (!isSolo && !_rematchWatcher) {
     watchRematchRequest();
   }
 }
+
+window.returnToSoloSetup = function() {
+  if (typeof window.stopAllWatchers === "function") window.stopAllWatchers();
+  ["gameRoom", "gameStarted", "gameStartedRoom"].forEach(key => localStorage.removeItem(key));
+  sessionStorage.removeItem("wasInGame");
+  location.href = "soloSetup.html";
+};
+
+window.leaveGameToTitle = function() {
+  if (typeof window.stopAllWatchers === "function") window.stopAllWatchers();
+  ["gameRoom", "gameStarted", "gameStartedRoom"].forEach(key => localStorage.removeItem(key));
+  sessionStorage.removeItem("wasInGame");
+  location.href = "index.html";
+};
 
 function closeResultScreen() {
   // リスナーは解除せず、監視を継続（相手からの再戦申し込みを受け取るため）
@@ -115,10 +130,14 @@ function closeResultScreen() {
 
 let _rematchWatcher = null;
 
-window.requestRematch = function() {
+window.requestRematch = async function() {
   const gameRoom = localStorage.getItem("gameRoom");
   const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-  if (!gameRoom || !firebaseClient?.db) return;
+  if (!gameRoom || !firebaseClient?.db || window._soloHotSeat) {
+    const statusEl = document.getElementById("rematchStatus");
+    if (statusEl) statusEl.textContent = "再戦の通信を開始できません。ルーム接続を確認してください。";
+    return;
+  }
 
   const btn = document.getElementById("rematchBtn");
   if (btn) { btn.disabled = true; btn.textContent = "申し込み中..."; }
@@ -127,10 +146,16 @@ window.requestRematch = function() {
   if (statusEl) statusEl.textContent = "相手の承諾を待っています...";
 
   // Firebase に再戦リクエストを書き込む
-  firebaseClient.db.ref(`rooms/${gameRoom}/rematch/${me}`).set({
-    requested: true,
-    ts: firebase.database.ServerValue.TIMESTAMP
-  });
+  try {
+    await firebaseClient.db.ref(`rooms/${gameRoom}/rematch/${me}`).set({
+      requested: true,
+      ts: firebase.database.ServerValue.TIMESTAMP
+    });
+  } catch (error) {
+    console.error("[Rematch] リクエスト送信に失敗:", error);
+    if (statusEl) statusEl.textContent = "申し込みに失敗しました。通信状態を確認して再試行してください。";
+    if (btn) { btn.disabled = false; btn.textContent = "再戦を申し込む"; }
+  }
 };
 
 window.watchRematchRequest = function() {
@@ -148,10 +173,18 @@ window.watchRematchRequest = function() {
     const opReq = data[op]?.requested;
 
     if (myReq && opReq) {
-      console.log("[Rematch] 両者の合意を確認。リセットを実行します。");
-      if (typeof executeReset === "function") executeReset();
-      // リモートの rematch データをクリア
-      firebaseClient.db.ref(`rooms/${gameRoom}/rematch`).remove();
+      const statusEl = document.getElementById("rematchStatus");
+      if (statusEl) statusEl.textContent = "両者が合意しました。再戦を準備しています...";
+      if (me !== "player1" || window._rematchResetStarted || window._isResetting) return;
+      window._rematchResetStarted = true;
+      console.log("[Rematch] 両者の合意を確認。player1 が共通リセットを開始します。");
+      if (typeof executeReset === "function") {
+        executeReset().catch(error => {
+          console.error("[Rematch] リセットに失敗:", error);
+          window._rematchResetStarted = false;
+          if (statusEl) statusEl.textContent = "再戦準備に失敗しました。もう一度お試しください。";
+        });
+      }
     } else if (opReq && !myReq) {
       const statusEl = document.getElementById("rematchStatus");
       if (statusEl) statusEl.textContent = "相手が再戦を希望しています！";

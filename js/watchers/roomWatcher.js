@@ -341,14 +341,51 @@ window.stopAllWatchers = function() {
 
 window.startSoloGame = async function() {
   if (window._bothPlayersConnected) return;
-  window._soloStartMode = true;
-  window._bothPlayersConnected = true;
   const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
   const op = me === "player1" ? "player2" : "player1";
-  if (!state[op].username) state[op].username = "CPU";
+  const setup = (() => {
+    try { return JSON.parse(localStorage.getItem("matchSetup") || "null") || {}; }
+    catch { return {}; }
+  })();
+
+  if (typeof window.stopAllWatchers === "function") window.stopAllWatchers();
+  window._soloHotSeat = true;
+  window._soloStartMode = true;
+  window._bothPlayersConnected = true;
+  setup.mode = "solo";
+  localStorage.setItem("matchSetup", JSON.stringify(setup));
+
+  const soloRoom = `solo_${Date.now()}`;
+  localStorage.setItem("gameRoom", soloRoom);
+  sessionStorage.setItem("wasInGame", soloRoom);
+  if (window.firebaseClient) {
+    window.firebaseClient.db = null;
+    window.firebaseClient.isConnected = false;
+  }
+
+  const opponentState = state[op];
+  if (!opponentState.username) opponentState.username = `${state[me]?.username || "プレイヤー"} (2P)`;
+  const opponentDeck = Array.isArray(opponentState.deck) ? opponentState.deck : [];
+  const hasVisibleDeckIds = opponentDeck.some(id => id && id !== "DUMMY" && id !== "HIDDEN");
+  if (!hasVisibleDeckIds) {
+    try {
+      const deckCode = setup.deckCode || localStorage.getItem("deckCode") || "empty";
+      const fallbackDeck = window.decodeDeck(deckCode);
+      for (let i = fallbackDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fallbackDeck[i], fallbackDeck[j]] = [fallbackDeck[j], fallbackDeck[i]];
+      }
+      const targetLength = Number(opponentState.deckCount) || fallbackDeck.length;
+      opponentState.deck = Array.from({ length: targetLength }, (_, index) => fallbackDeck[index % fallbackDeck.length]).filter(Boolean);
+      opponentState.deckCount = opponentState.deck.length;
+    } catch (error) {
+      console.warn("[Solo] 相手用のローカル山札を準備できませんでした:", error);
+    }
+  }
   if (state.matchData?.status === "setup_dice" && (state[op].diceValue === undefined || state[op].diceValue < 0)) {
     state[op].diceValue = Math.floor(Math.random() * 100) + 1;
   }
+  if (typeof window.saveAllImmediate === "function") await window.saveAllImmediate();
   applyInteractionLockState();
   update();
 };

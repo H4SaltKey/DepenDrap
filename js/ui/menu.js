@@ -30,7 +30,7 @@
         <div class="menuItem" id="deckViewerBtn">デッキ確認</div>
         <div class="menuItem" id="surrenderBtn" style="color: #ff6b6b; display:none;">降参</div>
         <div class="menuItem" id="resetFieldBtn" style="color: #ff9999;">盤面リセット</div>
-        <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">1人で始める</div>
+        <div class="menuItem" id="soloStartBtn" style="color: #9fe8ff; display:none;">一人でプレイ</div>
         <div class="menuItem" id="optBtn">オプション</div>
       </div>
       <div id="menuButton" role="button" tabindex="0" aria-label="メインメニュー">☰</div>
@@ -346,8 +346,9 @@
       const isPlaying = typeof state !== "undefined" && state?.matchData?.status === "playing" && !state?.matchData?.winner;
       surrenderBtn.style.display = (isGamePage && !isLocked && isPlaying) ? "block" : "none";
     }
-    // 両プレイヤーが接続している場合は「1人で開始」を非表示にする
-    if (soloStartBtn) soloStartBtn.style.display = (isGamePage && isLocked && !window._bothPlayersConnected) ? "block" : "none";
+    // 相手がいない試合なら、進行中でも現在の状態を保ってソロへ切り替えられる
+    const hasWinner = typeof state !== "undefined" && !!state?.matchData?.winner;
+    if (soloStartBtn) soloStartBtn.style.display = (isGamePage && !window._bothPlayersConnected && !window._soloHotSeat && !hasWinner) ? "block" : "none";
   };
 
   document.getElementById("backBtn").onclick = ()=>{

@@ -1,5 +1,11 @@
 # DepenDrap_Online 継続解析ログ
 
+## Round 2026-10-27 — ターン開始ドロー停止の修正
+
+- `startTurnDraw()` の山札からのカード取得前に `rawId` を参照していたため、TDZの `ReferenceError` で関数が停止していた。
+- 先行していた誤ったドローイベント呼び出しを除去し、`OnTurnStart` をターン開始時に発火。カードを取得して手札へ置いた後に `resolveCardDraw()` で `OnDraw` を一度発火するよう修正。
+- JS構文チェックと `git diff --check` を実施。
+
 ## Round 2026-10-24 — 時計設定の旧既定値移行
 
 - マッチ画面起動時に `localStorage.matchClockSettings` の旧既定値（300/20/30）がそのまま入力へ復元され、新既定値300/5/5を隠していた。

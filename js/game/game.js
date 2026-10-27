@@ -2523,12 +2523,7 @@ function startTurnDraw() {
   if (window.EffectEngine && typeof window.EffectEngine.expireGrantedEffectsAtTurnStart === "function") {
     window.EffectEngine.expireGrantedEffectsAtTurnStart(window._soloHotSeat ? m.turnPlayer : me);
   }
-  if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardDraw === "function") {
-    window.PlayerActionResolver.resolveCardDraw(window._soloHotSeat ? m.turnPlayer : me, 1, {
-      sourceCardId: String(rawId || ""),
-      source: "turn_draw"
-    });
-  } else if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
     try {
       window.CardEffectRuntimeV2.emitGameEvent("OnTurnStart", {
         owner: me,
@@ -2592,7 +2587,12 @@ function startTurnDraw() {
     placeCard(field, card, { x: deckX, y: deckY });
   }
 
-  if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
+  if (window.PlayerActionResolver && typeof window.PlayerActionResolver.resolveCardDraw === "function") {
+    window.PlayerActionResolver.resolveCardDraw(me, 1, {
+      sourceCardId: String(rawId),
+      source: "turn_draw"
+    });
+  } else if (window.CardEffectRuntimeV2 && typeof window.CardEffectRuntimeV2.emitGameEvent === "function") {
     try {
       window.CardEffectRuntimeV2.emitGameEvent("OnDraw", {
         owner: me,

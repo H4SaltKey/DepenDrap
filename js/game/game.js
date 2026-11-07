@@ -996,38 +996,25 @@ function handleMatchStateTransitions() {
 
   // ターゲット選択フェーズの割り込み処理
   if (isDicePhaseComplete && m.status === "playing" && m.targetSelectionPending && !m.winner) {
+    const selectionOwner = window._soloHotSeat ? m.turnPlayer : meRole;
     if (m.turnPlayer === meRole || window._soloHotSeat) {
       const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
       if (opOverlay) opOverlay.remove();
-
-      let slots = window.MonsterManager?.getAllSlots() || [];
-      // R1T1 のターゲット選択スキップ防止: 先攻側で未生成なら先にモンスターを初期化
-      if (m.round === 1 && m.turn === 1 && slots.every(s => s == null) && meRole === (m.firstPlayer || "player1")) {
-        window.MonsterCombatSystem?.onRoundStart(1);
-        slots = window.MonsterManager?.getAllSlots() || [];
-      }
-      const hasMonster = slots.some(s => s !== null);
-      if (!hasMonster) {
-        // モンスターがいない場合は自動で相手プレイヤーをターゲットにする
-        (async () => {
-          if (window.BattleTargetSystem) {
-            window.BattleTargetSystem.onTurnStart(meRole);
-            window.BattleTargetSystem.setTarget(meRole, "player");
-          }
-          const gameRoom = localStorage.getItem("gameRoom");
-          if (gameRoom && window.firebaseClient?.db) {
-            const targetsData = window.BattleTargetSystem?.serialize() || {};
-            await window.firebaseClient.db.ref(`rooms/${gameRoom}/pvpve/targets`).set(targetsData).catch(() => {});
-            const nextMatch = { ...state.matchData, targetSelectionPending: false };
-            await window.firebaseClient.writeMatchData(gameRoom, nextMatch).catch(() => {});
-          } else {
-            state.matchData.targetSelectionPending = false;
-            update();
-          }
-        })();
+      const targetSystem = window.BattleTargetSystem;
+      if (targetSystem?.needsLocationChoice(selectionOwner, m.round)) {
+        setTimeout(() => window.showRoundLocationSelectDialog?.(), 0);
+      } else if (targetSystem?.canTargetPlayer(selectionOwner, m.round)) {
+        setTimeout(() => window.showTurnStartTargetSelectDialog?.(), 0);
       } else {
-        if (typeof window.showTurnStartTargetSelectDialog === "function") {
-          window.showTurnStartTargetSelectDialog();
+        targetSystem?.onTurnStart(selectionOwner);
+        const location = targetSystem?.getLocation(selectionOwner, m.round);
+        if (location) targetSystem?.setTarget(selectionOwner, { slotIndex: location.slotIndex });
+        if (window._autoTargetResolveKey !== turnStartKey) {
+          window._autoTargetResolveKey = turnStartKey;
+          setTimeout(async () => {
+            await window.completeTurnTargetSelection?.();
+            if (window._autoTargetResolveKey === turnStartKey) window._autoTargetResolveKey = null;
+          }, 0);
         }
       }
     } else {
@@ -2414,6 +2401,9 @@ async function initGame() {
     } else {
       traceGame("initGame.setupRoomWatcher", "missing");
     }
+    if (typeof window.startPvpveWatcher === "function") {
+      invokeGuarded("initGame.startPvpveWatcher", () => window.startPvpveWatcher());
+    }
 
     // ── 7. 自分の最新状態を Firebase に送信（整合性担保） ──
     if (firebaseClient?.db && !window._soloHotSeat) {
@@ -2436,19 +2426,6 @@ async function initGame() {
   }
   traceGame("initGame", "end");
 }
-
-window.startSoloGame = async function() {
-  if (window._bothPlayersConnected) return;
-  window._soloStartMode = true;
-  const me = window.myRole || localStorage.getItem("gamePlayerKey") || "player1";
-  const op = me === "player1" ? "player2" : "player1";
-  if (!state[op].username) state[op].username = "CPU";
-  if (state.matchData?.status === "setup_dice" && (state[op].diceValue === undefined || state[op].diceValue < 0)) {
-    state[op].diceValue = Math.floor(Math.random() * 100) + 1;
-  }
-  applyInteractionLockState();
-  update();
-};
 
 window.addEventListener("cardsReady", () => {
   cardsReadyFired = true;
@@ -2523,6 +2500,8 @@ function startTurnDraw() {
   const m = state.matchData || {};
   const me = window._soloHotSeat ? m.turnPlayer : (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   if (m.status !== "playing" || (m.turnPlayer !== me && !window._soloHotSeat) || m.winner) return;
+  if (typeof window._onTurnStartCallback === "function") window._onTurnStartCallback();
+  if (state.matchData?.winner) return;
   if (window.EffectEngine && typeof window.EffectEngine.expireGrantedEffectsAtTurnStart === "function") {
     window.EffectEngine.expireGrantedEffectsAtTurnStart(window._soloHotSeat ? m.turnPlayer : me);
   }

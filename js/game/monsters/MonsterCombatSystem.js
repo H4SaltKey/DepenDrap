@@ -61,14 +61,13 @@ window.MonsterCombatSystem = (function() {
    * @param slotIndex 攻撃するモンスターのスロット
    * @param targetKey 攻撃対象プレイヤー
    */
-  function monsterAttackPlayer(slotIndex, targetKey) {
+  function monsterAttackPlayer(slotIndex, targetKey, targetPlayers = null) {
     if (!window.MonsterManager) return;
 
     const result = window.MonsterManager.monsterAttack(slotIndex, targetKey);
     if (result.dmg <= 0) return;
 
-    const isAttackAll = result.actionType === "attack_all";
-    const targets = isAttackAll ? ["player1", "player2"] : [targetKey];
+    const targets = Array.isArray(targetPlayers) ? targetPlayers : [targetKey];
 
     targets.forEach(key => {
       // addVal() 経由でダメージを適用（syncDerivedStats・checkGameResult・Firebase同期が走る）
@@ -107,14 +106,6 @@ window.MonsterCombatSystem = (function() {
       window.addGameLog(`[MONSTER] ${killer} の PP +2 回復！`);
     }
 
-    // 討伐後のターゲット変更許可
-    if (window.BattleTargetSystem) {
-      window.BattleTargetSystem.onMonsterDefeated(killer);
-    }
-    if (window.MonsterUI?.showTargetChangeButton) {
-      window.MonsterUI.showTargetChangeButton(true);
-    }
-
     // 成長スライム特性の処理（グローバルフラグ）
     if (window._slimeGrowthRoundsLeft > 0 && window._slimeGrowthKiller === killer) {
       window.addGameLog(`[MONSTER] 成長スライムの恩恵: 毎ターン経験値+1（残り${window._slimeGrowthRoundsLeft}ラウンド）`);
@@ -125,27 +116,32 @@ window.MonsterCombatSystem = (function() {
    * ターン終了時のモンスター行動処理
    * 各プレイヤーのターゲットに応じてモンスターが攻撃
    */
-  function processTurnEndMonsterActions() {
-    if (!window.MonsterManager || !window.BattleTargetSystem) return;
+  function processMonsterActionsForTurn(initiative, activePlayer) {
+    if (!window.MonsterManager || !window.BattleTargetSystem || !activePlayer) return;
+    const round = Number(window.state?.matchData?.round || 1);
 
-    ["player1", "player2"].forEach(playerKey => {
-      if (!window.BattleTargetSystem.isPvE(playerKey)) return;
-
-      const target = window.BattleTargetSystem.getTarget(playerKey);
-      if (!target || target === "player") return;
-
-      const { slotIndex } = target;
-      const slot = window.MonsterManager.getSlot(slotIndex);
+    window.MonsterManager.getAllSlots().forEach((slot, slotIndex) => {
       if (!slot) return;
+      const occupants = window.BattleTargetSystem.getOccupants(slotIndex, round);
+      if (!occupants.includes(activePlayer)) return;
+      const def = (window.MONSTER_DEFINITIONS || []).find(monster => monster.id === slot.monsterId);
+      if (!def || def.initiative !== initiative) return;
 
-      const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
-      if (!def) return;
-
-      // 先攻モンスターはターン開始時に攻撃（ここでは後攻のみ）
-      if (def.initiative === "後攻") {
-        monsterAttackPlayer(slotIndex, playerKey);
-      }
+      const excited = occupants.length > 1;
+      const laterPlayer = occupants[occupants.length - 1];
+      const targets = excited ? occupants : [activePlayer];
+      targets.forEach(targetPlayer => {
+        const hitCount = excited && targetPlayer === laterPlayer ? 2 : 1;
+        for (let hit = 0; hit < hitCount; hit++) {
+          monsterAttackPlayer(slotIndex, targetPlayer, [targetPlayer]);
+        }
+      });
     });
+  }
+
+  function processTurnEndMonsterActions(activePlayer) {
+    const player = activePlayer || window.state?.matchData?.turnPlayer;
+    processMonsterActionsForTurn("後攻", player);
   }
 
   /**
@@ -153,36 +149,13 @@ window.MonsterCombatSystem = (function() {
    */
   function processTurnStartMonsterActions() {
     if (!window.MonsterManager || !window.BattleTargetSystem) return;
-
-    ["player1", "player2"].forEach(playerKey => {
-      if (!window.BattleTargetSystem.isPvE(playerKey)) return;
-
-      const target = window.BattleTargetSystem.getTarget(playerKey);
-      if (!target || target === "player") return;
-
-      const { slotIndex } = target;
-      const slot = window.MonsterManager.getSlot(slotIndex);
-      if (!slot) return;
-
-      const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
-      if (!def) return;
-
-      if (def.initiative === "先攻") {
-        monsterAttackPlayer(slotIndex, playerKey);
-      }
-
-      // 撤退追撃処理
-      const retreatAttacks = window.MonsterManager.processRetreatAttacks(playerKey);
-      retreatAttacks.forEach(({ dmg }) => {
-        if (typeof window.addVal === "function") {
-          window.addVal(playerKey, "hp", -dmg);
-        } else {
-          const targetState = window.state?.[playerKey];
-          if (targetState) targetState.hp = Math.max(0, (targetState.hp || 0) - dmg);
-        }
-      });
+    const playerKey = window.state?.matchData?.turnPlayer;
+    processMonsterActionsForTurn("先攻", playerKey);
+    const retreatAttacks = window.MonsterManager.processRetreatAttacks(playerKey);
+    retreatAttacks.forEach(({ dmg }) => {
+      if (typeof window.addVal === "function") window.addVal(playerKey, "hp", -dmg);
+      else if (window.state?.[playerKey]) window.state[playerKey].hp = Math.max(0, (window.state[playerKey].hp || 0) - dmg);
     });
-
     // ターン開始時のヒットカウントリセット
     window.MonsterManager.onTurnStart();
   }

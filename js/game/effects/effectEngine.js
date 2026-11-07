@@ -287,7 +287,16 @@
     if (targetType === "card" || isCardTargetToken(target)) {
       return { owners: [], invalidReason: `player-target-required:${target}` };
     }
-    return { owners: resolveTargetOwners(effect, context), invalidReason: "" };
+    const owners = resolveTargetOwners(effect, context);
+    const opponent = context?.opponent;
+    if (opponent && owners.includes(opponent)) {
+      const targetsOpponent = window.BattleTargetSystem?.canTargetPlayer?.(context.owner)
+        && window.BattleTargetSystem?.isPvP?.(context.owner);
+      if (!targetsOpponent) {
+        return { owners: [], invalidReason: "opponent-not-at-same-monster-location-or-not-selected" };
+      }
+    }
+    return { owners, invalidReason: "" };
   }
 
   function getTopZoneCard(owner, zoneType) {

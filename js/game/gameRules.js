@@ -7,7 +7,7 @@
  */
 
 // ===== ターン・ラウンド定数 =====
-window.TURNS_PER_ROUND = 5;   // 1ラウンドのターン数
+window.TURNS_PER_ROUND = 3;   // 1ラウンドのターン数
 window.LEVEL_MAX_CONST = 6;   // レベル上限
 
 // ===== フェーズ定数 =====

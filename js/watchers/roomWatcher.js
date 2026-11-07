@@ -265,6 +265,7 @@ window.setupRoomWatcher = function() {
 };
 
 window.stopAllWatchers = function() {
+  if (typeof window.stopPvpveWatcher === "function") window.stopPvpveWatcher();
   if (typeof window.roomWatcherUnsubscribe === "function") { window.roomWatcherUnsubscribe(); window.roomWatcherUnsubscribe = null; }
   if (typeof window.playerDiceWatcherUnsubscribe === "function") { window.playerDiceWatcherUnsubscribe(); window.playerDiceWatcherUnsubscribe = null; }
   if (typeof window.phaseWatcherUnsubscribe === "function") { window.phaseWatcherUnsubscribe(); window.phaseWatcherUnsubscribe = null; }

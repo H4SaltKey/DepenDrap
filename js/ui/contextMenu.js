@@ -1360,6 +1360,15 @@ function openStatusMenu(targetOwner, x, y, opts = {}) {
 
 // ダメージ適用ロジック
 window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEvoDmg = false, options = {}) {
+  const attacker = options?.sourceOwner || window.state?.matchData?.turnPlayer || window.getMyRole?.() || window.myRole || "player1";
+  const opponent = attacker === "player1" ? "player2" : "player1";
+  if (targetOwner === opponent && window.state?.matchData?.status === "playing") {
+    const targets = window.BattleTargetSystem;
+    if (!targets?.canTargetPlayer?.(attacker) || !targets?.isPvP?.(attacker)) {
+      if (typeof window.addGameLog === "function") window.addGameLog("相手プレイヤーへの攻撃は、同じモンスターの場所にいる場合のみ行えます。");
+      return;
+    }
+  }
   const s = state[targetOwner];
   if (!s) return;
 

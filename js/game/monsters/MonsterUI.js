@@ -127,6 +127,9 @@ window.MonsterUI = (function() {
         width: 100%;
       }
 
+      .monsterPlayersBadge { font-size:8px; color:#91ddff; text-align:center; }
+      .monsterExcitedBadge { font-size:8px; color:#ffb36c; font-weight:800; text-align:center; letter-spacing:.3px; }
+
       /* ラストヒット圏内インジケータ */
       .monsterLastHitIndicator {
         font-size: 8px;
@@ -250,7 +253,7 @@ window.MonsterUI = (function() {
     }
     panel.innerHTML = "";
 
-    const me = window.myRole || "player1";
+    const me = window._soloHotSeat ? (window.state?.matchData?.turnPlayer || "player1") : (window.myRole || "player1");
     const myTarget = window.BattleTargetSystem?.getTarget(me);
     const canChange = window.BattleTargetSystem?.canChangeTarget(me);
 
@@ -279,6 +282,11 @@ window.MonsterUI = (function() {
       const initClass = def?.initiative === "先攻" ? "first" : "last";
       const initLabel = def?.initiative || "後攻";
       const traitNames = (def?.traits || []).map(t => t.label).join(" / ");
+      const round = Number(window.state?.matchData?.round || 1);
+      const occupants = window.BattleTargetSystem?.getOccupants(i, round) || [];
+      const myKey = window._soloHotSeat ? (window.state?.matchData?.turnPlayer || "player1") : (window.myRole || "player1");
+      const occupantLabels = occupants.map(player => player === myKey ? "自分" : "相手").join("・");
+      const isExcited = occupants.length > 1;
 
       el.innerHTML = `
         <div class="monsterSlotEmoji">${def?.emoji || "👾"}</div>
@@ -289,18 +297,15 @@ window.MonsterUI = (function() {
         <div class="monsterHpText">${slot.currentHp}/${slot.maxHp}</div>
         <div class="monsterInitBadge ${initClass}">${initLabel}</div>
         ${traitNames ? `<div class="monsterTraitBadge">${traitNames}</div>` : ""}
+        ${occupants.length ? `<div class="monsterPlayersBadge">📍 ${occupantLabels}</div>` : ""}
+        ${isExcited ? `<div class="monsterExcitedBadge">🔥 興奮状態</div>` : ""}
         ${isLastHit ? `<div class="monsterLastHitIndicator">⚡ラストヒット圏</div>` : ""}
       `;
 
       // クリックでターゲット選択
       el.addEventListener("click", () => {
-        if (canChange) {
-          window.BattleTargetSystem?.setTarget(me, { slotIndex: i });
-          render();
-          _syncTargetToFirebase();
-        } else {
-          _showTargetSelectPanel();
-        }
+        if (window.BattleTargetSystem?.needsLocationChoice(me, round)) window.showRoundLocationSelectDialog?.();
+        else if (window.BattleTargetSystem?.canTargetPlayer(me, round)) window.showTurnStartTargetSelectDialog?.();
       });
 
       // 右クリックでダメージ選択メニュー
@@ -380,87 +385,10 @@ window.MonsterUI = (function() {
 
   // ===== ターゲット選択パネル =====
   function _showTargetSelectPanel() {
-    if (document.getElementById("targetSelectPanel")) return;
-
     const me = window.myRole || "player1";
-    const slots = window.MonsterManager?.getAllSlots() || [];
-
-    const panel = document.createElement("div");
-    panel.id = "targetSelectPanel";
-
-    const prev = window.BattleTargetSystem?.getTarget(me) || "player";
-    const prevLabel = prev === "player"
-      ? "相手プレイヤー"
-      : `モンスター ${Number(prev?.slotIndex) + 1}`;
-    let optionsHtml = `
-      <div class="targetOption pvp" data-target="player">
-        <div class="targetOptionEmoji">⚔️</div>
-        <div>
-          <div class="targetOptionLabel">相手プレイヤーを攻撃</div>
-          <div class="targetOptionSub">PvP — 通常の対戦</div>
-        </div>
-      </div>
-    `;
-
-    slots.forEach((slot, i) => {
-      if (!slot) return;
-      const def = (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId);
-      const hpPct = Math.round((slot.currentHp / slot.maxHp) * 100);
-      optionsHtml += `
-        <div class="targetOption" data-target="monster" data-slot="${i}">
-          <div class="targetOptionEmoji">${def?.emoji || "👾"}</div>
-          <div>
-            <div class="targetOptionLabel">${def?.name || slot.monsterId}</div>
-            <div class="targetOptionSub">HP: ${slot.currentHp}/${slot.maxHp} (${hpPct}%) | ${def?.initiative || "後攻"} | EXP+${def?.expReward || 1}</div>
-          </div>
-        </div>
-      `;
-    });
-
-    panel.innerHTML = `
-      <h3>攻撃対象を選択</h3>
-      <p style="font-size:12px;color:#888;text-align:center;margin:0 0 12px;">ターン開始時のみ変更できます</p>
-      <p style="font-size:12px;color:#b9ad83;text-align:center;margin:0 0 12px;">直前のターゲット: ${prevLabel}</p>
-      ${optionsHtml}
-      <button id="targetSelectCancel">キャンセル</button>
-    `;
-
-    document.body.appendChild(panel);
-
-    // イベント
-    panel.querySelectorAll(".targetOption").forEach(opt => {
-      opt.addEventListener("click", () => {
-        const targetType = opt.dataset.target;
-        if (targetType === "player") {
-          window.BattleTargetSystem?.setTarget(me, "player");
-        } else {
-          const slotIndex = parseInt(opt.dataset.slot, 10);
-          window.BattleTargetSystem?.setTarget(me, { slotIndex });
-        }
-        if (typeof window.centerField === "function") {
-          window.centerField();
-          setTimeout(() => window.centerField(), 80);
-        }
-        panel.remove();
-        // monsterPanel を非表示に戻す
-        const mp = document.getElementById("monsterPanel");
-        if (mp) mp.style.display = "none";
-        render();
-        _syncTargetToFirebase();
-      });
-    });
-
-    document.getElementById("targetSelectCancel").addEventListener("click", () => {
-      panel.remove();
-      // monsterPanel を非表示に戻す
-      const mp = document.getElementById("monsterPanel");
-      if (mp) mp.style.display = "none";
-
-      const currentTarget = window.BattleTargetSystem?.getTarget(me);
-      if (currentTarget !== "player" && currentTarget && !window.MonsterManager?.getSlot(currentTarget.slotIndex)) {
-        window.MonsterUI.showTargetChangeButton(true);
-      }
-    });
+    const round = Number(window.state?.matchData?.round || 1);
+    if (window.BattleTargetSystem?.needsLocationChoice(me, round)) window.showRoundLocationSelectDialog?.();
+    else if (window.BattleTargetSystem?.canTargetPlayer(me, round)) window.showTurnStartTargetSelectDialog?.();
   }
 
   // ===== Firebase同期 =====
@@ -551,16 +479,25 @@ window.MonsterUI = (function() {
 
     const deadTarget = target && target !== "player" && !window.MonsterManager?.getSlot(target.slotIndex);
     if (deadTarget) {
-      badge.textContent = "🎯 対象: 討伐済みモンスター (再選択可)";
-      badge.classList.add("clickable");
-      badge.style.pointerEvents = "auto";
-      badge.onclick = () => {
-        if (!document.getElementById("targetSelectPanel")) {
-          _showTargetSelectPanel();
-        }
-      };
-    } else if (!target || target === "player") {
+      badge.textContent = "🎯 対峙先のモンスターは討伐済み";
+      badge.classList.remove("clickable");
+      badge.style.pointerEvents = "none";
+      badge.onclick = null;
+    } else if (target === "player") {
       badge.textContent = "🎯 対象: 相手プレイヤー";
+      badge.classList.remove("clickable");
+      badge.style.pointerEvents = "none";
+      badge.onclick = null;
+    } else if (!target) {
+      const location = window.BattleTargetSystem?.getLocation(me, window.state?.matchData?.round);
+      if (!location) {
+        badge.textContent = "📍 このラウンドの対峙先を選択してください";
+        badge.classList.remove("clickable");
+        badge.style.pointerEvents = "none";
+        badge.onclick = null;
+        return;
+      }
+      badge.textContent = "🎯 対象: モンスター";
       badge.classList.remove("clickable");
       badge.style.pointerEvents = "none";
       badge.onclick = null;

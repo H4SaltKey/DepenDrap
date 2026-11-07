@@ -1,154 +1,172 @@
 /**
  * BattleTargetSystem.js
- * 各プレイヤーの攻撃対象（PvP / PvE）を管理する
- * ターン開始時のみ変更可能
+ * ラウンドごとの所在と、そのターンの攻撃対象を管理する。
  */
 
 window.BattleTargetSystem = (function() {
+  const _targets = { player1: null, player2: null };
+  const _targetRounds = { player1: 0, player2: 0 };
+  const _locations = { player1: null, player2: null };
+  const _canChange = { player1: false, player2: false };
 
-  // target: "player" | { slotIndex: number }
-  const _targets = {
-    player1: "player",
-    player2: "player"
-  };
+  function currentRound(round) {
+    return Number(round || window.state?.matchData?.round || 1);
+  }
 
-  // ターン開始時に変更可能フラグ
-  const _canChange = {
-    player1: false,
-    player2: false
-  };
+  function getLocation(playerKey, round) {
+    const location = _locations[playerKey];
+    return location && location.round === currentRound(round) ? { ...location } : null;
+  }
 
-  // 討伐直後フラグ（討伐後のみ即時変更可能）
-  const _justDefeated = {
-    player1: false,
-    player2: false
-  };
+  function needsLocationChoice(playerKey, round) {
+    return !getLocation(playerKey, round);
+  }
 
-  // ===== ターン開始時処理 =====
+  function getOccupants(slotIndex, round) {
+    const activeRound = currentRound(round);
+    return ["player1", "player2"]
+      .filter(player => _locations[player]?.round === activeRound && _locations[player].slotIndex === Number(slotIndex))
+      .sort((a, b) => Number(_locations[a].arrivedAt) - Number(_locations[b].arrivedAt) || a.localeCompare(b));
+  }
+
+  function isExcited(slotIndex, round) {
+    return getOccupants(slotIndex, round).length > 1;
+  }
+
+  function canTargetPlayer(playerKey, round) {
+    const activeRound = currentRound(round);
+    if (activeRound <= 1) return false;
+    const own = getLocation(playerKey, activeRound);
+    const opponentKey = playerKey === "player1" ? "player2" : "player1";
+    const opponent = getLocation(opponentKey, activeRound);
+    return !!own && !!opponent && own.slotIndex === opponent.slotIndex;
+  }
+
   function onTurnStart(playerKey) {
     _canChange[playerKey] = true;
-    _justDefeated[playerKey] = false;
   }
 
-  // ターン開始後、最初のアクション後にロック
-  function lockTarget(playerKey) {
-    if (!_justDefeated[playerKey]) {
-      _canChange[playerKey] = false;
+  function chooseLocation(playerKey, slotIndex, round) {
+    const activeRound = currentRound(round);
+    const index = Number(slotIndex);
+    if (!Number.isInteger(index) || !window.MonsterManager?.getSlot(index)) {
+      return { ok: false, reason: "そのモンスターは選べません" };
     }
-  }
-
-  // ===== ターゲット変更 =====
-  /**
-   * @param playerKey "player1" | "player2"
-   * @param target "player" | { slotIndex: number }
-   * @returns { ok: bool, reason: string }
-   */
-  function setTarget(playerKey, target) {
-    if (!_canChange[playerKey] && !_justDefeated[playerKey]) {
-      console.warn(`[BattleTargetSystem] setTarget failed: ターン開始時のみ変更できます`);
-      return { ok: false, reason: "ターン開始時のみ変更できます" };
+    if (!needsLocationChoice(playerKey, activeRound)) {
+      return { ok: false, reason: "このラウンドの所在はすでに決定しています" };
     }
-
-    // モンスターターゲットの場合、スロットが存在するか確認
-    if (target !== "player" && typeof target === "object") {
-      const slot = window.MonsterManager?.getSlot(target.slotIndex);
-      if (!slot) {
-        return { ok: false, reason: "そのモンスターは存在しません" };
-      }
-    }
-
-    _targets[playerKey] = target;
-    // Expose a helper for external callers
-    // (Will be used by applyTargetSelectionResult)
-    window.BattleTargetSystem.applySelectionResult = async function(owner, tgt) {
-      const res = window.BattleTargetSystem.setTarget(owner, tgt);
-      if (!res.ok) {
-        console.warn(`[BattleTargetSystem] applySelectionResult failed: ${res.reason}`);
-        return res;
-      }
-      // Serialize and write to Firebase if needed (handled by caller)
-      return { ok: true };
-    };
-    _canChange[playerKey] = false;
-    _justDefeated[playerKey] = false;
-
-    const label = target === "player" ? "相手プレイヤー" : `モンスター(スロット${target.slotIndex + 1})`;
-    if (typeof window.addGameLog === "function") {
-      window.addGameLog(`[TARGET] ${playerKey} の攻撃対象: ${label}`);
-    }
-
+    const firstPlayer = window.state?.matchData?.firstPlayer || "player1";
+    const arrivalOrder = playerKey === firstPlayer ? 0 : 1;
+    _locations[playerKey] = { slotIndex: index, round: activeRound, arrivedAt: activeRound * 2 + arrivalOrder };
+    _targets[playerKey] = { slotIndex: index };
+    _targetRounds[playerKey] = activeRound;
     return { ok: true };
   }
 
-  // 討伐後の即時変更許可
-  function onMonsterDefeated(playerKey) {
-    _justDefeated[playerKey] = true;
-    _canChange[playerKey] = true;
+  function setTarget(playerKey, target) {
+    if (!_canChange[playerKey]) {
+      return { ok: false, reason: "ターン開始時のみ攻撃対象を選択できます" };
+    }
+    const location = getLocation(playerKey);
+    if (!location) return { ok: false, reason: "先にこのラウンドの対峙先を選んでください" };
+
+    if (target === "player") {
+      if (!canTargetPlayer(playerKey)) return { ok: false, reason: "相手と同じモンスターの場所にいる時だけ攻撃できます" };
+    } else if (!target || Number(target.slotIndex) !== location.slotIndex) {
+      return { ok: false, reason: "このラウンドに選んだ場所の対象だけ選べます" };
+    }
+
+    _targets[playerKey] = target === "player" ? "player" : { slotIndex: location.slotIndex };
+    _targetRounds[playerKey] = currentRound();
+    _canChange[playerKey] = false;
+    return { ok: true };
   }
 
-  // ===== ゲッター =====
   function getTarget(playerKey) {
-    return _targets[playerKey] || "player";
+    const round = currentRound();
+    if (_targetRounds[playerKey] === round && _targets[playerKey]) return _targets[playerKey];
+    const location = getLocation(playerKey, round);
+    return location ? { slotIndex: location.slotIndex } : "player";
   }
 
   function isPvE(playerKey) {
-    const t = _targets[playerKey];
-    return t !== "player" && typeof t === "object" && typeof t.slotIndex === "number";
+    const target = getTarget(playerKey);
+    return target !== "player" && typeof target === "object" && Number.isInteger(target.slotIndex);
   }
 
   function isPvP(playerKey) {
-    return _targets[playerKey] === "player";
+    return getTarget(playerKey) === "player";
   }
 
   function canChangeTarget(playerKey) {
     return !!_canChange[playerKey];
   }
 
-  function canImmediateRetarget(playerKey) {
-    return !!_justDefeated[playerKey];
+  function lockTarget(playerKey) {
+    _canChange[playerKey] = false;
   }
 
-  // ===== Firebase同期 =====
+  function onMonsterDefeated() {
+    return false;
+  }
+
   function serialize() {
     return {
       targets: { ..._targets },
+      targetRounds: { ..._targetRounds },
+      locations: Object.fromEntries(Object.entries(_locations).map(([key, value]) => [key, value ? { ...value } : null])),
       canChange: { ..._canChange }
     };
   }
 
   function deserialize(data) {
     if (!data) return;
-    if (data.targets) {
-      Object.assign(_targets, data.targets);
+    if (data.targets) Object.assign(_targets, data.targets);
+    if (data.targetRounds) Object.assign(_targetRounds, data.targetRounds);
+    if (data.locations) {
+      Object.entries(data.locations).forEach(([key, value]) => {
+        if (key in _locations) _locations[key] = value ? { ...value } : null;
+      });
     }
-    if (data.canChange) {
-      Object.assign(_canChange, data.canChange);
+    if (data.canChange) Object.assign(_canChange, data.canChange);
+    if (!data.locations) {
+      const round = currentRound();
+      ["player1", "player2"].forEach(player => {
+        const oldTarget = data.targets?.[player];
+        if (oldTarget && oldTarget !== "player" && Number.isInteger(Number(oldTarget.slotIndex))) {
+          _locations[player] = { slotIndex: Number(oldTarget.slotIndex), round, arrivedAt: Date.now() };
+          _targetRounds[player] = round;
+        }
+      });
     }
   }
 
-  // ===== リセット =====
   function reset() {
-    _targets.player1 = "player";
-    _targets.player2 = "player";
-    _canChange.player1 = false;
-    _canChange.player2 = false;
-    _justDefeated.player1 = false;
-    _justDefeated.player2 = false;
+    ["player1", "player2"].forEach(player => {
+      _targets[player] = null;
+      _targetRounds[player] = 0;
+      _locations[player] = null;
+      _canChange[player] = false;
+    });
   }
 
   return {
     onTurnStart,
     lockTarget,
+    chooseLocation,
+    needsLocationChoice,
+    getLocation,
+    getOccupants,
+    isExcited,
+    canTargetPlayer,
     setTarget,
-    onMonsterDefeated,
     getTarget,
     isPvE,
     isPvP,
     canChangeTarget,
-    canImmediateRetarget,
+    onMonsterDefeated,
     serialize,
     deserialize,
     reset
   };
-
 })();

@@ -92,7 +92,7 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     } else {
       m.turnPlayer = firstPlayer;
       m.turn += 1;
-      if (m.turn > (window.TURNS_PER_ROUND || 5)) {
+      if (m.turn > (window.TURNS_PER_ROUND || 3)) {
         m.turn = 1;
         m.round += 1;
         addGameLog(`[MATCH] 第 ${m.round} ラウンド開始！`);

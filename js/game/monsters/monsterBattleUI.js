@@ -12,8 +12,11 @@ window.setupMonsterBattleUI = function() {
 
   // 敵モンスター情報を取得して表示
   window.updateMonsterBattleDisplay = function() {
-    const myRole = window.getMyRole ? window.getMyRole() : "player1";
-    const currentTarget = window.BattleTargetSystem?.getTarget?.(myRole);
+    const myRole = window._soloHotSeat
+      ? (window.state?.matchData?.turnPlayer || "player1")
+      : (window.getMyRole ? window.getMyRole() : "player1");
+    const currentTarget = window.BattleTargetSystem?.getLocation?.(myRole, window.state?.matchData?.round)
+      || window.BattleTargetSystem?.getTarget?.(myRole);
     const targetSlotIndex = currentTarget && currentTarget !== "player" && typeof currentTarget === "object"
       ? currentTarget.slotIndex
       : undefined;
@@ -36,16 +39,18 @@ window.setupMonsterBattleUI = function() {
     const monsterHpFill = document.getElementById("monsterHpFill");
 
     const bindMonsterContextMenu = (el) => {
-      if (!el || el.dataset.monsterContextBound) return;
-      el.dataset.monsterContextBound = "1";
+      if (!el) return;
       el.dataset.monsterSlotIndex = String(slotIndex);
+      el.dataset.monsterDefeated = defeated ? "true" : "false";
       el.style.cursor = "context-menu";
+      if (el.dataset.monsterContextBound) return;
+      el.dataset.monsterContextBound = "1";
       el.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const slotIndexValue = Number(slotIndex);
+        const slotIndexValue = Number(el.dataset.monsterSlotIndex);
         const slotValue = window._currentMonsterTarget?.slot || window.MonsterManager?.getSlot(slotIndexValue);
-        if (typeof window.openMonsterMenu === "function" && !defeated) {
+        if (typeof window.openMonsterMenu === "function" && el.dataset.monsterDefeated !== "true") {
           window.openMonsterMenu(slotValue, slotIndexValue, e.clientX, e.clientY);
         }
       });

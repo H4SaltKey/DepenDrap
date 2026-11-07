@@ -17,6 +17,26 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
   if (m.winner) return;
   if (window.TurnClock?.expire(m)) return;
 
+  const actorState = state[me];
+  const noPlayerAttackThisTurn = actorState?.attackedOpponentThisTurn !== true;
+  const turnKey = `${m.round}-${m.turn}-${me}`;
+  const returnUsedCardsToDeck = () => {
+    if (!noPlayerAttackThisTurn || typeof window.returnFieldCardToDeck !== "function") return 0;
+    const field = typeof getFieldContent === "function" ? getFieldContent() : document.getElementById("field");
+    const usedCards = Array.from(field?.querySelectorAll(".card:not(.deckObject)") || [])
+      .filter(card => card.dataset.owner === me && card.dataset.zoneType === "grave" && card.dataset.usedTurnKey === turnKey);
+    let returned = 0;
+    usedCards.forEach(card => { if (window.returnFieldCardToDeck(card, me, { deferRefresh: true })) returned++; });
+    if (returned) {
+      window.organizeBattleZones?.();
+      window.updateDeckObject?.();
+      window.saveFieldCards?.();
+      window.pushMyStateDebounced?.();
+      addGameLog(`[MATCH] プレイヤーを攻撃しなかったため、このターンに使用したカード${returned}枚を山札に戻しました。`);
+    }
+    return returned;
+  };
+
   // 手札枚数上限のチェック
   if (!skipHandLimitCheck) {
     const handLimit = (typeof window.getHandLimit === "function") ? window.getHandLimit(me) : 6;
@@ -69,8 +89,9 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     }
   }
 
+  returnUsedCardsToDeck();
+
   // 相手プレイヤーを攻撃しなかったターンは、次の自分のターンに補充ボーナスを予約。
-  const actorState = state[me];
   if (actorState) {
     actorState.pendingNoOpponentAttackBonus = actorState.attackedOpponentThisTurn !== true;
     actorState.attackedOpponentThisTurn = false;

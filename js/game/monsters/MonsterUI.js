@@ -328,8 +328,11 @@ window.MonsterUI = (function() {
   function _renderMonsterBattlefield(slots) {
     // メインフィールド内のモンスター戦闘レイヤーに情報を送信
     // 右側の独立フィールドは削除
-    const myKey = window.myRole || "player1";
-    const target = window.BattleTargetSystem?.getTarget?.(myKey) || "player";
+    const myKey = window._soloHotSeat
+      ? (window.state?.matchData?.turnPlayer || "player1")
+      : (window.myRole || "player1");
+    const location = window.BattleTargetSystem?.getLocation?.(myKey, window.state?.matchData?.round);
+    const target = location || window.BattleTargetSystem?.getTarget?.(myKey) || "player";
     const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
     
     // monsterBattleUI.js の updateMonsterBattleDisplay に情報を提供

@@ -1362,7 +1362,7 @@ function openStatusMenu(targetOwner, x, y, opts = {}) {
 
 // ダメージ適用ロジック
 window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEvoDmg = false, options = {}) {
-  const attacker = options?.sourceOwner || window.state?.matchData?.turnPlayer || window.getMyRole?.() || window.myRole || "player1";
+  const attacker = options?.sourceOwner || (window._soloHotSeat ? window.state?.matchData?.turnPlayer : null) || window.getMyRole?.() || window.myRole || "player1";
   const opponent = attacker === "player1" ? "player2" : "player1";
   if (targetOwner === opponent && window.state?.matchData?.status === "playing") {
     const targets = window.BattleTargetSystem;
@@ -1381,7 +1381,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   const s = state[targetOwner];
   if (!s) return;
 
-  const actor = state[window.myRole]?.username || "Player";
+  const actor = state[attacker]?.username || "Player";
   const victim = s.username || targetOwner;
   const typeLabels = {
     damage: "ダメージ",
@@ -1399,7 +1399,7 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
   
   let actualAmount = amount;
   
-  const meRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
+  const meRole = attacker;
   const myState = state[meRole];
   const canApplyEvolution = targetOwner !== meRole;
   // 「直接攻撃」の処理と、背水の道効果の適用
@@ -1420,13 +1420,12 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
           const t = window.getEvolutionPathParam("背水の道", myState.level);
           
           actualAmount += t;
-          myState.exp += 1;
           myState.evoBackwaterExpGained = true;
           
           if (typeof addGameLog === "function") {
             addGameLog(`[EVOLUTION] ${actor} の「背水の道」効果（PP2以上かつ手札2枚以下）により、与ダメージが +${t} され、経験値1を獲得しました！`);
           }
-          if (typeof applyLevelStats === "function") applyLevelStats(meRole, true);
+          if (typeof window.addVal === "function") window.addVal(meRole, "exp", 1);
         }
       }
     }

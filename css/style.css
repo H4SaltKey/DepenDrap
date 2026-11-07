@@ -459,9 +459,9 @@ body:not(.deckPage) .cardVisualOverlay::before {
   left:50%;
   top:50%;
   transform:translate(-50%, -50%);
-  width:min(100vw, calc(100dvh * 16 / 9));
-  height:min(100dvh, calc(100vw * 9 / 16));
-  aspect-ratio:16 / 9;
+  width:min(100vw, calc(100dvh * 2 / 3));
+  height:min(100dvh, calc(100vw * 3 / 2));
+  aspect-ratio:2 / 3;
   border:2px solid black;
   overflow:hidden;
   box-sizing:border-box;
@@ -497,8 +497,8 @@ body.gamePage{
   position:absolute;
   top:0;
   left:0;
-  width:3000px;
-  height:2000px;
+  width:2000px;
+  height:3000px;
   background: url('../assets/System/bg.png') center center / cover no-repeat;
   opacity: 1;
   z-index:0;
@@ -512,46 +512,26 @@ body.gamePage{
   filter: brightness(0.85) saturate(1.05);
 }
 
-/* 相手がモンスターと戦う場合：相手のステータス情報を非表示 */
-#field.opponentInMonsterBattle .lorPanel[data-owner="player2"],
-#field.opponentInMonsterBattle .lorPanel[data-owner="player1"].opponent-hidden {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-/* 相手のモンスター戦況表示を非表示 */
-#field.opponentInMonsterBattle .monsterBattleInfo {
-  display: none !important;
-}
-
 /* ===== モンスター戦闘疑似フィールド ===== */
 .monsterBattleLayer {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 0;
   right: 0;
-  height: 42%;
+  height: auto;
   display: none;
   z-index: 2;
   pointer-events: auto;
   background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-50%);
 }
 
 #field.inMonsterBattle .monsterBattleLayer {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 18px;
-}
-
-#field.inMonsterBattle.monsterBattleLocalPlayer1 .card[data-owner="player2"],
-#field.inMonsterBattle.monsterBattleLocalPlayer1 .deckObject[data-owner="player2"],
-#field.inMonsterBattle.monsterBattleLocalPlayer1 .battleZone.enemy,
-#field.inMonsterBattle.monsterBattleLocalPlayer2 .card[data-owner="player1"],
-#field.inMonsterBattle.monsterBattleLocalPlayer2 .deckObject[data-owner="player1"],
-#field.inMonsterBattle.monsterBattleLocalPlayer2 .battleZone.enemy {
-  display: none !important;
-  pointer-events: none !important;
+  padding: 12px 0;
+  box-sizing: border-box;
 }
 
 .monsterBattleContent {

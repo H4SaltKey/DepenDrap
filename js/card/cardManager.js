@@ -40,8 +40,10 @@ const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.1;  // ズーム速度を2倍に増加
 const FIELD_SCROLL_ZOOM_STEP = 0.04; // スクロールズーム速度を2倍に増加
 let FIELD_ZOOM_MAX = 1.5; // 150% max zoom
-const FIELD_W = 3000;
-const FIELD_H = 2000;
+const FIELD_W = 2000;
+const FIELD_H = 3000;
+window.FIELD_W = FIELD_W;
+window.FIELD_H = FIELD_H;
 
 // 最小ズーム: フィールド全体がウィンドウに収まるスケール
 function calcZoomMin(){
@@ -165,7 +167,7 @@ function hideCardHoverPreview() {
   cardHoverPreviewEl.style.display = "none";
   cardHoverPreviewCardId = "";
 }
-const HAND_ZONE_Y_MIN = 1460;
+const HAND_ZONE_Y_MIN = 2300;
 window.HAND_ZONE_Y_MIN = HAND_ZONE_Y_MIN;
 
 /**
@@ -193,7 +195,7 @@ function getZoneAnchor(owner, type) {
     : 0;
   const midX = (FIELD_W / 2) - (CARD_W / 2);
   const midY = (FIELD_H / 2) - (CARD_H / 2);
-  const attackerY = isMine ? (FIELD_H - CARD_H - 520) : 320;
+  const attackerY = isMine ? (FIELD_H - CARD_H - 700) : 700;
   const attackerX = midX + ownerOffsetX;
   if (type === "attacker") return { x: attackerX, y: attackerY };
   if (type === "skill") {
@@ -228,6 +230,7 @@ function isTopZoneCard(card) {
 }
 
 function placeCardInZone(card, owner, type) {
+  const previousZone = card?.dataset?.zoneType || "";
   // 既存のゾーン属性を確実に消してから新しいゾーンを付与する
   clearZoneMarker(card);
   // 墓地 / アタッカー / スキルに出したカードは、出した時点で全体公開
@@ -252,6 +255,17 @@ function placeCardInZone(card, owner, type) {
   card.dataset.zoneType = type;
   card.dataset.zoneOwner = owner;
   card.dataset.zoneOrder = String(nextZoneOrder());
+  if (type === "attacker" || type === "skill") {
+    const match = window.state?.matchData;
+    if (match?.status === "playing" && match.turnPlayer === owner) {
+      card.dataset.usedTurnKey = `${match.round}-${match.turn}-${owner}`;
+    }
+  } else if (type === "grave" && (previousZone === "attacker" || previousZone === "skill")) {
+    const match = window.state?.matchData;
+    if (match?.status === "playing" && match.turnPlayer === owner) {
+      card.dataset.usedTurnKey = `${match.round}-${match.turn}-${owner}`;
+    }
+  }
 }
 
 function clearZoneMarker(card) {
@@ -1850,6 +1864,7 @@ window.getFieldData = function() {
       zoneOrder: Number(card.dataset.zoneOrder || 0),
       handOrder: Number(card.dataset.handOrder || 0),
       effectLimits: card.dataset.effectLimits || "",
+      usedTurnKey: card.dataset.usedTurnKey || "",
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
@@ -2057,6 +2072,9 @@ window.applyFieldCardsFromServer = function(data){
     } else if(item.zoneOrder === undefined && el.dataset.zoneOrder !== undefined){
       delete el.dataset.zoneOrder;
     }
+
+    if (item.usedTurnKey) el.dataset.usedTurnKey = item.usedTurnKey;
+    else delete el.dataset.usedTurnKey;
 
     // handOrder 差分更新
     if(item.handOrder !== undefined && el.dataset.handOrder !== String(item.handOrder)){

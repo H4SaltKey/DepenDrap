@@ -124,14 +124,23 @@ function showHandOverflowDiscardModal(owner, needCount) {
 
   btn.addEventListener("click", async () => {
     if (selected.size !== needCount) return;
+    const returnToDeck = state[owner]?.attackedOpponentThisTurn !== true;
     selected.forEach((c) => {
-      if (typeof placeCardInZone === "function") placeCardInZone(c, owner, "grave");
+      if (returnToDeck && typeof window.returnFieldCardToDeck === "function") {
+        window.returnFieldCardToDeck(c, owner, { deferRefresh: true });
+      } else if (typeof placeCardInZone === "function") {
+        placeCardInZone(c, owner, "grave");
+      }
     });
     if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+    if (typeof window.updateDeckObject === "function") window.updateDeckObject();
     if (typeof saveFieldCards === "function") saveFieldCards();
+    if (typeof window.pushMyStateDebounced === "function" && owner === (window.getMyRole?.() || window.myRole)) window.pushMyStateDebounced();
     if (typeof window.organizeHands === "function") window.organizeHands();
     if (typeof addGameLog === "function") {
-      addGameLog(`[システム] ${state[owner]?.username || owner} が手札を${needCount}枚捨てました`);
+      addGameLog(returnToDeck
+        ? `[システム] ${state[owner]?.username || owner} が手札上限超過の${needCount}枚を山札に戻しました`
+        : `[システム] ${state[owner]?.username || owner} が手札を${needCount}枚捨てました`);
     }
     // 忍耐の道: 捨てた枚数ぶんEXP（ターン毎最大2）
     const s = state[owner];

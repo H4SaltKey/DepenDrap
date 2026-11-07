@@ -190,6 +190,7 @@
     const slots = window.MonsterManager?.getAllSlots() || [];
     const panel = document.createElement("div");
     panel.id = "turnStartTargetPanel";
+    if (!turnStart) panel.dataset.retargetPersistent = "true";
     panel.style.cssText = `position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20001;background:rgba(10,8,20,.98);border:2px solid rgba(199,179,119,.5);border-radius:16px;padding:24px;width:min(520px,92vw);max-height:86vh;overflow:auto;font-family:'Outfit',sans-serif;box-shadow:0 24px 64px rgba(0,0,0,.85);color:#fff;`;
     const optionsHtml = slots.map((slot, index) => {
       if (!slot) return "";
@@ -219,6 +220,7 @@
       window.MonsterUI?.renderTargetBadge();
       if (turnStart) await window.completeTurnTargetSelection?.();
       else if (typeof window.update === "function") window.update();
+      if (!turnStart) panel.remove();
     };
     const choosePlayer = async (slotIndex) => {
       if (slotIndex !== currentLocation?.slotIndex) {

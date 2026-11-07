@@ -37,9 +37,11 @@ window.organizeHands = function() {
   const myExpanded = window.handPanelExpanded?.[myRole] ?? true;
   const opExpanded = window.handPanelExpanded?.[opRole] ?? true;
   
-  // 折りたたみ時は手札非表示、展開時は表示（HAND_ZONE_Y_MIN ≤ y ≤ 2000）
-  const handMin = myExpanded ? 1400 : 2000;
-  const handMaxTop = opExpanded ? 600 : 0;
+  // 折りたたみ時は手札非表示、展開時は表示
+  const fieldH = Number(window.FIELD_H || 3000);
+  const handMinBoundary = Number(window.HAND_ZONE_Y_MIN || 2300);
+  const handMin = myExpanded ? handMinBoundary : fieldH;
+  const handMaxTop = opExpanded ? fieldH - handMinBoundary : 0;
   const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= handMin);
   const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= handMaxTop);
 
@@ -61,7 +63,7 @@ window.organizeHands = function() {
     opHandCards.forEach(c => c.classList.remove("firstDrawHideVisLabel"));
   }
 
-  const fieldW = 3000; // FIELD_W
+  const fieldW = Number(window.FIELD_W || 2000);
   const cardW = 320;  // CARD_W
   const cardH = 453;  // CARD_H
   const myOffsetX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
@@ -75,7 +77,7 @@ window.organizeHands = function() {
       : [...myHandCards].sort(compareHandOrder);
 
     // 展開時：カード下部配置、折りたたみ時：非表示
-    const handY = myExpanded ? (2000 - cardH - 20) : 2000;
+    const handY = myExpanded ? (fieldH - cardH - 20) : fieldH;
     
     // 均等配置：カード間隔を動的に調整（-70% ～ +50%）
     const baseGapWidth = 15; // デフォルト隙間（px）
@@ -268,7 +270,7 @@ window.setupHandPanels = function() {
       top: 0;
       right: auto;
       bottom: auto;
-      width: 3000px;
+      width: ${Number(window.FIELD_W || 2000)}px;
       height: 600px;
       background: rgba(80, 70, 50, 0.2);
       border-bottom: 2px solid rgba(199, 179, 119, 0.4);
@@ -303,7 +305,7 @@ window.setupHandPanels = function() {
       top: auto;
       right: auto;
       bottom: 0;
-      width: 3000px;
+      width: ${Number(window.FIELD_W || 2000)}px;
       height: 600px;
       background: rgba(80, 70, 50, 0.2);
       border-top: 2px solid rgba(199, 179, 119, 0.4);
@@ -381,7 +383,7 @@ window.setupHandCardHoverBehavior = function() {
       
       // 現在の整列間隔を計算（organizeHands() の計算と同じ）
       const numCards = handCards.length;
-      const fieldW = 3000; // FIELD_W
+      const fieldW = Number(window.FIELD_W || 2000);
       const maxHandWidth = fieldW - 100;
       const cardW = 320;
       const baseGap = 15;

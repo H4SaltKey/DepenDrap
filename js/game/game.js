@@ -314,21 +314,23 @@ function createDeckObject(forceResetPos = false) {
       // 自分から見て左下に配置する
       if (forceResetPos) {
         const lx = -320 + myLayoutOffsetX;
-        const ly = 1547;
+        const ly = Number(window.FIELD_H || 3000) - 473 - 20;
         wrapper.style.left = lx + "px";
         wrapper.style.top = ly + "px";
         wrapper.dataset.x = lx;
         wrapper.dataset.y = ly;
-      } else if (savedPos) {
+    } else if (savedPos) {
         const sx = Number(savedPos.x) + myLayoutOffsetX;
-        wrapper.style.left = sx + "px";
-        wrapper.style.top = savedPos.y + "px";
-        wrapper.dataset.x = sx;
-        wrapper.dataset.y = savedPos.y;
+      const savedY = Number(savedPos.y);
+      const migratedY = savedY < 2000 ? Number(window.FIELD_H || 3000) - 493 : savedY;
+      wrapper.style.left = sx + "px";
+      wrapper.style.top = migratedY + "px";
+      wrapper.dataset.x = sx;
+      wrapper.dataset.y = migratedY;
       } else {
         // 再接続時など保存位置がない場合のフォールバック（手札横）
         const lx = -320 + myLayoutOffsetX;
-        const ly = 1547;
+        const ly = Number(window.FIELD_H || 3000) - 473 - 20;
         wrapper.style.left = lx + "px";
         wrapper.style.top = ly + "px";
         wrapper.dataset.x = lx;
@@ -338,9 +340,11 @@ function createDeckObject(forceResetPos = false) {
       wrapper.classList.add("opponent-deck");
       wrapper.style.pointerEvents = "none";
       // 相手のデッキ位置：相手から見て左下＝自分から見て右上に固定
-      // P1の左下 = (-320, 1547), P2の左下 = (3000, 0)
-      const globalX = (owner === "player1") ? -320 : 3000;
-      const globalY = (owner === "player1") ? 1547 : 0;
+      // P1の左下はフィールド下端、P2の左下は相手視点でフィールド下端。
+      const fieldWidth = Number(window.FIELD_W || 2000);
+      const fieldHeight = Number(window.FIELD_H || 3000);
+      const globalX = (owner === "player1") ? -320 : fieldWidth;
+      const globalY = (owner === "player1") ? fieldHeight - 473 - 20 : 0;
       wrapper.style.left = toLocalX(globalX) + "px";
       wrapper.style.top = toLocalY(globalY) + "px";
       wrapper.dataset.x = wrapper.style.left.replace("px", "");
@@ -358,9 +362,9 @@ window.refreshMyDeckLayoutForMonsterTarget = function() {
   const baseSaved = (() => {
     try {
       const p = window._savedDeckPos || JSON.parse(localStorage.getItem("savedDeckPos") || "null");
-      return p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) ? { x: Number(p.x), y: Number(p.y) } : { x: -320, y: 1547 };
+      return p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y)) ? { x: Number(p.x), y: Number(p.y) } : { x: -320, y: Number(window.FIELD_H || 3000) - 493 };
     } catch {
-      return { x: -320, y: 1547 };
+      return { x: -320, y: Number(window.FIELD_H || 3000) - 493 };
     }
   })();
   const offX = (typeof window.getMonsterFieldLayoutOffsetX === "function")
@@ -456,6 +460,28 @@ function returnToDeck(cardId, isTemp = false) {
   
   update();
 }
+
+window.returnFieldCardToDeck = function(card, owner, options = {}) {
+  if (!card || !owner || !state?.[owner]) return false;
+  const cardId = card.dataset.id;
+  if (!cardId) return false;
+  const storedId = card.dataset.isTemp === "true" ? `TEMP:${cardId}` : cardId;
+  state[owner].deck ||= [];
+  state[owner].deck.push(storedId);
+  for (let i = state[owner].deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [state[owner].deck[i], state[owner].deck[j]] = [state[owner].deck[j], state[owner].deck[i]];
+  }
+  card.remove();
+  if (!options.deferRefresh) {
+    window.organizeBattleZones?.();
+    window.updateDeckObject?.();
+    window.saveFieldCards?.();
+    if (owner === (window.getMyRole?.() || window.myRole)) window.pushMyStateDebounced?.();
+    window.update?.();
+  }
+  return true;
+};
 
 /**
  * 自分の playerState を Firebase に送信（デバウンス付き）
@@ -707,7 +733,7 @@ function renderUI() {
   const myOwner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
   const enemyOwner = myOwner === "player1" ? "player2" : "player1";
   const myTarget = window.BattleTargetSystem?.getTarget?.(myOwner) || "player";
-  const showEnemyStatus = myTarget === "player";
+  const showEnemyStatus = true;
 
   invokeGuarded("renderUI.renderOwnerUI.my", () => {
     if (!playerEl) return;
@@ -719,8 +745,7 @@ function renderUI() {
   });
   invokeGuarded("renderUI.renderOwnerUI.enemy", () => {
     if (!enemyEl) return;
-    enemyEl.style.display = showEnemyStatus ? "" : "none";
-    if (!showEnemyStatus) return;
+    enemyEl.style.display = "";
     const nextHtml = renderOwnerUI(enemyOwner);
     if (nextHtml !== _lastEnemyOwnerUiHtml) {
       enemyEl.innerHTML = nextHtml;
@@ -793,17 +818,12 @@ function renderUI() {
     const myOwner = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     const enemyOwner = myOwner === "player1" ? "player2" : "player1";
     const myTarget = window.BattleTargetSystem?.getTarget?.(myOwner) || "player";
-    const enemyTarget = window.BattleTargetSystem?.getTarget?.(enemyOwner) || "player";
+    const myLocation = window.BattleTargetSystem?.getLocation?.(myOwner, state.matchData?.round);
     
     // 自身がモンスターと戦う場合：背景を変更
-    const myInMonsterBattle = myTarget !== "player" && typeof myTarget === "object";
+    const myInMonsterBattle = !!myLocation && Number(myLocation.slotIndex) >= 0;
     fieldEl.classList.toggle("inMonsterBattle", myInMonsterBattle);
-    
-    // 相手がモンスターと戦う場合：相手のステータス情報を隠蔽
-    const opponentInMonsterBattle = enemyTarget !== "player" && typeof enemyTarget === "object";
-    fieldEl.classList.toggle("opponentInMonsterBattle", opponentInMonsterBattle);
-    fieldEl.classList.toggle("monsterBattleLocalPlayer1", myOwner === "player1");
-    fieldEl.classList.toggle("monsterBattleLocalPlayer2", myOwner === "player2");
+    fieldEl.classList.remove("opponentInMonsterBattle", "monsterBattleLocalPlayer1", "monsterBattleLocalPlayer2");
   }
 
   // モンスター戦闘UI更新
@@ -1031,7 +1051,7 @@ function handleMatchStateTransitions() {
   const opOverlay = document.getElementById("opponentTargetWaitingOverlay");
   if (opOverlay) opOverlay.remove();
   const targetSelectDlg = document.getElementById("turnStartTargetPanel");
-  if (targetSelectDlg) targetSelectDlg.remove();
+  if (targetSelectDlg && targetSelectDlg.dataset.retargetPersistent !== "true") targetSelectDlg.remove();
 
   // 判定用変数を先に計算
   const roundChanged = window._lastRound !== m.round && isDicePhaseComplete;
@@ -2538,18 +2558,22 @@ function startTurnDraw() {
       window.PlayerActionResolver.resolveCardDraw(me, count, { sourceCardId: source, source });
     }
   };
+  const monsterRoundBonusAllowed = Number(m.round || 1) === 1 || Number(m.turn || 1) !== 1;
   if (myState && Number(m.turn) === 1 && Number(myState.roundHandBonusRound || 0) < Number(m.round || 1)) {
     myState.roundHandBonusRound = Number(m.round || 1);
-    drawBonus(1, "round_start_bonus");
+    if (monsterRoundBonusAllowed) drawBonus(1, "round_start_bonus");
     if (typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
-    if (typeof addGameLog === "function") addGameLog(`[MATCH] 第${m.round}ラウンド開始ボーナス: 手札を1枚引きました。`);
+    if (monsterRoundBonusAllowed && typeof addGameLog === "function") addGameLog(`[MATCH] 第${m.round}ラウンド開始ボーナス: 手札を1枚引きました。`);
   }
   const noAttackBonus = myState?.pendingNoOpponentAttackBonus === true;
   if (noAttackBonus) {
     myState.pendingNoOpponentAttackBonus = false;
-    drawBonus(3, "no_opponent_attack_bonus");
-    if (typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
-    if (typeof addGameLog === "function") addGameLog("相手プレイヤーを攻撃しなかったターンのボーナス: 手札を3枚引きます。");
+    if (monsterRoundBonusAllowed) {
+      drawBonus(1, "no_opponent_attack_bonus");
+      myState.pp = 2;
+      if (typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
+      if (typeof addGameLog === "function") addGameLog("相手プレイヤーを攻撃しなかったターンのボーナス: 手札を1枚引き、PPを2にします。");
+    }
   }
   if (state.matchData?.winner) return;
   if (!myState || myState.deck.length === 0) {

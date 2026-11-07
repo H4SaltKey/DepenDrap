@@ -326,34 +326,7 @@ window.MonsterUI = (function() {
   }
 
   function _renderMonsterBattlefield(slots) {
-    // メインフィールド内のモンスター戦闘レイヤーに情報を送信
-    // 右側の独立フィールドは削除
-    const myKey = window._soloHotSeat
-      ? (window.state?.matchData?.turnPlayer || "player1")
-      : (window.myRole || "player1");
-    const location = window.BattleTargetSystem?.getLocation?.(myKey, window.state?.matchData?.round);
-    const target = location || window.BattleTargetSystem?.getTarget?.(myKey) || "player";
-    const targetSlot = (target && target !== "player") ? slots[target.slotIndex] : null;
-    
-    // monsterBattleUI.js の updateMonsterBattleDisplay に情報を提供
-    if (target && target !== "player") {
-      if (targetSlot) {
-        window._currentMonsterTarget = {
-          slot: targetSlot,
-          slotIndex: target.slotIndex,
-          definition: (window.MONSTER_DEFINITIONS || []).find(m => m.id === targetSlot.monsterId)
-        };
-      } else {
-        window._currentMonsterTarget = {
-          slot: null,
-          slotIndex: target.slotIndex
-        };
-      }
-    } else {
-      window._currentMonsterTarget = null;
-    }
-    
-    // UI更新をトリガー
+    // それぞれのプレイヤーの所在先を個別に表示する。
     if (typeof window.updateMonsterBattleDisplay === "function") {
       window.updateMonsterBattleDisplay();
     }

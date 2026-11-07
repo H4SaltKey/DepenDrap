@@ -243,45 +243,6 @@
     panel.querySelector("[data-retarget-current-player]")?.addEventListener("click", () => choosePlayer(currentLocation.slotIndex));
   };
 
-  // ===== 相手のターゲット選択待ちオーバーレイ表示 =====
-  window.showOpponentTargetSelectWaiting = function() {
-    if (document.getElementById("opponentTargetWaitingOverlay")) return;
-
-    const overlay = document.createElement("div");
-    overlay.id = "opponentTargetWaitingOverlay";
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(8, 6, 15, 0.75);
-      z-index: 15000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(8px);
-      color: #fff;
-      font-family: 'Outfit', sans-serif;
-      pointer-events: auto;
-    `;
-
-    overlay.innerHTML = `
-      <div style="position: relative; width: 80px; height: 80px; margin-bottom: 24px;">
-        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top-color: #f0d080; border-radius: 50%; animation: spin 1.2s linear infinite;"></div>
-        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-bottom-color: rgba(199, 179, 119, 0.3); border-radius: 50%; animation: spin 1.8s linear infinite reverse;"></div>
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px;">🎯</div>
-      </div>
-      <div style="font-size: 18px; color: #f0d080; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px;">相手のターゲット選択中</div>
-      <div style="font-size: 12px; color: #aaa; letter-spacing: 0.5px;">対戦相手が攻撃対象を選択するまでお待ちください…</div>
-      <style>
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      </style>
-    `;
-    document.body.appendChild(overlay);
-  };
-
   // ===== ターン開始時ターゲット選択ダイアログの表示 =====
   window.showTurnStartTargetSelectDialog = function() {
     if (document.getElementById("turnStartTargetPanel")) return;

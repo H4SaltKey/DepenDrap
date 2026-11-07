@@ -536,36 +536,67 @@ body.gamePage{
 
 .monsterBattleContent {
   position: relative;
-  width: 88%;
-  max-width: 1320px;
+  width: 94%;
+  max-width: 1800px;
+  box-sizing: border-box;
   height: auto;
   max-height: calc(100% - 28px);
   background: rgba(8, 6, 12, 0.82);
   border: 3px solid rgba(200, 150, 50, 0.6);
   border-radius: 16px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: 24px;
-  padding: 28px 36px 24px;
+  gap: 16px;
+  padding: 18px 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   overflow: hidden;
   pointer-events: auto;
 }
 
-.monsterDisplayArea {
+#monsterDisplayArea {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.monsterTargetCard {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  width: 100%;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 68%;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 2px solid rgba(240, 208, 128, 0.65);
+  border-radius: 12px;
+  background: rgba(18, 14, 24, 0.94);
+  pointer-events: auto;
+}
+
+.monsterTargetCard.opponentMonsterTarget {
+  flex: 0 1 32%;
+  transform: scale(0.82);
+  transform-origin: center;
+  border-color: rgba(150, 170, 190, 0.42);
+  opacity: 0.86;
+  pointer-events: auto;
+}
+
+.monsterTargetCard.sharedMonsterTarget {
+  border-color: #ffb36c;
+  box-shadow: 0 0 18px rgba(255, 179, 108, 0.3);
 }
 
 .monsterSprite {
-  width: 330px;
-  height: 330px;
+  width: min(24vw, 330px);
+  height: min(24vw, 330px);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -574,15 +605,30 @@ body.gamePage{
   pointer-events: auto;
 }
 
+.opponentMonsterTarget .monsterSprite {
+  width: min(15vw, 205px);
+  height: min(15vw, 205px);
+}
+
 .monsterNamePlate {
   background: rgba(30, 20, 10, 0.95);
   border: 2px solid #e74c3c;
   border-radius: 12px;
   padding: 20px 30px;
-  min-width: 400px;
+  min-width: min(400px, 100%);
+  max-width: 100%;
+  box-sizing: border-box;
   text-align: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
 }
+
+.opponentMonsterTarget .monsterNamePlate {
+  min-width: 100%;
+  padding: 12px 14px;
+}
+
+.opponentMonsterTarget .monsterName { font-size: 22px; }
+.opponentMonsterTarget .monsterHpPercent { font-size: 16px; padding: 4px 8px; }
 
 .monsterNameHeader {
   display: flex;

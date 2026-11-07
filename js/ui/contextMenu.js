@@ -1559,28 +1559,21 @@ function openSkillZoneMenu(owner, x, y){
 
 function getContextMenuTarget(target){
   if(!target || typeof target.closest !== "function") return null;
+  const targetCard = target.closest(".monsterTargetCard");
+  if (targetCard) {
+    if (targetCard.dataset.isLocalTarget !== "true") return null;
+    return {
+      type: "monster",
+      el: targetCard,
+      slotIndex: Number(targetCard.dataset.monsterSlotIndex)
+    };
+  }
   const monsterSlot = target.closest(".monsterSlot");
   if(monsterSlot){
     return {
       type: "monster",
       el: monsterSlot,
       slotIndex: Number(monsterSlot.dataset.slotIndex)
-    };
-  }
-  const monsterDisplay = target.closest(".monsterDisplayArea, .monsterSprite, .monsterNamePlate, #monsterBattleMeta, #monsterHpBar, #monsterNextAttack, #monsterBattleLayer");
-  if(monsterDisplay){
-    const slotIndex = Number(monsterDisplay.dataset.monsterSlotIndex || window._currentMonsterTarget?.slotIndex);
-    if (!Number.isFinite(slotIndex) && window._currentMonsterTarget?.slotIndex !== undefined) {
-      return {
-        type: "monster",
-        el: monsterDisplay,
-        slotIndex: window._currentMonsterTarget.slotIndex
-      };
-    }
-    return {
-      type: "monster",
-      el: monsterDisplay,
-      slotIndex: slotIndex
     };
   }
   const battleZone = target.closest(".battleZone");
@@ -1695,7 +1688,7 @@ document.addEventListener("contextmenu", (e) => {
     }
     const t = e.target;
     const me = window.myRole || window.getMyRole?.() || "player1";
-    const monsterHover = t && t.closest && t.closest(".monsterSprite, .monsterSlot");
+    const monsterHover = t && t.closest && t.closest(".monsterSlot, .monsterTargetCard[data-is-local-target='true']");
     const currentTarget = window.BattleTargetSystem?.getTarget?.(me);
     const isMonsterTarget = currentTarget && currentTarget !== "player" && typeof currentTarget === "object" && typeof currentTarget.slotIndex === "number";
 

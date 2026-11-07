@@ -42,8 +42,8 @@ window.organizeHands = function() {
   const handMinBoundary = Number(window.HAND_ZONE_Y_MIN || 2300);
   const handMin = myExpanded ? handMinBoundary : fieldH;
   const handMaxTop = opExpanded ? fieldH - handMinBoundary : 0;
-  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && Number(c.dataset.y) >= handMin);
-  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && Number(c.dataset.y) <= handMaxTop);
+  const myHandCards = cards.filter((c) => c.dataset.owner === myRole && !c.dataset.zoneType && c.dataset.deckTakeOut !== "true" && c.dataset.deckTakeout !== "true" && Number(c.dataset.y) >= handMin);
+  const opHandCards = cards.filter((c) => c.dataset.owner === opRole && !c.dataset.zoneType && c.dataset.deckTakeOut !== "true" && c.dataset.deckTakeout !== "true" && Number(c.dataset.y) <= handMaxTop);
 
   const compareHandOrder = (a, b) => {
     const oa = Number(a.dataset.handOrder || 0);

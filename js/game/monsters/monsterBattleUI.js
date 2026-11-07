@@ -15,160 +15,81 @@ window.setupMonsterBattleUI = function() {
     const myRole = window._soloHotSeat
       ? (window.state?.matchData?.turnPlayer || "player1")
       : (window.getMyRole ? window.getMyRole() : "player1");
-    const currentTarget = window.BattleTargetSystem?.getLocation?.(myRole, window.state?.matchData?.round)
-      || window.BattleTargetSystem?.getTarget?.(myRole);
-    const targetSlotIndex = currentTarget && currentTarget !== "player" && typeof currentTarget === "object"
-      ? currentTarget.slotIndex
-      : undefined;
-    const slot = typeof targetSlotIndex === "number" ? window.MonsterManager?.getSlot(targetSlotIndex) : null;
-    const defeated = typeof targetSlotIndex === "number" && !slot;
-
-    if (currentTarget !== "player" && typeof currentTarget === "object") {
-      // continue if target is a monster slot or a defeated target
-    } else {
-      return;
-    }
-
+    const enemyRole = myRole === "player1" ? "player2" : "player1";
+    const round = window.state?.matchData?.round;
+    const myLocation = window.BattleTargetSystem?.getLocation?.(myRole, round);
+    const enemyLocation = window.BattleTargetSystem?.getLocation?.(enemyRole, round);
     const slots = window.MonsterManager?.getAllSlots?.() || [];
-    const definition = slot ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId) : null;
-    const slotIndex = targetSlotIndex;
-    
-    const monsterSprite = document.getElementById("monsterSprite");
     const monsterDisplayArea = document.getElementById("monsterDisplayArea");
-    const monsterName = document.getElementById("monsterName");
-    const monsterHpFill = document.getElementById("monsterHpFill");
+    if (!monsterDisplayArea) return;
+    monsterDisplayArea.replaceChildren();
 
-    const bindMonsterContextMenu = (el) => {
-      if (!el) return;
-      el.dataset.monsterSlotIndex = String(slotIndex);
-      el.dataset.monsterDefeated = defeated ? "true" : "false";
-      el.style.cursor = "context-menu";
-      if (el.dataset.monsterContextBound) return;
-      el.dataset.monsterContextBound = "1";
-      el.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const slotIndexValue = Number(el.dataset.monsterSlotIndex);
-        const slotValue = window._currentMonsterTarget?.slot || window.MonsterManager?.getSlot(slotIndexValue);
-        if (typeof window.openMonsterMenu === "function" && el.dataset.monsterDefeated !== "true") {
-          window.openMonsterMenu(slotValue, slotIndexValue, e.clientX, e.clientY);
-        }
-      });
-    };
-
-    if (monsterSprite && slotIndex !== undefined) {
-      if (defeated) {
-        monsterSprite.style.backgroundImage = "";
-        monsterSprite.style.filter = "grayscale(0.8) saturate(0.6)";
-        monsterSprite.style.cursor = "default";
-        monsterSprite.title = "現在のターゲットは討伐済みです。ここをクリックして次の対象を選択してください。";
-      } else {
-        const spriteUrl = `assets/System/enemy_${slotIndex + 1}.png`;
-        monsterSprite.style.backgroundImage = `url('${spriteUrl}')`;
-        monsterSprite.style.filter = "";
-        monsterSprite.title = "右クリックでダメージ判定";
-        bindMonsterContextMenu(monsterSprite);
-      }
+    const sharedLocation = myLocation && enemyLocation && myLocation.slotIndex === enemyLocation.slotIndex;
+    const targets = [];
+    if (myLocation) targets.push({ owner: myRole, location: myLocation, className: sharedLocation ? "sharedMonsterTarget" : "localMonsterTarget", isLocal: true });
+    if (enemyLocation && (!myLocation || enemyLocation.slotIndex !== myLocation.slotIndex)) {
+      targets.push({ owner: enemyRole, location: enemyLocation, className: "opponentMonsterTarget", isLocal: false });
     }
-    if (monsterDisplayArea) {
-      if (defeated) {
-        monsterDisplayArea.title = "現在のターゲットは討伐済みです。ここをクリックして次の対象を選択してください。";
-        monsterDisplayArea.style.cursor = "pointer";
-        monsterDisplayArea.onclick = () => {
-          if (typeof window.MonsterUI?._showTargetSelectPanel === "function") {
-            window.MonsterUI._showTargetSelectPanel();
+    window._currentMonsterTarget = myLocation ? {
+      slot: slots[myLocation.slotIndex] || null,
+      slotIndex: myLocation.slotIndex,
+      owner: myRole
+    } : null;
+
+    targets.forEach(({ owner, location, className, isLocal }) => {
+      const slotIndex = Number(location.slotIndex);
+      const slot = slots[slotIndex] || null;
+      const defeated = !slot;
+      const definition = slot ? (window.MONSTER_DEFINITIONS || []).find(m => m.id === slot.monsterId) : null;
+      const panel = document.createElement("div");
+      panel.className = `monsterDisplayArea monsterTargetCard ${className}`;
+      panel.dataset.owner = owner;
+      panel.dataset.monsterSlotIndex = String(slotIndex);
+      panel.dataset.isLocalTarget = isLocal ? "true" : "false";
+      panel.dataset.monsterDefeated = defeated ? "true" : "false";
+      panel.title = isLocal
+        ? (defeated ? "討伐済みです。次の対象を選択してください。" : "右クリックでダメージ判定")
+        : "相手が対峙しているモンスター（攻撃対象外）";
+
+      const hpPercent = defeated ? 0 : Math.round(Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100)));
+      const traits = (definition?.traits || []).map(t => t.label).join(" / ") || "なし";
+      panel.innerHTML = `
+        <div class="monsterSprite" style="${defeated ? "filter:grayscale(.85) saturate(.5);" : `background-image:url('assets/System/enemy_${slotIndex + 1}.png');`}"></div>
+        <div class="monsterNamePlate">
+          <div class="monsterNameHeader">
+            <span class="monsterName">${defeated ? "討伐完了！" : (definition?.name || "モンスター")}</span>
+            <span class="monsterHpPercent">${hpPercent}%</span>
+          </div>
+          <div class="monsterBattleMeta">
+            <div><strong>HP</strong><br>${slot?.currentHp || 0}/${slot?.maxHp || 0}</div>
+            <div><strong>防御力</strong><br>${slot?.def || 0}</div>
+            <div><strong>シールド</strong><br>${slot?.shield || 0}</div>
+            <div><strong>特性</strong><br>${traits}</div>
+          </div>
+          <div class="monsterHpBar"><div class="monsterHpFill" style="width:${hpPercent}%"></div></div>
+          <div class="monsterNextAttack">${defeated ? "次の対象を選択してください。" : `次の攻撃 → ${buildMonsterNextAttackText(definition, slot)}`}</div>
+        </div>`;
+
+      if (isLocal && !defeated) {
+        panel.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof window.openMonsterMenu === "function") window.openMonsterMenu(slot, slotIndex, event.clientX, event.clientY);
+        });
+      } else if (!isLocal) {
+        panel.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+      } else if (isLocal && defeated) {
+        panel.addEventListener("click", () => {
+          if (window.BattleTargetSystem?.canChangeTarget(owner)) {
+            window.showMonsterRetargetDialog?.({ playerKey: owner, turnStart: false });
           }
-        };
-      } else {
-        monsterDisplayArea.title = "右クリックでダメージ判定";
-        monsterDisplayArea.style.cursor = "context-menu";
-        monsterDisplayArea.onclick = null;
-        bindMonsterContextMenu(monsterDisplayArea);
+        });
       }
-    }
-
-    if (monsterName) {
-      monsterName.textContent = defeated ? "討伐完了！" : (definition?.name || "モンスター");
-    }
-
-    const hpPercent = defeated ? 0 : Math.round(Math.max(0, Math.min(100, (slot.currentHp / slot.maxHp) * 100)));
-    const monsterHpPercent = document.getElementById("monsterHpPercent");
-    if (monsterHpPercent) {
-      monsterHpPercent.textContent = `${hpPercent}%`;
-    }
-
-    if (monsterHpFill) {
-      if (defeated) {
-        monsterHpFill.style.width = "0%";
-      } else if (slot?.currentHp !== undefined && slot?.maxHp !== undefined) {
-        const hpRatio = Math.max(0, slot.currentHp / slot.maxHp);
-        monsterHpFill.style.width = `${hpRatio * 100}%`;
-      }
-    }
-
-    const metaArea = document.getElementById("monsterBattleMeta");
-    if (metaArea) {
-      if (defeated) {
-        const aliveMonsters = slots.filter((s, idx) => s && idx !== targetSlotIndex);
-        metaArea.innerHTML = `
-          <div style="grid-column: 1 / -1; color: #f7c3a1; font-weight: 700; text-align: center;">
-            現在の対象は討伐済みです。次のターゲットを選択してください。
-          </div>`;
-        if (aliveMonsters.length > 0) {
-          const existingBtn = document.getElementById("monsterTargetSelectBtn");
-          if (!existingBtn && monsterDisplayArea) {
-            const button = document.createElement("button");
-            button.id = "monsterTargetSelectBtn";
-            button.textContent = "次の対象を選択";
-            button.style.cssText = `
-              width: 100%;
-              margin-top: 10px;
-              padding: 10px 14px;
-              border-radius: 10px;
-              border: 1px solid rgba(240, 208, 128, 0.45);
-              background: rgba(15, 12, 22, 0.95);
-              color: #f0d080;
-              font-size: 13px;
-              font-weight: 700;
-              cursor: pointer;
-              transition: background 0.2s, transform 0.2s;
-            `;
-            button.addEventListener("mouseenter", () => {
-              button.style.background = "rgba(240, 208, 128, 0.08)";
-            });
-            button.addEventListener("mouseleave", () => {
-              button.style.background = "rgba(15, 12, 22, 0.95)";
-            });
-            button.addEventListener("click", () => {
-              if (typeof window.MonsterUI?._showTargetSelectPanel === "function") {
-                window.MonsterUI._showTargetSelectPanel();
-              }
-            });
-            monsterDisplayArea.appendChild(button);
-          }
-        } else {
-          const existingBtn = document.getElementById("monsterTargetSelectBtn");
-          if (existingBtn) existingBtn.remove();
-        }
-      } else {
-        const existingBtn = document.getElementById("monsterTargetSelectBtn");
-        if (existingBtn) existingBtn.remove();
-        const traits = (definition?.traits || []).map(t => t.label).join(" / ") || "なし";
-        metaArea.innerHTML = `
-          <div><strong>HP</strong><br>${slot.currentHp}/${slot.maxHp}</div>
-          <div><strong>防御力</strong><br>${slot.def || 0}</div>
-          <div><strong>シールド</strong><br>${slot.shield || 0}</div>
-          <div><strong>特性</strong><br>${traits}</div>
-        `;
-      }
-    }
-
-    const nextAttackEl = document.getElementById("monsterNextAttack");
-    if (nextAttackEl) {
-      nextAttackEl.textContent = defeated
-        ? "新しいターゲットを選択して攻撃を続行できます。"
-        : `次の攻撃 → ${buildMonsterNextAttackText(definition, slot)}`;
-    }
+      monsterDisplayArea.appendChild(panel);
+    });
   };
 
   function buildMonsterNextAttackText(definition, slot) {

@@ -106,6 +106,7 @@ function canShowSingleTapPreview(cardEl) {
 function isCardInHandArea(cardEl) {
   if (!cardEl || cardEl.classList.contains("deckObject")) return false;
   if (cardEl.dataset.zoneType) return false;
+  if (cardEl.dataset.deckTakeOut === "true" || cardEl.dataset.deckTakeout === "true") return false;
   const y = Number(cardEl.dataset.y || 0);
   if (!Number.isFinite(y)) return false;
   const owner = cardEl.dataset.owner || "";
@@ -255,6 +256,8 @@ function placeCardInZone(card, owner, type) {
   card.dataset.zoneType = type;
   card.dataset.zoneOwner = owner;
   card.dataset.zoneOrder = String(nextZoneOrder());
+  clearDeckTakeOutMarkerIfNeeded(card);
+  updateDeckTakeOutZones();
   if (type === "attacker" || type === "skill") {
     const match = window.state?.matchData;
     if (match?.status === "playing" && match.turnPlayer === owner) {
@@ -1032,6 +1035,9 @@ function restoreCardElToPrev(el) {
   } else {
     clearZoneMarker(el);
   }
+  if (typeof window.organizeHands === "function") window.organizeHands();
+  if (typeof window.organizeBattleZones === "function") window.organizeBattleZones();
+  if (typeof saveFieldCards === "function") saveFieldCards();
 }
 
 function showBattleZonePpCostModal({ zoneType, cardEl, owner, onDone }) {
@@ -1164,7 +1170,7 @@ function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   if (!content) return;
   const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
   const other = cards.filter(
-    (c) => c.dataset.owner === myRole2 && Number(c.dataset.y) >= HAND_ZONE_Y_MIN && c !== dragEl
+    (c) => c.dataset.owner === myRole2 && isCardInHandArea(c) && c !== dragEl
   );
   if (other.length === 0) return;
 
@@ -1196,10 +1202,6 @@ function updateHandReorderGuides(dragEl, fieldX, fieldY) {
   content.appendChild(g);
 }
 
-function isDirectAttackDropArea(centerY) {
-  return Number(centerY || 0) <= (FIELD_H / 2);
-}
-
 function getDirectAttackTargetInfo(owner) {
   const op = owner === "player1" ? "player2" : "player1";
   const opName = String(window.state?.[op]?.username || "相手プレイヤー");
@@ -1216,6 +1218,41 @@ function getDirectAttackTargetInfo(owner) {
     return { type: "monster", slotIndex: target.slotIndex, label: String(def?.name || slot.monsterId || "モンスター") };
   }
   return { type: "player", owner: op, label: opName };
+}
+
+function getFieldBoundsForElement(el) {
+  const field = document.getElementById("field");
+  if (!el || !field) return null;
+  const fieldRect = field.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  const zoom = Math.max(0.001, fieldZoom);
+  return {
+    left: (rect.left - fieldRect.left - fieldPanX) / zoom,
+    top: (rect.top - fieldRect.top - fieldPanY) / zoom,
+    right: (rect.right - fieldRect.left - fieldPanX) / zoom,
+    bottom: (rect.bottom - fieldRect.top - fieldPanY) / zoom
+  };
+}
+
+function getDirectAttackDropTypeAt(centerX, centerY, owner) {
+  const target = getDirectAttackTargetInfo(owner);
+  if (target.type === "invalid") return null;
+  const monsterCards = Array.from(document.querySelectorAll(".monsterTargetCard"));
+  const overlappedMonster = monsterCards.some(card => {
+    const bounds = getFieldBoundsForElement(card);
+    return bounds && centerX >= bounds.left && centerX <= bounds.right && centerY >= bounds.top && centerY <= bounds.bottom;
+  });
+
+  if (target.type === "monster") {
+    const ownTargetCard = document.querySelector(`.monsterTargetCard[data-owner="${owner}"][data-is-local-target="true"]`);
+    const bounds = getFieldBoundsForElement(ownTargetCard);
+    return bounds && centerX >= bounds.left && centerX <= bounds.right && centerY >= bounds.top && centerY <= bounds.bottom
+      ? "monster"
+      : null;
+  }
+  // 相手側モンスターと共有モンスターの上はプレイヤーへの攻撃判定から除外する。
+  if (overlappedMonster) return null;
+  return centerY <= FIELD_H / 2 ? "player" : null;
 }
 
 function ensureDirectAttackOverlay() {
@@ -1265,6 +1302,21 @@ function setDirectAttackOverlayState(owner, isVisible, isActive) {
   if (!ov) return;
   const textEl = ov.querySelector("#directAttackDropOverlayText");
   const target = getDirectAttackTargetInfo(owner);
+  if (target.type === "monster") {
+    const targetCard = document.querySelector(`.monsterTargetCard[data-owner="${owner}"][data-is-local-target="true"]`);
+    const bounds = getFieldBoundsForElement(targetCard);
+    if (bounds) {
+      ov.style.left = `${bounds.left}px`;
+      ov.style.top = `${bounds.top}px`;
+      ov.style.width = `${Math.max(1, bounds.right - bounds.left)}px`;
+      ov.style.height = `${Math.max(1, bounds.bottom - bounds.top)}px`;
+    }
+  } else {
+    ov.style.left = "0";
+    ov.style.top = "0";
+    ov.style.width = `${FIELD_W}px`;
+    ov.style.height = `${Math.floor(FIELD_H / 2)}px`;
+  }
   if (textEl) {
     textEl.textContent = `ドラッグして「${target.label}」に直接攻撃。`;
   }
@@ -1278,12 +1330,13 @@ function hideDirectAttackOverlay() {
   if (ov) ov.style.display = "none";
 }
 
-function performDirectAttackByDrag(cardEl, owner) {
+function performDirectAttackByDrag(cardEl, owner, dropType) {
   const profile = window.CardCombatData?.getResolvedCardData?.(cardEl?.dataset?.id);
   const cardAtk = Math.max(0, Number(profile?.attack || 0));
   const baseAtk = Math.max(0, Number(window.state?.[owner]?.atk || 0));
   const amount = Math.max(1, baseAtk + cardAtk);
   const target = getDirectAttackTargetInfo(owner);
+  if ((dropType === "monster") !== (target.type === "monster")) return false;
 
   if (target.type === "invalid") {
     if (typeof window.showWarningMessage === "function") {
@@ -1421,8 +1474,10 @@ function enablePointerDrag(el){
       el.style.zIndex = DRAG_Z_TOP;
       updateHandReorderGuides(el, fieldX, fieldY);
       if (dragFromAttackerZone) {
+        const centerX = fieldX + CARD_W / 2;
         const centerY = fieldY + CARD_H / 2;
-        setDirectAttackOverlayState(el.dataset.owner || "player1", true, isDirectAttackDropArea(centerY));
+        const owner = el.dataset.owner || "player1";
+        setDirectAttackOverlayState(owner, true, !!getDirectAttackDropTypeAt(centerX, centerY, owner));
       }
     }
   });
@@ -1481,9 +1536,21 @@ function enablePointerDrag(el){
         const myRole2 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
         const centerX = fieldX + CARD_W / 2;
         const centerY = fieldY + CARD_H / 2;
-        if (dragFromAttackerZone && isDirectAttackDropArea(centerY)) {
+        const wasDeckTakeOut = el.dataset.deckTakeOut === "true" || el.dataset.deckTakeout === "true";
+        const restoreDropToOrigin = () => {
+          window._isDraggingCard = false;
+          restoreCardElToPrev(el);
+          hideDirectAttackOverlay();
+          pointerId = null;
+          document.body.classList.remove("isInteractingCard");
+          if (typeof window.update === "function") window.update();
+        };
+        const directAttackDropType = dragFromAttackerZone
+          ? getDirectAttackDropTypeAt(centerX, centerY, el.dataset.owner || myRole2)
+          : null;
+        if (dragFromAttackerZone && directAttackDropType) {
           const myRole3 = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
-          const ok = performDirectAttackByDrag(el, myRole3);
+          const ok = performDirectAttackByDrag(el, myRole3, directAttackDropType);
           hideDirectAttackOverlay();
           if (ok) {
             window._isDraggingCard = false;
@@ -1557,12 +1624,28 @@ function enablePointerDrag(el){
         }
         const treatAsHand = inHandDrop || fieldY >= HAND_ZONE_Y_MIN;
 
+        const cardOwner = el.dataset.owner || myRole2;
+        const isOwnerHandDrop = cardOwner === myRole2
+          ? centerY >= HAND_ZONE_Y_MIN - 20
+          : centerY <= FIELD_H - HAND_ZONE_Y_MIN + 20;
+        if (wasDeckTakeOut && isOwnerHandDrop) {
+          // 山札から取り出したカードは、手札列へ自動で入れず元の取り出し位置へ戻す。
+          restoreDropToOrigin();
+          return;
+        }
+        if (!wasDeckTakeOut && !treatAsHand) {
+          // ゾーン/手札以外の空きフィールドへは置けない。
+          restoreDropToOrigin();
+          return;
+        }
+
         const placeY = treatAsHand ? handLineY : fieldY;
         const placeX = fieldX;
         el.style.left = placeX + "px";
         el.style.top  = placeY + "px";
         el.dataset.x  = placeX;
         el.dataset.y  = placeY;
+        clearDeckTakeOutMarkerIfNeeded(el);
         if (el.classList.contains("deckObject")) {
           window._savedDeckPos = { x: Number(placeX), y: Number(placeY) };
           localStorage.setItem("savedDeckPos", JSON.stringify(window._savedDeckPos));
@@ -1574,7 +1657,7 @@ function enablePointerDrag(el){
             const cards = Array.from(content.querySelectorAll(".card:not(.deckObject)"));
             const otherHandCards = cards.filter(c => 
               c.dataset.owner === myRole2 && 
-              Number(c.dataset.y) >= HAND_ZONE_Y_MIN && 
+              isCardInHandArea(c) &&
               c !== el
             );
             
@@ -1640,7 +1723,7 @@ function enablePointerDrag(el){
   el.addEventListener("pointerenter", () => {
     const myRole = (window.getMyRole ? window.getMyRole() : window.myRole || "player1");
     if ((!window.canControlPlayer?.(el.dataset.owner) && el.dataset.owner !== myRole) || el.classList.contains("deckObject")) return;
-    if (Number(el.dataset.y) >= HAND_ZONE_Y_MIN) {
+    if (isCardInHandArea(el)) {
       el.classList.add("handCardLift");
       window._lastHandHoverEl = el;
       if (typeof window.organizeHands === "function") window.organizeHands();
@@ -1865,6 +1948,7 @@ window.getFieldData = function() {
       handOrder: Number(card.dataset.handOrder || 0),
       effectLimits: card.dataset.effectLimits || "",
       usedTurnKey: card.dataset.usedTurnKey || "",
+      deckTakeOut: card.dataset.deckTakeOut === "true" || card.dataset.deckTakeout === "true",
       isDeck: card.classList.contains("deckObject"),
       isTemp: card.dataset.isTemp === "true"
     }));
@@ -2092,6 +2176,15 @@ window.applyFieldCardsFromServer = function(data){
     if(item.effectLimits !== undefined && item.effectLimits !== el.dataset.effectLimits){
       if(item.effectLimits) el.dataset.effectLimits = item.effectLimits;
       else delete el.dataset.effectLimits;
+    }
+
+    if (item.deckTakeOut) {
+      el.dataset.deckTakeOut = "true";
+      el.classList.add("deckTakeOutCard");
+    } else {
+      delete el.dataset.deckTakeOut;
+      delete el.dataset.deckTakeout;
+      el.classList.remove("deckTakeOutCard");
     }
 
     // 相手のカードかどうかを判定

@@ -261,6 +261,7 @@ function countOwnerHandCardsOnField(owner) {
   return Array.from(c.querySelectorAll(".card:not(.deckObject)")).filter(
     (el) => {
       if (el.dataset.owner !== owner) return false;
+      if (el.dataset.deckTakeOut === "true" || el.dataset.deckTakeout === "true") return false;
       // ゾーン（アタッカー/スキル/墓地）に配置されているカードは除外
       if (el.dataset.zoneType) return false;
 

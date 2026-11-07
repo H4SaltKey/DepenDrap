@@ -819,9 +819,11 @@ function renderUI() {
     const enemyOwner = myOwner === "player1" ? "player2" : "player1";
     const myTarget = window.BattleTargetSystem?.getTarget?.(myOwner) || "player";
     const myLocation = window.BattleTargetSystem?.getLocation?.(myOwner, state.matchData?.round);
+    const enemyLocation = window.BattleTargetSystem?.getLocation?.(enemyOwner, state.matchData?.round);
     
     // 自身がモンスターと戦う場合：背景を変更
-    const myInMonsterBattle = !!myLocation && Number(myLocation.slotIndex) >= 0;
+    const myInMonsterBattle = (!!myLocation && Number(myLocation.slotIndex) >= 0)
+      || (!!enemyLocation && Number(enemyLocation.slotIndex) >= 0);
     fieldEl.classList.toggle("inMonsterBattle", myInMonsterBattle);
     fieldEl.classList.remove("opponentInMonsterBattle", "monsterBattleLocalPlayer1", "monsterBattleLocalPlayer2");
   }
@@ -1039,12 +1041,10 @@ function handleMatchStateTransitions() {
           }, 0);
         }
       }
-    } else {
-      if (typeof window.showOpponentTargetSelectWaiting === "function") {
-        window.showOpponentTargetSelectWaiting();
-      }
+      return; // 選択中の本人だけターゲット選択を行う
     }
-    return; // ターゲット決定待ちの間は、ターン開始（ドローや通知）を保留
+    // 相手の所在/攻撃対象選択を待って画面を塞がず、通常の表示更新を続ける。
+    document.getElementById("opponentTargetWaitingOverlay")?.remove();
   }
 
   // ターゲット選択フェーズでない場合のクリーンアップ

@@ -721,12 +721,14 @@ function drawCards(count, opts = {}){
     }
   }
 
-  dState.pp = Math.min((Number(dState.pp) || 0) + actual, Number(dState.ppMax) || 2);
+  if (!opts.skipPp) dState.pp = Math.min((Number(dState.pp) || 0) + actual, Number(dState.ppMax) || 2);
   if (typeof addGameLog === "function") {
-    const afterPp = Number(dState.pp) || 0;
-    const beforePp = Math.max(0, afterPp - actual);
-    const playerName = window.myUsername || me;
-    addGameLog(`[システム] ${playerName} のPP: ${beforePp} → ${afterPp}`);
+    if (!opts.skipPp) {
+      const afterPp = Number(dState.pp) || 0;
+      const beforePp = Math.max(0, afterPp - actual);
+      const playerName = window.myUsername || me;
+      addGameLog(`[システム] ${playerName} のPP: ${beforePp} → ${afterPp}`);
+    }
   }
 
   if (typeof window.organizeHands === "function") window.organizeHands();
@@ -1367,6 +1369,13 @@ window.applyCalculatedDamage = function(targetOwner, type, subType, amount, isEv
     if (!targets?.canTargetPlayer?.(attacker) || !targets?.isPvP?.(attacker)) {
       if (typeof window.addGameLog === "function") window.addGameLog("相手プレイヤーへの攻撃は、同じモンスターの場所にいる場合のみ行えます。");
       return;
+    }
+    const attackerState = state[attacker];
+    if (attackerState) {
+      // 攻撃対象を相手に選んだ事実を記録する。amount=0でも「攻撃した」と数える。
+      attackerState.attackedOpponentThisTurn = true;
+      const localRole = window.getMyRole?.() || window.myRole || "player1";
+      if (attacker === localRole && typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
     }
   }
   const s = state[targetOwner];

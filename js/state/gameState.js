@@ -14,6 +14,9 @@ const BASE_INITIAL_STATE = {
   def: 0,        defMax: 999,
   instantDef: 0, instantDefMax: 999,
   pp: 0,         ppMax: 2,
+  roundHandBonusRound: 0,
+  attackedOpponentThisTurn: false,
+  pendingNoOpponentAttackBonus: false,
   deck: [],
   backImage: null,
   statusBlocks: [],
@@ -53,7 +56,8 @@ const SYNC_PLAYER_STATE_KEYS = [
   "evolutionPath",
   "evoContinuousDmgCount",
   "evoContinuousDamageTotal",
-  "evoBackwaterExpGained"
+  "evoBackwaterExpGained",
+  "roundHandBonusRound", "attackedOpponentThisTurn", "pendingNoOpponentAttackBonus"
 ];
 
 const UI_ONLY_STATE_KEYS = [

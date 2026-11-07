@@ -110,6 +110,13 @@ window.MonsterCombatSystem = (function() {
     if (window._slimeGrowthRoundsLeft > 0 && window._slimeGrowthKiller === killer) {
       window.addGameLog(`[MONSTER] 成長スライムの恩恵: 毎ターン経験値+1（残り${window._slimeGrowthRoundsLeft}ラウンド）`);
     }
+
+    const match = window.state?.matchData;
+    const location = window.BattleTargetSystem?.getLocation(killer, match?.round);
+    if (match?.status === "playing" && match.turnPlayer === killer && location?.slotIndex === slotIndex) {
+      window.BattleTargetSystem?.onTurnStart(killer);
+      setTimeout(() => window.showMonsterRetargetDialog?.({ playerKey: killer, turnStart: false }), 0);
+    }
   }
 
   /**

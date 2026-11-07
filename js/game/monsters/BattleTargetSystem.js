@@ -22,6 +22,11 @@ window.BattleTargetSystem = (function() {
     return !getLocation(playerKey, round);
   }
 
+  function needsMonsterRetarget(playerKey, round) {
+    const location = getLocation(playerKey, round);
+    return !!location && !window.MonsterManager?.getSlot(location.slotIndex);
+  }
+
   function getOccupants(slotIndex, round) {
     const activeRound = currentRound(round);
     return ["player1", "player2"]
@@ -60,6 +65,20 @@ window.BattleTargetSystem = (function() {
     _locations[playerKey] = { slotIndex: index, round: activeRound, arrivedAt: activeRound * 2 + arrivalOrder };
     _targets[playerKey] = { slotIndex: index };
     _targetRounds[playerKey] = activeRound;
+    return { ok: true };
+  }
+
+  function retargetLocation(playerKey, slotIndex, round) {
+    const activeRound = currentRound(round);
+    const index = Number(slotIndex);
+    if (!_canChange[playerKey]) return { ok: false, reason: "ターン開始時のみ再選択できます" };
+    if (!Number.isInteger(index) || !window.MonsterManager?.getSlot(index)) return { ok: false, reason: "そのモンスターは選べません" };
+    const firstPlayer = window.state?.matchData?.firstPlayer || "player1";
+    const arrivalOrder = playerKey === firstPlayer ? 0 : 1;
+    _locations[playerKey] = { slotIndex: index, round: activeRound, arrivedAt: activeRound * 2 + arrivalOrder };
+    _targets[playerKey] = { slotIndex: index };
+    _targetRounds[playerKey] = activeRound;
+    _canChange[playerKey] = false;
     return { ok: true };
   }
 
@@ -154,7 +173,9 @@ window.BattleTargetSystem = (function() {
     onTurnStart,
     lockTarget,
     chooseLocation,
+    retargetLocation,
     needsLocationChoice,
+    needsMonsterRetarget,
     getLocation,
     getOccupants,
     isExcited,

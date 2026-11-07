@@ -1003,6 +1003,8 @@ function handleMatchStateTransitions() {
       const targetSystem = window.BattleTargetSystem;
       if (targetSystem?.needsLocationChoice(selectionOwner, m.round)) {
         setTimeout(() => window.showRoundLocationSelectDialog?.(), 0);
+      } else if (targetSystem?.needsMonsterRetarget?.(selectionOwner, m.round)) {
+        setTimeout(() => window.showMonsterRetargetDialog?.({ playerKey: selectionOwner, turnStart: true }), 0);
       } else if (targetSystem?.canTargetPlayer(selectionOwner, m.round)) {
         setTimeout(() => window.showTurnStartTargetSelectDialog?.(), 0);
       } else {
@@ -2529,6 +2531,27 @@ function startTurnDraw() {
     window.EffectEngine.triggerZoneCardEffects(me, "skill", "onTurnStart", { targetOwner: me });
   }
   const myState = state[me];
+  const drawBonus = (count, source) => {
+    if (typeof window.drawCards !== "function") return;
+    window.drawCards(count, { owner: me, skipPp: true });
+    if (window.PlayerActionResolver?.resolveCardDraw) {
+      window.PlayerActionResolver.resolveCardDraw(me, count, { sourceCardId: source, source });
+    }
+  };
+  if (myState && Number(m.turn) === 1 && Number(myState.roundHandBonusRound || 0) < Number(m.round || 1)) {
+    myState.roundHandBonusRound = Number(m.round || 1);
+    drawBonus(1, "round_start_bonus");
+    if (typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
+    if (typeof addGameLog === "function") addGameLog(`[MATCH] 第${m.round}ラウンド開始ボーナス: 手札を1枚引きました。`);
+  }
+  const noAttackBonus = myState?.pendingNoOpponentAttackBonus === true;
+  if (noAttackBonus) {
+    myState.pendingNoOpponentAttackBonus = false;
+    drawBonus(3, "no_opponent_attack_bonus");
+    if (typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
+    if (typeof addGameLog === "function") addGameLog("相手プレイヤーを攻撃しなかったターンのボーナス: 手札を3枚引きます。");
+  }
+  if (state.matchData?.winner) return;
   if (!myState || myState.deck.length === 0) {
     console.warn("[TurnDraw] デッキが空です。敗北判定を実行します。");
     if (typeof addGameLog === "function") {
@@ -2596,6 +2619,12 @@ function startTurnDraw() {
   const maxPp = Number(myState.ppMax) || 2;
   if (typeof window.addVal === "function") window.addVal(me, "pp", 1);
   else myState.pp = Math.min(currentPp + 1, maxPp);
+  if (noAttackBonus) {
+    myState.pp = 2;
+    const localRole = window.getMyRole?.() || window.myRole || "player1";
+    if (!window._soloHotSeat && me === localRole && typeof window.pushMyStateDebounced === "function") window.pushMyStateDebounced();
+    if (typeof window.update === "function") window.update();
+  }
 
   // 手札整列
   if (typeof window.organizeHands === "function") window.organizeHands();

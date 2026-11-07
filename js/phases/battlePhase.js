@@ -69,6 +69,13 @@ window.handleTurnEnd = async function(skipHandLimitCheck = false) {
     }
   }
 
+  // 相手プレイヤーを攻撃しなかったターンは、次の自分のターンに補充ボーナスを予約。
+  const actorState = state[me];
+  if (actorState) {
+    actorState.pendingNoOpponentAttackBonus = actorState.attackedOpponentThisTurn !== true;
+    actorState.attackedOpponentThisTurn = false;
+  }
+
   const op          = me === "player1" ? "player2" : "player1";
 
   // calcNextTurn（gameRules.js）でターン計算（純粋関数）

@@ -29,50 +29,29 @@ window.MonsterManager = (function() {
 
   /**
    * ラウンド開始時にスロットを初期化・再配置
-   * 討伐済みスロットのみ新モンスターを配置
+   * 全スロットを新しい状態に戻し、討伐済みモンスターも復活させる
    */
   function initRound(round) {
-    if (round === 1) {
-      // 初回: 全スロットにランダム配置
-      const used = [];
-      for (let i = 0; i < SLOT_COUNT; i++) {
-        const id = _randomPool(used);
-        used.push(id);
-        const def = _getDef(id);
-        _slots[i] = {
-          slotIndex: i,
-          monsterId: id,
-          currentHp: def?.hp || 5,
-          maxHp: def?.hp || 5,
-          atkBonus: 0,
-          shield: Number(def?.shield || 0),
-          def: Number(def?.def || 0),
-          hitCountThisTurn: 0,
-          retreatCountdown: 0
-        };
-      }
-      _defeatedSlots.clear();
-    } else {
-      // 2ラウンド以降: 討伐済みスロットのみ再配置
-      const used = _slots.filter(s => s !== null).map(s => s.monsterId);
-      _defeatedSlots.forEach(i => {
-        const id = _randomPool(used);
-        used.push(id);
-        const def = _getDef(id);
-        _slots[i] = {
-          slotIndex: i,
-          monsterId: id,
-          currentHp: def?.hp || 5,
-          maxHp: def?.hp || 5,
-          atkBonus: 0,
-          shield: Number(def?.shield || 0),
-          def: Number(def?.def || 0),
-          hitCountThisTurn: 0,
-          retreatCountdown: 0
-        };
-      });
-      _defeatedSlots.clear();
+    // 前ラウンドの生存状態や討伐記録に依存せず、毎回全枠を再生成する。
+    // これにより討伐済みスロットを含め、全モンスターが次ラウンドに復活する。
+    const used = [];
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const id = _randomPool(used);
+      used.push(id);
+      const def = _getDef(id);
+      _slots[i] = {
+        slotIndex: i,
+        monsterId: id,
+        currentHp: def?.hp || 5,
+        maxHp: def?.hp || 5,
+        atkBonus: 0,
+        shield: Number(def?.shield || 0),
+        def: Number(def?.def || 0),
+        hitCountThisTurn: 0,
+        retreatCountdown: 0
+      };
     }
+    _defeatedSlots.clear();
 
     // ターン開始時カウントリセット
     _slots.forEach(s => { if (s) s.hitCountThisTurn = 0; });

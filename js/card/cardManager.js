@@ -40,7 +40,7 @@ const CARD_STACK_OFFSET = 14;
 const FIELD_ZOOM_STEP = 0.1;  // ズーム速度を2倍に増加
 const FIELD_SCROLL_ZOOM_STEP = 0.04; // スクロールズーム速度を2倍に増加
 let FIELD_ZOOM_MAX = 1.5; // 150% max zoom
-const FIELD_W = 2000;
+const FIELD_W = 2250;
 const FIELD_H = 3000;
 window.FIELD_W = FIELD_W;
 window.FIELD_H = FIELD_H;
@@ -206,9 +206,9 @@ function getZoneAnchor(owner, type) {
   }
   if (type === "grave") {
     if (isMine) {
-      return { x: FIELD_W - CARD_W - 20 + ownerOffsetX, y: FIELD_H - CARD_H - 400 };
+      return { x: FIELD_W + 20 + ownerOffsetX, y: FIELD_H - CARD_H - 20 };
     }
-    return { x: 20 + ownerOffsetX, y: 180 };
+    return { x: -CARD_W - 20 + ownerOffsetX, y: 20 };
   }
   return { x: attackerX, y: attackerY };
 }
